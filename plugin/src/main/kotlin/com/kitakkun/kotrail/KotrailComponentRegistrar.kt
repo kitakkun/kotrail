@@ -5,6 +5,7 @@ package com.kitakkun.kotrail
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailFirExtensionRegistrar
 import com.kitakkun.kotrail.ir.compose.insets.InferredWindowInsetsMetadataWriter
+import com.kitakkun.kotrail.ir.preconditions.InferredPreconditionsMetadataWriter
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
@@ -22,6 +23,9 @@ class KotrailComponentRegistrar : CompilerPluginRegistrar() {
         FirExtensionRegistrarAdapter.registerExtension(KotrailFirExtensionRegistrar(config))
         if (config.isEnabled(KotrailRule.COMPOSE_WINDOW_INSETS)) {
             IrGenerationExtension.registerExtension(InferredWindowInsetsMetadataWriter())
+        }
+        if (config.isEnabled(KotrailRule.PRECONDITIONS)) {
+            IrGenerationExtension.registerExtension(InferredPreconditionsMetadataWriter())
         }
     }
 }

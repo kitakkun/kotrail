@@ -1,0 +1,205 @@
+Module: lib
+FILE fqName:lib fileName:/Lib.kt
+  CLASS CLASS name:Counter modality:FINAL visibility:public superTypes:[kotlin.Any]
+    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:lib.Counter
+    PROPERTY name:count visibility:public modality:FINAL [var]
+      FIELD PROPERTY_BACKING_FIELD name:count type:kotlin.Int visibility:private
+        EXPRESSION_BODY
+          GET_VAR 'count: kotlin.Int declared in lib.Counter.<init>' type=kotlin.Int origin=INITIALIZE_PROPERTY_FROM_PARAMETER
+      FUN DEFAULT_PROPERTY_ACCESSOR name:<get-count> visibility:public modality:FINAL returnType:kotlin.Int
+        VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:lib.Counter
+        correspondingProperty: PROPERTY name:count visibility:public modality:FINAL [var]
+        BLOCK_BODY
+          RETURN type=kotlin.Nothing from='public final fun <get-count> (): kotlin.Int declared in lib.Counter'
+            GET_FIELD 'FIELD PROPERTY_BACKING_FIELD name:count type:kotlin.Int visibility:private' type=kotlin.Int origin=null
+              receiver: GET_VAR '<this>: lib.Counter declared in lib.Counter.<get-count>' type=lib.Counter origin=null
+      FUN DEFAULT_PROPERTY_ACCESSOR name:<set-count> visibility:public modality:FINAL returnType:kotlin.Unit
+        VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:lib.Counter
+        VALUE_PARAMETER kind:Regular name:<set-?> index:1 type:kotlin.Int
+        correspondingProperty: PROPERTY name:count visibility:public modality:FINAL [var]
+        BLOCK_BODY
+          SET_FIELD 'FIELD PROPERTY_BACKING_FIELD name:count type:kotlin.Int visibility:private' type=kotlin.Unit origin=null
+            receiver: GET_VAR '<this>: lib.Counter declared in lib.Counter.<set-count>' type=lib.Counter origin=null
+            value: GET_VAR '<set-?>: kotlin.Int declared in lib.Counter.<set-count>' type=kotlin.Int origin=null
+    PROPERTY name:name visibility:public modality:FINAL [val]
+      FIELD PROPERTY_BACKING_FIELD name:name type:kotlin.String visibility:private [final]
+        EXPRESSION_BODY
+          GET_VAR 'name: kotlin.String declared in lib.Counter.<init>' type=kotlin.String origin=INITIALIZE_PROPERTY_FROM_PARAMETER
+      FUN DEFAULT_PROPERTY_ACCESSOR name:<get-name> visibility:public modality:FINAL returnType:kotlin.String
+        VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:lib.Counter
+        correspondingProperty: PROPERTY name:name visibility:public modality:FINAL [val]
+        BLOCK_BODY
+          RETURN type=kotlin.Nothing from='public final fun <get-name> (): kotlin.String declared in lib.Counter'
+            GET_FIELD 'FIELD PROPERTY_BACKING_FIELD name:name type:kotlin.String visibility:private [final]' type=kotlin.String origin=null
+              receiver: GET_VAR '<this>: lib.Counter declared in lib.Counter.<get-name>' type=lib.Counter origin=null
+    CONSTRUCTOR visibility:public returnType:lib.Counter [primary]
+      VALUE_PARAMETER kind:Regular name:count index:0 type:kotlin.Int
+      VALUE_PARAMETER kind:Regular name:name index:1 type:kotlin.String
+      BLOCK_BODY
+        DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
+        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:Counter modality:FINAL visibility:public superTypes:[kotlin.Any]' type=kotlin.Unit
+    FUN FAKE_OVERRIDE name:equals visibility:public modality:OPEN returnType:kotlin.Boolean [fake_override,operator]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      VALUE_PARAMETER kind:Regular name:other index:1 type:kotlin.Any?
+      overridden:
+        public open fun equals (other: kotlin.Any?): kotlin.Boolean declared in kotlin.Any
+    FUN FAKE_OVERRIDE name:hashCode visibility:public modality:OPEN returnType:kotlin.Int [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      overridden:
+        public open fun hashCode (): kotlin.Int declared in kotlin.Any
+    FUN FAKE_OVERRIDE name:toString visibility:public modality:OPEN returnType:kotlin.String [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      overridden:
+        public open fun toString (): kotlin.String declared in kotlin.Any
+    FUN name:add visibility:public modality:FINAL returnType:kotlin.Unit
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:lib.Counter
+      VALUE_PARAMETER kind:Regular name:delta index:1 type:kotlin.Int
+      BLOCK_BODY
+        CALL 'public final fun require (value: kotlin.Boolean): kotlin.Unit declared in kotlin' type=kotlin.Unit origin=null
+          ARG value: CALL 'public final fun greaterOrEqual (arg0: kotlin.Int, arg1: kotlin.Int): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=GTEQ
+            ARG arg0: CALL 'public final fun plus (other: kotlin.Int): kotlin.Int declared in kotlin.Int' type=kotlin.Int origin=PLUS
+              ARG <this>: CALL 'public final fun <get-count> (): kotlin.Int declared in lib.Counter' type=kotlin.Int origin=GET_PROPERTY
+                ARG <this>: GET_VAR '<this>: lib.Counter declared in lib.Counter.add' type=lib.Counter origin=IMPLICIT_ARGUMENT
+              ARG other: GET_VAR 'delta: kotlin.Int declared in lib.Counter.add' type=kotlin.Int origin=null
+            ARG arg1: CONST Int type=kotlin.Int value=0
+        CALL 'public final fun <set-count> (<set-?>: kotlin.Int): kotlin.Unit declared in lib.Counter' type=kotlin.Unit origin=PLUSEQ
+          ARG <this>: GET_VAR '<this>: lib.Counter declared in lib.Counter.add' type=lib.Counter origin=IMPLICIT_ARGUMENT
+          ARG <set-?>: CALL 'public final fun plus (other: kotlin.Int): kotlin.Int declared in kotlin.Int' type=kotlin.Int origin=PLUSEQ
+            ARG <this>: CALL 'public final fun <get-count> (): kotlin.Int declared in lib.Counter' type=kotlin.Int origin=PLUSEQ
+              ARG <this>: GET_VAR '<this>: lib.Counter declared in lib.Counter.add' type=lib.Counter origin=IMPLICIT_ARGUMENT
+            ARG other: GET_VAR 'delta: kotlin.Int declared in lib.Counter.add' type=kotlin.Int origin=null
+  CLASS CLASS name:Percent modality:FINAL visibility:public superTypes:[kotlin.Any]
+    annotations:
+      InferredPreconditions(conditions = ["value in 0..100"] type=kotlin.Array<out kotlin.String> varargElementType=kotlin.String)
+    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:lib.Percent
+    PROPERTY name:value visibility:public modality:FINAL [val]
+      FIELD PROPERTY_BACKING_FIELD name:value type:kotlin.Int visibility:private [final]
+        EXPRESSION_BODY
+          GET_VAR 'value: kotlin.Int declared in lib.Percent.<init>' type=kotlin.Int origin=INITIALIZE_PROPERTY_FROM_PARAMETER
+      FUN DEFAULT_PROPERTY_ACCESSOR name:<get-value> visibility:public modality:FINAL returnType:kotlin.Int
+        VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:lib.Percent
+        correspondingProperty: PROPERTY name:value visibility:public modality:FINAL [val]
+        BLOCK_BODY
+          RETURN type=kotlin.Nothing from='public final fun <get-value> (): kotlin.Int declared in lib.Percent'
+            GET_FIELD 'FIELD PROPERTY_BACKING_FIELD name:value type:kotlin.Int visibility:private [final]' type=kotlin.Int origin=null
+              receiver: GET_VAR '<this>: lib.Percent declared in lib.Percent.<get-value>' type=lib.Percent origin=null
+    PROPERTY name:note visibility:public modality:FINAL [val]
+      FIELD PROPERTY_BACKING_FIELD name:note type:kotlin.String visibility:private [final]
+        EXPRESSION_BODY
+          GET_VAR 'note: kotlin.String declared in lib.Percent.<init>' type=kotlin.String origin=INITIALIZE_PROPERTY_FROM_PARAMETER
+      FUN DEFAULT_PROPERTY_ACCESSOR name:<get-note> visibility:public modality:FINAL returnType:kotlin.String
+        VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:lib.Percent
+        correspondingProperty: PROPERTY name:note visibility:public modality:FINAL [val]
+        BLOCK_BODY
+          RETURN type=kotlin.Nothing from='public final fun <get-note> (): kotlin.String declared in lib.Percent'
+            GET_FIELD 'FIELD PROPERTY_BACKING_FIELD name:note type:kotlin.String visibility:private [final]' type=kotlin.String origin=null
+              receiver: GET_VAR '<this>: lib.Percent declared in lib.Percent.<get-note>' type=lib.Percent origin=null
+    ANONYMOUS_INITIALIZER isStatic=false
+      BLOCK_BODY
+        CALL 'public final fun require (value: kotlin.Boolean): kotlin.Unit declared in kotlin' type=kotlin.Unit origin=null
+          ARG value: CALL 'public open fun contains (value: kotlin.Int): kotlin.Boolean declared in kotlin.ranges.IntRange' type=kotlin.Boolean origin=IN
+            ARG <this>: CALL 'public final fun rangeTo (other: kotlin.Int): kotlin.ranges.IntRange declared in kotlin.Int' type=kotlin.ranges.IntRange origin=RANGE
+              ARG <this>: CONST Int type=kotlin.Int value=0
+              ARG other: CONST Int type=kotlin.Int value=100
+            ARG value: CALL 'public final fun <get-value> (): kotlin.Int declared in lib.Percent' type=kotlin.Int origin=GET_PROPERTY
+              ARG <this>: GET_VAR '<this>: lib.Percent declared in lib.Percent' type=lib.Percent origin=IMPLICIT_ARGUMENT
+    CONSTRUCTOR visibility:public returnType:lib.Percent [primary]
+      VALUE_PARAMETER kind:Regular name:value index:0 type:kotlin.Int
+      VALUE_PARAMETER kind:Regular name:note index:1 type:kotlin.String
+      BLOCK_BODY
+        DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
+        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:Percent modality:FINAL visibility:public superTypes:[kotlin.Any]' type=kotlin.Unit
+    FUN FAKE_OVERRIDE name:equals visibility:public modality:OPEN returnType:kotlin.Boolean [fake_override,operator]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      VALUE_PARAMETER kind:Regular name:other index:1 type:kotlin.Any?
+      overridden:
+        public open fun equals (other: kotlin.Any?): kotlin.Boolean declared in kotlin.Any
+    FUN FAKE_OVERRIDE name:hashCode visibility:public modality:OPEN returnType:kotlin.Int [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      overridden:
+        public open fun hashCode (): kotlin.Int declared in kotlin.Any
+    FUN FAKE_OVERRIDE name:toString visibility:public modality:OPEN returnType:kotlin.String [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      overridden:
+        public open fun toString (): kotlin.String declared in kotlin.Any
+  FUN name:hidden visibility:private modality:FINAL returnType:kotlin.Unit
+    VALUE_PARAMETER kind:Regular name:n index:0 type:kotlin.Int
+    BLOCK_BODY
+      CALL 'public final fun require (value: kotlin.Boolean): kotlin.Unit declared in kotlin' type=kotlin.Unit origin=null
+        ARG value: CALL 'public final fun greater (arg0: kotlin.Int, arg1: kotlin.Int): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=GT
+          ARG arg0: GET_VAR 'n: kotlin.Int declared in lib.hidden' type=kotlin.Int origin=null
+          ARG arg1: CONST Int type=kotlin.Int value=0
+      CALL 'public final fun println (message: kotlin.Int): kotlin.Unit declared in kotlin.io' type=kotlin.Unit origin=null
+        ARG message: GET_VAR 'n: kotlin.Int declared in lib.hidden' type=kotlin.Int origin=null
+  FUN name:retry visibility:public modality:FINAL returnType:kotlin.Unit
+    VALUE_PARAMETER kind:Regular name:times index:0 type:kotlin.Int
+    VALUE_PARAMETER kind:Regular name:label index:1 type:kotlin.String
+    annotations:
+      InferredPreconditions(conditions = ["times >= 0", "label.isNotBlank()"] type=kotlin.Array<out kotlin.String> varargElementType=kotlin.String)
+    BLOCK_BODY
+      CALL 'public final fun require (value: kotlin.Boolean, lazyMessage: kotlin.Function0<kotlin.Any>): kotlin.Unit declared in kotlin' type=kotlin.Unit origin=null
+        ARG value: CALL 'public final fun greaterOrEqual (arg0: kotlin.Int, arg1: kotlin.Int): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=GTEQ
+          ARG arg0: GET_VAR 'times: kotlin.Int declared in lib.retry' type=kotlin.Int origin=null
+          ARG arg1: CONST Int type=kotlin.Int value=0
+        ARG lazyMessage: FUN_EXPR type=kotlin.Function0<kotlin.Any> origin=LAMBDA
+          FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL returnType:kotlin.Any
+            BLOCK_BODY
+              RETURN type=kotlin.Nothing from='local final fun <anonymous> (): kotlin.Any declared in lib.retry'
+                CONST String type=kotlin.String value="times must not be negative"
+      CALL 'public final fun require (value: kotlin.Boolean): kotlin.Unit declared in kotlin' type=kotlin.Unit origin=null
+        ARG value: CALL 'public final fun isNotBlank (<this>: kotlin.CharSequence): kotlin.Boolean declared in kotlin.text' type=kotlin.Boolean origin=null
+          ARG <this>: GET_VAR 'label: kotlin.String declared in lib.retry' type=kotlin.String origin=null
+      CALL 'public final fun println (message: kotlin.Any?): kotlin.Unit declared in kotlin.io' type=kotlin.Unit origin=null
+        ARG message: STRING_CONCATENATION type=kotlin.String
+          GET_VAR 'label: kotlin.String declared in lib.retry' type=kotlin.String origin=null
+          CONST String type=kotlin.String value=" x"
+          GET_VAR 'times: kotlin.Int declared in lib.retry' type=kotlin.Int origin=null
+  FUN name:touch visibility:public modality:FINAL returnType:kotlin.Unit
+    BLOCK_BODY
+      CALL 'private final fun hidden (n: kotlin.Int): kotlin.Unit declared in lib' type=kotlin.Unit origin=null
+        ARG n: CONST Int type=kotlin.Int value=1
+      CALL 'public final fun add (delta: kotlin.Int): kotlin.Unit declared in lib.Counter' type=kotlin.Unit origin=null
+        ARG <this>: CONSTRUCTOR_CALL 'public constructor <init> (count: kotlin.Int, name: kotlin.String) declared in lib.Counter' type=lib.Counter origin=null
+          ARG count: CONST Int type=kotlin.Int value=0
+          ARG name: CONST String type=kotlin.String value="c"
+        ARG delta: CONST Int type=kotlin.Int value=1
+  FUN name:window visibility:public modality:FINAL returnType:kotlin.Unit
+    VALUE_PARAMETER kind:Regular name:start index:0 type:kotlin.Int
+    VALUE_PARAMETER kind:Regular name:end index:1 type:kotlin.Int
+    annotations:
+      InferredPreconditions(conditions = ["start < end"] type=kotlin.Array<out kotlin.String> varargElementType=kotlin.String)
+    BLOCK_BODY
+      CALL 'public final fun require (value: kotlin.Boolean): kotlin.Unit declared in kotlin' type=kotlin.Unit origin=null
+        ARG value: CALL 'public final fun less (arg0: kotlin.Int, arg1: kotlin.Int): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=LT
+          ARG arg0: GET_VAR 'start: kotlin.Int declared in lib.window' type=kotlin.Int origin=null
+          ARG arg1: GET_VAR 'end: kotlin.Int declared in lib.window' type=kotlin.Int origin=null
+      CALL 'public final fun println (message: kotlin.Int): kotlin.Unit declared in kotlin.io' type=kotlin.Unit origin=null
+        ARG message: CALL 'public final fun minus (other: kotlin.Int): kotlin.Int declared in kotlin.Int' type=kotlin.Int origin=MINUS
+          ARG <this>: GET_VAR 'end: kotlin.Int declared in lib.window' type=kotlin.Int origin=null
+          ARG other: GET_VAR 'start: kotlin.Int declared in lib.window' type=kotlin.Int origin=null
+Module: main
+FILE fqName:<root> fileName:/Main.kt
+  FUN name:box visibility:public modality:FINAL returnType:kotlin.String
+    BLOCK_BODY
+      CALL 'public final fun retry (times: kotlin.Int, label: kotlin.String): kotlin.Unit declared in lib' type=kotlin.Unit origin=null
+        ARG times: CONST Int type=kotlin.Int value=3
+        ARG label: CONST String type=kotlin.String value="sync"
+      CALL 'public final fun window (start: kotlin.Int, end: kotlin.Int): kotlin.Unit declared in lib' type=kotlin.Unit origin=null
+        ARG start: CONST Int type=kotlin.Int value=0
+        ARG end: CONST Int type=kotlin.Int value=10
+      VAR name:percent type:lib.Percent [val]
+        CONSTRUCTOR_CALL 'public constructor <init> (value: kotlin.Int, note: kotlin.String) declared in lib.Percent' type=lib.Percent origin=null
+          ARG value: CONST Int type=kotlin.Int value=50
+          ARG note: CONST String type=kotlin.String value="half"
+      CALL 'public final fun touch (): kotlin.Unit declared in lib' type=kotlin.Unit origin=null
+      RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in <root>'
+        WHEN type=kotlin.String origin=IF
+          BRANCH
+            if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
+              ARG arg0: CALL 'public final fun <get-value> (): kotlin.Int declared in lib.Percent' type=kotlin.Int origin=GET_PROPERTY
+                ARG <this>: GET_VAR 'val percent: lib.Percent declared in <root>.box' type=lib.Percent origin=null
+              ARG arg1: CONST Int type=kotlin.Int value=50
+            then: CONST String type=kotlin.String value="OK"
+          BRANCH
+            if: CONST Boolean type=kotlin.Boolean value=true
+            then: CONST String type=kotlin.String value="FAIL"

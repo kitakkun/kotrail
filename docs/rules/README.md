@@ -25,6 +25,7 @@ fixtures that pin its behavior.
 | Named arguments for repeated types | `NAMED_ARGUMENTS_REQUIRED` | [named-arguments-for-repeated-types.md](named-arguments-for-repeated-types.md) |
 | Must be serializable | `TYPE_NOT_SERIALIZABLE` | [must-be-serializable.md](must-be-serializable.md) |
 | No unimplemented code | `UNIMPLEMENTED_CODE` | [no-unimplemented.md](no-unimplemented.md) |
+| Preconditions | `PRECONDITION_VIOLATED` | [preconditions.md](preconditions.md) |
 
 ## Compose
 

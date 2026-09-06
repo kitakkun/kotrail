@@ -31,6 +31,7 @@ enum class KotrailRule(
     NAMED_ARGUMENTS_FOR_REPEATED_TYPES("namedArgumentsForRepeatedTypes", Severity.ERROR),
     MUST_BE_SERIALIZABLE("mustBeSerializable", Severity.ERROR),
     NO_UNIMPLEMENTED("noUnimplemented", Severity.ERROR),
+    PRECONDITIONS("preconditions", Severity.ERROR),
 
     COMPOSE_WINDOW_INSETS("compose.windowInsets", Severity.ERROR),
     COMPOSE_WINDOW_INSETS_UNVERIFIABLE("compose.windowInsetsUnverifiable", Severity.WARNING, hasSwitch = false),

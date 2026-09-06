@@ -2,6 +2,8 @@ package com.kitakkun.kotrail.fir
 
 import com.kitakkun.kotrail.fir.checkers.CommentLengthChecker
 import com.kitakkun.kotrail.fir.checkers.ForbiddenCallChecker
+import com.kitakkun.kotrail.fir.preconditions.checkers.PreconditionChecker
+import com.kitakkun.kotrail.fir.preconditions.checkers.PreconditionWarmup
 import com.kitakkun.kotrail.fir.checkers.UnimplementedCodeChecker
 import com.kitakkun.kotrail.fir.checkers.IgnoredExceptionChecker
 import com.kitakkun.kotrail.fir.checkers.MutableCollectionInPublicApiChecker
@@ -59,6 +61,7 @@ object KotrailDeclarationCheckers : DeclarationCheckers() {
         ComposablesPerFileChecker,
     )
     override val regularClassCheckers: Set<FirRegularClassChecker> = setOf(
+        PreconditionWarmup.ClassChecker,
         PreferValueClassChecker,
     )
     override val propertyCheckers: Set<FirPropertyChecker> = setOf(
@@ -66,6 +69,7 @@ object KotrailDeclarationCheckers : DeclarationCheckers() {
         PreferStateDelegationChecker,
     )
     override val simpleFunctionCheckers: Set<FirSimpleFunctionChecker> = setOf(
+        PreconditionWarmup.FunctionChecker,
         HandlesWindowInsetsContractChecker,
         ComposableNestingChecker,
         NarrowModelParametersChecker,
@@ -87,6 +91,7 @@ object KotrailExpressionCheckers : ExpressionCheckers() {
     override val functionCallCheckers: Set<FirFunctionCallChecker> = setOf(
         WindowInsetsHandledTwiceChecker,
         ForbiddenCallChecker,
+        PreconditionChecker,
         UnimplementedCodeChecker,
         NamedArgumentsChecker,
         ComposableNamedCallbackArgumentsChecker,

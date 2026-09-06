@@ -1,0 +1,163 @@
+@file:OptIn(SymbolInternals::class, DirectDeclarationsAccess::class)
+
+package com.kitakkun.kotrail.fir.preconditions
+
+import com.kitakkun.kotrail.preconditions.Cond
+import com.kitakkun.kotrail.preconditions.CondParser
+import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
+import org.jetbrains.kotlin.fir.declarations.FirAnonymousInitializer
+import org.jetbrains.kotlin.fir.declarations.FirConstructor
+import org.jetbrains.kotlin.fir.declarations.impl.FirDefaultPropertyGetter
+import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
+import org.jetbrains.kotlin.fir.declarations.FirProperty
+import org.jetbrains.kotlin.fir.declarations.FirRegularClass
+import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
+import org.jetbrains.kotlin.fir.expressions.FirStatement
+import org.jetbrains.kotlin.fir.declarations.findArgumentByName
+import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
+import org.jetbrains.kotlin.fir.declarations.utils.fromPrimaryConstructor
+import org.jetbrains.kotlin.fir.expressions.FirCollectionLiteral
+import org.jetbrains.kotlin.fir.expressions.FirExpression
+import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
+import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
+import org.jetbrains.kotlin.fir.expressions.FirVarargArgumentsExpression
+import org.jetbrains.kotlin.fir.expressions.arguments
+import org.jetbrains.kotlin.fir.expressions.unwrapArgument
+import org.jetbrains.kotlin.fir.extensions.FirExtensionSessionComponent
+import org.jetbrains.kotlin.fir.references.toResolvedNamedFunctionSymbol
+import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
+import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
+import org.jetbrains.kotlin.fir.symbols.SymbolInternals
+import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
+import org.jetbrains.kotlin.fir.symbols.lazyResolveToPhase
+import org.jetbrains.kotlin.fir.types.coneType
+
+/**
+ * Per-session knowledge of which preconditions a callable imposes on its parameters.
+ *
+ * For a declaration compiled from source the conditions are extracted from the leading `require`
+ * / `check` / `requireNotNull` calls of the body (or of a class's `init` blocks, for its primary
+ * constructor). For anything else they are read from the `@InferredPreconditions` annotation
+ * that the IR writer stamped when the declaring module was compiled. A hand-written
+ * `@InferredPreconditions` wins over analysis in both cases.
+ *
+ * Bodies are released after Fir2Ir, so the checkers warm this cache for every source
+ * declaration; the IR writer only reads what was cached.
+ */
+class PreconditionService(session: FirSession) : FirExtensionSessionComponent(session) {
+    private val cache = HashMap<FirBasedSymbol<*>, List<Cond>>()
+    private val visiting = HashSet<FirBasedSymbol<*>>()
+
+    /** The conditions a call to [callee] must satisfy. Constructors other than the primary one have none. */
+    fun preconditionsOf(callee: FirFunctionSymbol<*>): List<Cond> = when (callee) {
+        is FirNamedFunctionSymbol -> cached(callee) { computeForFunction(callee) }
+        is FirConstructorSymbol -> {
+            val classSymbol = callee.resolvedReturnTypeRef.coneType.toRegularClassSymbol(session)
+            if (classSymbol == null || !callee.isPrimary) emptyList() else preconditionsOfClass(classSymbol)
+        }
+        else -> emptyList()
+    }
+
+    fun preconditionsOfClass(classSymbol: FirRegularClassSymbol): List<Cond> =
+        cached(classSymbol) { computeForClass(classSymbol) }
+
+    /** Rendered conditions for the metadata writer; empty when not cached or when the declaration already carries the annotation. */
+    fun renderedPreconditions(symbol: FirBasedSymbol<*>): List<String> =
+        cache[symbol].orEmpty().mapNotNull { it.render() }
+
+    fun hasDeclaredAnnotation(symbol: FirBasedSymbol<*>): Boolean = declaredConditions(symbol) != null
+
+    private fun cached(symbol: FirBasedSymbol<*>, compute: () -> List<Cond>): List<Cond> {
+        cache[symbol]?.let { return it }
+        if (!visiting.add(symbol)) return emptyList()
+        try {
+            val result = compute()
+            cache[symbol] = result
+            return result
+        } finally {
+            visiting.remove(symbol)
+        }
+    }
+
+    private fun computeForFunction(symbol: FirNamedFunctionSymbol): List<Cond> {
+        declaredConditions(symbol)?.let { return it }
+        if (!symbol.origin.fromSource) return emptyList()
+        symbol.lazyResolveToPhase(FirResolvePhase.BODY_RESOLVE)
+        val function = symbol.fir as? FirNamedFunction ?: return emptyList()
+        val params = function.valueParameters.associate { it.symbol as FirBasedSymbol<*> to it.name.asString() }
+        val body = function.body ?: return emptyList()
+        return extract(body.statements, params)
+    }
+
+    private fun computeForClass(symbol: FirRegularClassSymbol): List<Cond> {
+        declaredConditions(symbol)?.let { return it }
+        if (!symbol.origin.fromSource) return emptyList()
+        symbol.lazyResolveToPhase(FirResolvePhase.BODY_RESOLVE)
+        val klass = symbol.fir as? FirRegularClass ?: return emptyList()
+        val primary = klass.declarations.filterIsInstance<FirConstructor>().firstOrNull { it.isPrimary } ?: return emptyList()
+        val params = HashMap<FirBasedSymbol<*>, String>()
+        for (parameter in primary.valueParameters) params[parameter.symbol] = parameter.name.asString()
+        for (declaration in klass.declarations) {
+            val property = declaration as? FirProperty ?: continue
+            if (property.fromPrimaryConstructor != true || !property.isVal) continue
+            val getter = property.getter
+            if (getter != null && getter !is FirDefaultPropertyGetter) continue
+            params[property.symbol] = property.name.asString()
+        }
+        val result = mutableListOf<Cond>()
+        for (declaration in klass.declarations) {
+            val initializer = declaration as? FirAnonymousInitializer ?: continue
+            val body = initializer.body ?: continue
+            result += extract(body.statements, params)
+        }
+        return result
+    }
+
+    /** The leading run of precondition calls in [statements], converted where possible. */
+    private fun extract(statements: List<FirStatement>, params: Map<FirBasedSymbol<*>, String>): List<Cond> {
+        val converter = CondConverter(session, params)
+        val result = mutableListOf<Cond>()
+        for (statement in statements) {
+            val call = (statement as? FirFunctionCall)
+                ?: ((statement as? FirProperty)?.initializer as? FirFunctionCall)
+                ?: break
+            val callableId = call.calleeReference.toResolvedNamedFunctionSymbol()?.callableId ?: break
+            val argument = call.arguments.firstOrNull()?.unwrapArgument() ?: break
+            val condition = when (callableId) {
+                in PreconditionNames.CONDITION_CALLS -> converter.convert(argument)
+                in PreconditionNames.NOT_NULL_CALLS -> converter.convert(argument)?.let {
+                    Cond.Equals(negated = true, it, Cond.Const(com.kitakkun.kotrail.preconditions.Value.NullV))
+                }
+                else -> break
+            }
+            // A condition that mentions no parameter says nothing about the call site.
+            if (condition != null && condition.parameters().isNotEmpty()) result += condition
+        }
+        return result
+    }
+
+    private fun declaredConditions(symbol: FirBasedSymbol<*>): List<Cond>? {
+        val annotation = symbol.resolvedAnnotationsWithArguments
+            .firstOrNull { it.toAnnotationClassId(session) == PreconditionNames.INFERRED_PRECONDITIONS }
+            ?: return null
+        val argument = annotation.findArgumentByName(PreconditionNames.CONDITIONS_PARAM, returnFirstWhenNotFound = false)
+        return arrayElements(argument)
+            .mapNotNull { (it as? FirLiteralExpression)?.value as? String }
+            .mapNotNull { CondParser.parse(it) }
+    }
+
+    private fun arrayElements(expression: FirExpression?): List<FirExpression> =
+        when (val expr = expression?.unwrapArgument()) {
+            null -> emptyList()
+            is FirCollectionLiteral -> expr.arguments.map { it.unwrapArgument() }
+            is FirVarargArgumentsExpression -> expr.arguments.map { it.unwrapArgument() }
+            is FirFunctionCall -> expr.arguments.map { it.unwrapArgument() }
+            else -> emptyList()
+        }
+}
+
+val FirSession.preconditionService: PreconditionService by FirSession.sessionComponentAccessor()

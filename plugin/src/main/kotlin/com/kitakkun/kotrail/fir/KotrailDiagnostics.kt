@@ -70,6 +70,9 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: what was found (`TODO()` or `NotImplementedError`). Reported on the call. */
     val UNIMPLEMENTED_CODE = tunable1<KtElement, String>("UNIMPLEMENTED_CODE", Severity.ERROR, WHOLE)
 
+    /** Arguments: the callee name, then the condition with the argument values that make it false. Reported on the call. */
+    val PRECONDITION_VIOLATED = tunable2<KtElement, String, String>("PRECONDITION_VIOLATED", Severity.ERROR, WHOLE)
+
     /** No arguments; reported on the `!!` expression. */
     val NOT_NULL_ASSERTION = tunable0<KtElement>("NOT_NULL_ASSERTION", Severity.ERROR, WHOLE)
 
@@ -207,6 +210,10 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         map.put1(
             KotrailDiagnostics.UNIMPLEMENTED_CODE,
             "[Kotrail] {0} is a placeholder for code that has not been written. Implement it before this build ships.",
+        )
+        map.put2(
+            KotrailDiagnostics.PRECONDITION_VIOLATED,
+            "[Kotrail] {0} requires {1}. This call would fail at runtime.",
         )
         map.put0(
             KotrailDiagnostics.NOT_NULL_ASSERTION,
