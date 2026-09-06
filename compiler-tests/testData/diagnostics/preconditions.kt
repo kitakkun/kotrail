@@ -30,6 +30,11 @@ fun pick(index: Int, items: List<String>) {
     println(items[index])
 }
 
+fun code(value: String, strict: Boolean) {
+    require(value.length == 3 || !strict)
+    println(value)
+}
+
 fun label(text: String?) {
     requireNotNull(text)
     println(text)
@@ -94,6 +99,10 @@ fun literals() {
 
     label("x")
     <!PRECONDITION_VIOLATED!>label(null)<!>
+
+    code("abc", true)
+    code("abcd", false)
+    <!PRECONDITION_VIOLATED!>code("abcd", true)<!>
 
     Percent(50)
     <!PRECONDITION_VIOLATED!>Percent(150)<!>

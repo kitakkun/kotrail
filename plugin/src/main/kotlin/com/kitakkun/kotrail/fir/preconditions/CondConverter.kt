@@ -40,6 +40,7 @@ import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.symbols.lazyResolveToPhase
 import org.jetbrains.kotlin.name.CallableId
+import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.types.ConstantValueKind
@@ -257,8 +258,8 @@ class CondConverter(
         private val SIZE = Name.identifier("size")
         private val LIST_OF = CallableId(COLLECTIONS, Name.identifier("listOf"))
         private val EMPTY_LIST = CallableId(COLLECTIONS, Name.identifier("emptyList"))
-        private val BOOLEAN_NOT = CallableId(KOTLIN.child(Name.identifier("Boolean")), Name.identifier("not"))
-        private val STRING_LENGTH = CallableId(KOTLIN.child(Name.identifier("String")), Name.identifier("length"))
+        private val BOOLEAN_NOT = CallableId(ClassId(KOTLIN, Name.identifier("Boolean")), Name.identifier("not"))
+        private val STRING_LENGTH = CallableId(ClassId(KOTLIN, Name.identifier("String")), Name.identifier("length"))
 
         private val NUMERIC_RECEIVERS: Set<FqName> = listOf("Int", "Long", "Float", "Double", "Byte", "Short").map { KOTLIN.child(Name.identifier(it)) }.toSet()
         private val ARITHMETIC_RECEIVERS: Set<FqName> = NUMERIC_RECEIVERS + KOTLIN.child(Name.identifier("String"))
