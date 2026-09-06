@@ -1,0 +1,32 @@
+package com.kitakkun.kotrail.test.runners
+
+import com.kitakkun.kotrail.test.services.configureKotrail
+import org.jetbrains.kotlin.test.FirParser
+import org.jetbrains.kotlin.test.builders.TestConfigurationBuilder
+import org.jetbrains.kotlin.test.directives.CodegenTestDirectives
+import org.jetbrains.kotlin.test.directives.JvmEnvironmentConfigurationDirectives
+import org.jetbrains.kotlin.test.directives.TestPhaseDirectives.RUN_PIPELINE_TILL
+import org.jetbrains.kotlin.test.runners.codegen.AbstractFirBlackBoxCodegenTestBase
+import org.jetbrains.kotlin.test.services.EnvironmentBasedStandardLibrariesPathProvider
+import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
+import org.jetbrains.kotlin.test.services.TestPhase
+
+/**
+ * Box tests: `fun box(): String` must return `"OK"` in `testData/box`. These run the full
+ * pipeline, so multi-module fixtures exercise the IR metadata writer on the dependency module
+ * and the metadata reader on the dependent module.
+ */
+open class AbstractJvmBoxTest : AbstractFirBlackBoxCodegenTestBase(FirParser.LightTree) {
+    override fun createKotlinStandardLibrariesPathProvider(): KotlinStandardLibrariesPathProvider =
+        EnvironmentBasedStandardLibrariesPathProvider
+
+    override fun configure(builder: TestConfigurationBuilder) = with(builder) {
+        super.configure(builder)
+        defaultDirectives {
+            RUN_PIPELINE_TILL with TestPhase.BACKEND
+            +CodegenTestDirectives.IGNORE_DEXING
+            +JvmEnvironmentConfigurationDirectives.FULL_JDK
+        }
+        configureKotrail()
+    }
+}

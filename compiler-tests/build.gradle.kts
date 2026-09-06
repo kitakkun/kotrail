@@ -1,0 +1,93 @@
+// FIR / IR level tests on JetBrains' compiler test framework. Test data lives in testData/,
+// runners in test-fixtures/, and the JUnit classes are generated into test-gen/ (gitignored).
+plugins {
+    kotlin("jvm")
+    `java-test-fixtures`
+}
+
+kotlin {
+    jvmToolchain(21)
+}
+
+val kotlinVersion = "2.4.0"
+
+dependencies {
+    // The test framework links against the un-shaded compiler. The plugin bytecode has no
+    // references to IntelliJ platform classes, so the JAR built against the embeddable
+    // compiler loads fine here.
+    testFixturesApi(project(":plugin"))
+    testFixturesApi("org.jetbrains.kotlin:kotlin-test-junit5:$kotlinVersion")
+    testFixturesApi("org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$kotlinVersion")
+    testFixturesApi("org.jetbrains.kotlin:kotlin-compiler:$kotlinVersion")
+    testFixturesRuntimeOnly("junit:junit:4.13.2")
+}
+
+sourceSets {
+    test {
+        java.setSrcDirs(listOf("test", "test-gen"))
+        resources.setSrcDirs(listOf("testData"))
+    }
+    testFixtures {
+        java.setSrcDirs(listOf("test-fixtures"))
+    }
+}
+
+// JARs the framework locates through system properties.
+val testArtifacts: Configuration by configurations.creating
+// JARs that test data compiles against (annotations and Compose stand-ins).
+val testDataClasspath: Configuration by configurations.creating
+
+dependencies {
+    testArtifacts("org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion")
+    testArtifacts("org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlinVersion")
+    testArtifacts("org.jetbrains.kotlin:kotlin-reflect:$kotlinVersion")
+    testArtifacts("org.jetbrains.kotlin:kotlin-test:$kotlinVersion")
+    testArtifacts("org.jetbrains.kotlin:kotlin-script-runtime:$kotlinVersion")
+    testArtifacts("org.jetbrains.kotlin:kotlin-annotations-jvm:$kotlinVersion")
+
+    testDataClasspath(project(":annotations"))
+    testDataClasspath(project(":compiler-tests:compose-stubs"))
+    testDataClasspath("org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.11.0")
+    testDataClasspath("org.jetbrains.kotlinx:kotlinx-serialization-core-jvm:1.9.0")
+}
+
+val generateTests by tasks.registering(JavaExec::class) {
+    inputs.dir(layout.projectDirectory.dir("testData"))
+    outputs.dir(layout.projectDirectory.dir("test-gen"))
+    classpath = sourceSets.testFixtures.get().runtimeClasspath
+    mainClass.set("com.kitakkun.kotrail.test.GenerateTestsKt")
+    workingDir = rootDir
+}
+
+tasks.compileTestKotlin { dependsOn(generateTests) }
+tasks.matching { it.name == "compileTestJava" }.configureEach { dependsOn(generateTests) }
+
+tasks.test {
+    dependsOn(testArtifacts, testDataClasspath)
+    useJUnitPlatform()
+    workingDir = rootDir
+    systemProperty("idea.home.path", rootDir)
+    systemProperty("idea.ignore.disabled.plugins", "true")
+    // ./gradlew :compiler-tests:test -PupdateTestData=true rewrites expected markers and golden files.
+    systemProperty("kotlin.test.update.test.data", providers.gradleProperty("updateTestData").getOrElse("false"))
+    setLibraryProperty("org.jetbrains.kotlin.test.kotlin-stdlib", "kotlin-stdlib")
+    setLibraryProperty("org.jetbrains.kotlin.test.kotlin-stdlib-jdk8", "kotlin-stdlib-jdk8")
+    setLibraryProperty("org.jetbrains.kotlin.test.kotlin-reflect", "kotlin-reflect")
+    setLibraryProperty("org.jetbrains.kotlin.test.kotlin-test", "kotlin-test")
+    setLibraryProperty("org.jetbrains.kotlin.test.kotlin-script-runtime", "kotlin-script-runtime")
+    setLibraryProperty("org.jetbrains.kotlin.test.kotlin-annotations-jvm", "kotlin-annotations-jvm")
+    doFirst {
+        systemProperty(
+            "kotrail.test.classpath",
+            testDataClasspath.files.joinToString(File.pathSeparator) { it.absolutePath },
+        )
+    }
+}
+
+fun Test.setLibraryProperty(propName: String, jarName: String) {
+    val path = testArtifacts.files
+        .find { """$jarName-\d.*""".toRegex().matches(it.name) }
+        ?.absolutePath
+        ?: error("testArtifacts is missing $jarName")
+    systemProperty(propName, path)
+}
