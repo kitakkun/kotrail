@@ -100,6 +100,7 @@ kotrail/
 │       ├── fir/compose/insets/    # insets analysis service, expression evaluator, checkers
 │       ├── compose/insets/        # insets algebra shared by FIR and IR
 │       └── ir/compose/insets/     # writes @InferredWindowInsetsHandling into metadata
+│   └── src/{k240,k2321}/kotlin/   # com.kitakkun.kotrail.compat, one directory per Kotlin family
 ├── annotations/           # @HandlesWindowInsets, @MustBeSerializable (ship with your app)
 ├── sample/                        # plain JVM sample; violations/ holds rejected code
 ├── sample-compose/                # Compose Multiplatform desktop samples
@@ -108,13 +109,14 @@ kotrail/
 ├── compiler-tests/                # FIR / IR tests on the official Kotlin compiler test framework
 │   ├── testData/diagnostics/      # <!DIAGNOSTIC!> marker fixtures
 │   ├── testData/box/              # multi-module box tests with IR golden dumps
+│   ├── testData-k2321/            # fixtures that differ on Kotlin 2.3.x
 │   └── compose-stubs/             # stand-ins for the Compose declarations the rules recognize
 └── docs/                          # rule pages and configuration guide
 ```
 
 ## Building and testing
 
-Requirements: JDK 21 and Gradle 9.5 (the wrapper is included).
+Requirements: Kotlin 2.3.21 or 2.4.0, JDK 21 and Gradle 9.5 (the wrapper is included).
 
 ```bash
 ./gradlew build                                  # builds everything and runs the compiler tests
@@ -122,7 +124,12 @@ Requirements: JDK 21 and Gradle 9.5 (the wrapper is included).
 ./gradlew :compiler-tests:test -PupdateTestData=true   # rewrite expected markers and golden files
 ./gradlew :sample:run
 ./gradlew :sample-compose:app:compileKotlin
+./gradlew build -Pkotlin.compiler=2.3.21          # build against the other supported Kotlin
 ```
+
+The Kotlin version the build uses is selected by the `kotlin.compiler` Gradle property and defaults
+to 2.4.0. See [supported Kotlin versions](docs/supported-kotlin-versions.md) for the version table,
+the per-version source-set layout and how to add a new Kotlin version.
 
 To see a rule reject code, copy a file from `sample/violations/` or `sample-compose/app/violations/`
 into the matching source set and compile. Diagnostic names are rendered in the output through
