@@ -9,7 +9,8 @@ kotlin {
     jvmToolchain(21)
 }
 
-val kotlinVersion = "2.4.0"
+val kotlinVersion = rootProject.extra["kotlinCompilerVersion"] as String
+val kotlinCompatFamily = rootProject.extra["kotlinCompatFamily"] as String
 
 dependencies {
     // The test framework links against the un-shaded compiler. The plugin bytecode has no
@@ -70,6 +71,13 @@ tasks.test {
     systemProperty("idea.ignore.disabled.plugins", "true")
     // ./gradlew :compiler-tests:test -PupdateTestData=true rewrites expected markers and golden files.
     systemProperty("kotlin.test.update.test.data", providers.gradleProperty("updateTestData").getOrElse("false"))
+    // Fixtures that cannot be shared across Kotlin versions live in testData-<family>/ and take
+    // precedence over the same relative path under testData/. See TestDataOverlay.
+    val overlay = rootDir.resolve("compiler-tests/testData-$kotlinCompatFamily")
+    if (overlay.isDirectory) {
+        inputs.dir(overlay).withPropertyName("testDataOverlay")
+    }
+    systemProperty("kotrail.test.testDataOverlay", if (overlay.isDirectory) overlay.path else "")
     setLibraryProperty("org.jetbrains.kotlin.test.kotlin-stdlib", "kotlin-stdlib")
     setLibraryProperty("org.jetbrains.kotlin.test.kotlin-stdlib-jdk8", "kotlin-stdlib-jdk8")
     setLibraryProperty("org.jetbrains.kotlin.test.kotlin-reflect", "kotlin-reflect")

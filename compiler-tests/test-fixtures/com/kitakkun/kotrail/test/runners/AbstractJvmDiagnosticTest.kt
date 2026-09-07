@@ -1,5 +1,6 @@
 package com.kitakkun.kotrail.test.runners
 
+import com.kitakkun.kotrail.test.services.TestDataOverlay
 import com.kitakkun.kotrail.test.services.configureKotrail
 import org.jetbrains.kotlin.test.FirParser
 import org.jetbrains.kotlin.test.builders.TestConfigurationBuilder
@@ -22,5 +23,10 @@ open class AbstractJvmDiagnosticTest : AbstractFirPhasedDiagnosticTest(FirParser
             +JvmEnvironmentConfigurationDirectives.FULL_JDK
         }
         configureKotrail()
+    }
+
+    /** Redirects to the active Kotlin version's override of this fixture, when there is one. */
+    override fun runTest(filePath: String) {
+        super.runTest(TestDataOverlay.resolve(filePath))
     }
 }
