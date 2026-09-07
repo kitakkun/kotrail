@@ -2,6 +2,7 @@
 
 package com.kitakkun.kotrail.ir.preconditions
 
+import com.kitakkun.kotrail.compat.addStringVarargMetadataAnnotation
 import com.kitakkun.kotrail.fir.preconditions.PreconditionNames
 import com.kitakkun.kotrail.fir.preconditions.preconditionService
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
@@ -10,20 +11,15 @@ import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
 import org.jetbrains.kotlin.fir.backend.FirMetadataSource
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.ir.IrElement
-import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclarationWithVisibility
 import org.jetbrains.kotlin.ir.declarations.IrFile
 import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrMutableAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
-import org.jetbrains.kotlin.ir.expressions.impl.IrAnnotationImpl
-import org.jetbrains.kotlin.ir.expressions.impl.IrConstImpl
-import org.jetbrains.kotlin.ir.expressions.impl.IrVarargImpl
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
 import org.jetbrains.kotlin.ir.util.constructors
-import org.jetbrains.kotlin.ir.util.defaultType
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.visitors.IrVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
@@ -74,29 +70,7 @@ class InferredPreconditionsMetadataWriter : IrGenerationExtension {
             val service = fir.moduleData.session.preconditionService
             val conditions = service.renderedPreconditions(fir.symbol)
             if (conditions.isEmpty()) return
-            pluginContext.metadataDeclarationRegistrar.addMetadataVisibleAnnotationsToElement(declaration, buildAnnotation(conditions))
-        }
-
-        private fun buildAnnotation(conditions: List<String>): IrAnnotationImpl {
-            val annotationType = (constructor.owner.parent as IrClass).defaultType
-            val parameter = constructor.owner.parameters.single()
-            val stringType = pluginContext.irBuiltIns.stringType
-            return IrAnnotationImpl(
-                startOffset = UNDEFINED_OFFSET,
-                endOffset = UNDEFINED_OFFSET,
-                type = annotationType,
-                symbol = constructor,
-                typeArgumentsCount = 0,
-                constructorTypeArgumentsCount = 0,
-            ).apply {
-                arguments[0] = IrVarargImpl(
-                    startOffset = UNDEFINED_OFFSET,
-                    endOffset = UNDEFINED_OFFSET,
-                    type = parameter.type,
-                    varargElementType = stringType,
-                    elements = conditions.map { IrConstImpl.string(UNDEFINED_OFFSET, UNDEFINED_OFFSET, stringType, it) },
-                )
-            }
+            addStringVarargMetadataAnnotation(pluginContext, declaration, constructor, conditions)
         }
     }
 }
