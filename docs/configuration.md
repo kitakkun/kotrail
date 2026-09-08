@@ -108,6 +108,18 @@ whichever name is in effect.
 
 ## Passing settings
 
+Through the [Gradle plugin](gradle-plugin.md), which is the intended path:
+
+```kotlin
+kotrail {
+    configFile = layout.projectDirectory.file("kotrail.properties")
+    setting("compose.maxNesting", 6)   // overrides the file
+    disable("noPassThroughReturn")
+}
+```
+
+Or as a properties file alone:
+
 ```properties
 # kotrail.properties
 compose.maxNesting=4
@@ -115,8 +127,9 @@ narrowModelParameters.scope=all
 rules.noPassThroughReturn=false
 ```
 
+A build that wires the compiler plugin by hand passes the same keys as plugin options:
+
 ```kotlin
-// build.gradle.kts, until the Gradle plugin lands
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 tasks.withType<KotlinCompile>().configureEach {
@@ -129,8 +142,22 @@ tasks.withType<KotlinCompile>().configureEach {
 
 ## Test source sets
 
-The compiler sees one compilation at a time, so per-source-set settings are a Gradle concern.
-Give `compileTestKotlin` its own file:
+The compiler sees one compilation at a time, so per-source-set settings are a Gradle concern. The
+Gradle plugin has a block for it, matching every compilation whose name contains `test`, plus one
+for a single compilation by name:
+
+```kotlin
+kotrail {
+    test {
+        disable("preferExplicitBackingField", "compose.nesting")
+    }
+    compilation("androidTest") {
+        setting("test.naming.style", "identifier")
+    }
+}
+```
+
+A build that wires the compiler plugin by hand gives `compileTestKotlin` its own file instead:
 
 ```properties
 # kotrail-test.properties

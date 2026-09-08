@@ -29,6 +29,18 @@ configuration with an explicit message rather than a confusing compile error.
 
 Both versions are built and tested on every push by `.github/workflows/ci.yml`.
 
+## What gets published per version
+
+The compiler plugin JAR only works on the Kotlin version it was built against, so it is published
+once per supported version, with that version leading the artifact version:
+`com.kitakkun.kotrail:kotrail-compiler-plugin:2.4.0-0.1.0`. The Gradle plugin and the annotations
+are Kotlin-version independent and are published once, at the plain Kotrail version. The Gradle
+plugin reads the Kotlin version a consumer applies and composes the compiler-plugin coordinate,
+so consumers never write it down. See [gradle-plugin.md](gradle-plugin.md).
+
+Releasing therefore means running the publish tasks once per supported Kotlin version
+(`-Pkotlin.compiler=<version>`), and the Gradle plugin's own publication only once.
+
 ## Source-set layout
 
 Shared code lives in `plugin/src/main/kotlin` and must only use compiler APIs that every supported

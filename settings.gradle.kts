@@ -28,6 +28,7 @@ plugins {
 rootProject.name = "kotrail"
 include(
     "plugin",
+    "gradle-plugin",
     "annotations",
     "sample",
     "sample-compose:lib",

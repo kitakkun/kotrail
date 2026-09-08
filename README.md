@@ -71,24 +71,25 @@ Ideas not started yet: `required-annotation` (predicate-driven), `forbidden-supe
 
 ## Configuration
 
-See [`docs/configuration.md`](docs/configuration.md) for every key, precedence, per-source-set
-setup, and suppression. The short version:
-
-```properties
-# kotrail.properties
-compose.maxNesting=4
-narrowModelParameters.maxUnusedProperties=2
-rules.noPassThroughReturn=false
-```
-
 ```kotlin
-// build.gradle.kts, until the Gradle plugin lands
-tasks.withType<KotlinCompile>().configureEach {
-    compilerOptions.freeCompilerArgs.addAll(
-        "-P", "plugin:com.kitakkun.kotrail:configFile=${projectDir.resolve("kotrail.properties")}",
-    )
+plugins {
+    kotlin("jvm") version "2.4.0"
+    id("com.kitakkun.kotrail") version "0.1.0"
+}
+
+kotrail {
+    setting("compose.maxNesting", 4)
+    warning("commentLength")
+    test {
+        disable("preferExplicitBackingField")
+    }
 }
 ```
+
+Every rule is on at error severity with no configuration at all. See
+[`docs/gradle-plugin.md`](docs/gradle-plugin.md) for the whole DSL and the artifact scheme, and
+[`docs/configuration.md`](docs/configuration.md) for every key, precedence, the properties-file
+form, and suppression.
 
 ## Project layout
 
@@ -102,6 +103,7 @@ kotrail/
 │       ├── compose/insets/        # insets algebra shared by FIR and IR
 │       └── ir/compose/insets/     # writes @InferredWindowInsetsHandling into metadata
 │   └── src/{k240,k2321}/kotlin/   # com.kitakkun.kotrail.compat, one directory per Kotlin family
+├── gradle-plugin/                 # the `com.kitakkun.kotrail` Gradle plugin and its DSL
 ├── annotations/           # @HandlesWindowInsets, @MustBeSerializable (ship with your app)
 ├── sample/                        # plain JVM sample; violations/ holds rejected code
 ├── sample-compose/                # Compose Multiplatform desktop samples
