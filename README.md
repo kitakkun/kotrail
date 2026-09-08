@@ -65,7 +65,7 @@ Full pages, with every condition and fixture, live under [`docs/rules/`](docs/ru
 | [Named callback arguments](docs/rules/compose/named-callback-arguments.md) (Compose) | `IconButton { ... }` passing a callback as a trailing lambda | `IconButton(onClick = { ... })` |
 | [Preview required](docs/rules/compose/preview-required.md) (Compose) | A UI composable whose file has no `@Preview` calling it | A preview composable next to it |
 | [Composables per file](docs/rules/compose/composables-per-file.md) (Compose) | More than 3 non-private UI composables in one file | One component (and its helpers) per file |
-| [Test naming](docs/rules/test/naming.md) (Test) | `@Test fun returnsEmptyList()` | `@Test fun \`returns an empty list when nothing matches\`()` |
+| [Test naming](docs/rules/test/naming.md) (Test) | `@Test fun returnsEmptyList()` | `` @Test fun `returns an empty list when nothing matches`() `` |
 
 Ideas not started yet: `required-annotation` (predicate-driven), `forbidden-supertype`.
 
