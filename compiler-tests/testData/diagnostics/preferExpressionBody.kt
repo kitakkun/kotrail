@@ -1,3 +1,4 @@
+// KOTRAIL_CONFIG: rules.preferExpressionBody=true
 data class Item(val name: String, val price: Int)
 
 // Reported: the block body is a single `return` of an expression.

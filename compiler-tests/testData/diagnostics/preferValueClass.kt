@@ -1,3 +1,4 @@
+// KOTRAIL_CONFIG: rules.preferValueClass=true
 interface Identifier {
     val raw: Long
 }

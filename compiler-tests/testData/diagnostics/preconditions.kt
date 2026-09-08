@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.preferExpressionBody=false, rules.preferValueClass=false, rules.namedArgumentsForRepeatedTypes=false
+// KOTRAIL_CONFIG: rules.preconditions=true
 import com.kitakkun.kotrail.preconditions.InferredPreconditions
 
 const val MAX_RETRIES = 5

@@ -164,9 +164,14 @@ fun LegacyScreen() { ... }
 
 ## In the compiler tests
 
-A fixture under `compiler-tests/testData` can set any option with a directive on its first
-lines; the values go through the same command-line processor as real builds:
+Every rule is switched off before a fixture is compiled, and the fixture opts in to the ones it
+exercises through a directive on its first lines. The values go through the same command-line
+processor as real builds:
 
 ```kotlin
-// KOTRAIL_CONFIG: compose.maxNesting=2, rules.compose.windowInsetsHandledTwice=false
+// KOTRAIL_CONFIG: rules.compose.nesting=true, compose.maxNesting=2
 ```
+
+Opting in keeps each fixture about one rule, and means a newly added rule cannot start reporting
+across fixtures that were written for something else. It is the opposite of the default a real
+build gets, where every rule is on.

@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: test.naming.style=identifier
+// KOTRAIL_CONFIG: rules.test.naming=true, test.naming.style=identifier
 
 import org.junit.jupiter.api.Test
 

@@ -1,3 +1,4 @@
+// KOTRAIL_CONFIG: rules.noSwallowedCancellation=true
 import java.io.IOException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
@@ -10,7 +11,7 @@ fun runLater(block: () -> Unit) {
 }
 
 // Reported: broad catch in a suspend function that only logs.
-suspend fun <!PREFER_EXPRESSION_BODY!>logsAndContinues<!>(): String {
+suspend fun logsAndContinues(): String {
     return try {
         fetch()
     } <!SWALLOWED_CANCELLATION!>catch (e: Exception) {

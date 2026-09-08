@@ -1,3 +1,4 @@
+// KOTRAIL_CONFIG: rules.preferFunctionReferences=true
 data class User(val id: Long, val name: String)
 
 fun transform(user: User): String = user.name

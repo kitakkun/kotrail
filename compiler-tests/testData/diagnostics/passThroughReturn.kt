@@ -1,3 +1,4 @@
+// KOTRAIL_CONFIG: rules.noPassThroughReturn=true
 data class User(val id: Long, val name: String)
 
 private val store = mutableListOf<User>()
@@ -42,7 +43,7 @@ fun renamed(user: User, name: String): User = user.copy(name = name)
 fun orDefault(x: Int?, default: Int): Int = x ?: default
 
 // Not reported: returns inside lambdas target the lambda, not the function.
-fun names(users: List<User>): List<String> = users.map <!PREFER_FUNCTION_REFERENCE!>{ u -> return@map u.name }<!>
+fun names(users: List<User>): List<String> = users.map { u -> return@map u.name }
 
 // Not reported: overrides, operators, and inline helpers are exempt.
 interface Normalizer {

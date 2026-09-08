@@ -1,3 +1,4 @@
+// KOTRAIL_CONFIG: rules.commentLength=true
 // Default: comments.maxLines=5, comments.maxKDocLines=0 (unlimited).
 
 // One

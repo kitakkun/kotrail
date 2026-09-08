@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: test.annotations=custom.Scenario,custom.Case, test.naming.minWords=2
+// KOTRAIL_CONFIG: rules.test.naming=true, test.annotations=custom.Scenario,custom.Case, test.naming.minWords=2
 
 package custom
 

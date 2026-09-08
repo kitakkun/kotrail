@@ -1,3 +1,4 @@
+// KOTRAIL_CONFIG: rules.noUnimplemented=true
 interface Repository {
     fun load(): String
     fun save(value: String)

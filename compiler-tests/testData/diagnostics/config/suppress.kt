@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.compose.previewRequired=false, rules.compose.composablesPerFile=false
+// KOTRAIL_CONFIG: rules.compose.nesting=true, rules.preferExplicitBackingField=true, rules.compose.windowInsets=true
 // Kotrail diagnostics can be suppressed by name like built-in ones, per declaration or file.
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column

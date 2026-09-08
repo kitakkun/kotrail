@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.compose.composablesPerFile=false
+// KOTRAIL_CONFIG: rules.compose.previewRequired=true
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable

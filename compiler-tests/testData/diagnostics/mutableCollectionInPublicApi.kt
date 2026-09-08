@@ -1,3 +1,4 @@
+// KOTRAIL_CONFIG: rules.noMutableCollectionInPublicApi=true
 import java.util.ArrayList
 
 // Reported: a public function returning a mutable interface.

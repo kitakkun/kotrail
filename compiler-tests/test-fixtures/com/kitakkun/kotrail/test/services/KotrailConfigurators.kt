@@ -4,6 +4,8 @@ package com.kitakkun.kotrail.test.services
 
 import com.kitakkun.kotrail.KotrailCommandLineProcessor
 import com.kitakkun.kotrail.KotrailComponentRegistrar
+import com.kitakkun.kotrail.KotrailConfigurationKeys
+import com.kitakkun.kotrail.KotrailRule
 import org.jetbrains.kotlin.cli.jvm.config.addJvmClasspathRoot
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
@@ -27,8 +29,10 @@ fun TestConfigurationBuilder.configureKotrail() {
 object KotrailTestDirectives : SimpleDirectivesContainer() {
     /**
      * Plugin options for the module, as `key=value` pairs, e.g.
-     * `// KOTRAIL_CONFIG: rules.compose.nesting=false, compose.maxNesting=2`.
+     * `// KOTRAIL_CONFIG: rules.compose.nesting=true, compose.maxNesting=2`.
      * Keys are the same ones the command-line processor accepts.
+     *
+     * Rules are all off before this is applied, so a fixture enables what it exercises.
      */
     val KOTRAIL_CONFIG by stringDirective(
         description = "Kotrail plugin options as key=value pairs, comma separated",
@@ -43,6 +47,13 @@ internal class KotrailExtensionRegistrarConfigurator(testServices: TestServices)
     override val directiveContainers: List<DirectivesContainer> = listOf(KotrailTestDirectives)
 
     override fun configureCompilerConfiguration(configuration: CompilerConfiguration, module: TestModule) {
+        // Every rule starts off and a fixture opts in to the ones it exercises. Fixtures then say
+        // in their own directive what they are about, and a newly added rule cannot start
+        // reporting across fixtures that were written for something else.
+        for (rule in KotrailRule.switchable) {
+            configuration.put(KotrailConfigurationKeys.switchKey(rule), false)
+        }
+
         // Entries are separated by a comma that is followed by the next `key=`; commas inside a
         // value (`preferFunctionReferences.forms=topLevel,bound`) stay with the value.
         val entrySeparator = Regex(""",\s*(?=[A-Za-z][A-Za-z0-9.]*=)""")

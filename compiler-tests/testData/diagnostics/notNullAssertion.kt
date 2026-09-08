@@ -1,3 +1,4 @@
+// KOTRAIL_CONFIG: rules.noNotNullAssertion=true
 class User(val name: String?)
 
 fun load(): User? = null

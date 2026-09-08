@@ -1,5 +1,5 @@
 // DUMP_IR
-// KOTRAIL_CONFIG: rules.compose.previewRequired=false, rules.compose.composablesPerFile=false
+// KOTRAIL_CONFIG: rules.compose.windowInsets=true
 // Members of classes and objects also get @InferredWindowInsetsHandling, so contracts in a
 // dependent module can be satisfied through them.
 

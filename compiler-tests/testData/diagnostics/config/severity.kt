@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: severity.noPassThroughReturn=warning, severity.compose.windowInsetsHandledTwice=error, rules.compose.previewRequired=false, rules.compose.composablesPerFile=false
+// KOTRAIL_CONFIG: rules.noPassThroughReturn=true, severity.noPassThroughReturn=warning, rules.preferExplicitBackingField=true, rules.compose.windowInsets=true, rules.compose.windowInsetsHandledTwice=true, severity.compose.windowInsetsHandledTwice=error
 // A rule demoted to a warning reports under the `_WARNING` name; one promoted to an error
 // reports under the `_ERROR` name. Untouched rules keep their bare names.
 import androidx.compose.foundation.layout.Box

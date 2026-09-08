@@ -1,3 +1,4 @@
+// KOTRAIL_CONFIG: rules.noIgnoredException=true
 import java.io.IOException
 
 fun parse(input: String): Int = input.toInt()
@@ -15,7 +16,7 @@ fun emptyCatch(input: String) {
 }
 
 // Reported: the body does something but never looks at the exception.
-fun <!PREFER_EXPRESSION_BODY!>fallbackWithoutLooking<!>(input: String): Int {
+fun fallbackWithoutLooking(input: String): Int {
     return try {
         parse(input)
     } <!IGNORED_EXCEPTION!>catch (e: NumberFormatException) {

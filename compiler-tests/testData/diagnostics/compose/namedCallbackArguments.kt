@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.compose.previewRequired=false, rules.compose.composablesPerFile=false
+// KOTRAIL_CONFIG: rules.compose.namedCallbackArguments=true
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.lazy.LazyColumn
@@ -10,7 +10,7 @@ import androidx.compose.ui.Modifier
 
 // A library-style composable whose callback ended up last (the declaration rule reports it too).
 @Composable
-fun IconAction(modifier: Modifier = Modifier, <!COMPOSABLE_TRAILING_CALLBACK!>onClick<!>: () -> Unit) {
+fun IconAction(modifier: Modifier = Modifier, onClick: () -> Unit) {
     Box(modifier) { Text("icon") }
     onClick()
 }

@@ -1,3 +1,4 @@
+// KOTRAIL_CONFIG: rules.namedArgumentsForRepeatedTypes=true
 import java.util.Calendar
 
 class Point(val x: Int, val y: Int, val z: Int)

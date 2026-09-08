@@ -1,3 +1,4 @@
+// KOTRAIL_CONFIG: rules.test.naming=true
 import org.junit.jupiter.api.RepeatedTest
 import org.junit.jupiter.api.Test
 

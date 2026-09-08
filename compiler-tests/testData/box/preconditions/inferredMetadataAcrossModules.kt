@@ -1,5 +1,5 @@
 // DUMP_IR
-// KOTRAIL_CONFIG: rules.preferExpressionBody=false, rules.preferValueClass=false
+// KOTRAIL_CONFIG: rules.preconditions=true
 
 // Exercises the IR metadata writer end to end: `lib` is compiled to class files, and the dump
 // shows the @InferredPreconditions annotations the plugin wrote onto its declarations. `main`

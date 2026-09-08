@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: narrowModelParameters.scope=all, narrowModelParameters.maxUnusedProperties=1
+// KOTRAIL_CONFIG: rules.narrowModelParameters=true, narrowModelParameters.scope=all, narrowModelParameters.maxUnusedProperties=1
 // With scope=all every function is inspected, and the stricter limit allows one unread property.
 
 data class Order(val id: Long, val total: Int, val currency: String, val note: String)
@@ -25,7 +25,7 @@ class TotalFormatter : Formatter {
 fun same(order: Order, other: Order): Boolean = order == other
 
 // Not reported by this rule: the parameter is returned as a whole (the pass-through rule reports it instead).
-fun <!PASS_THROUGH_RETURN!>identity<!>(order: Order): Order = order
+fun identity(order: Order): Order = order
 
 /* GENERATED_FIR_TAGS: classDeclaration, data, equalityExpression, functionDeclaration, interfaceDeclaration, override,
 primaryConstructor, propertyDeclaration, stringLiteral */
