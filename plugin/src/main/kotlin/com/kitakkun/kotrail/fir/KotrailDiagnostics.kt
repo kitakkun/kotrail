@@ -132,6 +132,14 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
 
     override fun getRendererFactory(): BaseDiagnosticRendererFactory = KotrailDiagnosticRenderers
 
+    // ---- test rules ----
+
+    /** Arguments: the test function name, the minimum number of words a name must have. */
+    val TEST_NAME_NOT_DESCRIPTIVE = tunable2<KtNamedFunction, String, String>("TEST_NAME_NOT_DESCRIPTIVE", Severity.ERROR, NAME)
+
+    /** Argument: the test function name. */
+    val TEST_NAME_NOT_IDENTIFIER = tunable1<KtNamedFunction, String>("TEST_NAME_NOT_IDENTIFIER", Severity.ERROR, NAME)
+
     private inline fun <reified P : KtElement> tunable0(
         name: String,
         default: Severity,
@@ -301,6 +309,16 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         map.put1(
             KotrailDiagnostics.COMPOSABLE_MODIFIER_PARAMETER,
             "[Kotrail] Modifier parameter convention: {0}.",
+        )
+        map.put2(
+            KotrailDiagnostics.TEST_NAME_NOT_DESCRIPTIVE,
+            "[Kotrail] ''{0}'' does not say what this test verifies. Name it with a backticked sentence of at " +
+                "least {1} words, for example `returns an empty list when nothing matches`.",
+        )
+        map.put1(
+            KotrailDiagnostics.TEST_NAME_NOT_IDENTIFIER,
+            "[Kotrail] ''{0}'' is not a plain identifier. This compilation is configured for targets that reject " +
+                "method names with spaces, so name the test in camelCase.",
         )
     }
 

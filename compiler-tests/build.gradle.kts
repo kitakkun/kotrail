@@ -50,6 +50,8 @@ dependencies {
     testDataClasspath(project(":compiler-tests:compose-stubs"))
     testDataClasspath("org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.11.0")
     testDataClasspath("org.jetbrains.kotlinx:kotlinx-serialization-core-jvm:1.9.0")
+    // Test data for the test rules is compiled against the real JUnit annotations.
+    testDataClasspath("org.junit.jupiter:junit-jupiter-api:5.11.4")
 }
 
 val generateTests by tasks.registering(JavaExec::class) {

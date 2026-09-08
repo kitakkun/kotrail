@@ -43,7 +43,9 @@ enum class KotrailRule(
     COMPOSE_MODIFIER_PARAMETER("compose.modifierParameter", Severity.ERROR),
     COMPOSE_NAMED_CALLBACK_ARGUMENTS("compose.namedCallbackArguments", Severity.ERROR),
     COMPOSE_PREVIEW_REQUIRED("compose.previewRequired", Severity.ERROR),
-    COMPOSE_COMPOSABLES_PER_FILE("compose.composablesPerFile", Severity.ERROR);
+    COMPOSE_COMPOSABLES_PER_FILE("compose.composablesPerFile", Severity.ERROR),
+
+    TEST_NAMING("test.naming", Severity.ERROR);
 
     val switchKey: String get() = "rules.$key"
     val severityKey: String get() = "severity.$key"

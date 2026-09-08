@@ -28,6 +28,7 @@ import com.kitakkun.kotrail.fir.checkers.MustBeSerializableChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposableTrailingCallbackChecker
 import com.kitakkun.kotrail.fir.compose.checkers.PreferStateDelegationChecker
 import com.kitakkun.kotrail.fir.compose.insets.checkers.HandlesWindowInsetsContractChecker
+import com.kitakkun.kotrail.fir.test.checkers.TestNamingChecker
 import com.kitakkun.kotrail.fir.compose.insets.checkers.WindowInsetsHandledTwiceChecker
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.DeclarationCheckers
@@ -78,6 +79,7 @@ object KotrailDeclarationCheckers : DeclarationCheckers() {
         ComposableTrailingCallbackChecker,
         ComposableNamingChecker,
         ComposableModifierParameterChecker,
+        TestNamingChecker,
     )
     override val callableDeclarationCheckers: Set<FirCallableDeclarationChecker> = setOf(
         MutableCollectionInPublicApiChecker,

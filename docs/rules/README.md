@@ -41,6 +41,12 @@ fixtures that pin its behavior.
 | Preview required | `COMPOSABLE_WITHOUT_PREVIEW` | [compose/preview-required.md](compose/preview-required.md) |
 | Composables per file | `TOO_MANY_COMPOSABLES_IN_FILE` | [compose/composables-per-file.md](compose/composables-per-file.md) |
 
+## Test
+
+| Rule | Diagnostics | Page |
+|---|---|---|
+| Test naming | `TEST_NAME_NOT_DESCRIPTIVE`, `TEST_NAME_NOT_IDENTIFIER` | [test/naming.md](test/naming.md) |
+
 Settings, precedence, per-source-set configuration, and suppression are described in
 [../configuration.md](../configuration.md).
 

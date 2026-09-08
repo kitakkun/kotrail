@@ -55,6 +55,10 @@ rule.
 | `compose.preview.requireFor` | `internal` | Which UI composables need a `@Preview` in their file: `public`, `internal` (public and internal), or `all`. |
 | `rules.compose.composablesPerFile` | `true` | [Composables per file](rules/compose/composables-per-file.md). |
 | `compose.maxComposablesPerFile` | `3` | Maximum non-private UI composables in one file, previews excluded; `0` disables. |
+| `rules.test.naming` | `true` | [Test naming](rules/test/naming.md). |
+| `test.annotations` | `kotlin.test` and JUnit 4/5 test annotations | Fully qualified annotations that mark a function as a test. Replaces the default list. |
+| `test.naming.style` | `backticked` | `backticked` for a sentence name, `identifier` for targets that reject spaces (Android instrumented tests). |
+| `test.naming.minWords` | `3` | Words a backticked test name must have; `2` requires backticks only, `1` accepts any name. |
 
 ## Severity
 
@@ -94,6 +98,7 @@ adopt a rule gradually.
 | `severity.compose.namedCallbackArguments` | `error` |
 | `severity.compose.previewRequired` | `error` |
 | `severity.compose.composablesPerFile` | `error` |
+| `severity.test.naming` | `error` |
 
 Values are `error` or `warning`. A diagnostic reported at a non-default severity carries a
 suffixed name, following the compiler's own convention for deprecations: demoting

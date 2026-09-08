@@ -7,7 +7,7 @@ needed) that adds checks the standard compiler does not provide. It turns the co
 team already agrees on into compile errors, so code written by AI assistants stays on the rails
 instead of drifting a little further with every generation.
 
-> **Status: early development.** Twenty-seven rules ship today. Every rule can be switched off or
+> **Status: early development.** Twenty-eight rules ship today. Every rule can be switched off or
 > demoted to a warning, from plugin options or a properties file; the Gradle plugin is still
 > being designed. Feedback on the direction is very welcome.
 
@@ -65,6 +65,7 @@ Full pages, with every condition and fixture, live under [`docs/rules/`](docs/ru
 | [Named callback arguments](docs/rules/compose/named-callback-arguments.md) (Compose) | `IconButton { ... }` passing a callback as a trailing lambda | `IconButton(onClick = { ... })` |
 | [Preview required](docs/rules/compose/preview-required.md) (Compose) | A UI composable whose file has no `@Preview` calling it | A preview composable next to it |
 | [Composables per file](docs/rules/compose/composables-per-file.md) (Compose) | More than 3 non-private UI composables in one file | One component (and its helpers) per file |
+| [Test naming](docs/rules/test/naming.md) (Test) | `@Test fun returnsEmptyList()` | `@Test fun \`returns an empty list when nothing matches\`()` |
 
 Ideas not started yet: `required-annotation` (predicate-driven), `forbidden-supertype`.
 
@@ -141,7 +142,7 @@ New fixtures under `compiler-tests/testData/` become tests after
 ## Roadmap
 
 - [x] Plugin skeleton, FIR checker infrastructure, official test infrastructure
-- [x] Twenty-seven rules, each switchable and severity-tunable, with settings from plugin options or a properties file
+- [x] Twenty-eight rules, each switchable and severity-tunable, with settings from plugin options or a properties file
 - [ ] Gradle plugin (`kotrail { }` DSL, per-source-set settings, IDE support)
 - [ ] Configuration-driven rules (`forbidden-call`, `required-annotation`, ...)
 - [ ] User-extensible knowledge base for library composables that handle insets

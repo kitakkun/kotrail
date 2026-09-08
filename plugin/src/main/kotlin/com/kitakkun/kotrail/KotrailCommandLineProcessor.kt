@@ -84,6 +84,21 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
             "(default ${KotrailConfig.DEFAULT_MIN_SAME_TYPE_ARGUMENTS})",
     )
 
+    private val testAnnotationsOption = option(
+        KotrailConfig.KEY_TEST_ANNOTATIONS, "<fqName,fqName,...>",
+        "Comma-separated annotations that mark a function as a test " +
+            "(default ${KotrailConfig.DEFAULT_TEST_ANNOTATIONS.joinToString(",")})",
+    )
+    private val testNamingStyleOption = option(
+        KotrailConfig.KEY_TEST_NAMING_STYLE, "<backticked|identifier>",
+        "How test functions must be named (default ${KotrailConfig.DEFAULT_TEST_NAMING_STYLE.key})",
+    )
+    private val testMinNameWordsOption = option(
+        KotrailConfig.KEY_TEST_MIN_NAME_WORDS, "<int>",
+        "How many words a backticked test name must have " +
+            "(default ${KotrailConfig.DEFAULT_TEST_MIN_NAME_WORDS}, 1 accepts any name)",
+    )
+
     private val ruleOptions: List<CliOption> = KotrailRule.switchable.map { rule ->
         option(rule.switchKey, "<true|false>", "Whether the ${rule.key} rule runs (default true)")
     }
@@ -112,6 +127,9 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
         fqnAllowOption,
         forbiddenFunctionsOption,
         minSameTypeArgumentsOption,
+        testAnnotationsOption,
+        testNamingStyleOption,
+        testMinNameWordsOption,
     ) + ruleOptions + severityOptions
 
     override fun processOption(
@@ -157,6 +175,12 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
                 configuration.put(KotrailConfigurationKeys.FORBIDDEN_FUNCTIONS, KotrailConfig.parseList(value))
             minSameTypeArgumentsOption.optionName ->
                 configuration.put(KotrailConfigurationKeys.MIN_SAME_TYPE_ARGUMENTS, KotrailConfig.parseInt(name, value))
+            testAnnotationsOption.optionName ->
+                configuration.put(KotrailConfigurationKeys.TEST_ANNOTATIONS, KotrailConfig.parseList(value))
+            testNamingStyleOption.optionName ->
+                configuration.put(KotrailConfigurationKeys.TEST_NAMING_STYLE, KotrailConfig.parseTestNamingStyle(name, value))
+            testMinNameWordsOption.optionName ->
+                configuration.put(KotrailConfigurationKeys.TEST_MIN_NAME_WORDS, KotrailConfig.parseInt(name, value))
             else -> throw CliOptionProcessingException("Unknown option: $name")
         }
     }

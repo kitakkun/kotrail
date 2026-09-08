@@ -108,6 +108,32 @@ data class KotrailNamedArguments(
     val minSameTypeArguments: Int,
 )
 
+/** How a test function must be named. */
+enum class TestNamingStyle(val key: String) {
+    /** A backticked sentence, which is what Kotlin's own conventions allow in tests. */
+    BACKTICKED("backticked"),
+
+    /** A plain identifier, for targets that reject method names with spaces (Android instrumented tests). */
+    IDENTIFIER("identifier");
+
+    companion object {
+        fun fromKey(key: String): TestNamingStyle? = entries.firstOrNull { it.key == key.trim().lowercase() }
+    }
+}
+
+/** Tunables for the test rules. Keys are `test.<name>`. */
+data class KotrailTest(
+    /**
+     * Fully qualified annotations that mark a function as a test. Replacing the list is how a
+     * project teaches Kotrail about its own framework; an empty list stops the test rules from
+     * recognizing anything.
+     */
+    val annotations: List<String>,
+    val namingStyle: TestNamingStyle,
+    /** A backticked test name must have at least this many words; 1 accepts any name. */
+    val minNameWords: Int,
+)
+
 /**
  * Rule settings resolved once per compilation. Sources, in increasing precedence:
  * built-in defaults, the properties file passed through the `configFile` option, and
@@ -128,6 +154,7 @@ data class KotrailConfig(
     val forbiddenCall: KotrailForbiddenCall,
     val namedArguments: KotrailNamedArguments,
     val serialization: KotrailSerialization,
+    val test: KotrailTest,
 ) {
     fun isEnabled(rule: KotrailRule): Boolean = switches[rule] ?: true
 
@@ -147,6 +174,17 @@ data class KotrailConfig(
         val DEFAULT_FQN_ALLOW: List<String> = emptyList()
         val DEFAULT_FORBIDDEN_FUNCTIONS: List<String> = emptyList()
         const val DEFAULT_MIN_SAME_TYPE_ARGUMENTS = 3
+        val DEFAULT_TEST_ANNOTATIONS: List<String> = listOf(
+            "kotlin.test.Test",
+            "org.junit.Test",
+            "org.junit.jupiter.api.Test",
+            "org.junit.jupiter.api.RepeatedTest",
+            "org.junit.jupiter.api.TestFactory",
+            "org.junit.jupiter.api.TestTemplate",
+            "org.junit.jupiter.params.ParameterizedTest",
+        )
+        val DEFAULT_TEST_NAMING_STYLE = TestNamingStyle.BACKTICKED
+        const val DEFAULT_TEST_MIN_NAME_WORDS = 3
 
         const val KEY_ENABLED = "enabled"
         const val KEY_COMPOSE_MAX_NESTING = "compose.maxNesting"
@@ -162,6 +200,9 @@ data class KotrailConfig(
         const val KEY_FQN_ALLOW = "noFqnReferences.allow"
         const val KEY_FORBIDDEN_FUNCTIONS = "forbiddenCall.functions"
         const val KEY_MIN_SAME_TYPE_ARGUMENTS = "namedArguments.minSameTypeArguments"
+        const val KEY_TEST_ANNOTATIONS = "test.annotations"
+        const val KEY_TEST_NAMING_STYLE = "test.naming.style"
+        const val KEY_TEST_MIN_NAME_WORDS = "test.naming.minWords"
 
         val SETTING_KEYS = listOf(
             KEY_ENABLED,
@@ -178,6 +219,9 @@ data class KotrailConfig(
             KEY_FQN_ALLOW,
             KEY_FORBIDDEN_FUNCTIONS,
             KEY_MIN_SAME_TYPE_ARGUMENTS,
+            KEY_TEST_ANNOTATIONS,
+            KEY_TEST_NAMING_STYLE,
+            KEY_TEST_MIN_NAME_WORDS,
         )
 
         val ALL_KEYS: List<String> =
@@ -238,6 +282,16 @@ data class KotrailConfig(
                 ?: file.int(KEY_MIN_SAME_TYPE_ARGUMENTS)
                 ?: DEFAULT_MIN_SAME_TYPE_ARGUMENTS
 
+            val testAnnotations = configuration.get(KotrailConfigurationKeys.TEST_ANNOTATIONS)
+                ?: file.getProperty(KEY_TEST_ANNOTATIONS)?.let { parseList(it) }
+                ?: DEFAULT_TEST_ANNOTATIONS
+            val testNamingStyle = configuration.get(KotrailConfigurationKeys.TEST_NAMING_STYLE)
+                ?: file.getProperty(KEY_TEST_NAMING_STYLE)?.let { parseTestNamingStyle(KEY_TEST_NAMING_STYLE, it) }
+                ?: DEFAULT_TEST_NAMING_STYLE
+            val testMinNameWords = configuration.get(KotrailConfigurationKeys.TEST_MIN_NAME_WORDS)
+                ?: file.int(KEY_TEST_MIN_NAME_WORDS)
+                ?: DEFAULT_TEST_MIN_NAME_WORDS
+
             return KotrailConfig(
                 enabled = configuration.get(KotrailConfigurationKeys.ENABLED) ?: file.boolean(KEY_ENABLED) ?: true,
                 switches = switches,
@@ -255,6 +309,11 @@ data class KotrailConfig(
                 forbiddenCall = KotrailForbiddenCall(functions = forbiddenFunctions),
                 namedArguments = KotrailNamedArguments(minSameTypeArguments = minSameType),
                 serialization = KotrailSerialization(requiredFor = serializationRequiredFor),
+                test = KotrailTest(
+                    annotations = testAnnotations,
+                    namingStyle = testNamingStyle,
+                    minNameWords = testMinNameWords,
+                ),
             )
         }
 
@@ -314,6 +373,12 @@ data class KotrailConfig(
         fun parsePreviewScope(key: String, value: String): PreviewScope =
             PreviewScope.fromKey(value) ?: throw CliOptionProcessingException(
                 "Kotrail config key $key must be one of ${PreviewScope.entries.joinToString { it.key }}, got '$value'",
+            )
+
+        @OptIn(ExperimentalCompilerApi::class)
+        fun parseTestNamingStyle(key: String, value: String): TestNamingStyle =
+            TestNamingStyle.fromKey(value) ?: throw CliOptionProcessingException(
+                "Kotrail config key $key must be one of ${TestNamingStyle.entries.joinToString { it.key }}, got '$value'",
             )
 
         @OptIn(ExperimentalCompilerApi::class)
