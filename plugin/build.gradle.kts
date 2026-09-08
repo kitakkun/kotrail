@@ -2,6 +2,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     kotlin("jvm")
+    `maven-publish`
 }
 
 val kotlinCompilerVersion: String by rootProject.extra
@@ -26,5 +27,28 @@ tasks.withType<KotlinCompile>().configureEach {
     // only produce a "redundant flag" warning.
     if (kotlinCompatFamily != "k240") {
         compilerOptions.freeCompilerArgs.add("-Xcontext-parameters")
+    }
+}
+
+java {
+    withSourcesJar()
+}
+
+// The JAR links against one Kotlin compiler, so the Kotlin version leads the artifact version:
+// kotrail-compiler-plugin:2.4.0-0.1.0. The Gradle plugin composes the same coordinate from the
+// Kotlin version a consumer applies. See docs/supported-kotlin-versions.md.
+publishing {
+    publications {
+        create<MavenPublication>("maven") {
+            from(components["java"])
+            artifactId = "kotrail-compiler-plugin"
+            version = "$kotlinCompilerVersion-${project.version}"
+        }
+    }
+    repositories {
+        maven {
+            name = "test"
+            url = rootProject.layout.buildDirectory.dir("test-repo").get().asFile.toURI()
+        }
     }
 }

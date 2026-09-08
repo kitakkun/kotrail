@@ -38,6 +38,12 @@ extra["kotlinCompilerVersion"] = kotlinCompilerVersion
 extra["kotlinCompatFamily"] = kotlinCompatFamily(kotlinCompilerVersion)
 
 allprojects {
+    group = "com.kitakkun.kotrail"
+    // The Kotrail version, shared by the annotations, the compiler plugin and the Gradle plugin.
+    // The compiler plugin's published artifact prefixes it with the Kotlin version it was built
+    // against; see plugin/build.gradle.kts.
+    version = providers.gradleProperty("kotrail.version").getOrElse("0.1.0-SNAPSHOT")
+
     repositories {
         mavenCentral()
         google()
