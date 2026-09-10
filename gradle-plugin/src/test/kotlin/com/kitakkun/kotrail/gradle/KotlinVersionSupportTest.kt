@@ -19,7 +19,7 @@ class KotlinVersionSupportTest {
         val message = failure.message.orEmpty()
         assertTrue(message.contains("Kotlin 2.2.20"), message)
         assertTrue(message.contains("2.3.21, 2.4.0"), message)
-        assertTrue(message.contains("kotrail.compilerPluginVersion"), message)
+        assertTrue(message.contains("supported-kotlin-versions.md"), message)
     }
 
     @Test

@@ -21,10 +21,5 @@ internal fun unsupportedKotlinVersionMessage(
     kotlinVersion: String,
     kotrailVersion: String,
     supported: List<String>,
-): String = buildString {
-    append("Kotrail $kotrailVersion has no compiler plugin for Kotlin $kotlinVersion. ")
-    append("It is published for ${supported.joinToString()}. ")
-    append("Use one of those Kotlin versions, or, if you published a compiler plugin yourself, ")
-    append("set the kotrail.compilerPluginVersion Gradle property to its version. ")
-    append("See docs/supported-kotlin-versions.md.")
-}
+): String = "Kotrail $kotrailVersion has no compiler plugin for Kotlin $kotlinVersion. " +
+    "It is published for ${supported.joinToString()}. See docs/supported-kotlin-versions.md."

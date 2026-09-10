@@ -86,8 +86,7 @@ exist, rather than as a dependency-resolution error naming a coordinate the read
 
 ```
 Kotrail 0.1.0 has no compiler plugin for Kotlin 2.2.20. It is published for 2.3.21, 2.4.0.
-Use one of those Kotlin versions, or, if you published a compiler plugin yourself, set the
-kotrail.compilerPluginVersion Gradle property to its version.
+See docs/supported-kotlin-versions.md.
 ```
 
 Setting `kotrail.compilerPluginVersion` overrides the whole artifact version and skips that check.
