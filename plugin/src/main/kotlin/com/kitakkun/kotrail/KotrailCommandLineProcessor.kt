@@ -95,6 +95,15 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
             "(default ${KotrailConfig.DEFAULT_MIN_SAME_TYPE_ARGUMENTS})",
     )
 
+    private val functionMaxLinesOption = option(
+        KotrailConfig.KEY_FUNCTION_MAX_LINES, "<int>",
+        "Most lines of code a function body may have (default ${KotrailConfig.DEFAULT_FUNCTION_MAX_LINES}, 0 for unlimited)",
+    )
+    private val composableMaxLinesOption = option(
+        KotrailConfig.KEY_COMPOSABLE_MAX_LINES, "<int>",
+        "Most lines of code a @Composable function body may have " +
+            "(default ${KotrailConfig.DEFAULT_COMPOSABLE_MAX_LINES}, 0 for unlimited)",
+    )
     private val testAnnotationsOption = option(
         KotrailConfig.KEY_TEST_ANNOTATIONS, "<fqName,fqName,...>",
         "Comma-separated annotations that mark a function as a test " +
@@ -143,6 +152,8 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
         fqnAllowOption,
         forbiddenFunctionsOption,
         minSameTypeArgumentsOption,
+        functionMaxLinesOption,
+        composableMaxLinesOption,
         testAnnotationsOption,
         testNamingStyleOption,
         testMinNameWordsOption,
@@ -196,6 +207,10 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
                 configuration.put(KotrailConfigurationKeys.FORBIDDEN_FUNCTIONS, KotrailConfig.parseList(value))
             minSameTypeArgumentsOption.optionName ->
                 configuration.put(KotrailConfigurationKeys.MIN_SAME_TYPE_ARGUMENTS, KotrailConfig.parseInt(name, value))
+            functionMaxLinesOption.optionName ->
+                configuration.put(KotrailConfigurationKeys.FUNCTION_MAX_LINES, KotrailConfig.parseInt(name, value))
+            composableMaxLinesOption.optionName ->
+                configuration.put(KotrailConfigurationKeys.COMPOSABLE_MAX_LINES, KotrailConfig.parseInt(name, value))
             testAnnotationsOption.optionName ->
                 configuration.put(KotrailConfigurationKeys.TEST_ANNOTATIONS, KotrailConfig.parseList(value))
             testNamingStyleOption.optionName ->

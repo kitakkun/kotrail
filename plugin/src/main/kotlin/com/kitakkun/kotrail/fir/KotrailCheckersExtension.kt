@@ -2,6 +2,7 @@ package com.kitakkun.kotrail.fir
 
 import com.kitakkun.kotrail.fir.checkers.CommentLengthChecker
 import com.kitakkun.kotrail.fir.checkers.ForbiddenCallChecker
+import com.kitakkun.kotrail.fir.checkers.FunctionLengthChecker
 import com.kitakkun.kotrail.fir.preconditions.checkers.PreconditionChecker
 import com.kitakkun.kotrail.fir.preconditions.checkers.PreconditionWarmup
 import com.kitakkun.kotrail.fir.checkers.UnimplementedCodeChecker
@@ -80,6 +81,7 @@ object KotrailDeclarationCheckers : DeclarationCheckers() {
         ComposableNamingChecker,
         ComposableModifierParameterChecker,
         TestNamingChecker,
+        FunctionLengthChecker,
     )
     override val callableDeclarationCheckers: Set<FirCallableDeclarationChecker> = setOf(
         MutableCollectionInPublicApiChecker,

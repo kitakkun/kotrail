@@ -71,6 +71,9 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: the callable reference that replaces the lambda, e.g. `::transform` or `User::name`. */
     val PREFER_FUNCTION_REFERENCE = tunable1<KtElement, String>("PREFER_FUNCTION_REFERENCE", KotrailRule.PREFER_FUNCTION_REFERENCES, WHOLE)
 
+    /** Argument: what was measured, e.g. `72 lines of code (limit 50)`. */
+    val FUNCTION_TOO_LONG = tunable1<KtNamedFunction, String>("FUNCTION_TOO_LONG", KotrailRule.FUNCTION_LENGTH, NAME)
+
     /** Argument: what was measured, e.g. `7 consecutive comment lines (limit 5)`. */
     val COMMENT_TOO_LONG = tunable1<KtElement, String>("COMMENT_TOO_LONG", KotrailRule.COMMENT_LENGTH, WHOLE)
 
@@ -331,6 +334,10 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         map.put1(
             KotrailDiagnostics.COMPOSABLE_MODIFIER_PARAMETER,
             "[Kotrail] Modifier parameter convention: {0}.",
+        )
+        map.put1(
+            KotrailDiagnostics.FUNCTION_TOO_LONG,
+            "[Kotrail] This function is {0}. Split it so that each piece does one thing and has a name.",
         )
         map.put2(
             KotrailDiagnostics.TEST_NAME_NOT_DESCRIPTIVE,

@@ -102,6 +102,14 @@ data class KotrailSerialization(
     val requiredFor: List<String>,
 )
 
+/** Tunables for the function-length rule. Keys are `functionLength.<name>`; `0` means unlimited. */
+data class KotrailFunctionLength(
+    /** Most lines of code a function body may have. */
+    val maxLines: Int,
+    /** Most lines of code a `@Composable` function body may have; UI trees run longer than logic. */
+    val maxComposableLines: Int,
+)
+
 /** Tunables for the named-arguments rule. Keys are `namedArguments.<name>`. */
 data class KotrailNamedArguments(
     /** When at least this many positional arguments share a type, they must be named. */
@@ -156,6 +164,7 @@ data class KotrailConfig(
     val namedArguments: KotrailNamedArguments,
     val serialization: KotrailSerialization,
     val test: KotrailTest,
+    val functionLength: KotrailFunctionLength,
 ) {
     fun isEnabled(rule: KotrailRule): Boolean = switches[rule] ?: true
 
@@ -184,6 +193,8 @@ data class KotrailConfig(
         val DEFAULT_FQN_ALLOW: List<String> = emptyList()
         val DEFAULT_FORBIDDEN_FUNCTIONS: List<String> = emptyList()
         const val DEFAULT_MIN_SAME_TYPE_ARGUMENTS = 3
+        const val DEFAULT_FUNCTION_MAX_LINES = 50
+        const val DEFAULT_COMPOSABLE_MAX_LINES = 80
         val DEFAULT_TEST_ANNOTATIONS: List<String> = listOf(
             "kotlin.test.Test",
             "org.junit.Test",
@@ -211,6 +222,8 @@ data class KotrailConfig(
         const val KEY_FQN_ALLOW = "noFqnReferences.allow"
         const val KEY_FORBIDDEN_FUNCTIONS = "forbiddenCall.functions"
         const val KEY_MIN_SAME_TYPE_ARGUMENTS = "namedArguments.minSameTypeArguments"
+        const val KEY_FUNCTION_MAX_LINES = "functionLength.maxLines"
+        const val KEY_COMPOSABLE_MAX_LINES = "functionLength.maxComposableLines"
         const val KEY_TEST_ANNOTATIONS = "test.annotations"
         const val KEY_TEST_NAMING_STYLE = "test.naming.style"
         const val KEY_TEST_MIN_NAME_WORDS = "test.naming.minWords"
@@ -231,6 +244,8 @@ data class KotrailConfig(
             KEY_FQN_ALLOW,
             KEY_FORBIDDEN_FUNCTIONS,
             KEY_MIN_SAME_TYPE_ARGUMENTS,
+            KEY_FUNCTION_MAX_LINES,
+            KEY_COMPOSABLE_MAX_LINES,
             KEY_TEST_ANNOTATIONS,
             KEY_TEST_NAMING_STYLE,
             KEY_TEST_MIN_NAME_WORDS,
@@ -304,6 +319,12 @@ data class KotrailConfig(
                 ?: file.int(KEY_MIN_SAME_TYPE_ARGUMENTS)
                 ?: DEFAULT_MIN_SAME_TYPE_ARGUMENTS
 
+            val functionMaxLines = configuration.get(KotrailConfigurationKeys.FUNCTION_MAX_LINES)
+                ?: file.int(KEY_FUNCTION_MAX_LINES)
+                ?: DEFAULT_FUNCTION_MAX_LINES
+            val composableMaxLines = configuration.get(KotrailConfigurationKeys.COMPOSABLE_MAX_LINES)
+                ?: file.int(KEY_COMPOSABLE_MAX_LINES)
+                ?: DEFAULT_COMPOSABLE_MAX_LINES
             val testAnnotations = configuration.get(KotrailConfigurationKeys.TEST_ANNOTATIONS)
                 ?: file.getProperty(KEY_TEST_ANNOTATIONS)?.let { parseList(it) }
                 ?: DEFAULT_TEST_ANNOTATIONS
@@ -336,6 +357,10 @@ data class KotrailConfig(
                     annotations = testAnnotations,
                     namingStyle = testNamingStyle,
                     minNameWords = testMinNameWords,
+                ),
+                functionLength = KotrailFunctionLength(
+                    maxLines = functionMaxLines,
+                    maxComposableLines = composableMaxLines,
                 ),
             )
         }

@@ -45,6 +45,9 @@ rule.
 | `serialization.requiredFor` | `androidx.compose.runtime.saveable.rememberSerializable` | Callables whose type arguments must be serializable, in addition to `@MustBeSerializable` contracts. |
 | `rules.noUnimplemented` | `true` | [No unimplemented code](rules/no-unimplemented.md). |
 | `rules.preconditions` | `true` | [Preconditions](rules/preconditions.md): call-site check and inferred metadata. |
+| `rules.functionLength` | `true` | [Function length](rules/function-length.md). |
+| `functionLength.maxLines` | `50` | Most lines of code a function body may have; `0` for unlimited. |
+| `functionLength.maxComposableLines` | `80` | The same limit for `@Composable` functions. |
 | `rules.compose.windowInsets` | `true` | [Window insets](rules/compose/window-insets.md): contract check and inferred metadata. |
 | `rules.compose.windowInsetsHandledTwice` | `true` | Doubled inset padding warning (needs `rules.compose.windowInsets`). |
 | `rules.compose.stateDelegation` | `true` | [State delegation](rules/compose/state-delegation.md). |
@@ -91,6 +94,7 @@ adopt a rule gradually.
 | `severity.mustBeSerializable` | `error` |
 | `severity.noUnimplemented` | `error` |
 | `severity.preconditions` | `error` |
+| `severity.functionLength` | `error` |
 | `severity.compose.windowInsets` | `error` |
 | `severity.compose.windowInsetsUnverifiable` | `warning` |
 | `severity.compose.windowInsetsHandledTwice` | `warning` |

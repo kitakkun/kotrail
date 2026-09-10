@@ -26,6 +26,7 @@ fixtures that pin its behavior.
 | Must be serializable | `TYPE_NOT_SERIALIZABLE` | [must-be-serializable.md](must-be-serializable.md) |
 | No unimplemented code | `UNIMPLEMENTED_CODE` | [no-unimplemented.md](no-unimplemented.md) |
 | Preconditions | `PRECONDITION_VIOLATED` | [preconditions.md](preconditions.md) |
+| Function length | `FUNCTION_TOO_LONG` | [function-length.md](function-length.md) |
 
 ## Compose
 

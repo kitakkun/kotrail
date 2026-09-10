@@ -7,7 +7,7 @@ needed) that adds checks the standard compiler does not provide. It turns the co
 team already agrees on into compile errors, so code written by AI assistants stays on the rails
 instead of drifting a little further with every generation.
 
-> **Status: early development.** Twenty-eight rules ship today, applied through a Gradle plugin.
+> **Status: early development.** Twenty-nine rules ship today, applied through a Gradle plugin.
 > Every rule can be switched off or demoted to a warning, per project and per compilation.
 > Nothing is published yet. Feedback on the direction is very welcome.
 
@@ -56,6 +56,7 @@ Full pages, with every condition and fixture, live under [`docs/rules/`](docs/ru
 | [Must be serializable](docs/rules/must-be-serializable.md) | `rememberSerializable { Filter() }`, or `save<@MustBeSerializable T>(value)`, with a type that is not `@Serializable` | `@Serializable` on the class, or an explicit serializer |
 | [No unimplemented code](docs/rules/no-unimplemented.md) | `TODO()`, `throw NotImplementedError()` (switch it off for debug and test compilations) | The implementation, or an explicit `UnsupportedOperationException` |
 | [Preconditions](docs/rules/preconditions.md) | `retry(-1)` where `retry` starts with `require(times >= 0)`; arguments folded through constants and locals, contracts carried across modules as metadata | Arguments that satisfy the callee's own `require` / `check` |
+| [Function length](docs/rules/function-length.md) | A function body over 50 lines of code (80 for a composable); blank, brace-only, and comment lines do not count | Extraction into named pieces |
 | [Window insets handling](docs/rules/compose/window-insets.md) (Compose) | A `@HandlesWindowInsets` contract that the body does not satisfy; insets applied twice | Contracts verified across modules through inferred metadata |
 | [State delegation](docs/rules/compose/state-delegation.md) (Compose) | `val count = remember { mutableStateOf(0) }` used only through `.value` | `var count by remember { ... }` |
 | [Nesting limit](docs/rules/compose/nesting.md) (Compose) | Composable calls nested deeper than the limit | Extracting the subtree into its own composable |
@@ -143,7 +144,7 @@ New fixtures under `compiler-tests/testData/` become tests after
 ## Roadmap
 
 - [x] Plugin skeleton, FIR checker infrastructure, official test infrastructure
-- [x] Twenty-eight rules, each switchable and severity-tunable, with settings from plugin options or a properties file
+- [x] Twenty-nine rules, each switchable and severity-tunable, with settings from plugin options or a properties file
 - [ ] Gradle plugin (`kotrail { }` DSL, per-source-set settings, IDE support)
 - [ ] Configuration-driven rules (`forbidden-call`, `required-annotation`, ...)
 - [ ] User-extensible knowledge base for library composables that handle insets

@@ -32,6 +32,7 @@ enum class KotrailRule(
     MUST_BE_SERIALIZABLE("mustBeSerializable", Severity.ERROR),
     NO_UNIMPLEMENTED("noUnimplemented", Severity.ERROR),
     PRECONDITIONS("preconditions", Severity.ERROR),
+    FUNCTION_LENGTH("functionLength", Severity.ERROR),
 
     COMPOSE_WINDOW_INSETS("compose.windowInsets", Severity.ERROR),
     COMPOSE_WINDOW_INSETS_UNVERIFIABLE("compose.windowInsetsUnverifiable", Severity.WARNING, hasSwitch = false),

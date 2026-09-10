@@ -26,6 +26,8 @@ object KotrailConfigurationKeys {
     val FQN_ALLOW = CompilerConfigurationKey<List<String>>(KotrailConfig.KEY_FQN_ALLOW)
     val FORBIDDEN_FUNCTIONS = CompilerConfigurationKey<List<String>>(KotrailConfig.KEY_FORBIDDEN_FUNCTIONS)
     val MIN_SAME_TYPE_ARGUMENTS = CompilerConfigurationKey<Int>(KotrailConfig.KEY_MIN_SAME_TYPE_ARGUMENTS)
+    val FUNCTION_MAX_LINES = CompilerConfigurationKey<Int>(KotrailConfig.KEY_FUNCTION_MAX_LINES)
+    val COMPOSABLE_MAX_LINES = CompilerConfigurationKey<Int>(KotrailConfig.KEY_COMPOSABLE_MAX_LINES)
     val TEST_ANNOTATIONS = CompilerConfigurationKey<List<String>>(KotrailConfig.KEY_TEST_ANNOTATIONS)
     val TEST_NAMING_STYLE = CompilerConfigurationKey<TestNamingStyle>(KotrailConfig.KEY_TEST_NAMING_STYLE)
     val TEST_MIN_NAME_WORDS = CompilerConfigurationKey<Int>(KotrailConfig.KEY_TEST_MIN_NAME_WORDS)
