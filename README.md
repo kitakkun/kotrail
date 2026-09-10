@@ -7,9 +7,9 @@ needed) that adds checks the standard compiler does not provide. It turns the co
 team already agrees on into compile errors, so code written by AI assistants stays on the rails
 instead of drifting a little further with every generation.
 
-> **Status: early development.** Twenty-eight rules ship today. Every rule can be switched off or
-> demoted to a warning, from plugin options or a properties file; the Gradle plugin is still
-> being designed. Feedback on the direction is very welcome.
+> **Status: early development.** Twenty-eight rules ship today, applied through a Gradle plugin.
+> Every rule can be switched off or demoted to a warning, per project and per compilation.
+> Nothing is published yet. Feedback on the direction is very welcome.
 
 ## Why
 
@@ -78,10 +78,9 @@ plugins {
 }
 
 kotrail {
-    setting("compose.maxNesting", 4)
-    warning("commentLength")
+    configFile = layout.projectDirectory.file("kotrail.properties")
     test {
-        disable("preferExplicitBackingField")
+        configFile = layout.projectDirectory.file("kotrail-test.properties")
     }
 }
 ```

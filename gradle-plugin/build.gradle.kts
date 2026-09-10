@@ -38,15 +38,21 @@ gradlePlugin {
 val generateVersionSource by tasks.registering {
     val outputDir = layout.buildDirectory.dir("generated/kotrail-version/kotlin")
     val kotrailVersion = project.version.toString()
+    @Suppress("UNCHECKED_CAST")
+    val publishedKotlinVersions = rootProject.extra["publishedKotlinVersions"] as List<String>
     inputs.property("version", kotrailVersion)
+    inputs.property("publishedKotlinVersions", publishedKotlinVersions)
     outputs.dir(outputDir)
     doLast {
         val file = outputDir.get().file("com/kitakkun/kotrail/gradle/KotrailPluginVersion.kt").asFile
         file.parentFile.mkdirs()
+        val versions = publishedKotlinVersions.joinToString(", ") { "\"" + it + "\"" }
         file.writeText(
             "package com.kitakkun.kotrail.gradle\n\n" +
                 "/** The Kotrail version this Gradle plugin was built from. */\n" +
-                "internal const val KOTRAIL_VERSION: String = \"" + kotrailVersion + "\"\n",
+                "internal const val KOTRAIL_VERSION: String = \"" + kotrailVersion + "\"\n\n" +
+                "/** The Kotlin versions a compiler plugin is published for. */\n" +
+                "internal val SUPPORTED_KOTLIN_VERSIONS: List<String> = listOf(" + versions + ")\n",
         )
     }
 }

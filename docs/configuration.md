@@ -1,12 +1,14 @@
 # Configuration
 
-Settings come from three sources; later ones win:
+Every rule is on, at error severity, with no configuration at all. Settings come from three
+sources; later ones win:
 
 1. built-in defaults,
-2. a `.properties` file passed through the `configFile` plugin option,
+2. `.properties` files passed through the `configFile` plugin option, in the order they are
+   passed, so a later file overrides the entries of an earlier one,
 3. individual plugin options.
 
-Unknown keys or malformed values in the file fail the build. A typo never silently disables a
+Unknown keys or malformed values in a file fail the build. A typo never silently disables a
 rule.
 
 ## Keys
@@ -108,17 +110,16 @@ whichever name is in effect.
 
 ## Passing settings
 
-Through the [Gradle plugin](gradle-plugin.md), which is the intended path:
+Rules are configured in a properties file, and the [Gradle plugin](gradle-plugin.md) points at
+it:
 
 ```kotlin
 kotrail {
     configFile = layout.projectDirectory.file("kotrail.properties")
-    setting("compose.maxNesting", 6)   // overrides the file
-    disable("noPassThroughReturn")
 }
 ```
 
-Or as a properties file alone:
+The file:
 
 ```properties
 # kotrail.properties
@@ -144,17 +145,25 @@ tasks.withType<KotlinCompile>().configureEach {
 
 The compiler sees one compilation at a time, so per-source-set settings are a Gradle concern. The
 Gradle plugin has a block for it, matching every compilation whose name contains `test`, plus one
-for a single compilation by name:
+for a single compilation by name. The files are layered, so an override's file lists only what it
+changes:
 
 ```kotlin
 kotrail {
+    configFile = layout.projectDirectory.file("kotrail.properties")
     test {
-        disable("preferExplicitBackingField", "compose.nesting")
+        configFile = layout.projectDirectory.file("kotrail-test.properties")
     }
     compilation("androidTest") {
-        setting("test.naming.style", "identifier")
+        configFile = layout.projectDirectory.file("kotrail-androidtest.properties")
     }
 }
+```
+
+```properties
+# kotrail-test.properties: everything in kotrail.properties still applies
+rules.preferExplicitBackingField=false
+rules.compose.nesting=false
 ```
 
 A build that wires the compiler plugin by hand gives `compileTestKotlin` its own file instead:

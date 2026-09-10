@@ -2,11 +2,15 @@ package com.kitakkun.kotrail.gradle
 
 import org.gradle.api.Project
 import org.gradle.api.provider.Provider
+import org.gradle.api.tasks.PathSensitivity
+import org.jetbrains.kotlin.gradle.plugin.FilesOptionKind
+import org.jetbrains.kotlin.gradle.plugin.FilesSubpluginOption
 import org.jetbrains.kotlin.gradle.plugin.KotlinBasePlugin
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilation
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilerPluginSupportPlugin
 import org.jetbrains.kotlin.gradle.plugin.SubpluginArtifact
 import org.jetbrains.kotlin.gradle.plugin.SubpluginOption
+import java.io.File
 
 /**
  * Applies the Kotrail compiler plugin to every Kotlin compilation of the project and forwards the
@@ -40,7 +44,23 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
 
     override fun applyToCompilation(kotlinCompilation: KotlinCompilation<*>): Provider<List<SubpluginOption>> {
         val compilationName = kotlinCompilation.name
+        registerConfigFilesAsInputs(kotlinCompilation, configFilesFor(compilationName))
         return project.provider { optionsFor(compilationName) }
+    }
+
+    /**
+     * The option value is the file's absolute path, which says nothing about its contents, so
+     * editing a configuration file would otherwise leave the compilation up to date and the new
+     * settings unapplied until something else changed.
+     */
+    private fun registerConfigFilesAsInputs(kotlinCompilation: KotlinCompilation<*>, configFiles: List<File>) {
+        if (configFiles.isEmpty()) return
+        kotlinCompilation.compileTaskProvider.configure { task ->
+            task.inputs.files(configFiles)
+                .withPropertyName("kotrailConfigFiles")
+                .withPathSensitivity(PathSensitivity.RELATIVE)
+                .optional()
+        }
     }
 
     /**
@@ -58,32 +78,31 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
         specs.lastOrNull { it.enabled.isPresent }?.let {
             options += SubpluginOption("enabled", it.enabled.get().toString())
         }
-        specs.lastOrNull { it.configFile.isPresent }?.let {
-            options += SubpluginOption("configFile", it.configFile.get().asFile.absolutePath)
+        // Config files are layered, not replaced: the compiler plugin reads them in the order they
+        // are passed and a later file overrides the entries of an earlier one, so an override's
+        // file only lists what it changes. They travel as FilesSubpluginOption so that the
+        // absolute paths stay out of the task's input fingerprint; their contents are registered
+        // as inputs separately.
+        configFilesFor(compilationName).forEach {
+            options += FilesSubpluginOption("configFile", listOf(it), FilesOptionKind.INTERNAL)
         }
-
-        val ruleSwitches = LinkedHashMap<String, Boolean>()
-        val ruleSeverities = LinkedHashMap<String, KotrailSeverity>()
-        val ruleSettings = LinkedHashMap<String, String>()
-        for (spec in specs) {
-            ruleSwitches.putAll(spec.rules.get())
-            ruleSeverities.putAll(spec.severities.get())
-            ruleSettings.putAll(spec.settings.get())
-        }
-        ruleSwitches.forEach { (rule, value) -> options += SubpluginOption("rules.$rule", value.toString()) }
-        ruleSeverities.forEach { (rule, value) -> options += SubpluginOption("severity.$rule", value.key) }
-        ruleSettings.forEach { (setting, value) -> options += SubpluginOption(setting, value) }
         return options
     }
+
+    private fun configFilesFor(compilationName: String): List<File> =
+        specsFor(compilationName).filter { it.configFile.isPresent }.map { it.configFile.get().asFile }
 
     /**
      * The artifact version, pairing the Kotlin version the project applies with the Kotrail
      * version. The `kotrail.compilerPluginVersion` property overrides it, for a locally published
      * build.
      */
-    private fun compilerPluginVersion(): String =
-        project.providers.gradleProperty(COMPILER_PLUGIN_VERSION_PROPERTY).orNull
-            ?: "${kotlinVersion()}-$KOTRAIL_VERSION"
+    private fun compilerPluginVersion(): String {
+        project.providers.gradleProperty(COMPILER_PLUGIN_VERSION_PROPERTY).orNull?.let { return it }
+        val kotlinVersion = kotlinVersion()
+        checkKotlinVersionIsSupported(kotlinVersion)
+        return "$kotlinVersion-$KOTRAIL_VERSION"
+    }
 
     private fun kotlinVersion(): String =
         project.plugins.filterIsInstance<KotlinBasePlugin>().firstOrNull()?.pluginVersion

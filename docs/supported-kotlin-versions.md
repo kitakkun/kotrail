@@ -41,6 +41,10 @@ so consumers never write it down. See [gradle-plugin.md](gradle-plugin.md).
 Releasing therefore means running the publish tasks once per supported Kotlin version
 (`-Pkotlin.compiler=<version>`), and the Gradle plugin's own publication only once.
 
+The list of published versions lives in the root `build.gradle.kts` as `publishedKotlinVersions`,
+is baked into the Gradle plugin, and is what it checks a consumer's Kotlin version against. Adding
+a version means adding it there, to the CI matrix, and to the table above.
+
 ## Source-set layout
 
 Shared code lives in `plugin/src/main/kotlin` and must only use compiler APIs that every supported
@@ -97,7 +101,8 @@ Prefer sharing. Only add an overlay file when the difference is genuinely in the
    because of compiler behavior, re-run with `-PupdateTestData=true`, review the diff, and move the
    rewritten files into `compiler-tests/testData-<family>/` — never leave a version-specific
    expectation in the shared `testData/`.
-5. Add the version to the matrix in `.github/workflows/ci.yml` and to the table above.
+5. Add the version to `publishedKotlinVersions` in the root `build.gradle.kts`, to the matrix in
+   `.github/workflows/ci.yml`, and to the table above.
 
 ## Notes
 

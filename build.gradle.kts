@@ -33,9 +33,21 @@ fun kotlinCompatFamily(version: String): String {
     }
 }
 
+/**
+ * The Kotlin versions a compiler plugin is published for. The artifact version pairs an exact
+ * Kotlin version with the Kotrail version, so this is a list of exact versions rather than a
+ * range: the Gradle plugin refuses a consumer's Kotlin version that is not here, instead of
+ * letting dependency resolution fail on a coordinate nobody published.
+ *
+ * Keep in sync with the matrix in `.github/workflows/ci.yml` and the table in
+ * `docs/supported-kotlin-versions.md`.
+ */
+val publishedKotlinVersions = listOf("2.3.21", "2.4.0")
+
 // Read by the subprojects that need to know which compiler they are building against.
 extra["kotlinCompilerVersion"] = kotlinCompilerVersion
 extra["kotlinCompatFamily"] = kotlinCompatFamily(kotlinCompilerVersion)
+extra["publishedKotlinVersions"] = publishedKotlinVersions
 
 allprojects {
     group = "com.kitakkun.kotrail"

@@ -4,8 +4,11 @@ import org.jetbrains.kotlin.config.CompilerConfigurationKey
 import org.jetbrains.kotlin.diagnostics.Severity
 
 object KotrailConfigurationKeys {
-    /** Path to a `.properties` file with rule settings; individual options override its values. */
-    val CONFIG_FILE = CompilerConfigurationKey<String>("configFile")
+    /**
+     * Paths to `.properties` files with rule settings, in increasing precedence: a later file
+     * overrides the entries of an earlier one, and individual options override them all.
+     */
+    val CONFIG_FILE = CompilerConfigurationKey<List<String>>("configFile")
 
     val ENABLED = CompilerConfigurationKey<Boolean>(KotrailConfig.KEY_ENABLED)
 

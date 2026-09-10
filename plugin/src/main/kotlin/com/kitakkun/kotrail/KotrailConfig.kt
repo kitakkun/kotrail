@@ -229,7 +229,7 @@ data class KotrailConfig(
 
         @OptIn(ExperimentalCompilerApi::class)
         fun from(configuration: CompilerConfiguration): KotrailConfig {
-            val file = configuration.get(KotrailConfigurationKeys.CONFIG_FILE)?.let(::loadProperties) ?: Properties()
+            val file = loadProperties(configuration.get(KotrailConfigurationKeys.CONFIG_FILE).orEmpty())
 
             val switches = KotrailRule.switchable.associateWith { rule ->
                 configuration.get(KotrailConfigurationKeys.switchKey(rule))
@@ -332,17 +332,24 @@ data class KotrailConfig(
             return forms
         }
 
+        /** The files merged in order, so that a later file overrides the entries of an earlier one. */
         @OptIn(ExperimentalCompilerApi::class)
-        private fun loadProperties(path: String): Properties {
-            val file = File(path)
-            if (!file.isFile) throw CliOptionProcessingException("Kotrail config file not found: $path")
-            val properties = Properties()
-            file.reader().use(properties::load)
-            val unknown = properties.stringPropertyNames() - ALL_KEYS.toSet()
-            if (unknown.isNotEmpty()) {
-                throw CliOptionProcessingException("Unknown keys in Kotrail config file $path: ${unknown.sorted().joinToString()}")
+        private fun loadProperties(paths: List<String>): Properties {
+            val merged = Properties()
+            for (path in paths) {
+                val file = File(path)
+                if (!file.isFile) throw CliOptionProcessingException("Kotrail config file not found: $path")
+                val properties = Properties()
+                file.reader().use(properties::load)
+                val unknown = properties.stringPropertyNames() - ALL_KEYS.toSet()
+                if (unknown.isNotEmpty()) {
+                    throw CliOptionProcessingException(
+                        "Unknown keys in Kotrail config file $path: ${unknown.sorted().joinToString()}",
+                    )
+                }
+                merged.putAll(properties)
             }
-            return properties
+            return merged
         }
 
         @OptIn(ExperimentalCompilerApi::class)

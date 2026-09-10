@@ -1,7 +1,7 @@
 # The Gradle plugin
 
 `com.kitakkun.kotrail` applies the compiler plugin to every Kotlin compilation of a project and
-forwards the `kotrail { }` block to it.
+tells it which configuration files to read.
 
 ## Applying it
 
@@ -22,49 +22,50 @@ the compile classpath so `@HandlesWindowInsets` and `@MustBeSerializable` can be
 
 ```kotlin
 kotrail {
-    // A properties file, if you prefer keeping settings out of the build script. Anything below
-    // takes precedence over it.
     configFile = layout.projectDirectory.file("kotrail.properties")
 
-    // Rule switches. Keys are the ones in configuration.md, without the `rules.` prefix.
-    disable("commentLength", "compose.composablesPerFile")
-
-    // Severities. Rules are errors by default; this reports one as a warning instead.
-    warning("preferFunctionReferences")
-    severity("noPassThroughReturn", KotrailSeverity.WARNING)
-
-    // Rule settings, keyed exactly as in the properties file.
-    setting("compose.maxNesting", 4)
-    setting("narrowModelParameters.scope", "all")
-    setting("test.annotations", listOf("kotlin.test.Test", "com.acme.Scenario"))
-
-    // Overrides for test compilations: every compilation whose name contains "test".
     test {
-        disable("preferExplicitBackingField")
+        configFile = layout.projectDirectory.file("kotrail-test.properties")
     }
 
-    // Overrides for one compilation by name. Android instrumented tests run on a device, which
-    // rejects method names with spaces.
     compilation("androidTest") {
-        setting("test.naming.style", "identifier")
+        configFile = layout.projectDirectory.file("kotrail-androidtest.properties")
     }
 
-    // Turns the plugin off entirely, for a compilation or for the project.
-    // enabled = false
+    // enabled = false      // do not run the plugin here at all
+    // annotations = false  // do not add the annotations artifact
 }
 ```
 
-Settings written directly in the block apply everywhere; `test` and `compilation` overrides are
-merged on top for the compilations they match, so a later entry wins. A compilation the block
-disables never gets the compiler plugin on its classpath at all.
+Rule switches, severities and rule settings are **not** part of this DSL. They live in the
+properties file, whose keys are listed in [configuration.md](configuration.md). One list of keys
+rather than two, and rule configuration stays out of the build script.
 
-Rule and setting keys are passed to the compiler as written. A key that does not exist fails the
-build with `Unknown option`, rather than being silently ignored — see
-[configuration.md](configuration.md) for the full list.
+## Per-compilation configuration
 
-`annotations = false` stops the plugin from adding the annotations artifact, for a project that
-does not use those two rules. Multiplatform projects add it to the source sets that need it
-themselves; the automatic wiring covers Kotlin/JVM and Kotlin/Android.
+The compiler sees one compilation at a time, so relaxing a rule in tests is a Gradle concern.
+`test { }` matches every compilation whose name contains `test` — `test`, `jvmTest`, `androidTest`,
+`testDebugUnitTest` — and `compilation("name") { }` matches one by name.
+
+**Files are layered, not replaced.** A compilation is given the project's file first, then the file
+of every override that matches it, and a later file overrides only the entries it names. So an
+override's file lists just the differences:
+
+```properties
+# kotrail.properties
+compose.maxNesting=4
+severity.commentLength=warning
+```
+
+```properties
+# kotrail-test.properties — maxNesting and the commentLength severity still apply
+rules.preferExplicitBackingField=false
+```
+
+A compilation with `enabled = false` never gets the compiler plugin on its classpath at all,
+which is different from `enabled=false` in a file: there the plugin loads and then returns.
+
+Configuration files are registered as inputs of the compile task, so editing one recompiles.
 
 ## Artifacts
 
@@ -78,11 +79,26 @@ The compiler plugin links against the Kotlin compiler's internal API, so a JAR o
 Kotlin version it was built against. Its version therefore leads with that Kotlin version:
 `kotrail-compiler-plugin:2.4.0-0.1.0` is Kotrail 0.1.0 for Kotlin 2.4.0. The Gradle plugin reads
 the Kotlin version the project applies and composes that coordinate, so a consumer never writes it
-down. Setting the `kotrail.compilerPluginVersion` Gradle property overrides the whole version, for
-a locally published build.
+down.
 
-See [supported-kotlin-versions.md](supported-kotlin-versions.md) for the versions that are
-published and how a new one is added.
+A Kotlin version nothing was published for fails at configuration time with the versions that do
+exist, rather than as a dependency-resolution error naming a coordinate the reader has never seen:
+
+```
+Kotrail 0.1.0 has no compiler plugin for Kotlin 2.2.20. It is published for 2.3.21, 2.4.0.
+Use one of those Kotlin versions, or, if you published a compiler plugin yourself, set the
+kotrail.compilerPluginVersion Gradle property to its version.
+```
+
+Setting `kotrail.compilerPluginVersion` overrides the whole artifact version and skips that check.
+See [supported-kotlin-versions.md](supported-kotlin-versions.md).
+
+## Multiplatform
+
+Rules apply to every compilation of every target. The annotations artifact is added automatically
+only for Kotlin/JVM and Kotlin/Android; a multiplatform build adds
+`com.kitakkun.kotrail:kotrail-annotations` to the source sets that need it, or sets
+`annotations = false` and leaves it out.
 
 ## Without the Gradle plugin
 
@@ -100,3 +116,5 @@ tasks.withType<KotlinCompile>().configureEach {
     )
 }
 ```
+
+`configFile` may be given more than once; the files are read in that order.

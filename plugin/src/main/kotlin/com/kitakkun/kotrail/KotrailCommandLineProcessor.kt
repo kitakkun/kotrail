@@ -10,17 +10,24 @@ import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
 import org.jetbrains.kotlin.config.CompilerConfiguration
 
 class KotrailCommandLineProcessor : CommandLineProcessor {
-    private fun option(name: String, value: String, description: String) = CliOption(
+    private fun option(
+        name: String,
+        value: String,
+        description: String,
+        allowMultipleOccurrences: Boolean = false,
+    ) = CliOption(
         optionName = name,
         valueDescription = value,
         description = description,
         required = false,
-        allowMultipleOccurrences = false,
+        allowMultipleOccurrences = allowMultipleOccurrences,
     )
 
     private val configFileOption = option(
         "configFile", "<path>",
-        "Path to a .properties file with rule settings; explicit options take precedence over it",
+        "Path to a .properties file with rule settings. May be given more than once: a later file " +
+            "overrides the entries of an earlier one, and explicit options take precedence over them all",
+        allowMultipleOccurrences = true,
     )
     private val enabledOption = option(KotrailConfig.KEY_ENABLED, "<true|false>", "Whether the plugin should run")
     private val maxNestingOption = option(
@@ -147,7 +154,7 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
             return
         }
         when (name) {
-            configFileOption.optionName -> configuration.put(KotrailConfigurationKeys.CONFIG_FILE, value)
+            configFileOption.optionName -> configuration.add(KotrailConfigurationKeys.CONFIG_FILE, value)
             enabledOption.optionName -> configuration.put(KotrailConfigurationKeys.ENABLED, KotrailConfig.parseBoolean(name, value))
             maxNestingOption.optionName ->
                 configuration.put(KotrailConfigurationKeys.COMPOSE_MAX_NESTING, KotrailConfig.parseInt(name, value))
