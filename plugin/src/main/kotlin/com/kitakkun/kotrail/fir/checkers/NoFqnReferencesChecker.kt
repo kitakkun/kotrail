@@ -5,10 +5,10 @@ package com.kitakkun.kotrail.fir.checkers
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
-import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
@@ -84,9 +84,9 @@ object NoFqnReferences {
             if (callableNameIsTaken(callableId.packageName, callableId.callableName, file, context.session)) return
             val source = qualifier.source ?: return
             if (source.kind is KtFakeSourceElementKind) return
-            reporter.reportOn(
+            reportKotrail(
                 source,
-                KotrailDiagnostics.FQN_REFERENCE.at(config.severity(KotrailRule.NO_FQN_REFERENCES)),
+                KotrailDiagnostics.FQN_REFERENCE,
                 "import ${callableId.packageName.asString()}.${callableId.callableName.asString()}",
             )
         }
@@ -119,9 +119,9 @@ object NoFqnReferences {
         if (classNameIsTaken(outermost, file, context.session)) return
         val importFqName = outermost.asSingleFqName().asString()
         val usage = classId.relativeClassName.asString()
-        reporter.reportOn(
+        reportKotrail(
             source,
-            KotrailDiagnostics.FQN_REFERENCE.at(config.severity(KotrailRule.NO_FQN_REFERENCES)),
+            KotrailDiagnostics.FQN_REFERENCE,
             "import $importFqName and write $usage",
         )
     }

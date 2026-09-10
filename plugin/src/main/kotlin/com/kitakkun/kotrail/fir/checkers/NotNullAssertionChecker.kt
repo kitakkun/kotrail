@@ -3,9 +3,9 @@ package com.kitakkun.kotrail.fir.checkers
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
-import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirCheckNotNullCallChecker
@@ -31,6 +31,6 @@ object NotNullAssertionChecker : FirCheckNotNullCallChecker(MppCheckerKind.Commo
         if (!config.isEnabled(KotrailRule.NO_NOT_NULL_ASSERTION)) return
         val source = expression.source ?: return
         if (source.kind is KtFakeSourceElementKind) return
-        reporter.reportOn(source, KotrailDiagnostics.NOT_NULL_ASSERTION.at(config.severity(KotrailRule.NO_NOT_NULL_ASSERTION)))
+        reportKotrail(source, KotrailDiagnostics.NOT_NULL_ASSERTION)
     }
 }

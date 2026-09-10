@@ -5,9 +5,9 @@ import com.kitakkun.kotrail.NarrowModelParametersScope
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.compose.isComposable
 import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
-import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
@@ -68,9 +68,9 @@ object NarrowModelParametersChecker : FirSimpleFunctionChecker(MppCheckerKind.Co
             val details = "${classSymbol.classId.shortClassName} declares ${properties.size} properties, but only " +
                 describe(usage.readProperties) + " ${if (usage.readProperties.size == 1) "is" else "are"} read here; " +
                 "${unused.size} unused (limit ${settings.maxUnusedProperties})"
-            reporter.reportOn(
+            reportKotrail(
                 source,
-                KotrailDiagnostics.MODEL_PARAMETER_TOO_WIDE.at(config.severity(KotrailRule.NARROW_MODEL_PARAMETERS)),
+                KotrailDiagnostics.MODEL_PARAMETER_TOO_WIDE,
                 parameter.name.asString(),
                 details,
             )

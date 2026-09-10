@@ -5,9 +5,9 @@ import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.compose.insets.WindowInsetsNames
 import com.kitakkun.kotrail.fir.compose.insets.windowInsetsHandlingService
 import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
-import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirFunctionCallChecker
@@ -45,9 +45,9 @@ object WindowInsetsHandledTwiceChecker : FirFunctionCallChecker(MppCheckerKind.C
             val applied = service.handledByExpression(argument).handled
             val overlap = applied.intersect(calleeHandles)
             if (overlap.isEmpty) continue
-            reporter.reportOn(
+            reportKotrail(
                 source,
-                KotrailDiagnostics.WINDOW_INSETS_HANDLED_TWICE.at(context.session.kotrailConfig.severity(KotrailRule.COMPOSE_WINDOW_INSETS_HANDLED_TWICE)),
+                KotrailDiagnostics.WINDOW_INSETS_HANDLED_TWICE,
                 callee.name.asString(),
                 overlap.describe(),
             )

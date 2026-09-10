@@ -37,9 +37,10 @@ kotrail {
 }
 ```
 
-Rule switches, severities and rule settings are **not** part of this DSL. They live in the
-properties file, whose keys are listed in [configuration.md](configuration.md). One list of keys
-rather than two, and rule configuration stays out of the build script.
+Rule switches, severities, rule settings, and the project's own notes on why a rule exists are
+**not** part of this DSL. They live in the properties file, whose keys are listed in
+[configuration.md](configuration.md). One list of keys rather than two, and rule configuration
+stays out of the build script.
 
 ## Per-compilation configuration
 

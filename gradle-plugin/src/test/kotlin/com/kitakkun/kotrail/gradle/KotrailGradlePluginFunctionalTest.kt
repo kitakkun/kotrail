@@ -75,6 +75,26 @@ class KotrailGradlePluginFunctionalTest {
     }
 
     @Test
+    fun `the project's note is appended to the message`() {
+        writeSettings()
+        writeFile("kotrail.properties", "note.preferExplicitBackingField=See ADR-014.")
+        writeBuild(
+            """
+            kotrail {
+                configFile = file("kotrail.properties")
+            }
+            """.trimIndent(),
+        )
+        writeFile("src/main/kotlin/Cases.kt", BACKING_FIELD_VIOLATION)
+
+        val result = runBuild("compileKotlin", expectFailure = true)
+
+        // The note is added to the built-in message, never substituted for it.
+        assertTrue(result.output.contains("backing property"), result.output)
+        assertTrue(result.output.contains("See ADR-014."), result.output)
+    }
+
+    @Test
     fun `a test compilation layers its own config file on top of the project one`() {
         writeSettings()
         writeFile("src/test/kotlin/CasesTest.kt", BACKING_FIELD_VIOLATION)

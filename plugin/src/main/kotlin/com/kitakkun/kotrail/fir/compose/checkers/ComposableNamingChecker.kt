@@ -4,9 +4,9 @@ import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.compose.isComposable
 import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
-import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirSimpleFunctionChecker
@@ -55,7 +55,6 @@ object ComposableNamingChecker : FirSimpleFunctionChecker(MppCheckerKind.Common)
             !emitsUi && first.isUpperCase() -> CAMEL_CASE
             else -> return
         }
-        val severity = context.session.kotrailConfig.severity(KotrailRule.COMPOSE_NAMING)
-        reporter.reportOn(source, KotrailDiagnostics.COMPOSABLE_NAMING.at(severity), text, expected)
+        reportKotrail(source, KotrailDiagnostics.COMPOSABLE_NAMING, text, expected)
     }
 }

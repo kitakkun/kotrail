@@ -3,10 +3,10 @@ package com.kitakkun.kotrail.fir.checkers
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
-import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
@@ -102,10 +102,9 @@ object MustBeSerializableChecker : FirFunctionCallChecker(MppCheckerKind.Common)
         }
         if (typesToCheck.isEmpty()) return
 
-        val severity = config.severity(KotrailRule.MUST_BE_SERIALIZABLE)
         for (type in typesToCheck.distinct()) {
             if (isSerializable(type, session)) continue
-            reporter.reportOn(source, KotrailDiagnostics.TYPE_NOT_SERIALIZABLE.at(severity), type.renderReadable(), calleeName)
+            reportKotrail(source, KotrailDiagnostics.TYPE_NOT_SERIALIZABLE, type.renderReadable(), calleeName)
         }
     }
 

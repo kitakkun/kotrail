@@ -3,9 +3,9 @@ package com.kitakkun.kotrail.fir.checkers
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
-import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirFunctionCallChecker
@@ -68,8 +68,7 @@ object NamedArgumentsChecker : FirFunctionCallChecker(MppCheckerKind.Common) {
             ?: return
 
         val description = "${largestGroup.value.size} positional ${largestGroup.key.describe()} arguments"
-        val severity = config.severity(KotrailRule.NAMED_ARGUMENTS_FOR_REPEATED_TYPES)
-        reporter.reportOn(source, KotrailDiagnostics.NAMED_ARGUMENTS_REQUIRED.at(severity), description)
+        reportKotrail(source, KotrailDiagnostics.NAMED_ARGUMENTS_REQUIRED, description)
     }
 
     /**

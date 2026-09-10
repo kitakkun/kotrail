@@ -5,9 +5,9 @@ import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.compose.ComposeNames
 import com.kitakkun.kotrail.fir.compose.isComposable
 import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
-import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirFunctionCallChecker
@@ -75,8 +75,7 @@ object ComposableNamedCallbackArgumentsChecker : FirFunctionCallChecker(MppCheck
         if (type.functionReturnType()?.isUnit != true) return
         if (!isTrailingLambda(expression, lambda)) return
 
-        val severity = config.severity(KotrailRule.COMPOSE_NAMED_CALLBACK_ARGUMENTS)
-        reporter.reportOn(lambda.source ?: return, KotrailDiagnostics.COMPOSABLE_CALLBACK_AS_TRAILING_LAMBDA.at(severity), parameter.name.asString())
+        reportKotrail(lambda.source ?: return, KotrailDiagnostics.COMPOSABLE_CALLBACK_AS_TRAILING_LAMBDA, parameter.name.asString())
     }
 
     /** The return type of a function type is its last type argument. */

@@ -8,10 +8,10 @@ import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.compose.ComposeNames
 import com.kitakkun.kotrail.fir.compose.isComposable
 import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
-import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
@@ -68,13 +68,12 @@ object ComposablePreviewRequiredChecker : FirFileChecker(MppCheckerKind.Common) 
             previewed += collector.callees
         }
 
-        val severity = config.severity(KotrailRule.COMPOSE_PREVIEW_REQUIRED)
         for (function in functions) {
             if (!function.needsPreview(session, config.compose.previewRequireFor)) continue
             if (function.symbol in previewed) continue
             val source = function.source ?: continue
             if (source.kind is KtFakeSourceElementKind) continue
-            reporter.reportOn(source, KotrailDiagnostics.COMPOSABLE_WITHOUT_PREVIEW.at(severity), function.name.asString())
+            reportKotrail(source, KotrailDiagnostics.COMPOSABLE_WITHOUT_PREVIEW, function.name.asString())
         }
     }
 

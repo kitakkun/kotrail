@@ -6,9 +6,9 @@ import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.compose.insets.WindowInsetsNames
 import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
-import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
@@ -70,8 +70,7 @@ object PreferStateDelegationChecker : FirPropertyChecker(MppCheckerKind.Common) 
         if (usages.escapes || usages.valueAccesses == 0) return
 
         val keyword = if (type.isSubclassOf(MUTABLE_STATE, session)) "var" else "val"
-        val severity = context.session.kotrailConfig.severity(KotrailRule.COMPOSE_STATE_DELEGATION)
-        reporter.reportOn(source, KotrailDiagnostics.PREFER_STATE_DELEGATION.at(severity), declaration.name.asString(), keyword)
+        reportKotrail(source, KotrailDiagnostics.PREFER_STATE_DELEGATION, declaration.name.asString(), keyword)
     }
 
     private fun ConeKotlinType.isSubclassOf(classId: ClassId, session: FirSession): Boolean {

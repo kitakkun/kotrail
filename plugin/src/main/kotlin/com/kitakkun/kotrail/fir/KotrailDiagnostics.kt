@@ -1,9 +1,10 @@
 package com.kitakkun.kotrail.fir
 
+import com.kitakkun.kotrail.KotrailRule
 import org.jetbrains.kotlin.diagnostics.AbstractSourceElementPositioningStrategy
-import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory0
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory2
+import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory3
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactoryToRendererMap
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticsContainer
 import org.jetbrains.kotlin.diagnostics.Severity
@@ -19,19 +20,37 @@ import org.jetbrains.kotlin.psi.KtProperty
 
 /**
  * A diagnostic that exists at both severities so that each rule's severity can be configured.
- * The factory at the default severity carries the bare name; the other one carries a
+ * The factory at the rule's default severity carries the bare name; the other one carries a
  * `_WARNING` / `_ERROR` suffix, following the compiler's own deprecation diagnostics.
+ *
+ * Every factory carries one parameter more than the diagnostic's own arguments: the project's
+ * note, appended to the message. It is empty unless the project set `note` or `note.<rule>`, and
+ * the message templates end with the matching placeholder. The [rule] is what
+ * [com.kitakkun.kotrail.fir.report] looks the severity and the note up by, so a call site names
+ * neither.
  */
-class TunableDiagnostic0(val error: KtDiagnosticFactory0, val warning: KtDiagnosticFactory0) {
-    fun at(severity: Severity): KtDiagnosticFactory0 = if (severity == Severity.WARNING) warning else error
+class TunableDiagnostic0(
+    val rule: KotrailRule,
+    val error: KtDiagnosticFactory1<String>,
+    val warning: KtDiagnosticFactory1<String>,
+) {
+    fun at(severity: Severity): KtDiagnosticFactory1<String> = if (severity == Severity.WARNING) warning else error
 }
 
-class TunableDiagnostic1<A>(val error: KtDiagnosticFactory1<A>, val warning: KtDiagnosticFactory1<A>) {
-    fun at(severity: Severity): KtDiagnosticFactory1<A> = if (severity == Severity.WARNING) warning else error
+class TunableDiagnostic1<A>(
+    val rule: KotrailRule,
+    val error: KtDiagnosticFactory2<A, String>,
+    val warning: KtDiagnosticFactory2<A, String>,
+) {
+    fun at(severity: Severity): KtDiagnosticFactory2<A, String> = if (severity == Severity.WARNING) warning else error
 }
 
-class TunableDiagnostic2<A, B>(val error: KtDiagnosticFactory2<A, B>, val warning: KtDiagnosticFactory2<A, B>) {
-    fun at(severity: Severity): KtDiagnosticFactory2<A, B> = if (severity == Severity.WARNING) warning else error
+class TunableDiagnostic2<A, B>(
+    val rule: KotrailRule,
+    val error: KtDiagnosticFactory3<A, B, String>,
+    val warning: KtDiagnosticFactory3<A, B, String>,
+) {
+    fun at(severity: Severity): KtDiagnosticFactory3<A, B, String> = if (severity == Severity.WARNING) warning else error
 }
 
 object KotrailDiagnostics : KtDiagnosticsContainer() {
@@ -41,130 +60,133 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     // ---- general rules ----
 
     /** Argument: the name of the backing property (e.g. `_items`). */
-    val PREFER_EXPLICIT_BACKING_FIELD = tunable1<KtProperty, String>("PREFER_EXPLICIT_BACKING_FIELD", Severity.ERROR, NAME)
+    val PREFER_EXPLICIT_BACKING_FIELD = tunable1<KtProperty, String>("PREFER_EXPLICIT_BACKING_FIELD", KotrailRule.PREFER_EXPLICIT_BACKING_FIELD, NAME)
 
     /** Arguments: the parameter name, a description of declared versus read properties. */
-    val MODEL_PARAMETER_TOO_WIDE = tunable2<KtParameter, String, String>("MODEL_PARAMETER_TOO_WIDE", Severity.ERROR, NAME)
+    val MODEL_PARAMETER_TOO_WIDE = tunable2<KtParameter, String, String>("MODEL_PARAMETER_TOO_WIDE", KotrailRule.NARROW_MODEL_PARAMETERS, NAME)
 
     /** Arguments: the function name, the input it returns unchanged (`this` or a parameter name). */
-    val PASS_THROUGH_RETURN = tunable2<KtNamedFunction, String, String>("PASS_THROUGH_RETURN", Severity.ERROR, NAME)
+    val PASS_THROUGH_RETURN = tunable2<KtNamedFunction, String, String>("PASS_THROUGH_RETURN", KotrailRule.NO_PASS_THROUGH_RETURN, NAME)
 
     /** Argument: the callable reference that replaces the lambda, e.g. `::transform` or `User::name`. */
-    val PREFER_FUNCTION_REFERENCE = tunable1<KtElement, String>("PREFER_FUNCTION_REFERENCE", Severity.ERROR, WHOLE)
+    val PREFER_FUNCTION_REFERENCE = tunable1<KtElement, String>("PREFER_FUNCTION_REFERENCE", KotrailRule.PREFER_FUNCTION_REFERENCES, WHOLE)
 
     /** Argument: what was measured, e.g. `7 consecutive comment lines (limit 5)`. */
-    val COMMENT_TOO_LONG = tunable1<KtElement, String>("COMMENT_TOO_LONG", Severity.ERROR, WHOLE)
+    val COMMENT_TOO_LONG = tunable1<KtElement, String>("COMMENT_TOO_LONG", KotrailRule.COMMENT_LENGTH, WHOLE)
 
     /** Argument: the import to add and how to write the reference afterwards. */
-    val FQN_REFERENCE = tunable1<KtElement, String>("FQN_REFERENCE", Severity.ERROR, WHOLE)
+    val FQN_REFERENCE = tunable1<KtElement, String>("FQN_REFERENCE", KotrailRule.NO_FQN_REFERENCES, WHOLE)
 
     /** No arguments; reported on the `else` branch of an exhaustive `when` over a sealed/enum/Boolean subject. */
-    val REDUNDANT_ELSE_IN_EXHAUSTIVE_WHEN = tunable0<KtElement>("REDUNDANT_ELSE_IN_EXHAUSTIVE_WHEN", Severity.ERROR, WHOLE)
+    val REDUNDANT_ELSE_IN_EXHAUSTIVE_WHEN = tunable0<KtElement>("REDUNDANT_ELSE_IN_EXHAUSTIVE_WHEN", KotrailRule.NO_REDUNDANT_ELSE, WHOLE)
 
     /** Argument: the class name. */
-    val PREFER_VALUE_CLASS = tunable1<KtClass, String>("PREFER_VALUE_CLASS", Severity.ERROR, NAME)
+    val PREFER_VALUE_CLASS = tunable1<KtClass, String>("PREFER_VALUE_CLASS", KotrailRule.PREFER_VALUE_CLASS, NAME)
 
     /** Argument: the fully qualified name of the forbidden callable. */
-    val FORBIDDEN_CALL = tunable1<KtElement, String>("FORBIDDEN_CALL", Severity.ERROR, WHOLE)
+    val FORBIDDEN_CALL = tunable1<KtElement, String>("FORBIDDEN_CALL", KotrailRule.FORBIDDEN_CALL, WHOLE)
 
     /** Argument: what was found (`TODO()` or `NotImplementedError`). Reported on the call. */
-    val UNIMPLEMENTED_CODE = tunable1<KtElement, String>("UNIMPLEMENTED_CODE", Severity.ERROR, WHOLE)
+    val UNIMPLEMENTED_CODE = tunable1<KtElement, String>("UNIMPLEMENTED_CODE", KotrailRule.NO_UNIMPLEMENTED, WHOLE)
 
     /** Arguments: the callee name, then the condition with the argument values that make it false. Reported on the call. */
-    val PRECONDITION_VIOLATED = tunable2<KtElement, String, String>("PRECONDITION_VIOLATED", Severity.ERROR, WHOLE)
+    val PRECONDITION_VIOLATED = tunable2<KtElement, String, String>("PRECONDITION_VIOLATED", KotrailRule.PRECONDITIONS, WHOLE)
 
     /** No arguments; reported on the `!!` expression. */
-    val NOT_NULL_ASSERTION = tunable0<KtElement>("NOT_NULL_ASSERTION", Severity.ERROR, WHOLE)
+    val NOT_NULL_ASSERTION = tunable0<KtElement>("NOT_NULL_ASSERTION", KotrailRule.NO_NOT_NULL_ASSERTION, WHOLE)
 
     /** No arguments; reported on a catch clause in a suspend context that swallows CancellationException. */
-    val SWALLOWED_CANCELLATION = tunable0<KtElement>("SWALLOWED_CANCELLATION", Severity.ERROR, WHOLE)
+    val SWALLOWED_CANCELLATION = tunable0<KtElement>("SWALLOWED_CANCELLATION", KotrailRule.NO_SWALLOWED_CANCELLATION, WHOLE)
 
     /** Argument: the caught variable's name; reported on a catch clause whose body never uses it. */
-    val IGNORED_EXCEPTION = tunable1<KtElement, String>("IGNORED_EXCEPTION", Severity.ERROR, WHOLE)
+    val IGNORED_EXCEPTION = tunable1<KtElement, String>("IGNORED_EXCEPTION", KotrailRule.NO_IGNORED_EXCEPTION, WHOLE)
 
     /** No arguments; reported on a function whose block body is a single `return`. */
-    val PREFER_EXPRESSION_BODY = tunable0<KtNamedFunction>("PREFER_EXPRESSION_BODY", Severity.ERROR, NAME)
+    val PREFER_EXPRESSION_BODY = tunable0<KtNamedFunction>("PREFER_EXPRESSION_BODY", KotrailRule.PREFER_EXPRESSION_BODY, NAME)
 
     /** Argument: the mutable type's name and the read-only type to use instead. */
-    val MUTABLE_COLLECTION_IN_PUBLIC_API = tunable1<KtElement, String>("MUTABLE_COLLECTION_IN_PUBLIC_API", Severity.ERROR, WHOLE)
+    val MUTABLE_COLLECTION_IN_PUBLIC_API = tunable1<KtElement, String>("MUTABLE_COLLECTION_IN_PUBLIC_API", KotrailRule.NO_MUTABLE_COLLECTION_IN_PUBLIC_API, WHOLE)
 
     /** Argument: description of the repeated type and count. */
-    val NAMED_ARGUMENTS_REQUIRED = tunable1<KtElement, String>("NAMED_ARGUMENTS_REQUIRED", Severity.ERROR, WHOLE)
+    val NAMED_ARGUMENTS_REQUIRED = tunable1<KtElement, String>("NAMED_ARGUMENTS_REQUIRED", KotrailRule.NAMED_ARGUMENTS_FOR_REPEATED_TYPES, WHOLE)
 
     // ---- Compose rules ----
 
     /** Argument: description of the insets and sides that are declared but not handled. */
-    val WINDOW_INSETS_NOT_HANDLED = tunable1<KtNamedFunction, String>("WINDOW_INSETS_NOT_HANDLED", Severity.ERROR, NAME)
+    val WINDOW_INSETS_NOT_HANDLED = tunable1<KtNamedFunction, String>("WINDOW_INSETS_NOT_HANDLED", KotrailRule.COMPOSE_WINDOW_INSETS, NAME)
 
     /** Argument: description of the insets and sides that could not be proven handled. */
     val WINDOW_INSETS_HANDLING_UNVERIFIABLE =
-        tunable1<KtNamedFunction, String>("WINDOW_INSETS_HANDLING_UNVERIFIABLE", Severity.WARNING, NAME)
+        tunable1<KtNamedFunction, String>("WINDOW_INSETS_HANDLING_UNVERIFIABLE", KotrailRule.COMPOSE_WINDOW_INSETS_UNVERIFIABLE, NAME)
 
     /** Arguments: the called composable's name, description of the overlapping insets. */
-    val WINDOW_INSETS_HANDLED_TWICE = tunable2<KtElement, String, String>("WINDOW_INSETS_HANDLED_TWICE", Severity.WARNING, WHOLE)
+    val WINDOW_INSETS_HANDLED_TWICE = tunable2<KtElement, String, String>("WINDOW_INSETS_HANDLED_TWICE", KotrailRule.COMPOSE_WINDOW_INSETS_HANDLED_TWICE, WHOLE)
 
     /** Arguments: the local's name, the keyword to use with delegation (`val` or `var`). */
-    val PREFER_STATE_DELEGATION = tunable2<KtProperty, String, String>("PREFER_STATE_DELEGATION", Severity.ERROR, NAME)
+    val PREFER_STATE_DELEGATION = tunable2<KtProperty, String, String>("PREFER_STATE_DELEGATION", KotrailRule.COMPOSE_STATE_DELEGATION, NAME)
 
     /** Arguments: the depth at the reported call, the configured limit. */
-    val COMPOSABLE_NESTING_TOO_DEEP = tunable2<KtElement, String, String>("COMPOSABLE_NESTING_TOO_DEEP", Severity.ERROR, WHOLE)
+    val COMPOSABLE_NESTING_TOO_DEEP = tunable2<KtElement, String, String>("COMPOSABLE_NESTING_TOO_DEEP", KotrailRule.COMPOSE_NESTING, WHOLE)
 
     /** Argument: the parameter name; reported on a trailing non-composable function-type parameter. */
-    val COMPOSABLE_TRAILING_CALLBACK = tunable1<KtParameter, String>("COMPOSABLE_TRAILING_CALLBACK", Severity.ERROR, NAME)
+    val COMPOSABLE_TRAILING_CALLBACK = tunable1<KtParameter, String>("COMPOSABLE_TRAILING_CALLBACK", KotrailRule.COMPOSE_NO_TRAILING_CALLBACK, NAME)
 
     /** Arguments: the function name, the expected casing (`PascalCase` or `camelCase`). */
-    val COMPOSABLE_NAMING = tunable2<KtNamedFunction, String, String>("COMPOSABLE_NAMING", Severity.ERROR, NAME)
+    val COMPOSABLE_NAMING = tunable2<KtNamedFunction, String, String>("COMPOSABLE_NAMING", KotrailRule.COMPOSE_NAMING, NAME)
 
     /** Argument: the parameter name; reported on a callback passed to a composable as a trailing lambda. */
-    val COMPOSABLE_CALLBACK_AS_TRAILING_LAMBDA = tunable1<KtElement, String>("COMPOSABLE_CALLBACK_AS_TRAILING_LAMBDA", Severity.ERROR, WHOLE)
+    val COMPOSABLE_CALLBACK_AS_TRAILING_LAMBDA = tunable1<KtElement, String>("COMPOSABLE_CALLBACK_AS_TRAILING_LAMBDA", KotrailRule.COMPOSE_NAMED_CALLBACK_ARGUMENTS, WHOLE)
 
     /** Argument: the composable's name; reported on a UI composable with no @Preview in its file. */
-    val COMPOSABLE_WITHOUT_PREVIEW = tunable1<KtNamedFunction, String>("COMPOSABLE_WITHOUT_PREVIEW", Severity.ERROR, NAME)
+    val COMPOSABLE_WITHOUT_PREVIEW = tunable1<KtNamedFunction, String>("COMPOSABLE_WITHOUT_PREVIEW", KotrailRule.COMPOSE_PREVIEW_REQUIRED, NAME)
 
     /** Arguments: how many composables the file declares, the limit; reported on each composable past the limit. */
-    val TOO_MANY_COMPOSABLES_IN_FILE = tunable2<KtNamedFunction, String, String>("TOO_MANY_COMPOSABLES_IN_FILE", Severity.ERROR, NAME)
+    val TOO_MANY_COMPOSABLES_IN_FILE = tunable2<KtNamedFunction, String, String>("TOO_MANY_COMPOSABLES_IN_FILE", KotrailRule.COMPOSE_COMPOSABLES_PER_FILE, NAME)
 
     /** Arguments: the offending type, the callee; reported on a call whose type argument is not serializable. */
-    val TYPE_NOT_SERIALIZABLE = tunable2<KtElement, String, String>("TYPE_NOT_SERIALIZABLE", Severity.ERROR, WHOLE)
+    val TYPE_NOT_SERIALIZABLE = tunable2<KtElement, String, String>("TYPE_NOT_SERIALIZABLE", KotrailRule.MUST_BE_SERIALIZABLE, WHOLE)
 
     /** Argument: what is wrong with the modifier parameter. */
-    val COMPOSABLE_MODIFIER_PARAMETER = tunable1<KtNamedFunction, String>("COMPOSABLE_MODIFIER_PARAMETER", Severity.ERROR, NAME)
+    val COMPOSABLE_MODIFIER_PARAMETER = tunable1<KtNamedFunction, String>("COMPOSABLE_MODIFIER_PARAMETER", KotrailRule.COMPOSE_MODIFIER_PARAMETER, NAME)
 
     override fun getRendererFactory(): BaseDiagnosticRendererFactory = KotrailDiagnosticRenderers
 
     // ---- test rules ----
 
     /** Arguments: the test function name, the minimum number of words a name must have. */
-    val TEST_NAME_NOT_DESCRIPTIVE = tunable2<KtNamedFunction, String, String>("TEST_NAME_NOT_DESCRIPTIVE", Severity.ERROR, NAME)
+    val TEST_NAME_NOT_DESCRIPTIVE = tunable2<KtNamedFunction, String, String>("TEST_NAME_NOT_DESCRIPTIVE", KotrailRule.TEST_NAMING, NAME)
 
     /** Argument: the test function name. */
-    val TEST_NAME_NOT_IDENTIFIER = tunable1<KtNamedFunction, String>("TEST_NAME_NOT_IDENTIFIER", Severity.ERROR, NAME)
+    val TEST_NAME_NOT_IDENTIFIER = tunable1<KtNamedFunction, String>("TEST_NAME_NOT_IDENTIFIER", KotrailRule.TEST_NAMING, NAME)
 
     private inline fun <reified P : KtElement> tunable0(
         name: String,
-        default: Severity,
+        rule: KotrailRule,
         strategy: AbstractSourceElementPositioningStrategy,
     ): TunableDiagnostic0 = TunableDiagnostic0(
-        error = KtDiagnosticFactory0(name.withSuffix(Severity.ERROR, default), Severity.ERROR, strategy, P::class, KotrailDiagnosticRenderers),
-        warning = KtDiagnosticFactory0(name.withSuffix(Severity.WARNING, default), Severity.WARNING, strategy, P::class, KotrailDiagnosticRenderers),
+        rule = rule,
+        error = KtDiagnosticFactory1(name.withSuffix(Severity.ERROR, rule.defaultSeverity), Severity.ERROR, strategy, P::class, KotrailDiagnosticRenderers),
+        warning = KtDiagnosticFactory1(name.withSuffix(Severity.WARNING, rule.defaultSeverity), Severity.WARNING, strategy, P::class, KotrailDiagnosticRenderers),
     )
 
     private inline fun <reified P : KtElement, A> tunable1(
         name: String,
-        default: Severity,
+        rule: KotrailRule,
         strategy: AbstractSourceElementPositioningStrategy,
     ): TunableDiagnostic1<A> = TunableDiagnostic1(
-        error = KtDiagnosticFactory1(name.withSuffix(Severity.ERROR, default), Severity.ERROR, strategy, P::class, KotrailDiagnosticRenderers),
-        warning = KtDiagnosticFactory1(name.withSuffix(Severity.WARNING, default), Severity.WARNING, strategy, P::class, KotrailDiagnosticRenderers),
+        rule = rule,
+        error = KtDiagnosticFactory2(name.withSuffix(Severity.ERROR, rule.defaultSeverity), Severity.ERROR, strategy, P::class, KotrailDiagnosticRenderers),
+        warning = KtDiagnosticFactory2(name.withSuffix(Severity.WARNING, rule.defaultSeverity), Severity.WARNING, strategy, P::class, KotrailDiagnosticRenderers),
     )
 
     private inline fun <reified P : KtElement, A, B> tunable2(
         name: String,
-        default: Severity,
+        rule: KotrailRule,
         strategy: AbstractSourceElementPositioningStrategy,
     ): TunableDiagnostic2<A, B> = TunableDiagnostic2(
-        error = KtDiagnosticFactory2(name.withSuffix(Severity.ERROR, default), Severity.ERROR, strategy, P::class, KotrailDiagnosticRenderers),
-        warning = KtDiagnosticFactory2(name.withSuffix(Severity.WARNING, default), Severity.WARNING, strategy, P::class, KotrailDiagnosticRenderers),
+        rule = rule,
+        error = KtDiagnosticFactory3(name.withSuffix(Severity.ERROR, rule.defaultSeverity), Severity.ERROR, strategy, P::class, KotrailDiagnosticRenderers),
+        warning = KtDiagnosticFactory3(name.withSuffix(Severity.WARNING, rule.defaultSeverity), Severity.WARNING, strategy, P::class, KotrailDiagnosticRenderers),
     )
 
     private fun String.withSuffix(severity: Severity, default: Severity): String =
@@ -322,19 +344,26 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         )
     }
 
+    /**
+     * The project's note is the last parameter of every factory, so each message ends with its
+     * placeholder. The note is empty, or already prefixed with a space, so a message without one
+     * reads exactly as it did before the parameter existed.
+     */
     private fun KtDiagnosticFactoryToRendererMap.put0(diagnostic: TunableDiagnostic0, message: String) {
-        put(diagnostic.error, message)
-        put(diagnostic.warning, message)
+        val renderer: DiagnosticParameterRenderer<String> = CommonRenderers.STRING
+        put(diagnostic.error, "$message{0}", renderer)
+        put(diagnostic.warning, "$message{0}", renderer)
     }
 
     private fun KtDiagnosticFactoryToRendererMap.put1(diagnostic: TunableDiagnostic1<String>, message: String) {
-        put(diagnostic.error, message, CommonRenderers.STRING)
-        put(diagnostic.warning, message, CommonRenderers.STRING)
+        val renderer: DiagnosticParameterRenderer<String> = CommonRenderers.STRING
+        put(diagnostic.error, "$message{1}", renderer, renderer)
+        put(diagnostic.warning, "$message{1}", renderer, renderer)
     }
 
     private fun KtDiagnosticFactoryToRendererMap.put2(diagnostic: TunableDiagnostic2<String, String>, message: String) {
         val renderer: DiagnosticParameterRenderer<String> = CommonRenderers.STRING
-        put(diagnostic.error, message, renderer, renderer)
-        put(diagnostic.warning, message, renderer, renderer)
+        put(diagnostic.error, "$message{2}", renderer, renderer, renderer)
+        put(diagnostic.warning, "$message{2}", renderer, renderer, renderer)
     }
 }

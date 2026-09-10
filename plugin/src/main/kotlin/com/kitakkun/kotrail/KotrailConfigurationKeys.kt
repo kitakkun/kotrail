@@ -11,6 +11,7 @@ object KotrailConfigurationKeys {
     val CONFIG_FILE = CompilerConfigurationKey<List<String>>("configFile")
 
     val ENABLED = CompilerConfigurationKey<Boolean>(KotrailConfig.KEY_ENABLED)
+    val NOTE = CompilerConfigurationKey<String>(KotrailConfig.KEY_NOTE)
 
     val COMPOSE_MAX_NESTING = CompilerConfigurationKey<Int>(KotrailConfig.KEY_COMPOSE_MAX_NESTING)
     val TRAILING_LAMBDA_ALLOWED_PACKAGES = CompilerConfigurationKey<List<String>>(KotrailConfig.KEY_TRAILING_LAMBDA_ALLOWED_PACKAGES)
@@ -33,7 +34,10 @@ object KotrailConfigurationKeys {
         KotrailRule.switchable.associateWith { CompilerConfigurationKey<Boolean>(it.switchKey) }
     private val severityKeys: Map<KotrailRule, CompilerConfigurationKey<Severity>> =
         KotrailRule.entries.associateWith { CompilerConfigurationKey<Severity>(it.severityKey) }
+    private val noteKeys: Map<KotrailRule, CompilerConfigurationKey<String>> =
+        KotrailRule.entries.associateWith { CompilerConfigurationKey<String>(it.noteKey) }
 
     fun switchKey(rule: KotrailRule): CompilerConfigurationKey<Boolean> = switchKeys.getValue(rule)
     fun severityKey(rule: KotrailRule): CompilerConfigurationKey<Severity> = severityKeys.getValue(rule)
+    fun noteKey(rule: KotrailRule): CompilerConfigurationKey<String> = noteKeys.getValue(rule)
 }

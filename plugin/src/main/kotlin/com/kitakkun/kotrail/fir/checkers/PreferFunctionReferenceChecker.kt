@@ -6,9 +6,9 @@ import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.compose.ComposeNames
 import com.kitakkun.kotrail.fir.compose.isComposable
 import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
-import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
@@ -92,8 +92,7 @@ object PreferFunctionReferenceChecker : FirAnonymousFunctionChecker(MppCheckerKi
             else -> null
         } ?: return
         if (suggestion.form !in config.preferFunctionReferences.forms) return
-        val severity = config.severity(KotrailRule.PREFER_FUNCTION_REFERENCES)
-        reporter.reportOn(source, KotrailDiagnostics.PREFER_FUNCTION_REFERENCE.at(severity), suggestion.text)
+        reportKotrail(source, KotrailDiagnostics.PREFER_FUNCTION_REFERENCE, suggestion.text)
     }
 
     private fun referenceForCall(

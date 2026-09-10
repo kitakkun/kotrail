@@ -3,11 +3,11 @@ package com.kitakkun.kotrail.fir.checkers
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
-import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
@@ -68,8 +68,7 @@ object PreferExplicitBackingFieldChecker : FirPropertyChecker(MppCheckerKind.Com
 
         if (!references(declaration, backing)) return
 
-        val severity = context.session.kotrailConfig.severity(KotrailRule.PREFER_EXPLICIT_BACKING_FIELD)
-        reporter.reportOn(source, KotrailDiagnostics.PREFER_EXPLICIT_BACKING_FIELD.at(severity), backingName)
+        reportKotrail(source, KotrailDiagnostics.PREFER_EXPLICIT_BACKING_FIELD, backingName)
     }
 
     private fun canCarryExplicitBackingField(property: FirProperty): Boolean {

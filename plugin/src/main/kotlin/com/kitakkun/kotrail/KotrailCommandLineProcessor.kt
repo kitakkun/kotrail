@@ -30,6 +30,10 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
         allowMultipleOccurrences = true,
     )
     private val enabledOption = option(KotrailConfig.KEY_ENABLED, "<true|false>", "Whether the plugin should run")
+    private val noteOption = option(
+        KotrailConfig.KEY_NOTE, "<text>",
+        "Text appended to every Kotrail message, for the project's own reason or reference",
+    )
     private val maxNestingOption = option(
         KotrailConfig.KEY_COMPOSE_MAX_NESTING, "<int>",
         "Maximum nesting depth of composable calls inside one composable body " +
@@ -110,6 +114,10 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
         option(rule.switchKey, "<true|false>", "Whether the ${rule.key} rule runs (default true)")
     }
 
+    private val noteOptions: List<CliOption> = KotrailRule.entries.map { rule ->
+        option(rule.noteKey, "<text>", "Text appended to the ${rule.key} messages, overriding the project-wide note")
+    }
+
     private val severityOptions: List<CliOption> = KotrailRule.entries.map { rule ->
         option(
             rule.severityKey, "<error|warning>",
@@ -121,6 +129,7 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
     override val pluginOptions: Collection<CliOption> = listOf(
         configFileOption,
         enabledOption,
+        noteOption,
         maxNestingOption,
         trailingLambdaAllowedPackagesOption,
         previewRequireForOption,
@@ -137,7 +146,7 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
         testAnnotationsOption,
         testNamingStyleOption,
         testMinNameWordsOption,
-    ) + ruleOptions + severityOptions
+    ) + ruleOptions + severityOptions + noteOptions
 
     override fun processOption(
         option: AbstractCliOption,
@@ -153,9 +162,14 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
             configuration.put(KotrailConfigurationKeys.severityKey(rule), KotrailConfig.parseSeverity(name, value))
             return
         }
+        KotrailRule.byNoteKey(name)?.let { rule ->
+            configuration.put(KotrailConfigurationKeys.noteKey(rule), value)
+            return
+        }
         when (name) {
             configFileOption.optionName -> configuration.add(KotrailConfigurationKeys.CONFIG_FILE, value)
             enabledOption.optionName -> configuration.put(KotrailConfigurationKeys.ENABLED, KotrailConfig.parseBoolean(name, value))
+            noteOption.optionName -> configuration.put(KotrailConfigurationKeys.NOTE, value)
             maxNestingOption.optionName ->
                 configuration.put(KotrailConfigurationKeys.COMPOSE_MAX_NESTING, KotrailConfig.parseInt(name, value))
             trailingLambdaAllowedPackagesOption.optionName ->

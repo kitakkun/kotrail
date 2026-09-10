@@ -5,10 +5,10 @@ import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.compose.ComposeNames
 import com.kitakkun.kotrail.fir.compose.isComposable
 import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
-import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
@@ -91,8 +91,7 @@ object ComposableModifierParameterChecker : FirSimpleFunctionChecker(MppCheckerK
         }
         if (findings.isEmpty()) return
 
-        val severity = context.session.kotrailConfig.severity(KotrailRule.COMPOSE_MODIFIER_PARAMETER)
-        reporter.reportOn(source, KotrailDiagnostics.COMPOSABLE_MODIFIER_PARAMETER.at(severity), findings.joinToString("; "))
+        reportKotrail(source, KotrailDiagnostics.COMPOSABLE_MODIFIER_PARAMETER, findings.joinToString("; "))
     }
 
     /** True for a default value written as `Modifier` (resolved to the companion) or `Modifier.Companion`. */

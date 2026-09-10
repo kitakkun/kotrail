@@ -3,10 +3,10 @@ package com.kitakkun.kotrail.fir.checkers
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
-import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirCallableDeclarationChecker
@@ -85,10 +85,9 @@ object MutableCollectionInPublicApiChecker : FirCallableDeclarationChecker(MppCh
 
         // Implicit types (`fun f() = mutableListOf(1)`) have no real type-ref source; point at the declaration.
         val typeSource = resolved.source?.takeIf { it.kind !is KtFakeSourceElementKind } ?: fallback
-        val severity = context.session.kotrailConfig.severity(KotrailRule.NO_MUTABLE_COLLECTION_IN_PUBLIC_API)
-        reporter.reportOn(
+        reportKotrail(
             typeSource,
-            KotrailDiagnostics.MUTABLE_COLLECTION_IN_PUBLIC_API.at(severity),
+            KotrailDiagnostics.MUTABLE_COLLECTION_IN_PUBLIC_API,
             "$mutableText; expose $readOnlyText instead",
         )
     }

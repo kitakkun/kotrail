@@ -7,10 +7,10 @@ import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.compose.ComposeNames
 import com.kitakkun.kotrail.fir.compose.isComposable
 import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
-import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
@@ -52,13 +52,12 @@ object ComposablesPerFileChecker : FirFileChecker(MppCheckerKind.Common) {
         collectCounted(declaration.declarations, session, counted)
         if (counted.size <= limit) return
 
-        val severity = config.severity(KotrailRule.COMPOSE_COMPOSABLES_PER_FILE)
         for (function in counted.drop(limit)) {
             val source = function.source ?: continue
             if (source.kind is KtFakeSourceElementKind) continue
-            reporter.reportOn(
+            reportKotrail(
                 source,
-                KotrailDiagnostics.TOO_MANY_COMPOSABLES_IN_FILE.at(severity),
+                KotrailDiagnostics.TOO_MANY_COMPOSABLES_IN_FILE,
                 counted.size.toString(),
                 limit.toString(),
             )

@@ -3,9 +3,9 @@ package com.kitakkun.kotrail.fir.checkers
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
-import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirFunctionCallChecker
@@ -47,7 +47,7 @@ object ForbiddenCallChecker : FirFunctionCallChecker(MppCheckerKind.Common) {
         val callee = expression.calleeReference.toResolvedFunctionSymbol() ?: return
         val candidates = candidateNames(expression, callee)
         val match = forbidden.firstOrNull { it in candidates } ?: return
-        reporter.reportOn(source, KotrailDiagnostics.FORBIDDEN_CALL.at(config.severity(KotrailRule.FORBIDDEN_CALL)), match)
+        reportKotrail(source, KotrailDiagnostics.FORBIDDEN_CALL, match)
     }
 
     /** The spellings under which [callee] may be listed in the configuration. */

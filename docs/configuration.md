@@ -16,6 +16,8 @@ rule.
 | Key | Default | Meaning |
 |---|---|---|
 | `enabled` | `true` | Turns the whole plugin off when `false`. |
+| `note` | (empty) | Text appended to every Kotrail message. See [Project notes](#project-notes). |
+| `note.<rule>` | (empty) | Text appended to one rule's messages, overriding `note`. |
 | `rules.preferExplicitBackingField` | `true` | [Prefer explicit backing fields](rules/prefer-explicit-backing-field.md). |
 | `rules.narrowModelParameters` | `true` | [Narrow model parameters](rules/narrow-model-parameters.md). |
 | `narrowModelParameters.maxUnusedProperties` | `3` | How many properties of a data-class parameter may stay unread. |
@@ -107,6 +109,26 @@ suffixed name, following the compiler's own convention for deprecations: demotin
 `PASS_THROUGH_RETURN` yields `PASS_THROUGH_RETURN_WARNING`, promoting
 `WINDOW_INSETS_HANDLED_TWICE` yields `WINDOW_INSETS_HANDLED_TWICE_ERROR`. `@Suppress` uses
 whichever name is in effect.
+
+## Project notes
+
+A rule's message says what it found and what to write instead. It does not know *why your project
+decided this*, and that is often what a reader, or an assistant reading the compiler output, needs
+in order to make the right change rather than the smallest one.
+
+```properties
+note=Conventions live in CONTRIBUTING.md.
+note.preferExplicitBackingField=ViewModels expose StateFlow directly here; see ADR-014.
+```
+
+```
+e: Cases.kt:3:9 [Kotrail] This property is exposed through the backing property '_items'. Declare
+   it with an explicit backing field instead. ViewModels expose StateFlow directly here; see ADR-014.
+```
+
+The note is **appended** to the built-in message, never substituted for it, so the rewrite a rule
+asks for cannot be lost by configuring one. A rule's own `note.<rule>` replaces the project-wide
+`note` for that rule; leading and trailing whitespace is trimmed and a separating space is added.
 
 ## Passing settings
 

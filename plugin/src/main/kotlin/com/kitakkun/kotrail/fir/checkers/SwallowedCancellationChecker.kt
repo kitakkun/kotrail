@@ -3,9 +3,9 @@ package com.kitakkun.kotrail.fir.checkers
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
-import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
@@ -82,8 +82,7 @@ object SwallowedCancellationChecker : FirTryExpressionChecker(MppCheckerKind.Com
         if (receivingClause.isExplicitCancellationCatch(session)) return
         if (receivingClause.block.rethrowsOrChecksCancellation()) return
 
-        val severity = session.kotrailConfig.severity(KotrailRule.NO_SWALLOWED_CANCELLATION)
-        reporter.reportOn(catchSource, KotrailDiagnostics.SWALLOWED_CANCELLATION.at(severity))
+        reportKotrail(catchSource, KotrailDiagnostics.SWALLOWED_CANCELLATION)
     }
 
     /**

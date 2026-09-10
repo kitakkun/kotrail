@@ -7,10 +7,10 @@ import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.preconditions.CondConverter
 import com.kitakkun.kotrail.fir.preconditions.preconditionService
+import com.kitakkun.kotrail.fir.reportKotrail
 import com.kitakkun.kotrail.preconditions.Value
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
-import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirFunctionCallChecker
@@ -77,13 +77,12 @@ object PreconditionChecker : FirFunctionCallChecker(MppCheckerKind.Common) {
         }
         if (env.isEmpty()) return
 
-        val severity = config.severity(KotrailRule.PRECONDITIONS)
         for (condition in conditions) {
             val result = condition.evaluate(env) as? Value.BoolV ?: continue
             if (result.value) continue
             val text = condition.render() ?: continue
             val bindings = condition.parameters().filter { it in env }.joinToString(", ") { "$it = ${env.getValue(it).render()}" }
-            reporter.reportOn(source, KotrailDiagnostics.PRECONDITION_VIOLATED.at(severity), callee.displayName(), "$text ($bindings)")
+            reportKotrail(source, KotrailDiagnostics.PRECONDITION_VIOLATED, callee.displayName(), "$text ($bindings)")
         }
     }
 

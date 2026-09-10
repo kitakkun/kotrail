@@ -5,9 +5,9 @@ import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.compose.ComposeNames
 import com.kitakkun.kotrail.fir.compose.isComposable
 import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
-import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirSimpleFunctionChecker
@@ -57,7 +57,6 @@ object ComposableTrailingCallbackChecker : FirSimpleFunctionChecker(MppCheckerKi
         if (type.customAnnotations.any { it.toAnnotationClassId(session) == ComposeNames.COMPOSABLE }) return
 
         val target = last.source ?: return
-        val severity = config.severity(KotrailRule.COMPOSE_NO_TRAILING_CALLBACK)
-        reporter.reportOn(target, KotrailDiagnostics.COMPOSABLE_TRAILING_CALLBACK.at(severity), last.name.asString())
+        reportKotrail(target, KotrailDiagnostics.COMPOSABLE_TRAILING_CALLBACK, last.name.asString())
     }
 }

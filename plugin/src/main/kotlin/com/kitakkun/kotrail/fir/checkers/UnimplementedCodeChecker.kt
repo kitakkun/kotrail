@@ -3,9 +3,9 @@ package com.kitakkun.kotrail.fir.checkers
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
-import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirFunctionCallChecker
@@ -52,6 +52,6 @@ object UnimplementedCodeChecker : FirFunctionCallChecker(MppCheckerKind.Common) 
             is FirConstructorSymbol -> "NotImplementedError".takeIf { callee.callableId.classId == NOT_IMPLEMENTED_ERROR }
             else -> null
         } ?: return
-        reporter.reportOn(source, KotrailDiagnostics.UNIMPLEMENTED_CODE.at(config.severity(KotrailRule.NO_UNIMPLEMENTED)), found)
+        reportKotrail(source, KotrailDiagnostics.UNIMPLEMENTED_CODE, found)
     }
 }

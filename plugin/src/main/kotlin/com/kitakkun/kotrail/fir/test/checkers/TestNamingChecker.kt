@@ -4,10 +4,10 @@ import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.TestNamingStyle
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.reportKotrail
 import com.kitakkun.kotrail.fir.test.isTestFunction
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
-import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirSimpleFunctionChecker
@@ -47,21 +47,20 @@ object TestNamingChecker : FirSimpleFunctionChecker(MppCheckerKind.Common) {
         if (!declaration.symbol.isTestFunction(context.session, config.test.annotations)) return
 
         val name = declaration.name.asString()
-        val severity = config.severity(KotrailRule.TEST_NAMING)
         when (config.test.namingStyle) {
             TestNamingStyle.BACKTICKED -> {
                 val words = name.split(' ').count { it.isNotBlank() }
                 if (words >= config.test.minNameWords) return
-                reporter.reportOn(
+                reportKotrail(
                     source,
-                    KotrailDiagnostics.TEST_NAME_NOT_DESCRIPTIVE.at(severity),
+                    KotrailDiagnostics.TEST_NAME_NOT_DESCRIPTIVE,
                     name,
                     config.test.minNameWords.toString(),
                 )
             }
             TestNamingStyle.IDENTIFIER -> {
                 if (name.all { it.isLetterOrDigit() || it == '_' }) return
-                reporter.reportOn(source, KotrailDiagnostics.TEST_NAME_NOT_IDENTIFIER.at(severity), name)
+                reportKotrail(source, KotrailDiagnostics.TEST_NAME_NOT_IDENTIFIER, name)
             }
         }
     }

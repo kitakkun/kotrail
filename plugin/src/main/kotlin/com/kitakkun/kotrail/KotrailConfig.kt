@@ -146,6 +146,7 @@ data class KotrailConfig(
     val enabled: Boolean,
     private val switches: Map<KotrailRule, Boolean>,
     private val severities: Map<KotrailRule, Severity>,
+    private val notes: Map<KotrailRule, String>,
     val compose: KotrailComposeSettings,
     val narrowModelParameters: KotrailNarrowModelParameters,
     val preferFunctionReferences: KotrailPreferFunctionReferences,
@@ -159,6 +160,15 @@ data class KotrailConfig(
     fun isEnabled(rule: KotrailRule): Boolean = switches[rule] ?: true
 
     fun severity(rule: KotrailRule): Severity = severities[rule] ?: rule.defaultSeverity
+
+    /**
+     * The project's own text for this rule, appended to the built-in message and already prefixed
+     * with a space, or empty. A rule's own `note.<key>` wins over the project-wide `note`.
+     *
+     * The note is added to the message the rule always reports, never substituted for it, so the
+     * rewrite a rule asks for cannot be lost by configuring one.
+     */
+    fun note(rule: KotrailRule): String = notes[rule].orEmpty()
 
     companion object {
         const val DEFAULT_COMPOSE_MAX_NESTING = 5
@@ -187,6 +197,7 @@ data class KotrailConfig(
         const val DEFAULT_TEST_MIN_NAME_WORDS = 3
 
         const val KEY_ENABLED = "enabled"
+        const val KEY_NOTE = "note"
         const val KEY_COMPOSE_MAX_NESTING = "compose.maxNesting"
         const val KEY_TRAILING_LAMBDA_ALLOWED_PACKAGES = "compose.trailingLambdaAllowedPackages"
         const val KEY_PREVIEW_REQUIRE_FOR = "compose.preview.requireFor"
@@ -206,6 +217,7 @@ data class KotrailConfig(
 
         val SETTING_KEYS = listOf(
             KEY_ENABLED,
+            KEY_NOTE,
             KEY_COMPOSE_MAX_NESTING,
             KEY_TRAILING_LAMBDA_ALLOWED_PACKAGES,
             KEY_PREVIEW_REQUIRE_FOR,
@@ -224,8 +236,10 @@ data class KotrailConfig(
             KEY_TEST_MIN_NAME_WORDS,
         )
 
-        val ALL_KEYS: List<String> =
-            SETTING_KEYS + KotrailRule.switchable.map { it.switchKey } + KotrailRule.entries.map { it.severityKey }
+        val ALL_KEYS: List<String> = SETTING_KEYS +
+            KotrailRule.switchable.map { it.switchKey } +
+            KotrailRule.entries.map { it.severityKey } +
+            KotrailRule.entries.map { it.noteKey }
 
         @OptIn(ExperimentalCompilerApi::class)
         fun from(configuration: CompilerConfiguration): KotrailConfig {
@@ -240,6 +254,14 @@ data class KotrailConfig(
                 configuration.get(KotrailConfigurationKeys.severityKey(rule))
                     ?: file.getProperty(rule.severityKey)?.let { parseSeverity(rule.severityKey, it) }
                     ?: rule.defaultSeverity
+            }
+
+            val projectNote = configuration.get(KotrailConfigurationKeys.NOTE) ?: file.getProperty(KEY_NOTE)
+            val notes = KotrailRule.entries.associateWith { rule ->
+                val text = configuration.get(KotrailConfigurationKeys.noteKey(rule))
+                    ?: file.getProperty(rule.noteKey)
+                    ?: projectNote
+                if (text.isNullOrBlank()) "" else " " + text.trim()
             }
 
             val maxNesting = configuration.get(KotrailConfigurationKeys.COMPOSE_MAX_NESTING)
@@ -296,6 +318,7 @@ data class KotrailConfig(
                 enabled = configuration.get(KotrailConfigurationKeys.ENABLED) ?: file.boolean(KEY_ENABLED) ?: true,
                 switches = switches,
                 severities = severities,
+                notes = notes,
                 compose = KotrailComposeSettings(
                     maxNesting = maxNesting,
                     trailingLambdaAllowedPackages = trailingAllowed,

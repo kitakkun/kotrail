@@ -6,12 +6,11 @@ import com.kitakkun.kotrail.comments.CommentKind
 import com.kitakkun.kotrail.comments.CommentScanner
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.KtSourceElementOffsetStrategy
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
-import org.jetbrains.kotlin.diagnostics.Severity
-import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fakeElement
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
@@ -34,7 +33,6 @@ object CommentLengthChecker : FirFileChecker(MppCheckerKind.Common) {
         val settings = config.comments
         val source = declaration.source ?: return
         val text = source.text ?: return
-        val severity = config.severity(KotrailRule.COMMENT_LENGTH)
 
         val comments = CommentScanner.scan(text)
         val anchor = RangeAnchor(source, text, comments)
@@ -53,21 +51,21 @@ object CommentLengthChecker : FirFileChecker(MppCheckerKind.Common) {
                     val lines = last - index + 1
                     if (settings.maxLines > 0 && lines > settings.maxLines) {
                         report(anchor, comment.startOffset, comments[last].endOffset,
-                            "$lines consecutive comment lines (limit ${settings.maxLines})", severity)
+                            "$lines consecutive comment lines (limit ${settings.maxLines})")
                     }
                     index = last + 1
                 }
                 CommentKind.BLOCK -> {
                     if (settings.maxLines > 0 && comment.lineCount > settings.maxLines) {
                         report(anchor, comment.startOffset, comment.endOffset,
-                            "block comment spans ${comment.lineCount} lines (limit ${settings.maxLines})", severity)
+                            "block comment spans ${comment.lineCount} lines (limit ${settings.maxLines})")
                     }
                     index++
                 }
                 CommentKind.KDOC -> {
                     if (settings.maxKDocLines > 0 && comment.lineCount > settings.maxKDocLines) {
                         report(anchor, comment.startOffset, comment.endOffset,
-                            "KDoc spans ${comment.lineCount} lines (limit ${settings.maxKDocLines})", severity)
+                            "KDoc spans ${comment.lineCount} lines (limit ${settings.maxKDocLines})")
                     }
                     index++
                 }
@@ -86,9 +84,9 @@ object CommentLengthChecker : FirFileChecker(MppCheckerKind.Common) {
     }
 
     context(reporter: DiagnosticReporter, context: CheckerContext)
-    private fun report(anchor: RangeAnchor, startOffset: Int, endOffset: Int, description: String, severity: Severity) {
+    private fun report(anchor: RangeAnchor, startOffset: Int, endOffset: Int, description: String) {
         val range = anchor.elementFor(startOffset, endOffset) ?: return
-        reporter.reportOn(range, KotrailDiagnostics.COMMENT_TOO_LONG.at(severity), description)
+        reportKotrail(range, KotrailDiagnostics.COMMENT_TOO_LONG, description)
     }
 
     /**

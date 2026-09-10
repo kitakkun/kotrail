@@ -3,9 +3,9 @@ package com.kitakkun.kotrail.fir.checkers
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
-import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
@@ -61,8 +61,7 @@ object PassThroughReturnChecker : FirSimpleFunctionChecker(MppCheckerKind.Common
         }.toSet()
 
         val single = returned.singleOrNull() ?: return
-        val severity = context.session.kotrailConfig.severity(KotrailRule.NO_PASS_THROUGH_RETURN)
-        reporter.reportOn(source, KotrailDiagnostics.PASS_THROUGH_RETURN.at(severity), declaration.name.asString(), single)
+        reportKotrail(source, KotrailDiagnostics.PASS_THROUGH_RETURN, declaration.name.asString(), single)
     }
 
     private fun FirExpression.unwrapSmartCast(): FirExpression =

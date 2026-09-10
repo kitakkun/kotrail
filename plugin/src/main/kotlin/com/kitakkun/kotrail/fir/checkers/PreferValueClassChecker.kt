@@ -5,11 +5,11 @@ package com.kitakkun.kotrail.fir.checkers
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
-import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirRegularClassChecker
@@ -85,7 +85,6 @@ object PreferValueClassChecker : FirRegularClassChecker(MppCheckerKind.Common) {
         }
         if (hasOtherStoredProperty) return
 
-        val severity = context.session.kotrailConfig.severity(KotrailRule.PREFER_VALUE_CLASS)
-        reporter.reportOn(source, KotrailDiagnostics.PREFER_VALUE_CLASS.at(severity), declaration.name.asString())
+        reportKotrail(source, KotrailDiagnostics.PREFER_VALUE_CLASS, declaration.name.asString())
     }
 }

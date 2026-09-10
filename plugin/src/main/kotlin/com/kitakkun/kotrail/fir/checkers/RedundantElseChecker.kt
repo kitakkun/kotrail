@@ -3,11 +3,11 @@ package com.kitakkun.kotrail.fir.checkers
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
-import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
@@ -56,11 +56,10 @@ object RedundantElseChecker : FirWhenExpressionChecker(MppCheckerKind.Common) {
         val subjectType = expression.subjectVariable?.returnTypeRef?.coneType ?: return
         if (!subjectType.isSealedEnumOrBoolean(context.session)) return
 
-        val severity = context.session.kotrailConfig.severity(KotrailRule.NO_REDUNDANT_ELSE)
         for (branch in expression.branches) {
             if (branch.condition !is FirElseIfTrueCondition) continue
             val branchSource = branch.source ?: continue
-            reporter.reportOn(branchSource, KotrailDiagnostics.REDUNDANT_ELSE_IN_EXHAUSTIVE_WHEN.at(severity))
+            reportKotrail(branchSource, KotrailDiagnostics.REDUNDANT_ELSE_IN_EXHAUSTIVE_WHEN)
         }
     }
 

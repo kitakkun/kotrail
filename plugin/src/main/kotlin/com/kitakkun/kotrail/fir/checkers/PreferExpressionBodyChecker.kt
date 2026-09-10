@@ -3,10 +3,10 @@ package com.kitakkun.kotrail.fir.checkers
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtRealSourceElementKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
-import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirSimpleFunctionChecker
@@ -46,7 +46,6 @@ object PreferExpressionBodyChecker : FirSimpleFunctionChecker(MppCheckerKind.Com
         // `return` without a value: the result is a synthesized `Unit`, and `= Unit` would not read better.
         if (statement.result.source?.kind is KtFakeSourceElementKind.ImplicitUnit) return
 
-        val severity = context.session.kotrailConfig.severity(KotrailRule.PREFER_EXPRESSION_BODY)
-        reporter.reportOn(source, KotrailDiagnostics.PREFER_EXPRESSION_BODY.at(severity))
+        reportKotrail(source, KotrailDiagnostics.PREFER_EXPRESSION_BODY)
     }
 }

@@ -4,9 +4,9 @@ import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.compose.insets.WindowInsetsNames
 import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
-import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
@@ -47,9 +47,9 @@ object ComposableNestingChecker : FirSimpleFunctionChecker(MppCheckerKind.Common
 
         val walker = NestingWalker(context.session, max) { call, depth ->
             val target = call.calleeReference.source ?: call.source ?: return@NestingWalker
-            reporter.reportOn(
+            reportKotrail(
                 target,
-                KotrailDiagnostics.COMPOSABLE_NESTING_TOO_DEEP.at(config.severity(KotrailRule.COMPOSE_NESTING)),
+                KotrailDiagnostics.COMPOSABLE_NESTING_TOO_DEEP,
                 depth.toString(),
                 max.toString(),
             )

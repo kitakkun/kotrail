@@ -3,9 +3,9 @@ package com.kitakkun.kotrail.fir.checkers
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
-import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
@@ -40,7 +40,6 @@ object IgnoredExceptionChecker : FirTryExpressionChecker(MppCheckerKind.Common) 
         if (!context.session.kotrailConfig.isEnabled(KotrailRule.NO_IGNORED_EXCEPTION)) return
         val source = expression.source ?: return
         if (source.kind is KtFakeSourceElementKind) return
-        val severity = context.session.kotrailConfig.severity(KotrailRule.NO_IGNORED_EXCEPTION)
 
         for (catch in expression.catches) {
             val catchSource = catch.source ?: continue
@@ -49,7 +48,7 @@ object IgnoredExceptionChecker : FirTryExpressionChecker(MppCheckerKind.Common) 
             val usage = UsageVisitor(catch.parameter.symbol)
             catch.block.accept(usage)
             if (usage.referencesParameter || usage.throws) continue
-            reporter.reportOn(catchSource, KotrailDiagnostics.IGNORED_EXCEPTION.at(severity), catch.parameter.name.asString())
+            reportKotrail(catchSource, KotrailDiagnostics.IGNORED_EXCEPTION, catch.parameter.name.asString())
         }
     }
 

@@ -4,9 +4,9 @@ import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.compose.insets.windowInsetsHandlingService
 import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
-import org.jetbrains.kotlin.diagnostics.reportOn
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirSimpleFunctionChecker
@@ -42,13 +42,13 @@ object HandlesWindowInsetsContractChecker : FirSimpleFunctionChecker(MppCheckerK
 
         val config = context.session.kotrailConfig
         if (analysis?.unverifiable == true) {
-            reporter.reportOn(
+            reportKotrail(
                 source,
-                KotrailDiagnostics.WINDOW_INSETS_HANDLING_UNVERIFIABLE.at(config.severity(KotrailRule.COMPOSE_WINDOW_INSETS_UNVERIFIABLE)),
+                KotrailDiagnostics.WINDOW_INSETS_HANDLING_UNVERIFIABLE,
                 missing.describe(),
             )
         } else {
-            reporter.reportOn(source, KotrailDiagnostics.WINDOW_INSETS_NOT_HANDLED.at(config.severity(KotrailRule.COMPOSE_WINDOW_INSETS)), missing.describe())
+            reportKotrail(source, KotrailDiagnostics.WINDOW_INSETS_NOT_HANDLED, missing.describe())
         }
     }
 }
