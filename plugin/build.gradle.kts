@@ -43,6 +43,14 @@ publishing {
             from(components["java"])
             artifactId = "kotrail-compiler-plugin"
             version = "$kotlinCompilerVersion-${project.version}"
+            pom {
+                licenses {
+                    license {
+                        name = "The Apache License, Version 2.0"
+                        url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
+                    }
+                }
+            }
         }
     }
     repositories {

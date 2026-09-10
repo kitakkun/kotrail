@@ -65,6 +65,14 @@ publishing {
     publications.withType<MavenPublication>().configureEach {
         // java-gradle-plugin creates `pluginMaven` (the plugin itself) and one marker publication.
         if (name == "pluginMaven") artifactId = "kotrail-gradle-plugin"
+        pom {
+            licenses {
+                license {
+                    name = "The Apache License, Version 2.0"
+                    url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
+                }
+            }
+        }
     }
     repositories {
         maven {

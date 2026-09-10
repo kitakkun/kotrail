@@ -18,6 +18,14 @@ publishing {
         create<MavenPublication>("maven") {
             from(components["java"])
             artifactId = "kotrail-annotations"
+            pom {
+                licenses {
+                    license {
+                        name = "The Apache License, Version 2.0"
+                        url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
+                    }
+                }
+            }
         }
     }
     repositories {
