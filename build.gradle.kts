@@ -1,7 +1,11 @@
+import com.vanniktech.maven.publish.MavenPublishBaseExtension
+
 plugins {
     kotlin("jvm") apply false
     id("org.jetbrains.kotlin.plugin.compose") apply false
     id("org.jetbrains.compose") apply false
+    id("com.vanniktech.maven.publish") apply false
+    id("com.gradle.plugin-publish") apply false
 }
 
 // The Kotlin compiler version this build compiles and tests against. Selected by the
@@ -48,6 +52,43 @@ val publishedKotlinVersions = listOf("2.3.21", "2.4.0")
 extra["kotlinCompilerVersion"] = kotlinCompilerVersion
 extra["kotlinCompatFamily"] = kotlinCompatFamily(kotlinCompilerVersion)
 extra["publishedKotlinVersions"] = publishedKotlinVersions
+
+// What every published module shares: the Maven Central target, signing, and the POM fields that
+// describe the project rather than one artifact. Each module adds its own coordinates, name and
+// description. Uploads land in a Central Portal deployment that still has to be released;
+// the release workflow runs `publishAndReleaseToMavenCentral`, which does both. Signing is only
+// required for a non-snapshot version, so local builds and the functional test publish unsigned.
+subprojects {
+    plugins.withId("com.vanniktech.maven.publish") {
+        extensions.configure<MavenPublishBaseExtension> {
+            publishToMavenCentral()
+            signAllPublications()
+            pom {
+                url.set("https://github.com/kitakkun/kotrail")
+                inceptionYear.set("2026")
+                licenses {
+                    license {
+                        name.set("The Apache License, Version 2.0")
+                        url.set("https://www.apache.org/licenses/LICENSE-2.0.txt")
+                        distribution.set("repo")
+                    }
+                }
+                developers {
+                    developer {
+                        id.set("kitakkun")
+                        name.set("kitakkun")
+                        url.set("https://github.com/kitakkun")
+                    }
+                }
+                scm {
+                    url.set("https://github.com/kitakkun/kotrail")
+                    connection.set("scm:git:git://github.com/kitakkun/kotrail.git")
+                    developerConnection.set("scm:git:ssh://git@github.com/kitakkun/kotrail.git")
+                }
+            }
+        }
+    }
+}
 
 allprojects {
     group = "com.kitakkun.kotrail"

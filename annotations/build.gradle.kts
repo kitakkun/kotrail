@@ -1,33 +1,29 @@
 // Annotations the rules recognize in user code. An ordinary Kotlin/JVM library: consumers get it
 // on their compile classpath, and the Gradle plugin adds it for them by default.
+import com.vanniktech.maven.publish.JavadocJar
+import com.vanniktech.maven.publish.KotlinJvm
+import com.vanniktech.maven.publish.SourcesJar
+
 plugins {
     kotlin("jvm")
-    `maven-publish`
+    id("com.vanniktech.maven.publish")
 }
 
 kotlin {
     jvmToolchain(21)
 }
 
-java {
-    withSourcesJar()
+// Shared POM metadata, Maven Central, and signing come from the root build script.
+mavenPublishing {
+    coordinates(artifactId = "kotrail-annotations")
+    configure(KotlinJvm(javadocJar = JavadocJar.Empty(), sourcesJar = SourcesJar.Sources()))
+    pom {
+        name.set("Kotrail annotations")
+        description.set("Annotations recognized by the Kotrail compiler plugin: @HandlesWindowInsets, @MustBeSerializable.")
+    }
 }
 
 publishing {
-    publications {
-        create<MavenPublication>("maven") {
-            from(components["java"])
-            artifactId = "kotrail-annotations"
-            pom {
-                licenses {
-                    license {
-                        name = "The Apache License, Version 2.0"
-                        url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
-                    }
-                }
-            }
-        }
-    }
     repositories {
         maven {
             name = "test"

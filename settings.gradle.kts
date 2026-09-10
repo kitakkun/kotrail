@@ -18,6 +18,8 @@ pluginManagement {
         kotlin("jvm") version kotlinCompilerVersion
         id("org.jetbrains.kotlin.plugin.compose") version kotlinCompilerVersion
         id("org.jetbrains.compose") version composeVersion
+        id("com.vanniktech.maven.publish") version "0.37.0"
+        id("com.gradle.plugin-publish") version "2.2.1"
     }
 }
 

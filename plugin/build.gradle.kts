@@ -1,8 +1,11 @@
+import com.vanniktech.maven.publish.JavadocJar
+import com.vanniktech.maven.publish.KotlinJvm
+import com.vanniktech.maven.publish.SourcesJar
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     kotlin("jvm")
-    `maven-publish`
+    id("com.vanniktech.maven.publish")
 }
 
 val kotlinCompilerVersion: String by rootProject.extra
@@ -30,29 +33,23 @@ tasks.withType<KotlinCompile>().configureEach {
     }
 }
 
-java {
-    withSourcesJar()
-}
-
 // The JAR links against one Kotlin compiler, so the Kotlin version leads the artifact version:
 // kotrail-compiler-plugin:2.4.0-0.1.0. The Gradle plugin composes the same coordinate from the
-// Kotlin version a consumer applies. See docs/supported-kotlin-versions.md.
-publishing {
-    publications {
-        create<MavenPublication>("maven") {
-            from(components["java"])
-            artifactId = "kotrail-compiler-plugin"
-            version = "$kotlinCompilerVersion-${project.version}"
-            pom {
-                licenses {
-                    license {
-                        name = "The Apache License, Version 2.0"
-                        url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
-                    }
-                }
-            }
-        }
+// Kotlin version a consumer applies. See docs/supported-kotlin-versions.md. Shared POM metadata,
+// Maven Central, and signing come from the root build script.
+mavenPublishing {
+    coordinates(artifactId = "kotrail-compiler-plugin", version = "$kotlinCompilerVersion-${project.version}")
+    configure(KotlinJvm(javadocJar = JavadocJar.Empty(), sourcesJar = SourcesJar.Sources()))
+    pom {
+        name.set("Kotrail compiler plugin")
+        description.set(
+            "Compiler checker rules that keep Kotlin code durable when developing with AI. " +
+                "Built for Kotlin $kotlinCompilerVersion.",
+        )
     }
+}
+
+publishing {
     repositories {
         maven {
             name = "test"

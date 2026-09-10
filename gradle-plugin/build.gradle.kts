@@ -2,10 +2,13 @@
 // Kotlin version: it compiles against the oldest Kotlin Gradle plugin API Kotrail supports and
 // resolves the compiler-plugin artifact matching the consumer's Kotlin version at configuration
 // time.
+import com.vanniktech.maven.publish.GradlePublishPlugin
+
 plugins {
     kotlin("jvm")
     `java-gradle-plugin`
-    `maven-publish`
+    id("com.gradle.plugin-publish")
+    id("com.vanniktech.maven.publish")
 }
 
 val kotlinCompilerVersion: String by rootProject.extra
@@ -24,12 +27,15 @@ dependencies {
 }
 
 gradlePlugin {
+    website.set("https://github.com/kitakkun/kotrail")
+    vcsUrl.set("https://github.com/kitakkun/kotrail")
     plugins {
         create("kotrail") {
             id = "com.kitakkun.kotrail"
             displayName = "Kotrail"
             description = "Compiler checker rules that keep Kotlin code durable when developing with AI"
             implementationClass = "com.kitakkun.kotrail.gradle.KotrailGradlePlugin"
+            tags.set(listOf("kotlin", "compiler-plugin", "lint", "static-analysis", "compose"))
         }
     }
 }
@@ -61,19 +67,21 @@ kotlin.sourceSets.main {
     kotlin.srcDir(generateVersionSource)
 }
 
-publishing {
-    publications.withType<MavenPublication>().configureEach {
-        // java-gradle-plugin creates `pluginMaven` (the plugin itself) and one marker publication.
-        if (name == "pluginMaven") artifactId = "kotrail-gradle-plugin"
-        pom {
-            licenses {
-                license {
-                    name = "The Apache License, Version 2.0"
-                    url = "https://www.apache.org/licenses/LICENSE-2.0.txt"
-                }
-            }
-        }
+// Maven Central carries the plugin and its marker alongside the other artifacts; the Gradle Plugin
+// Portal (`publishPlugins`) is what lets `id("com.kitakkun.kotrail")` resolve with no repository
+// setup. Shared POM metadata, Maven Central, and signing come from the root build script;
+// com.gradle.plugin-publish already adds the sources and javadoc JARs, which is what
+// GradlePublishPlugin accounts for.
+mavenPublishing {
+    coordinates(artifactId = "kotrail-gradle-plugin")
+    configure(GradlePublishPlugin())
+    pom {
+        name.set("Kotrail Gradle plugin")
+        description.set("Applies the Kotrail compiler plugin to a project's Kotlin compilations.")
     }
+}
+
+publishing {
     repositories {
         maven {
             name = "test"

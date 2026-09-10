@@ -141,6 +141,9 @@ into the matching source set and compile. Diagnostic names are rendered in the o
 New fixtures under `compiler-tests/testData/` become tests after
 `./gradlew :compiler-tests:generateTests`, which `build` runs automatically.
 
+Releases are cut from CI by pushing a `v*` tag; the compiler plugin is published once per
+supported Kotlin version. See [`docs/publishing.md`](docs/publishing.md).
+
 ## Roadmap
 
 - [x] Plugin skeleton, FIR checker infrastructure, official test infrastructure
