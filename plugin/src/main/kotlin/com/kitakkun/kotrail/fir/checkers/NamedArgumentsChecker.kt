@@ -36,7 +36,7 @@ import org.jetbrains.kotlin.fir.types.renderReadable
  * move(1, 2, z = 3)              // fine: only 2 positional Int arguments
  * ```
  *
- * The threshold is `namedArguments.minSameTypeArguments`. Types are compared as declared on the
+ * The threshold is `namedArgumentsForRepeatedTypes.minArguments`. Types are compared as declared on the
  * callee's parameters, exactly (`Int` and `Int?` are different groups). Lambda arguments never
  * count. The rule stays quiet where naming is impossible or pointless: Java callees, operator
  * and infix calls, `invoke` calls, calls with a vararg parameter, and callees with fewer

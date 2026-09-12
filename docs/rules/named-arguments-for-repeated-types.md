@@ -3,7 +3,7 @@
 **Diagnostic:** `NAMED_ARGUMENTS_REQUIRED` (error, on the whole call)
 **Switch:** `rules.namedArgumentsForRepeatedTypes` (default `true`)
 **Severity key:** `severity.namedArgumentsForRepeatedTypes`
-**Setting:** `namedArguments.minSameTypeArguments` (default `3`)
+**Setting:** `namedArgumentsForRepeatedTypes.minArguments` (default `3`)
 
 ## What it rejects
 
@@ -31,7 +31,7 @@ leaves two positional `Int`s and is accepted at the default setting.
 ## When it fires
 
 A resolved call to a Kotlin function or constructor passes at least
-`namedArguments.minSameTypeArguments` **positional** arguments to parameters that share one
+`namedArgumentsForRepeatedTypes.minArguments` **positional** arguments to parameters that share one
 **declared** type. Types are compared exactly: `Int` and `Int?` form different groups, and a
 generic `T` parameter is one group regardless of what it is inferred to. One diagnostic is
 reported per call, describing the largest offending group.
@@ -45,7 +45,7 @@ reported per call, describing the largest offending group.
 - The callee is a Java method or constructor: Kotlin cannot name its arguments.
 - Operator calls (`grid[1, 2, 3]`, `a + b`), infix calls, and `invoke` calls (`grid(1, 2, 3)`),
   which have no argument names at the call site.
-- `namedArguments.minSameTypeArguments` set to `1` or lower disables the rule.
+- `namedArgumentsForRepeatedTypes.minArguments` set to `1` or lower disables the rule.
 - Calls with fake sources (desugared constructs such as safe calls) and unresolved calls.
 
 ## Fixtures

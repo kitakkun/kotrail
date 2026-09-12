@@ -46,7 +46,7 @@ import org.jetbrains.kotlin.name.StandardClassIds
  *
  * A `serializer<T>()` lookup on a type without a serializer fails at runtime; here it fails when
  * the call is compiled. Contracts come from two places: callables listed in
- * `serialization.requiredFor` (every type argument of the call is checked, unless an explicit
+ * `mustBeSerializable.requiredFor` (every type argument of the call is checked, unless an explicit
  * `KSerializer` argument is passed) and `@MustBeSerializable` on the callee's type parameters or
  * value parameters.
  *

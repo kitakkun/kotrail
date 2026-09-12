@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.compose.nesting=true, compose.maxNesting=2, rules.compose.windowInsets=true, rules.compose.windowInsetsHandledTwice=false
+// KOTRAIL_CONFIG: rules.compose.nesting=true, compose.nesting.maxDepth=2, rules.compose.windowInsets=true, rules.compose.windowInsetsHandledTwice=false
 // The nesting limit is lowered to 2 while the double-handling warning alone is switched off;
 // the contract check stays on.
 import androidx.compose.foundation.layout.Box

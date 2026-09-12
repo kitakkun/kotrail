@@ -10,7 +10,7 @@ import org.jetbrains.kotlin.diagnostics.Severity
 import java.io.File
 import java.util.Properties
 
-/** Tunables for the Compose rules. Keys are `compose.<name>`. */
+/** Tunables for the Compose rules. Keys are `compose.<rule>.<name>`. */
 data class KotrailComposeSettings(
     /** Maximum nesting depth of composable calls inside one composable body; 0 disables the rule. */
     val maxNesting: Int,
@@ -72,7 +72,7 @@ data class KotrailPreferFunctionReferences(
     val forms: Set<ReferenceForm>,
 )
 
-/** Tunables for the comment-length rule. Keys are `comments.<name>`; `0` means unlimited. */
+/** Tunables for the comment-length rule. Keys are `commentLength.<name>`; `0` means unlimited. */
 data class KotrailCommentSettings(
     /** Maximum lines for a block comment or a run of consecutive `//` lines. */
     val maxLines: Int,
@@ -96,7 +96,7 @@ data class KotrailForbiddenCall(
     val functions: List<String>,
 )
 
-/** Tunables for the must-be-serializable rule. Keys are `serialization.<name>`. */
+/** Tunables for the must-be-serializable rule. Keys are `mustBeSerializable.<name>`. */
 data class KotrailSerialization(
     /**
      * Fully qualified callables whose type arguments must be serializable with kotlinx.serialization,
@@ -162,7 +162,7 @@ data class KotrailFunctionLength(
     val maxComposableLines: Int,
 )
 
-/** Tunables for the named-arguments rule. Keys are `namedArguments.<name>`. */
+/** Tunables for the named-arguments rule. Keys are `namedArgumentsForRepeatedTypes.<name>`. */
 data class KotrailNamedArguments(
     /** When at least this many positional arguments share a type, they must be named. */
     val minSameTypeArguments: Int,
@@ -266,19 +266,19 @@ data class KotrailConfig(
         const val KEY_ENABLED = "enabled"
         const val KEY_NOTE = "note"
         const val KEY_EXCLUDE = "exclude"
-        const val KEY_COMPOSE_MAX_NESTING = "compose.maxNesting"
-        const val KEY_TRAILING_LAMBDA_ALLOWED_PACKAGES = "compose.trailingLambdaAllowedPackages"
-        const val KEY_PREVIEW_REQUIRE_FOR = "compose.preview.requireFor"
-        const val KEY_MAX_COMPOSABLES_PER_FILE = "compose.maxComposablesPerFile"
-        const val KEY_SERIALIZATION_REQUIRED_FOR = "serialization.requiredFor"
+        const val KEY_COMPOSE_MAX_NESTING = "compose.nesting.maxDepth"
+        const val KEY_TRAILING_LAMBDA_ALLOWED_PACKAGES = "compose.noTrailingCallback.allowedPackages"
+        const val KEY_PREVIEW_REQUIRE_FOR = "compose.previewRequired.scope"
+        const val KEY_MAX_COMPOSABLES_PER_FILE = "compose.composablesPerFile.max"
+        const val KEY_SERIALIZATION_REQUIRED_FOR = "mustBeSerializable.requiredFor"
         const val KEY_NARROW_MODEL_MAX_UNUSED = "narrowModelParameters.maxUnusedProperties"
         const val KEY_NARROW_MODEL_SCOPE = "narrowModelParameters.scope"
         const val KEY_REFERENCE_FORMS = "preferFunctionReferences.forms"
-        const val KEY_COMMENT_MAX_LINES = "comments.maxLines"
-        const val KEY_KDOC_MAX_LINES = "comments.maxKDocLines"
+        const val KEY_COMMENT_MAX_LINES = "commentLength.maxLines"
+        const val KEY_KDOC_MAX_LINES = "commentLength.maxKDocLines"
         const val KEY_FQN_ALLOW = "noFqnReferences.allow"
         const val KEY_FORBIDDEN_FUNCTIONS = "forbiddenCall.functions"
-        const val KEY_MIN_SAME_TYPE_ARGUMENTS = "namedArguments.minSameTypeArguments"
+        const val KEY_MIN_SAME_TYPE_ARGUMENTS = "namedArgumentsForRepeatedTypes.minArguments"
         const val KEY_FUNCTION_MAX_LINES = "functionLength.maxLines"
         const val KEY_NO_DATA_CLASS_SCOPE = "noDataClassInPublicApi.scope"
         const val KEY_VISIBILITY_PRIVATE = "visibilityPolicy.private"

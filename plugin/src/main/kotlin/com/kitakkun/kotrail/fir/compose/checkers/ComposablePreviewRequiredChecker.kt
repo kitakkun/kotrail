@@ -49,7 +49,7 @@ import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
  * Keeping the preview next to the component is the convention this rule enforces; it is also
  * what lets the check stay a single-file, frontend check. Multipreview annotations (annotations
  * themselves annotated with `@Preview`) count as previews. The composables inspected are the
- * `Unit`-returning ones whose visibility falls under `compose.preview.requireFor`; preview
+ * `Unit`-returning ones whose visibility falls under `compose.previewRequired.scope`; preview
  * functions, `override` / `expect` functions, and local functions are left alone.
  */
 object ComposablePreviewRequiredChecker : FirFileChecker(MppCheckerKind.Common) {

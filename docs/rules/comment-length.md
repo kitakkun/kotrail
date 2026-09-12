@@ -3,7 +3,7 @@
 **Diagnostic:** `COMMENT_TOO_LONG` (error, on the comment)
 **Switch:** `rules.commentLength` (default `true`)
 **Severity key:** `severity.commentLength`
-**Settings:** `comments.maxLines` (default `5`), `comments.maxKDocLines` (default `0`, unlimited)
+**Settings:** `commentLength.maxLines` (default `5`), `commentLength.maxKDocLines` (default `0`, unlimited)
 
 ## What it rejects
 
@@ -30,7 +30,7 @@ needs length belongs in KDoc, which has its own budget.
   length is the number of lines. A blank line, code, or a trailing comment (`val x = 1 // ...`)
   ends the run. Trailing comments themselves never count.
 - A `/* */` comment counts the lines it spans.
-- A KDoc (`/** */`) counts the lines it spans, against `comments.maxKDocLines`.
+- A KDoc (`/** */`) counts the lines it spans, against `commentLength.maxKDocLines`.
 
 A block is reported once, on its whole range, when it exceeds the limit. `0` disables a limit.
 

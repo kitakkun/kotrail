@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.namedArgumentsForRepeatedTypes=true, namedArguments.minSameTypeArguments=2
+// KOTRAIL_CONFIG: rules.namedArgumentsForRepeatedTypes=true, namedArgumentsForRepeatedTypes.minArguments=2
 // With the threshold lowered to 2, a pair of positional arguments of one type already needs names.
 fun pair(x: Int, y: Int) {}
 fun two(count: Int, label: String) {}

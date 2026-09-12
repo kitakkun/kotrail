@@ -3,7 +3,7 @@
 **Diagnostic:** `TYPE_NOT_SERIALIZABLE` (error, on the call)
 **Switch:** `rules.mustBeSerializable` (default `true`)
 **Severity key:** `severity.mustBeSerializable`
-**Setting:** `serialization.requiredFor` (default `androidx.compose.runtime.saveable.rememberSerializable`)
+**Setting:** `mustBeSerializable.requiredFor` (default `androidx.compose.runtime.saveable.rememberSerializable`)
 **Artifact:** `annotations` (`com.kitakkun.kotrail.serialization.MustBeSerializable`)
 
 ## What it rejects
@@ -33,7 +33,7 @@ the code runs; this rule moves the failure to the compiler.
 
 Two sources of contracts are checked at every call site:
 
-- **Configured callables** (`serialization.requiredFor`): every type argument of the call,
+- **Configured callables** (`mustBeSerializable.requiredFor`): every type argument of the call,
   explicit or inferred, must be serializable. A call that passes an explicit `KSerializer`
   argument is exempt. `rememberSerializable` is listed by default.
 - **`@MustBeSerializable`** on the callee's own declaration: on a type parameter

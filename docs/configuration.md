@@ -29,8 +29,8 @@ rule.
 | `rules.preferFunctionReferences` | `true` | [Prefer function references](rules/prefer-function-references.md). |
 | `preferFunctionReferences.forms` | `topLevel,bound,typeQualified` | Which reference shapes the rule asks for; drop `typeQualified` to keep `{ it.readText() }`. |
 | `rules.commentLength` | `true` | [Comment length](rules/comment-length.md). |
-| `comments.maxLines` | `5` | Longest allowed block comment or run of consecutive `//` lines; `0` for unlimited. |
-| `comments.maxKDocLines` | `0` | Longest allowed KDoc; `0` for unlimited. |
+| `commentLength.maxLines` | `5` | Longest allowed block comment or run of consecutive `//` lines; `0` for unlimited. |
+| `commentLength.maxKDocLines` | `0` | Longest allowed KDoc; `0` for unlimited. |
 | `rules.noFqnReferences` | `true` | [No FQN references](rules/no-fqn-references.md). |
 | `noFqnReferences.allow` | (empty) | Package prefixes whose members may be referenced fully qualified. |
 | `rules.noRedundantElse` | `true` | [No redundant else](rules/no-redundant-else.md). |
@@ -48,9 +48,9 @@ rule.
 | `visibilityPolicy.private` | (empty) | A predicate (see [Excluding by pattern](#excluding-by-pattern)); matching declarations must be `private`. |
 | `visibilityPolicy.internal` | (empty) | The same; matching declarations must be `internal` or `private`. |
 | `rules.namedArgumentsForRepeatedTypes` | `true` | [Named arguments for repeated types](rules/named-arguments-for-repeated-types.md). |
-| `namedArguments.minSameTypeArguments` | `3` | How many positional arguments of one type require names. |
+| `namedArgumentsForRepeatedTypes.minArguments` | `3` | How many positional arguments of one type require names. |
 | `rules.mustBeSerializable` | `true` | [Must be serializable](rules/must-be-serializable.md). |
-| `serialization.requiredFor` | `androidx.compose.runtime.saveable.rememberSerializable` | Callables whose type arguments must be serializable, in addition to `@MustBeSerializable` contracts. |
+| `mustBeSerializable.requiredFor` | `androidx.compose.runtime.saveable.rememberSerializable` | Callables whose type arguments must be serializable, in addition to `@MustBeSerializable` contracts. |
 | `rules.noUnimplemented` | `true` | [No unimplemented code](rules/no-unimplemented.md). |
 | `rules.preconditions` | `true` | [Preconditions](rules/preconditions.md): call-site check and inferred metadata. |
 | `rules.functionLength` | `true` | [Function length](rules/function-length.md). |
@@ -60,16 +60,16 @@ rule.
 | `rules.compose.windowInsetsHandledTwice` | `true` | Doubled inset padding warning (needs `rules.compose.windowInsets`). |
 | `rules.compose.stateDelegation` | `true` | [State delegation](rules/compose/state-delegation.md). |
 | `rules.compose.nesting` | `true` | [Nesting limit](rules/compose/nesting.md). |
-| `compose.maxNesting` | `5` | Nesting limit for composable calls; `0` disables the rule. |
+| `compose.nesting.maxDepth` | `5` | Nesting limit for composable calls; `0` disables the rule. |
 | `rules.compose.noTrailingCallback` | `true` | [No trailing callback](rules/compose/no-trailing-callback.md). |
 | `rules.compose.naming` | `true` | [Composable naming](rules/compose/naming.md). |
 | `rules.compose.modifierParameter` | `true` | [Modifier parameter](rules/compose/modifier-parameter.md). |
 | `rules.compose.namedCallbackArguments` | `true` | [Named callback arguments](rules/compose/named-callback-arguments.md). |
-| `compose.trailingLambdaAllowedPackages` | `androidx.compose.runtime` | Packages whose composables may still take a callback as a trailing lambda. |
+| `compose.noTrailingCallback.allowedPackages` | `androidx.compose.runtime` | Packages whose composables may still take a callback as a trailing lambda. |
 | `rules.compose.previewRequired` | `true` | [Preview required](rules/compose/preview-required.md). |
-| `compose.preview.requireFor` | `internal` | Which UI composables need a `@Preview` in their file: `public`, `internal` (public and internal), or `all`. |
+| `compose.previewRequired.scope` | `internal` | Which UI composables need a `@Preview` in their file: `public`, `internal` (public and internal), or `all`. |
 | `rules.compose.composablesPerFile` | `true` | [Composables per file](rules/compose/composables-per-file.md). |
-| `compose.maxComposablesPerFile` | `3` | Maximum non-private UI composables in one file, previews excluded; `0` disables. |
+| `compose.composablesPerFile.max` | `3` | Maximum non-private UI composables in one file, previews excluded; `0` disables. |
 | `rules.test.naming` | `true` | [Test naming](rules/test/naming.md). |
 | `test.annotations` | `kotlin.test` and JUnit 4/5 test annotations | Fully qualified annotations that mark a function as a test. Replaces the default list. |
 | `test.naming.style` | `backticked` | `backticked` for a sentence name, `identifier` for targets that reject spaces (Android instrumented tests). |
@@ -195,7 +195,7 @@ The file:
 
 ```properties
 # kotrail.properties
-compose.maxNesting=4
+compose.nesting.maxDepth=4
 narrowModelParameters.scope=all
 rules.noPassThroughReturn=false
 ```
@@ -208,7 +208,7 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 tasks.withType<KotlinCompile>().configureEach {
     compilerOptions.freeCompilerArgs.addAll(
         "-P", "plugin:com.kitakkun.kotrail:configFile=${projectDir.resolve("kotrail.properties")}",
-        "-P", "plugin:com.kitakkun.kotrail:compose.maxNesting=6",   // overrides the file
+        "-P", "plugin:com.kitakkun.kotrail:compose.nesting.maxDepth=6",   // overrides the file
     )
 }
 ```
@@ -277,7 +277,7 @@ exercises through a directive on its first lines. The values go through the same
 processor as real builds:
 
 ```kotlin
-// KOTRAIL_CONFIG: rules.compose.nesting=true, compose.maxNesting=2
+// KOTRAIL_CONFIG: rules.compose.nesting=true, compose.nesting.maxDepth=2
 ```
 
 Opting in keeps each fixture about one rule, and means a newly added rule cannot start reporting

@@ -29,7 +29,7 @@ fun TestConfigurationBuilder.configureKotrail() {
 object KotrailTestDirectives : SimpleDirectivesContainer() {
     /**
      * Plugin options for the module, as `key=value` pairs, e.g.
-     * `// KOTRAIL_CONFIG: rules.compose.nesting=true, compose.maxNesting=2`.
+     * `// KOTRAIL_CONFIG: rules.compose.nesting=true, compose.nesting.maxDepth=2`.
      * Keys are the same ones the command-line processor accepts.
      *
      * Rules are all off before this is applied, so a fixture enables what it exercises.

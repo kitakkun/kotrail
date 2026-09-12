@@ -13,7 +13,7 @@ import javax.inject.Inject
  *
  * ```kotlin
  * kotrail {
- *     setting("compose.maxNesting", 4)
+ *     setting("compose.nesting.maxDepth", 4)
  *     warning("commentLength")
  *     test {
  *         disable("preferExplicitBackingField")

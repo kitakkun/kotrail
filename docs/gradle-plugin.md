@@ -54,12 +54,12 @@ override's file lists just the differences:
 
 ```properties
 # kotrail.properties
-compose.maxNesting=4
+compose.nesting.maxDepth=4
 severity.commentLength=warning
 ```
 
 ```properties
-# kotrail-test.properties — maxNesting and the commentLength severity still apply
+# kotrail-test.properties — the nesting depth and the commentLength severity still apply
 rules.preferExplicitBackingField=false
 ```
 

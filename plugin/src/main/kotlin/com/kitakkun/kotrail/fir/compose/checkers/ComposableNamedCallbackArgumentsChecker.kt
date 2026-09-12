@@ -44,7 +44,7 @@ import org.jetbrains.kotlin.text
  *
  * Stays quiet outside composable functions, for non-composable callees, when the parameter is a
  * `@Composable` lambda (a real content slot), a `suspend` lambda, a receiver lambda (`LazyColumn {}`),
- * or returns a value (`remember`, `derivedStateOf`), and for callees in `compose.trailingLambdaAllowedPackages` (the Compose
+ * or returns a value (`remember`, `derivedStateOf`), and for callees in `compose.noTrailingCallback.allowedPackages` (the Compose
  * runtime effect APIs by default).
  */
 object ComposableNamedCallbackArgumentsChecker : FirFunctionCallChecker(MppCheckerKind.Common) {

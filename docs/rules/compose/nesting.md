@@ -2,7 +2,7 @@
 
 **Diagnostic:** `COMPOSABLE_NESTING_TOO_DEEP` (error, on the callee name of the first call past the limit)
 **Switch:** `rules.compose.nesting` (default `true`)
-**Setting:** `compose.maxNesting` (default `5`; `0` also disables the rule)
+**Setting:** `compose.nesting.maxDepth` (default `5`; `0` also disables the rule)
 
 ## What it rejects
 
