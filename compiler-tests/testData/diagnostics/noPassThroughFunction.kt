@@ -1,0 +1,103 @@
+// KOTRAIL_CONFIG: rules.noPassThroughFunction=true
+import kotlin.jvm.JvmStatic
+
+class User(val name: String, val age: Int)
+
+interface Repository {
+    fun save(user: User): Boolean
+    fun close()
+}
+
+class Audit {
+    fun record(event: String) {
+        println(event)
+    }
+}
+
+fun store(user: User, force: Boolean): Boolean = user.name.isNotEmpty() && force
+
+fun mutableItems(): MutableList<String> = mutableListOf("a")
+
+fun parseImpl(text: String): Int = text.length
+
+private fun hidden(text: String): Int = text.length
+
+class UserService(private val repository: Repository, private val audit: Audit) {
+    // Reported: nothing but a forwarding call to a member of a property of this.
+    fun <!PASS_THROUGH_FUNCTION!>saveUser<!>(user: User): Boolean = repository.save(user)
+
+    // Reported: a block body with one statement is the same thing.
+    fun <!PASS_THROUGH_FUNCTION!>log<!>(event: String) {
+        audit.record(event)
+    }
+
+    // Reported: a `return` does not change it either.
+    fun <!PASS_THROUGH_FUNCTION!>persist<!>(user: User, force: Boolean): Boolean {
+        return store(user, force)
+    }
+
+    // Not reported: an argument the wrapper supplies itself is a default.
+    fun saveForced(user: User): Boolean = store(user, true)
+
+    // Not reported: the arguments are reordered into different parameters, which is a decision.
+    fun describe(user: User): String = user.name + repository.save(user)
+
+    // Not reported: the receiver is a call result, so the wrapper chooses it.
+    fun closeCurrent() = current().close()
+
+    // Not reported: two statements.
+    fun saveAndLog(user: User): Boolean {
+        audit.record(user.name)
+        return repository.save(user)
+    }
+
+    private fun current(): Repository = repository
+}
+
+// Reported: an extension that only renames a member of its receiver.
+fun String.<!PASS_THROUGH_FUNCTION!>loud<!>(): String = uppercase()
+
+// Reported: the receiver is passed on as an argument, unchanged.
+fun String.<!PASS_THROUGH_FUNCTION!>size<!>(): Int = parseImpl(this)
+
+// Reported: a vararg spread through.
+fun greet(vararg names: String): String = names.joinToString(", ")
+fun <!PASS_THROUGH_FUNCTION!>hello<!>(vararg names: String): String = greet(*names)
+
+// Not reported: the wrapper narrows the type it exposes.
+fun items(): List<String> = mutableItems()
+
+// Not reported: a public function over a private callee is a facade.
+fun parse(text: String): Int = hidden(text)
+
+// Not reported: a factory over a constructor.
+fun user(name: String, age: Int): User = User(name, age)
+
+// Not reported: a default value is something of its own.
+fun measure(text: String, trim: Boolean = false): Int = parseImpl(text)
+
+// Not reported: forwarding is what an override is for.
+class ClosingRepository(private val delegate: Repository) : Repository {
+    override fun save(user: User): Boolean = delegate.save(user)
+    override fun close() = delegate.close()
+}
+
+// Not reported: an operator has to have this name.
+class Counter(private val count: Int) {
+    operator fun plus(other: Counter): Counter = add(other)
+    private fun add(other: Counter): Counter = Counter(count + other.count)
+}
+
+// Not reported: Java-facing adapters.
+object Factory {
+    @JvmStatic
+    fun make(name: String, age: Int): User = user(name, age)
+}
+
+// Not reported: inline, whether or not it does anything, is a deliberate shape.
+fun <!PASS_THROUGH_FUNCTION!>measure<!>(block: () -> Int): Int = block()
+inline fun timed(block: () -> Int): Int = measure(<!USAGE_IS_NOT_INLINABLE!>block<!>)
+
+/* GENERATED_FIR_TAGS: additiveExpression, andExpression, classDeclaration, funWithExtensionReceiver,
+functionDeclaration, functionalType, inline, interfaceDeclaration, objectDeclaration, operator, outProjection, override,
+primaryConstructor, propertyDeclaration, stringLiteral, thisExpression, vararg */

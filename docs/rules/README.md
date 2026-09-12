@@ -11,6 +11,7 @@ fixtures that pin its behavior.
 | Prefer explicit backing fields | `PREFER_EXPLICIT_BACKING_FIELD` | [prefer-explicit-backing-field.md](prefer-explicit-backing-field.md) |
 | Narrow model parameters | `MODEL_PARAMETER_TOO_WIDE` | [narrow-model-parameters.md](narrow-model-parameters.md) |
 | No pass-through return | `PASS_THROUGH_RETURN` | [no-pass-through-return.md](no-pass-through-return.md) |
+| No pass-through function | `PASS_THROUGH_FUNCTION` | [no-pass-through-function.md](no-pass-through-function.md) |
 | Prefer function references | `PREFER_FUNCTION_REFERENCE` | [prefer-function-references.md](prefer-function-references.md) |
 | Comment length | `COMMENT_TOO_LONG` | [comment-length.md](comment-length.md) |
 | No FQN references | `FQN_REFERENCE` | [no-fqn-references.md](no-fqn-references.md) |

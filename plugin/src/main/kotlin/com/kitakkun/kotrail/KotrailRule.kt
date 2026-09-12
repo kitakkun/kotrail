@@ -17,6 +17,7 @@ enum class KotrailRule(
     PREFER_EXPLICIT_BACKING_FIELD("preferExplicitBackingField", Severity.ERROR),
     NARROW_MODEL_PARAMETERS("narrowModelParameters", Severity.ERROR),
     NO_PASS_THROUGH_RETURN("noPassThroughReturn", Severity.ERROR),
+    NO_PASS_THROUGH_FUNCTION("noPassThroughFunction", Severity.ERROR),
     PREFER_FUNCTION_REFERENCES("preferFunctionReferences", Severity.ERROR),
     COMMENT_LENGTH("commentLength", Severity.ERROR),
     NO_FQN_REFERENCES("noFqnReferences", Severity.ERROR),

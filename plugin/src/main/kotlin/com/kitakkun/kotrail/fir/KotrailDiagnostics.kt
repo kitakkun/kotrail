@@ -68,6 +68,9 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Arguments: the function name, the input it returns unchanged (`this` or a parameter name). */
     val PASS_THROUGH_RETURN = tunable2<KtNamedFunction, String, String>("PASS_THROUGH_RETURN", KotrailRule.NO_PASS_THROUGH_RETURN, NAME)
 
+    /** Arguments: the function name, the callee it forwards to. */
+    val PASS_THROUGH_FUNCTION = tunable2<KtNamedFunction, String, String>("PASS_THROUGH_FUNCTION", KotrailRule.NO_PASS_THROUGH_FUNCTION, NAME)
+
     /** Argument: the callable reference that replaces the lambda, e.g. `::transform` or `User::name`. */
     val PREFER_FUNCTION_REFERENCE = tunable1<KtElement, String>("PREFER_FUNCTION_REFERENCE", KotrailRule.PREFER_FUNCTION_REFERENCES, WHOLE)
 
@@ -337,6 +340,11 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         map.put1(
             KotrailDiagnostics.COMPOSABLE_MODIFIER_PARAMETER,
             "[Kotrail] Modifier parameter convention: {0}.",
+        )
+        map.put2(
+            KotrailDiagnostics.PASS_THROUGH_FUNCTION,
+            "[Kotrail] ''{0}'' only forwards its arguments to ''{1}''. Call ''{1}'' directly, or give this " +
+                "function something of its own to do: a default, a conversion, a narrower type.",
         )
         map.put1(
             KotrailDiagnostics.DATA_CLASS_IN_PUBLIC_API,

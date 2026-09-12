@@ -13,6 +13,7 @@ import com.kitakkun.kotrail.fir.checkers.NamedArgumentsChecker
 import com.kitakkun.kotrail.fir.checkers.NarrowModelParametersChecker
 import com.kitakkun.kotrail.fir.checkers.NoFqnReferences
 import com.kitakkun.kotrail.fir.checkers.NotNullAssertionChecker
+import com.kitakkun.kotrail.fir.checkers.PassThroughFunctionChecker
 import com.kitakkun.kotrail.fir.checkers.PassThroughReturnChecker
 import com.kitakkun.kotrail.fir.checkers.PreferExplicitBackingFieldChecker
 import com.kitakkun.kotrail.fir.checkers.PreferExpressionBodyChecker
@@ -78,6 +79,7 @@ object KotrailDeclarationCheckers : DeclarationCheckers() {
         ComposableNestingChecker,
         NarrowModelParametersChecker,
         PassThroughReturnChecker,
+        PassThroughFunctionChecker,
         PreferExpressionBodyChecker,
         ComposableTrailingCallbackChecker,
         ComposableNamingChecker,

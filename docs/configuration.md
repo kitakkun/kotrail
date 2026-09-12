@@ -23,6 +23,7 @@ rule.
 | `narrowModelParameters.maxUnusedProperties` | `3` | How many properties of a data-class parameter may stay unread. |
 | `narrowModelParameters.scope` | `composables` | `composables` or `all`. |
 | `rules.noPassThroughReturn` | `true` | [No pass-through return](rules/no-pass-through-return.md). |
+| `rules.noPassThroughFunction` | `true` | [No pass-through function](rules/no-pass-through-function.md). |
 | `rules.preferFunctionReferences` | `true` | [Prefer function references](rules/prefer-function-references.md). |
 | `preferFunctionReferences.forms` | `topLevel,bound,typeQualified` | Which reference shapes the rule asks for; drop `typeQualified` to keep `{ it.readText() }`. |
 | `rules.commentLength` | `true` | [Comment length](rules/comment-length.md). |
@@ -81,6 +82,7 @@ adopt a rule gradually.
 | `severity.preferExplicitBackingField` | `error` |
 | `severity.narrowModelParameters` | `error` |
 | `severity.noPassThroughReturn` | `error` |
+| `severity.noPassThroughFunction` | `error` |
 | `severity.preferFunctionReferences` | `error` |
 | `severity.commentLength` | `error` |
 | `severity.noFqnReferences` | `error` |
