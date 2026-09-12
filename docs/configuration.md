@@ -18,6 +18,8 @@ rule.
 | `enabled` | `true` | Turns the whole plugin off when `false`. |
 | `note` | (empty) | Text appended to every Kotrail message. See [Project notes](#project-notes). |
 | `note.<rule>` | (empty) | Text appended to one rule's messages, overriding `note`. |
+| `exclude` | (empty) | A predicate over locations; matching diagnostics of every rule are dropped. See [Excluding by pattern](#excluding-by-pattern). |
+| `exclude.<rule>` | (empty) | The same, for one rule; a diagnostic is dropped when either predicate matches. |
 | `rules.preferExplicitBackingField` | `true` | [Prefer explicit backing fields](rules/prefer-explicit-backing-field.md). |
 | `rules.narrowModelParameters` | `true` | [Narrow model parameters](rules/narrow-model-parameters.md). |
 | `narrowModelParameters.maxUnusedProperties` | `3` | How many properties of a data-class parameter may stay unread. |
@@ -138,6 +140,41 @@ e: Cases.kt:3:9 [Kotrail] This property is exposed through the backing property 
 The note is **appended** to the built-in message, never substituted for it, so the rewrite a rule
 asks for cannot be lost by configuring one. A rule's own `note.<rule>` replaces the project-wide
 `note` for that rule; leading and trailing whitespace is trimmed and a separating space is added.
+
+## Excluding by pattern
+
+`@Suppress` handles one occurrence. For a structural carve-out — a generated package, every
+extension of one type, everything inside classes named a certain way — write a predicate over
+the location a diagnostic would be reported at:
+
+```properties
+exclude=package(com.acme.generated.*) || file(*Generated.kt)
+exclude.noPassThroughFunction=extension(kotlin.String) || annotated(com.acme.PublicApi)
+exclude.functionLength=test || name(main)
+exclude.noNotNullAssertion=class(*Migration) && !annotated(com.acme.Reviewed)
+```
+
+`exclude` applies to every rule and `exclude.<rule>` to one; a diagnostic is dropped when either
+matches. Predicates combine with `&&`, `||`, `!` and parentheses, and are checked when the
+configuration is read, so a typo fails the build with its position.
+
+| Predicate | True when |
+|---|---|
+| `package(glob)`, `file(glob)` | the file's package or file name matches |
+| `name(glob)` | the innermost enclosing declaration (function, property, class) has that name |
+| `class(glob)` | any enclosing class, or the declaration itself if it is a class, has that name |
+| `annotated(fqn)` | the innermost declaration or any enclosing one carries that annotation |
+| `extension`, `extension(fqn)` | the innermost declaration is an extension, of that receiver type |
+| `context`, `context(fqn)` | the innermost declaration has a context parameter, of that type |
+| `visibility(public\|internal\|protected\|private)` | the innermost declaration has that visibility |
+| `override`, `suspend`, `inline` | the innermost declaration has that modifier |
+| `composable`, `test` | the innermost function is a `@Composable`, or a test by `test.annotations` |
+
+Globs match the whole value; `*` stands for any run of characters (dots included, so
+`com.acme.*` covers nested packages) and `?` for one.
+
+The predicates describe **where** a diagnostic is, never **what** it found. "Skip calls to
+functions from package X" is a rule-specific question, and lives in that rule's own settings.
 
 ## Passing settings
 

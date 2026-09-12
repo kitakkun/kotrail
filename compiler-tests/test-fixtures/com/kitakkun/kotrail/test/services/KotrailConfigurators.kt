@@ -33,9 +33,14 @@ object KotrailTestDirectives : SimpleDirectivesContainer() {
      * Keys are the same ones the command-line processor accepts.
      *
      * Rules are all off before this is applied, so a fixture enables what it exercises.
+     *
+     * Declared multi-line so that the framework hands over the raw value: its default splitting
+     * on whitespace would cut a value such as `exclude=name(*Legacy*) || class(Gen*)` into pieces.
+     * Entries are separated here instead, on a comma followed by the next `key=`.
      */
     val KOTRAIL_CONFIG by stringDirective(
         description = "Kotrail plugin options as key=value pairs, comma separated",
+        multiLine = true,
     )
 }
 

@@ -22,6 +22,13 @@ kotlin {
 
 dependencies {
     compileOnly("org.jetbrains.kotlin:kotlin-compiler-embeddable:$kotlinCompilerVersion")
+    // Unit tests for the compiler-independent parts: the precondition and exclusion languages.
+    testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+tasks.test {
+    useJUnitPlatform()
 }
 
 tasks.withType<KotlinCompile>().configureEach {

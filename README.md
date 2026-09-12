@@ -88,7 +88,9 @@ kotrail {
 }
 ```
 
-Every rule is on at error severity with no configuration at all. See
+Every rule is on at error severity with no configuration at all. A structural carve-out is a
+predicate in the properties file, such as `exclude=package(com.acme.generated.*)` or
+`exclude.noPassThroughFunction=extension(kotlin.String)`. See
 [`docs/gradle-plugin.md`](docs/gradle-plugin.md) for the whole DSL and the artifact scheme, and
 [`docs/configuration.md`](docs/configuration.md) for every key, precedence, the properties-file
 form, and suppression.

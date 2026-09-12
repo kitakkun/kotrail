@@ -56,10 +56,14 @@ enum class KotrailRule(
     /** Key of the project's own text, appended to this rule's diagnostics. */
     val noteKey: String get() = "note.$key"
 
+    /** Key of the predicate that excludes locations from this rule. */
+    val excludeKey: String get() = "exclude.$key"
+
     companion object {
         val switchable: List<KotrailRule> = entries.filter { it.hasSwitch }
         fun bySwitchKey(key: String): KotrailRule? = switchable.firstOrNull { it.switchKey == key }
         fun bySeverityKey(key: String): KotrailRule? = entries.firstOrNull { it.severityKey == key }
         fun byNoteKey(key: String): KotrailRule? = entries.firstOrNull { it.noteKey == key }
+        fun byExcludeKey(key: String): KotrailRule? = entries.firstOrNull { it.excludeKey == key }
     }
 }

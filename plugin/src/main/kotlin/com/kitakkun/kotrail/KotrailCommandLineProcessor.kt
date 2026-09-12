@@ -30,6 +30,10 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
         allowMultipleOccurrences = true,
     )
     private val enabledOption = option(KotrailConfig.KEY_ENABLED, "<true|false>", "Whether the plugin should run")
+    private val excludeOption = option(
+        KotrailConfig.KEY_EXCLUDE, "<predicate>",
+        "Locations excluded from every rule, e.g. package(com.acme.generated.*) || annotated(com.acme.Generated)",
+    )
     private val noteOption = option(
         KotrailConfig.KEY_NOTE, "<text>",
         "Text appended to every Kotrail message, for the project's own reason or reference",
@@ -128,6 +132,10 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
         option(rule.switchKey, "<true|false>", "Whether the ${rule.key} rule runs (default true)")
     }
 
+    private val excludeOptions: List<CliOption> = KotrailRule.entries.map { rule ->
+        option(rule.excludeKey, "<predicate>", "Locations excluded from the ${rule.key} rule")
+    }
+
     private val noteOptions: List<CliOption> = KotrailRule.entries.map { rule ->
         option(rule.noteKey, "<text>", "Text appended to the ${rule.key} messages, overriding the project-wide note")
     }
@@ -143,6 +151,7 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
     override val pluginOptions: Collection<CliOption> = listOf(
         configFileOption,
         enabledOption,
+        excludeOption,
         noteOption,
         maxNestingOption,
         trailingLambdaAllowedPackagesOption,
@@ -163,7 +172,7 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
         testAnnotationsOption,
         testNamingStyleOption,
         testMinNameWordsOption,
-    ) + ruleOptions + severityOptions + noteOptions
+    ) + ruleOptions + severityOptions + noteOptions + excludeOptions
 
     override fun processOption(
         option: AbstractCliOption,
@@ -183,10 +192,15 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
             configuration.put(KotrailConfigurationKeys.noteKey(rule), value)
             return
         }
+        KotrailRule.byExcludeKey(name)?.let { rule ->
+            configuration.put(KotrailConfigurationKeys.excludeKey(rule), KotrailConfig.parseExclude(name, value))
+            return
+        }
         when (name) {
             configFileOption.optionName -> configuration.add(KotrailConfigurationKeys.CONFIG_FILE, value)
             enabledOption.optionName -> configuration.put(KotrailConfigurationKeys.ENABLED, KotrailConfig.parseBoolean(name, value))
             noteOption.optionName -> configuration.put(KotrailConfigurationKeys.NOTE, value)
+            excludeOption.optionName -> configuration.put(KotrailConfigurationKeys.EXCLUDE, KotrailConfig.parseExclude(name, value))
             maxNestingOption.optionName ->
                 configuration.put(KotrailConfigurationKeys.COMPOSE_MAX_NESTING, KotrailConfig.parseInt(name, value))
             trailingLambdaAllowedPackagesOption.optionName ->

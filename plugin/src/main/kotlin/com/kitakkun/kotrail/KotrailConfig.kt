@@ -1,5 +1,8 @@
 package com.kitakkun.kotrail
 
+import com.kitakkun.kotrail.exclude.ExcludeParser
+import com.kitakkun.kotrail.exclude.ExcludePredicate
+import com.kitakkun.kotrail.exclude.ReportSite
 import org.jetbrains.kotlin.compiler.plugin.CliOptionProcessingException
 import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
 import org.jetbrains.kotlin.config.CompilerConfiguration
@@ -102,6 +105,25 @@ data class KotrailSerialization(
     val requiredFor: List<String>,
 )
 
+/**
+ * Locations excluded from rules: the project-wide `exclude` predicate and one per rule under
+ * `exclude.<rule>`. A diagnostic is dropped when either matches where it would be reported.
+ */
+class KotrailExcludes(
+    private val everywhere: ExcludePredicate?,
+    private val perRule: Map<KotrailRule, ExcludePredicate>,
+) {
+    /** Whether any predicate applies to [rule], so that the site is only described when needed. */
+    fun isConfiguredFor(rule: KotrailRule): Boolean = everywhere != null || rule in perRule
+
+    fun matches(rule: KotrailRule, site: ReportSite): Boolean =
+        everywhere?.matches(site) == true || perRule[rule]?.matches(site) == true
+
+    companion object {
+        val NONE = KotrailExcludes(everywhere = null, perRule = emptyMap())
+    }
+}
+
 /** Which modules a library-facing rule applies to. */
 enum class PublicApiScope(val key: String) {
     /** Only modules compiled with explicit API mode, which is how a library declares itself. */
@@ -171,6 +193,7 @@ data class KotrailConfig(
     private val switches: Map<KotrailRule, Boolean>,
     private val severities: Map<KotrailRule, Severity>,
     private val notes: Map<KotrailRule, String>,
+    val excludes: KotrailExcludes,
     val compose: KotrailComposeSettings,
     val narrowModelParameters: KotrailNarrowModelParameters,
     val preferFunctionReferences: KotrailPreferFunctionReferences,
@@ -227,6 +250,7 @@ data class KotrailConfig(
 
         const val KEY_ENABLED = "enabled"
         const val KEY_NOTE = "note"
+        const val KEY_EXCLUDE = "exclude"
         const val KEY_COMPOSE_MAX_NESTING = "compose.maxNesting"
         const val KEY_TRAILING_LAMBDA_ALLOWED_PACKAGES = "compose.trailingLambdaAllowedPackages"
         const val KEY_PREVIEW_REQUIRE_FOR = "compose.preview.requireFor"
@@ -250,6 +274,7 @@ data class KotrailConfig(
         val SETTING_KEYS = listOf(
             KEY_ENABLED,
             KEY_NOTE,
+            KEY_EXCLUDE,
             KEY_COMPOSE_MAX_NESTING,
             KEY_TRAILING_LAMBDA_ALLOWED_PACKAGES,
             KEY_PREVIEW_REQUIRE_FOR,
@@ -274,7 +299,8 @@ data class KotrailConfig(
         val ALL_KEYS: List<String> = SETTING_KEYS +
             KotrailRule.switchable.map { it.switchKey } +
             KotrailRule.entries.map { it.severityKey } +
-            KotrailRule.entries.map { it.noteKey }
+            KotrailRule.entries.map { it.noteKey } +
+            KotrailRule.entries.map { it.excludeKey }
 
         @OptIn(ExperimentalCompilerApi::class)
         fun from(configuration: CompilerConfiguration): KotrailConfig {
@@ -298,6 +324,16 @@ data class KotrailConfig(
                     ?: projectNote
                 if (text.isNullOrBlank()) "" else " " + text.trim()
             }
+
+            val excludes = KotrailExcludes(
+                everywhere = configuration.get(KotrailConfigurationKeys.EXCLUDE)
+                    ?: file.getProperty(KEY_EXCLUDE)?.let { parseExclude(KEY_EXCLUDE, it) },
+                perRule = KotrailRule.entries.mapNotNull { rule ->
+                    val predicate = configuration.get(KotrailConfigurationKeys.excludeKey(rule))
+                        ?: file.getProperty(rule.excludeKey)?.let { parseExclude(rule.excludeKey, it) }
+                    predicate?.let { rule to it }
+                }.toMap(),
+            )
 
             val maxNesting = configuration.get(KotrailConfigurationKeys.COMPOSE_MAX_NESTING)
                 ?: file.int(KEY_COMPOSE_MAX_NESTING)
@@ -363,6 +399,7 @@ data class KotrailConfig(
                 switches = switches,
                 severities = severities,
                 notes = notes,
+                excludes = excludes,
                 compose = KotrailComposeSettings(
                     maxNesting = maxNesting,
                     trailingLambdaAllowedPackages = trailingAllowed,
@@ -453,6 +490,13 @@ data class KotrailConfig(
             PreviewScope.fromKey(value) ?: throw CliOptionProcessingException(
                 "Kotrail config key $key must be one of ${PreviewScope.entries.joinToString { it.key }}, got '$value'",
             )
+
+        @OptIn(ExperimentalCompilerApi::class)
+        fun parseExclude(key: String, value: String): ExcludePredicate = try {
+            ExcludeParser.parse(value)
+        } catch (e: ExcludeParser.ExcludeSyntaxException) {
+            throw CliOptionProcessingException("Kotrail config key $key: ${e.message}")
+        }
 
         @OptIn(ExperimentalCompilerApi::class)
         fun parsePublicApiScope(key: String, value: String): PublicApiScope =

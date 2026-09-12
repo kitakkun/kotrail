@@ -1,5 +1,6 @@
 package com.kitakkun.kotrail
 
+import com.kitakkun.kotrail.exclude.ExcludePredicate
 import org.jetbrains.kotlin.config.CompilerConfigurationKey
 import org.jetbrains.kotlin.diagnostics.Severity
 
@@ -12,6 +13,7 @@ object KotrailConfigurationKeys {
 
     val ENABLED = CompilerConfigurationKey<Boolean>(KotrailConfig.KEY_ENABLED)
     val NOTE = CompilerConfigurationKey<String>(KotrailConfig.KEY_NOTE)
+    val EXCLUDE = CompilerConfigurationKey<ExcludePredicate>(KotrailConfig.KEY_EXCLUDE)
 
     val COMPOSE_MAX_NESTING = CompilerConfigurationKey<Int>(KotrailConfig.KEY_COMPOSE_MAX_NESTING)
     val TRAILING_LAMBDA_ALLOWED_PACKAGES = CompilerConfigurationKey<List<String>>(KotrailConfig.KEY_TRAILING_LAMBDA_ALLOWED_PACKAGES)
@@ -39,8 +41,11 @@ object KotrailConfigurationKeys {
         KotrailRule.entries.associateWith { CompilerConfigurationKey<Severity>(it.severityKey) }
     private val noteKeys: Map<KotrailRule, CompilerConfigurationKey<String>> =
         KotrailRule.entries.associateWith { CompilerConfigurationKey<String>(it.noteKey) }
+    private val excludeKeys: Map<KotrailRule, CompilerConfigurationKey<ExcludePredicate>> =
+        KotrailRule.entries.associateWith { CompilerConfigurationKey<ExcludePredicate>(it.excludeKey) }
 
     fun switchKey(rule: KotrailRule): CompilerConfigurationKey<Boolean> = switchKeys.getValue(rule)
     fun severityKey(rule: KotrailRule): CompilerConfigurationKey<Severity> = severityKeys.getValue(rule)
     fun noteKey(rule: KotrailRule): CompilerConfigurationKey<String> = noteKeys.getValue(rule)
+    fun excludeKey(rule: KotrailRule): CompilerConfigurationKey<ExcludePredicate> = excludeKeys.getValue(rule)
 }
