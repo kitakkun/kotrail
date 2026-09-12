@@ -71,6 +71,9 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: the callable reference that replaces the lambda, e.g. `::transform` or `User::name`. */
     val PREFER_FUNCTION_REFERENCE = tunable1<KtElement, String>("PREFER_FUNCTION_REFERENCE", KotrailRule.PREFER_FUNCTION_REFERENCES, WHOLE)
 
+    /** Argument: the class name. */
+    val DATA_CLASS_IN_PUBLIC_API = tunable1<KtClass, String>("DATA_CLASS_IN_PUBLIC_API", KotrailRule.NO_DATA_CLASS_IN_PUBLIC_API, NAME)
+
     /** Argument: what was measured, e.g. `72 lines of code (limit 50)`. */
     val FUNCTION_TOO_LONG = tunable1<KtNamedFunction, String>("FUNCTION_TOO_LONG", KotrailRule.FUNCTION_LENGTH, NAME)
 
@@ -334,6 +337,12 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         map.put1(
             KotrailDiagnostics.COMPOSABLE_MODIFIER_PARAMETER,
             "[Kotrail] Modifier parameter convention: {0}.",
+        )
+        map.put1(
+            KotrailDiagnostics.DATA_CLASS_IN_PUBLIC_API,
+            "[Kotrail] ''{0}'' is a data class in the public API. Its constructor, copy() and componentN() " +
+                "become part of the binary contract, so adding a property later breaks every consumer. " +
+                "Expose a regular class with an explicit equals/hashCode instead, or make it internal.",
         )
         map.put1(
             KotrailDiagnostics.FUNCTION_TOO_LONG,

@@ -102,6 +102,22 @@ data class KotrailSerialization(
     val requiredFor: List<String>,
 )
 
+/** Which modules a library-facing rule applies to. */
+enum class PublicApiScope(val key: String) {
+    /** Only modules compiled with explicit API mode, which is how a library declares itself. */
+    EXPLICIT_API("explicitApi"),
+    ALL("all");
+
+    companion object {
+        fun fromKey(key: String): PublicApiScope? = entries.firstOrNull { it.key.equals(key.trim(), ignoreCase = true) }
+    }
+}
+
+/** Tunables for the no-data-class-in-public-API rule. Keys are `noDataClassInPublicApi.<name>`. */
+data class KotrailNoDataClassInPublicApi(
+    val scope: PublicApiScope,
+)
+
 /** Tunables for the function-length rule. Keys are `functionLength.<name>`; `0` means unlimited. */
 data class KotrailFunctionLength(
     /** Most lines of code a function body may have. */
@@ -165,6 +181,7 @@ data class KotrailConfig(
     val serialization: KotrailSerialization,
     val test: KotrailTest,
     val functionLength: KotrailFunctionLength,
+    val noDataClassInPublicApi: KotrailNoDataClassInPublicApi,
 ) {
     fun isEnabled(rule: KotrailRule): Boolean = switches[rule] ?: true
 
@@ -194,6 +211,7 @@ data class KotrailConfig(
         val DEFAULT_FORBIDDEN_FUNCTIONS: List<String> = emptyList()
         const val DEFAULT_MIN_SAME_TYPE_ARGUMENTS = 3
         const val DEFAULT_FUNCTION_MAX_LINES = 50
+        val DEFAULT_NO_DATA_CLASS_SCOPE = PublicApiScope.EXPLICIT_API
         const val DEFAULT_COMPOSABLE_MAX_LINES = 80
         val DEFAULT_TEST_ANNOTATIONS: List<String> = listOf(
             "kotlin.test.Test",
@@ -223,6 +241,7 @@ data class KotrailConfig(
         const val KEY_FORBIDDEN_FUNCTIONS = "forbiddenCall.functions"
         const val KEY_MIN_SAME_TYPE_ARGUMENTS = "namedArguments.minSameTypeArguments"
         const val KEY_FUNCTION_MAX_LINES = "functionLength.maxLines"
+        const val KEY_NO_DATA_CLASS_SCOPE = "noDataClassInPublicApi.scope"
         const val KEY_COMPOSABLE_MAX_LINES = "functionLength.maxComposableLines"
         const val KEY_TEST_ANNOTATIONS = "test.annotations"
         const val KEY_TEST_NAMING_STYLE = "test.naming.style"
@@ -246,6 +265,7 @@ data class KotrailConfig(
             KEY_MIN_SAME_TYPE_ARGUMENTS,
             KEY_FUNCTION_MAX_LINES,
             KEY_COMPOSABLE_MAX_LINES,
+            KEY_NO_DATA_CLASS_SCOPE,
             KEY_TEST_ANNOTATIONS,
             KEY_TEST_NAMING_STYLE,
             KEY_TEST_MIN_NAME_WORDS,
@@ -325,6 +345,9 @@ data class KotrailConfig(
             val composableMaxLines = configuration.get(KotrailConfigurationKeys.COMPOSABLE_MAX_LINES)
                 ?: file.int(KEY_COMPOSABLE_MAX_LINES)
                 ?: DEFAULT_COMPOSABLE_MAX_LINES
+            val noDataClassScope = configuration.get(KotrailConfigurationKeys.NO_DATA_CLASS_SCOPE)
+                ?: file.getProperty(KEY_NO_DATA_CLASS_SCOPE)?.let { parsePublicApiScope(KEY_NO_DATA_CLASS_SCOPE, it) }
+                ?: DEFAULT_NO_DATA_CLASS_SCOPE
             val testAnnotations = configuration.get(KotrailConfigurationKeys.TEST_ANNOTATIONS)
                 ?: file.getProperty(KEY_TEST_ANNOTATIONS)?.let { parseList(it) }
                 ?: DEFAULT_TEST_ANNOTATIONS
@@ -362,6 +385,7 @@ data class KotrailConfig(
                     maxLines = functionMaxLines,
                     maxComposableLines = composableMaxLines,
                 ),
+                noDataClassInPublicApi = KotrailNoDataClassInPublicApi(scope = noDataClassScope),
             )
         }
 
@@ -428,6 +452,12 @@ data class KotrailConfig(
         fun parsePreviewScope(key: String, value: String): PreviewScope =
             PreviewScope.fromKey(value) ?: throw CliOptionProcessingException(
                 "Kotrail config key $key must be one of ${PreviewScope.entries.joinToString { it.key }}, got '$value'",
+            )
+
+        @OptIn(ExperimentalCompilerApi::class)
+        fun parsePublicApiScope(key: String, value: String): PublicApiScope =
+            PublicApiScope.fromKey(value) ?: throw CliOptionProcessingException(
+                "Kotrail config key $key must be one of ${PublicApiScope.entries.joinToString { it.key }}, got '$value'",
             )
 
         @OptIn(ExperimentalCompilerApi::class)

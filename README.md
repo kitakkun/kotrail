@@ -7,7 +7,7 @@ needed) that adds checks the standard compiler does not provide. It turns the co
 team already agrees on into compile errors, so code written by AI assistants stays on the rails
 instead of drifting a little further with every generation.
 
-> **Status: early development.** Twenty-nine rules ship today, applied through a Gradle plugin.
+> **Status: early development.** Thirty rules ship today, applied through a Gradle plugin.
 > Every rule can be switched off or demoted to a warning, per project and per compilation.
 > Nothing is published yet. Feedback on the direction is very welcome.
 
@@ -52,6 +52,7 @@ Full pages, with every condition and fixture, live under [`docs/rules/`](docs/ru
 | [No ignored exception](docs/rules/no-ignored-exception.md) | A catch clause that never touches the caught exception | Handle it, rethrow it, or name it `_` deliberately |
 | [Prefer expression body](docs/rules/prefer-expression-body.md) | `fun f() { return x }` | `fun f() = x` |
 | [No mutable collection in public API](docs/rules/no-mutable-collection-in-public-api.md) | `fun items(): MutableList<Item>` | `List<Item>` |
+| [No data class in public API](docs/rules/no-data-class-in-public-api.md) | `public data class Config(...)` in a module with explicit API mode | A regular class with explicit `equals`/`hashCode`, or `internal` |
 | [Named arguments for repeated types](docs/rules/named-arguments-for-repeated-types.md) | `Padding(8, 16, 8, 16)` | `Padding(start = 8, top = 16, end = 8, bottom = 16)` |
 | [Must be serializable](docs/rules/must-be-serializable.md) | `rememberSerializable { Filter() }`, or `save<@MustBeSerializable T>(value)`, with a type that is not `@Serializable` | `@Serializable` on the class, or an explicit serializer |
 | [No unimplemented code](docs/rules/no-unimplemented.md) | `TODO()`, `throw NotImplementedError()` (switch it off for debug and test compilations) | The implementation, or an explicit `UnsupportedOperationException` |
@@ -147,7 +148,7 @@ supported Kotlin version. See [`docs/publishing.md`](docs/publishing.md).
 ## Roadmap
 
 - [x] Plugin skeleton, FIR checker infrastructure, official test infrastructure
-- [x] Twenty-nine rules, each switchable and severity-tunable, with settings from plugin options or a properties file
+- [x] Thirty rules, each switchable and severity-tunable, with settings from plugin options or a properties file
 - [ ] Gradle plugin (`kotrail { }` DSL, per-source-set settings, IDE support)
 - [ ] Configuration-driven rules (`forbidden-call`, `required-annotation`, ...)
 - [ ] User-extensible knowledge base for library composables that handle insets

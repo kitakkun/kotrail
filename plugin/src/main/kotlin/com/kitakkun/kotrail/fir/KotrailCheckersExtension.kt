@@ -8,6 +8,7 @@ import com.kitakkun.kotrail.fir.preconditions.checkers.PreconditionWarmup
 import com.kitakkun.kotrail.fir.checkers.UnimplementedCodeChecker
 import com.kitakkun.kotrail.fir.checkers.IgnoredExceptionChecker
 import com.kitakkun.kotrail.fir.checkers.MutableCollectionInPublicApiChecker
+import com.kitakkun.kotrail.fir.checkers.NoDataClassInPublicApiChecker
 import com.kitakkun.kotrail.fir.checkers.NamedArgumentsChecker
 import com.kitakkun.kotrail.fir.checkers.NarrowModelParametersChecker
 import com.kitakkun.kotrail.fir.checkers.NoFqnReferences
@@ -65,6 +66,7 @@ object KotrailDeclarationCheckers : DeclarationCheckers() {
     override val regularClassCheckers: Set<FirRegularClassChecker> = setOf(
         PreconditionWarmup.ClassChecker,
         PreferValueClassChecker,
+        NoDataClassInPublicApiChecker,
     )
     override val propertyCheckers: Set<FirPropertyChecker> = setOf(
         PreferExplicitBackingFieldChecker,

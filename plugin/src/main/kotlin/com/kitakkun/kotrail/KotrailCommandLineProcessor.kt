@@ -104,6 +104,11 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
         "Most lines of code a @Composable function body may have " +
             "(default ${KotrailConfig.DEFAULT_COMPOSABLE_MAX_LINES}, 0 for unlimited)",
     )
+    private val noDataClassScopeOption = option(
+        KotrailConfig.KEY_NO_DATA_CLASS_SCOPE, "<explicitApi|all>",
+        "Which modules the no-data-class-in-public-API rule applies to " +
+            "(default ${KotrailConfig.DEFAULT_NO_DATA_CLASS_SCOPE.key}: only those compiled with explicit API mode)",
+    )
     private val testAnnotationsOption = option(
         KotrailConfig.KEY_TEST_ANNOTATIONS, "<fqName,fqName,...>",
         "Comma-separated annotations that mark a function as a test " +
@@ -154,6 +159,7 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
         minSameTypeArgumentsOption,
         functionMaxLinesOption,
         composableMaxLinesOption,
+        noDataClassScopeOption,
         testAnnotationsOption,
         testNamingStyleOption,
         testMinNameWordsOption,
@@ -211,6 +217,8 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
                 configuration.put(KotrailConfigurationKeys.FUNCTION_MAX_LINES, KotrailConfig.parseInt(name, value))
             composableMaxLinesOption.optionName ->
                 configuration.put(KotrailConfigurationKeys.COMPOSABLE_MAX_LINES, KotrailConfig.parseInt(name, value))
+            noDataClassScopeOption.optionName ->
+                configuration.put(KotrailConfigurationKeys.NO_DATA_CLASS_SCOPE, KotrailConfig.parsePublicApiScope(name, value))
             testAnnotationsOption.optionName ->
                 configuration.put(KotrailConfigurationKeys.TEST_ANNOTATIONS, KotrailConfig.parseList(value))
             testNamingStyleOption.optionName ->

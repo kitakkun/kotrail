@@ -39,6 +39,8 @@ rule.
 | `rules.noIgnoredException` | `true` | [No ignored exception](rules/no-ignored-exception.md). |
 | `rules.preferExpressionBody` | `true` | [Prefer expression body](rules/prefer-expression-body.md). |
 | `rules.noMutableCollectionInPublicApi` | `true` | [No mutable collection in public API](rules/no-mutable-collection-in-public-api.md). |
+| `rules.noDataClassInPublicApi` | `true` | [No data class in public API](rules/no-data-class-in-public-api.md). |
+| `noDataClassInPublicApi.scope` | `explicitApi` | `explicitApi` applies the rule only to modules compiled with explicit API mode; `all` everywhere. |
 | `rules.namedArgumentsForRepeatedTypes` | `true` | [Named arguments for repeated types](rules/named-arguments-for-repeated-types.md). |
 | `namedArguments.minSameTypeArguments` | `3` | How many positional arguments of one type require names. |
 | `rules.mustBeSerializable` | `true` | [Must be serializable](rules/must-be-serializable.md). |
@@ -90,6 +92,7 @@ adopt a rule gradually.
 | `severity.noIgnoredException` | `error` |
 | `severity.preferExpressionBody` | `error` |
 | `severity.noMutableCollectionInPublicApi` | `error` |
+| `severity.noDataClassInPublicApi` | `error` |
 | `severity.namedArgumentsForRepeatedTypes` | `error` |
 | `severity.mustBeSerializable` | `error` |
 | `severity.noUnimplemented` | `error` |
