@@ -50,7 +50,7 @@ export default defineConfig({
   themeConfig: {
     logo: { light: '/kotrail-mark.svg', dark: '/kotrail-mark-dark.svg' },
     nav: [
-      { text: 'Guide', link: '/gradle-plugin' },
+      { text: 'Guide', link: '/getting-started' },
       { text: 'Rules', link: '/rules/README' },
       { text: 'Configuration', link: '/configuration' },
     ],
@@ -58,6 +58,7 @@ export default defineConfig({
       {
         text: 'Guide',
         items: [
+          { text: 'Getting started', link: '/getting-started' },
           { text: 'The Gradle plugin', link: '/gradle-plugin' },
           { text: 'Configuration', link: '/configuration' },
           { text: 'Supported Kotlin versions', link: '/supported-kotlin-versions' },

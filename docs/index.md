@@ -10,8 +10,8 @@ hero:
   tagline: A flexible set of compiler checker rules that keep your Kotlin code durable when developing with AI.
   actions:
     - theme: brand
-      text: Apply the Gradle plugin
-      link: /gradle-plugin
+      text: Get started
+      link: /getting-started
     - theme: alt
       text: Browse the rules
       link: /rules/README
