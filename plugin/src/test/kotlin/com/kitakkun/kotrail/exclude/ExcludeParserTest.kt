@@ -20,6 +20,16 @@ class ExcludeParserTest {
     }
 
     @Test
+    fun `bare class, function and property ask about the declaration's kind`() {
+        val classOnly = ExcludeParser.parse("class && name(*Entity)")
+        assertTrue(classOnly.matches(site(name = "UserEntity", classes = listOf("UserEntity"), kind = DeclarationKind.CLASS)))
+        assertFalse(classOnly.matches(site(name = "UserEntity", classes = listOf("UserEntity"))))
+        assertTrue(ExcludeParser.parse("function").matches(site(name = "f")))
+        assertFalse(ExcludeParser.parse("property").matches(site(name = "f")))
+        assertThrows(ExcludeParser.ExcludeSyntaxException::class.java) { ExcludeParser.parse("function(f)") }
+    }
+
+    @Test
     fun `globs match the whole value and treat star as any run of characters`() {
         assertTrue(Glob("com.acme.gen*").matches("com.acme.generated"))
         assertFalse(Glob("com.acme.gen*").matches("org.com.acme.generated"))
@@ -53,7 +63,9 @@ class ExcludeParserTest {
         suspend: Boolean = false,
         visibility: String = "public",
         override: Boolean = false,
+        kind: DeclarationKind = DeclarationKind.FUNCTION,
     ) = ReportSite(
+        kind = kind,
         packageName = "custom",
         fileName = "File.kt",
         declarationName = name,

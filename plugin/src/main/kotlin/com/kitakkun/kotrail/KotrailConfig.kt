@@ -1,5 +1,7 @@
 package com.kitakkun.kotrail
 
+import com.kitakkun.kotrail.compose.insets.InsetsSet
+import com.kitakkun.kotrail.compose.insets.Sides
 import com.kitakkun.kotrail.exclude.ExcludeParser
 import com.kitakkun.kotrail.exclude.ExcludePredicate
 import com.kitakkun.kotrail.exclude.ReportSite
@@ -20,6 +22,13 @@ data class KotrailComposeSettings(
     val previewRequireFor: PreviewScope,
     /** Maximum non-private UI composables (previews excluded) declared in one file; 0 disables the rule. */
     val maxComposablesPerFile: Int,
+    /**
+     * The project's changes to the insets knowledge base, keyed by the composable's fully
+     * qualified name, from the `compose.windowInsets.known.<fqn>` entries. A set replaces the
+     * built-in entry (an empty set, written `None`, says the composable handles nothing); `null`
+     * removes an earlier override so that the built-in entry applies again.
+     */
+    val knownInsetsHandlers: Map<String, InsetsSet?>,
 )
 
 /** Visibilities the preview-required rule inspects. */
@@ -138,6 +147,18 @@ data class KotrailVisibilityPolicy(
     val isEmpty: Boolean get() = private == null && internal == null
 }
 
+/**
+ * One policy of the required-annotation rule: declarations matching [predicate] must carry
+ * [annotation]. [name] is what the policy was configured under (`requiredAnnotation.policy.<name>`)
+ * and appears in the message.
+ */
+data class KotrailRequiredAnnotation(
+    val name: String,
+    val predicate: ExcludePredicate,
+    /** Fully qualified annotation class name. */
+    val annotation: String,
+)
+
 /** Which modules a library-facing rule applies to. */
 enum class PublicApiScope(val key: String) {
     /** Only modules compiled with explicit API mode, which is how a library declares itself. */
@@ -220,6 +241,8 @@ data class KotrailConfig(
     val functionLength: KotrailFunctionLength,
     val noDataClassInPublicApi: KotrailNoDataClassInPublicApi,
     val visibilityPolicy: KotrailVisibilityPolicy,
+    /** The `requiredAnnotation.policy.<name>` entries, by name. */
+    val requiredAnnotations: List<KotrailRequiredAnnotation>,
 ) {
     fun isEnabled(rule: KotrailRule): Boolean = switches[rule] ?: true
 
@@ -288,6 +311,26 @@ data class KotrailConfig(
         const val KEY_TEST_NAMING_STYLE = "test.naming.style"
         const val KEY_TEST_MIN_NAME_WORDS = "test.naming.minWords"
 
+        /**
+         * Prefix of `requiredAnnotation.policy.<name>=<predicate> -> <annotation fqn>` entries.
+         * Names have no dots ([ENTRY_NAME]), so `requiredAnnotation.<setting>` and a future
+         * `requiredAnnotation.policy.<name>.<setting>` stay parseable next to them.
+         */
+        const val KEY_PREFIX_REQUIRED_ANNOTATION = "requiredAnnotation.policy."
+
+        /**
+         * Prefix of `compose.windowInsets.known.<composable fqn>=<Type[:Sides],...|None>` entries.
+         * The suffix is a fully qualified name, dots included, so `known.` is a leaf namespace:
+         * settings of the rule go under `compose.windowInsets.<setting>`, never under `known.`.
+         */
+        const val KEY_PREFIX_KNOWN_INSETS = "compose.windowInsets.known."
+
+        /** Key families whose suffix is chosen by the project, accepted by the config file next to [ALL_KEYS]. */
+        val KEY_PREFIXES: List<String> = listOf(KEY_PREFIX_REQUIRED_ANNOTATION, KEY_PREFIX_KNOWN_INSETS)
+
+        /** What a user-chosen entry name may look like: a letter, then letters, digits, `_` or `-`. */
+        val ENTRY_NAME = Regex("[A-Za-z][A-Za-z0-9_-]*")
+
         val SETTING_KEYS = listOf(
             KEY_ENABLED,
             KEY_NOTE,
@@ -344,12 +387,18 @@ data class KotrailConfig(
                 if (text.isNullOrBlank()) "" else " " + text.trim()
             }
 
+            // An empty predicate (a later file or an option that clears one set earlier) parses to
+            // Never and is dropped here, so that "unset" is spelled the same way in every layer.
             val excludes = KotrailExcludes(
-                everywhere = configuration.get(KotrailConfigurationKeys.EXCLUDE)
-                    ?: file.getProperty(KEY_EXCLUDE)?.let { parseExclude(KEY_EXCLUDE, it) },
+                everywhere = (
+                    configuration.get(KotrailConfigurationKeys.EXCLUDE)
+                        ?: file.getProperty(KEY_EXCLUDE)?.let { parseExclude(KEY_EXCLUDE, it) }
+                    ).unlessNever(),
                 perRule = KotrailRule.entries.mapNotNull { rule ->
-                    val predicate = configuration.get(KotrailConfigurationKeys.excludeKey(rule))
-                        ?: file.getProperty(rule.excludeKey)?.let { parseExclude(rule.excludeKey, it) }
+                    val predicate = (
+                        configuration.get(KotrailConfigurationKeys.excludeKey(rule))
+                            ?: file.getProperty(rule.excludeKey)?.let { parseExclude(rule.excludeKey, it) }
+                        ).unlessNever()
                     predicate?.let { rule to it }
                 }.toMap(),
             )
@@ -404,11 +453,27 @@ data class KotrailConfig(
                 ?: file.getProperty(KEY_NO_DATA_CLASS_SCOPE)?.let { parsePublicApiScope(KEY_NO_DATA_CLASS_SCOPE, it) }
                 ?: DEFAULT_NO_DATA_CLASS_SCOPE
             val visibilityPolicy = KotrailVisibilityPolicy(
-                private = configuration.get(KotrailConfigurationKeys.VISIBILITY_PRIVATE)
-                    ?: file.getProperty(KEY_VISIBILITY_PRIVATE)?.let { parseExclude(KEY_VISIBILITY_PRIVATE, it) },
-                internal = configuration.get(KotrailConfigurationKeys.VISIBILITY_INTERNAL)
-                    ?: file.getProperty(KEY_VISIBILITY_INTERNAL)?.let { parseExclude(KEY_VISIBILITY_INTERNAL, it) },
+                private = (
+                    configuration.get(KotrailConfigurationKeys.VISIBILITY_PRIVATE)
+                        ?: file.getProperty(KEY_VISIBILITY_PRIVATE)?.let { parseExclude(KEY_VISIBILITY_PRIVATE, it) }
+                    ).unlessNever(),
+                internal = (
+                    configuration.get(KotrailConfigurationKeys.VISIBILITY_INTERNAL)
+                        ?: file.getProperty(KEY_VISIBILITY_INTERNAL)?.let { parseExclude(KEY_VISIBILITY_INTERNAL, it) }
+                    ).unlessNever(),
             )
+            // Named entries: later files and options override the entry of the same name, and every
+            // other entry stays, so a test source set can add or drop one policy without restating
+            // them all. An empty value is the way to drop one (it parses to null).
+            val requiredAnnotations = (
+                file.entriesWithPrefix(KEY_PREFIX_REQUIRED_ANNOTATION)
+                    .associate { (name, value) -> name to parseRequiredAnnotation(name, value) } +
+                    configuration.get(KotrailConfigurationKeys.REQUIRED_ANNOTATIONS).orEmpty()
+                ).values.filterNotNull()
+            val knownInsetsHandlers =
+                file.entriesWithPrefix(KEY_PREFIX_KNOWN_INSETS)
+                    .associate { (fqn, value) -> fqn to parseInsetsSpec(KEY_PREFIX_KNOWN_INSETS + fqn, value) } +
+                    configuration.get(KotrailConfigurationKeys.KNOWN_INSETS_HANDLERS).orEmpty()
             val testAnnotations = configuration.get(KotrailConfigurationKeys.TEST_ANNOTATIONS)
                 ?: file.getProperty(KEY_TEST_ANNOTATIONS)?.let { parseList(it) }
                 ?: DEFAULT_TEST_ANNOTATIONS
@@ -430,6 +495,7 @@ data class KotrailConfig(
                     trailingLambdaAllowedPackages = trailingAllowed,
                     previewRequireFor = previewRequireFor,
                     maxComposablesPerFile = maxComposablesPerFile,
+                    knownInsetsHandlers = knownInsetsHandlers,
                 ),
                 narrowModelParameters = KotrailNarrowModelParameters(maxUnusedProperties = maxUnused, scope = scope),
                 preferFunctionReferences = KotrailPreferFunctionReferences(forms = referenceForms),
@@ -449,8 +515,115 @@ data class KotrailConfig(
                 ),
                 noDataClassInPublicApi = KotrailNoDataClassInPublicApi(scope = noDataClassScope),
                 visibilityPolicy = visibilityPolicy,
+                requiredAnnotations = requiredAnnotations,
             )
         }
+
+        /**
+         * A `requiredAnnotation.policy.<name>` value: a predicate, `->`, and the annotation's fully
+         * qualified name. An empty value drops the policy of that name and gives `null`.
+         */
+        @OptIn(ExperimentalCompilerApi::class)
+        fun parseRequiredAnnotation(name: String, value: String): KotrailRequiredAnnotation? {
+            val key = KEY_PREFIX_REQUIRED_ANNOTATION + name
+            if (!ENTRY_NAME.matches(name)) {
+                throw CliOptionProcessingException(
+                    "Kotrail config key $key: a policy name is a letter followed by letters, digits, '_' or '-', got '$name'",
+                )
+            }
+            if (value.isBlank()) return null
+            val arrow = value.lastIndexOf("->")
+            if (arrow < 0) {
+                throw CliOptionProcessingException(
+                    "Kotrail config key $key must be '<predicate> -> <annotation fqn>', got '$value'",
+                )
+            }
+            val annotation = value.substring(arrow + 2).trim()
+            if (annotation.isEmpty() || annotation.any { it.isWhitespace() }) {
+                throw CliOptionProcessingException("Kotrail config key $key must end with one fully qualified annotation, got '$value'")
+            }
+            return KotrailRequiredAnnotation(
+                name = name.trim(),
+                predicate = parseExclude(key, value.substring(0, arrow)),
+                annotation = annotation.removePrefix("@"),
+            )
+        }
+
+        /**
+         * A `requiredAnnotation` option value, `<name>=<predicate> -> <annotation fqn>`, which is
+         * the file entry with its key prefix dropped; `<name>=` drops the policy.
+         */
+        @OptIn(ExperimentalCompilerApi::class)
+        fun parseRequiredAnnotationOption(value: String): Pair<String, KotrailRequiredAnnotation?> {
+            val parts = value.split('=', limit = 2)
+            if (parts.size != 2) {
+                throw CliOptionProcessingException(
+                    "Kotrail option requiredAnnotation must be '<name>=<predicate> -> <annotation fqn>', got '$value'",
+                )
+            }
+            val name = parts[0].trim()
+            return name to parseRequiredAnnotation(name, parts[1])
+        }
+
+        /**
+         * An insets specification: comma-separated `Type` or `Type:Side+Side` entries, with the
+         * entry names of `WindowInsetsType` (`SystemBars`, `Ime`, ...) and of `WindowInsetsSide`
+         * (`Top`, `Horizontal`, ...), or `None` for a composable that handles nothing. An empty
+         * value removes the entry, so that the built-in knowledge applies, and gives `null`.
+         */
+        @OptIn(ExperimentalCompilerApi::class)
+        fun parseInsetsSpec(key: String, value: String): InsetsSet? {
+            if (value.isBlank()) return null
+            if (value.trim() == INSETS_NONE) return InsetsSet.EMPTY
+            var result = InsetsSet.EMPTY
+            for (entry in parseList(value)) {
+                val parts = entry.split(':', limit = 2).map { it.trim() }
+                if (parts[0].firstOrNull()?.isUpperCase() != true) {
+                    throw CliOptionProcessingException(
+                        "Kotrail config key $key: '${parts[0]}' in '$entry' is not a WindowInsetsType entry; write it as SystemBars, Ime, ...",
+                    )
+                }
+                val sides = if (parts.size == 2) {
+                    parts[1].split('+').map { it.trim() }.fold(Sides.NONE) { acc, side ->
+                        acc or (Sides.fromName(side) ?: throw CliOptionProcessingException(
+                            "Kotrail config key $key: unknown side '$side' in '$entry'; " +
+                                "use Top, Bottom, Left, Right, Start, End, Horizontal, Vertical, or All",
+                        ))
+                    }
+                } else {
+                    Sides.ALL
+                }
+                val insets = InsetsSet.fromTypeName(parts[0], sides) ?: throw CliOptionProcessingException(
+                    "Kotrail config key $key: unknown insets type '${parts[0]}' in '$entry'; use a WindowInsetsType name such as SystemBars",
+                )
+                result = result.union(insets)
+            }
+            return result
+        }
+
+        /** The spec of a composable that handles no insets at all. */
+        const val INSETS_NONE = "None"
+
+        /** A `compose.windowInsets.known` option value, `<composable fqn>=<spec>`; `<fqn>=` removes the entry. */
+        @OptIn(ExperimentalCompilerApi::class)
+        fun parseKnownInsetsOption(value: String): Pair<String, InsetsSet?> {
+            val parts = value.split('=', limit = 2)
+            if (parts.size != 2 || parts[0].isBlank()) {
+                throw CliOptionProcessingException(
+                    "Kotrail option compose.windowInsets.known must be '<composable fqn>=<Type[:Sides],...>', got '$value'",
+                )
+            }
+            val fqn = parts[0].trim()
+            return fqn to parseInsetsSpec(KEY_PREFIX_KNOWN_INSETS + fqn, parts[1])
+        }
+
+        /** A predicate as configured, or `null` when it was cleared with an empty value. */
+        private fun ExcludePredicate?.unlessNever(): ExcludePredicate? = takeUnless { it is ExcludePredicate.Never }
+
+        /** `(suffix, value)` for every property whose key starts with [prefix], sorted by key. */
+        private fun Properties.entriesWithPrefix(prefix: String): List<Pair<String, String>> =
+            stringPropertyNames().filter { it.startsWith(prefix) }.sorted()
+                .map { it.removePrefix(prefix) to getProperty(it) }
 
         /** Comma-separated values, trimmed, empties dropped. */
         fun parseList(value: String): List<String> = value.split(',').map { it.trim() }.filter { it.isNotEmpty() }
@@ -476,7 +649,8 @@ data class KotrailConfig(
                 if (!file.isFile) throw CliOptionProcessingException("Kotrail config file not found: $path")
                 val properties = Properties()
                 file.reader().use(properties::load)
-                val unknown = properties.stringPropertyNames() - ALL_KEYS.toSet()
+                val unknown = properties.stringPropertyNames()
+                    .filter { key -> key !in ALL_KEYS && KEY_PREFIXES.none { key.startsWith(it) && key.length > it.length } }
                 if (unknown.isNotEmpty()) {
                     throw CliOptionProcessingException(
                         "Unknown keys in Kotrail config file $path: ${unknown.sorted().joinToString()}",
@@ -517,9 +691,10 @@ data class KotrailConfig(
                 "Kotrail config key $key must be one of ${PreviewScope.entries.joinToString { it.key }}, got '$value'",
             )
 
+        /** An empty value gives [ExcludePredicate.Never], which the loader treats as "unset". */
         @OptIn(ExperimentalCompilerApi::class)
         fun parseExclude(key: String, value: String): ExcludePredicate = try {
-            ExcludeParser.parse(value)
+            if (value.isBlank()) ExcludePredicate.Never else ExcludeParser.parse(value)
         } catch (e: ExcludeParser.ExcludeSyntaxException) {
             throw CliOptionProcessingException("Kotrail config key $key: ${e.message}")
         }

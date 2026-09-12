@@ -6,6 +6,7 @@ import com.kitakkun.kotrail.fir.checkers.FunctionLengthChecker
 import com.kitakkun.kotrail.fir.preconditions.checkers.PreconditionChecker
 import com.kitakkun.kotrail.fir.preconditions.checkers.PreconditionWarmup
 import com.kitakkun.kotrail.fir.checkers.UnimplementedCodeChecker
+import com.kitakkun.kotrail.fir.checkers.RequiredAnnotationChecker
 import com.kitakkun.kotrail.fir.checkers.VisibilityPolicyChecker
 import com.kitakkun.kotrail.fir.checkers.IgnoredExceptionChecker
 import com.kitakkun.kotrail.fir.checkers.MutableCollectionInPublicApiChecker
@@ -63,6 +64,7 @@ class KotrailCheckersExtension(session: FirSession) : FirAdditionalCheckersExten
 object KotrailDeclarationCheckers : DeclarationCheckers() {
     override val basicDeclarationCheckers: Set<FirBasicDeclarationChecker> = setOf(
         VisibilityPolicyChecker,
+        RequiredAnnotationChecker,
     )
     override val fileCheckers: Set<FirFileChecker> = setOf(
         CommentLengthChecker,

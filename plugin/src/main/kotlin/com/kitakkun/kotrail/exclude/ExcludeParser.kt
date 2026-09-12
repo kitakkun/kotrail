@@ -10,6 +10,10 @@ package com.kitakkun.kotrail.exclude
  * atom  := IDENT ('(' ARGUMENT ')')?
  * ```
  *
+ * `class` is the one atom with and without an argument: `class(glob)` asks about enclosing
+ * class names, bare `class` whether the declaration itself is a class, like `function` and
+ * `property`.
+ *
  * `ARGUMENT` is everything up to the closing parenthesis, trimmed, so globs and fully qualified
  * names need no quoting. A malformed predicate is reported as a [ExcludeSyntaxException] with the
  * offending position, and the configuration loader turns that into a build failure.
@@ -77,7 +81,9 @@ object ExcludeParser {
                 "package" -> ExcludePredicate.PackageIs(Glob(required()))
                 "file" -> ExcludePredicate.FileIs(Glob(required()))
                 "name" -> ExcludePredicate.NameIs(Glob(required()))
-                "class" -> ExcludePredicate.ClassIs(Glob(required()))
+                "class" -> if (argument == null) ExcludePredicate.KindIs(DeclarationKind.CLASS) else ExcludePredicate.ClassIs(Glob(required()))
+                "function" -> { none(); ExcludePredicate.KindIs(DeclarationKind.FUNCTION) }
+                "property" -> { none(); ExcludePredicate.KindIs(DeclarationKind.PROPERTY) }
                 "annotated" -> ExcludePredicate.Annotated(required())
                 "extension" -> ExcludePredicate.Extension(argument?.takeIf { it.isNotEmpty() })
                 "context" -> ExcludePredicate.Context(argument?.takeIf { it.isNotEmpty() })

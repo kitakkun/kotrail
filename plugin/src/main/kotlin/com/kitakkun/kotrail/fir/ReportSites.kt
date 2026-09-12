@@ -2,6 +2,7 @@
 
 package com.kitakkun.kotrail.fir
 
+import com.kitakkun.kotrail.exclude.DeclarationKind
 import com.kitakkun.kotrail.exclude.ReportSite
 import com.kitakkun.kotrail.fir.compose.isComposable
 import com.kitakkun.kotrail.fir.test.isTestFunction
@@ -42,6 +43,12 @@ internal fun reportSite(): ReportSite {
     val function = innermost as? FirNamedFunctionSymbol
 
     return ReportSite(
+        kind = when (innermost) {
+            is FirNamedFunctionSymbol -> DeclarationKind.FUNCTION
+            is FirPropertySymbol -> DeclarationKind.PROPERTY
+            is FirClassSymbol<*> -> DeclarationKind.CLASS
+            else -> null
+        },
         packageName = file?.packageDirective?.packageFqName?.asString().orEmpty(),
         fileName = file?.name.orEmpty(),
         declarationName = when (innermost) {

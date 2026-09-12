@@ -9,6 +9,8 @@ package com.kitakkun.kotrail.exclude
  * the compiler, so predicates can be evaluated and tested on their own.
  */
 class ReportSite(
+    /** What the innermost enclosing named declaration is, or `null` for a location without one. */
+    val kind: DeclarationKind?,
     val packageName: String,
     val fileName: String,
     /** The innermost enclosing named declaration: a function, property, or class. */
@@ -29,3 +31,6 @@ class ReportSite(
     val isComposable: Boolean,
     val isTest: Boolean,
 )
+
+/** The kinds of declaration a predicate can ask about with the bare `function`, `property`, and `class` atoms. */
+enum class DeclarationKind { FUNCTION, PROPERTY, CLASS }

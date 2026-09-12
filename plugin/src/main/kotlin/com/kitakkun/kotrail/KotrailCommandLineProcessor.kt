@@ -121,6 +121,20 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
         KotrailConfig.KEY_VISIBILITY_INTERNAL, "<predicate>",
         "Declarations that must be internal or private, e.g. name(*Impl)",
     )
+    private val requiredAnnotationOption = option(
+        "requiredAnnotation", "<name>=<predicate> -> <annotation fqn>",
+        "The requiredAnnotation.policy.<name> entry: declarations matching the predicate must carry the " +
+            "annotation, e.g. screens=composable && name(*Screen) -> com.acme.Screen. May be given more than " +
+            "once; '<name>=' drops the policy",
+        allowMultipleOccurrences = true,
+    )
+    private val knownInsetsOption = option(
+        "compose.windowInsets.known", "<composable fqn>=<Type[:Side+Side],...|None>",
+        "The compose.windowInsets.known.<fqn> entry: a library composable that handles window insets, " +
+            "e.g. com.acme.ui.AppScaffold=SystemBars, or None for one that handles nothing. May be given " +
+            "more than once; '<fqn>=' removes the entry",
+        allowMultipleOccurrences = true,
+    )
     private val testAnnotationsOption = option(
         KotrailConfig.KEY_TEST_ANNOTATIONS, "<fqName,fqName,...>",
         "Comma-separated annotations that mark a function as a test " +
@@ -179,6 +193,8 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
         noDataClassScopeOption,
         visibilityPrivateOption,
         visibilityInternalOption,
+        requiredAnnotationOption,
+        knownInsetsOption,
         testAnnotationsOption,
         testNamingStyleOption,
         testMinNameWordsOption,
@@ -247,6 +263,20 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
                 configuration.put(KotrailConfigurationKeys.VISIBILITY_PRIVATE, KotrailConfig.parseExclude(name, value))
             visibilityInternalOption.optionName ->
                 configuration.put(KotrailConfigurationKeys.VISIBILITY_INTERNAL, KotrailConfig.parseExclude(name, value))
+            requiredAnnotationOption.optionName -> {
+                val (policyName, policy) = KotrailConfig.parseRequiredAnnotationOption(value)
+                configuration.put(
+                    KotrailConfigurationKeys.REQUIRED_ANNOTATIONS,
+                    configuration.get(KotrailConfigurationKeys.REQUIRED_ANNOTATIONS).orEmpty() + (policyName to policy),
+                )
+            }
+            knownInsetsOption.optionName -> {
+                val (fqn, insets) = KotrailConfig.parseKnownInsetsOption(value)
+                configuration.put(
+                    KotrailConfigurationKeys.KNOWN_INSETS_HANDLERS,
+                    configuration.get(KotrailConfigurationKeys.KNOWN_INSETS_HANDLERS).orEmpty() + (fqn to insets),
+                )
+            }
             testAnnotationsOption.optionName ->
                 configuration.put(KotrailConfigurationKeys.TEST_ANNOTATIONS, KotrailConfig.parseList(value))
             testNamingStyleOption.optionName ->

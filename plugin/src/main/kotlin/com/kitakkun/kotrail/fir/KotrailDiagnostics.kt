@@ -77,6 +77,9 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Arguments: the declaration name, the visibility the policy requires. */
     val VISIBILITY_TOO_WIDE = tunable2<KtElement, String, String>("VISIBILITY_TOO_WIDE", KotrailRule.VISIBILITY_POLICY, NAME)
 
+    /** Arguments: the declaration name, the annotation to add with the policy name, e.g. `@com.acme.Screen (policy 'screens')`. */
+    val REQUIRED_ANNOTATION_MISSING = tunable2<KtElement, String, String>("REQUIRED_ANNOTATION_MISSING", KotrailRule.REQUIRED_ANNOTATION, NAME)
+
     /** Argument: the class name. */
     val DATA_CLASS_IN_PUBLIC_API = tunable1<KtClass, String>("DATA_CLASS_IN_PUBLIC_API", KotrailRule.NO_DATA_CLASS_IN_PUBLIC_API, NAME)
 
@@ -353,6 +356,11 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             KotrailDiagnostics.VISIBILITY_TOO_WIDE,
             "[Kotrail] ''{0}'' must be {1}: the project's visibility policy covers this declaration. " +
                 "Narrow it, or move it out of the pattern the policy names.",
+        )
+        map.put2(
+            KotrailDiagnostics.REQUIRED_ANNOTATION_MISSING,
+            "[Kotrail] ''{0}'' must be annotated with {1}: the project's required-annotation policy covers " +
+                "this declaration. Add the annotation, or move it out of the pattern the policy names.",
         )
         map.put1(
             KotrailDiagnostics.DATA_CLASS_IN_PUBLIC_API,

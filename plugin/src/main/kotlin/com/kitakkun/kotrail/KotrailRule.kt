@@ -31,6 +31,7 @@ enum class KotrailRule(
     NO_MUTABLE_COLLECTION_IN_PUBLIC_API("noMutableCollectionInPublicApi", Severity.ERROR),
     NO_DATA_CLASS_IN_PUBLIC_API("noDataClassInPublicApi", Severity.ERROR),
     VISIBILITY_POLICY("visibilityPolicy", Severity.ERROR),
+    REQUIRED_ANNOTATION("requiredAnnotation", Severity.ERROR),
     NAMED_ARGUMENTS_FOR_REPEATED_TYPES("namedArgumentsForRepeatedTypes", Severity.ERROR),
     MUST_BE_SERIALIZABLE("mustBeSerializable", Severity.ERROR),
     NO_UNIMPLEMENTED("noUnimplemented", Severity.ERROR),

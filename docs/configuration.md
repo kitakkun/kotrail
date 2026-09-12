@@ -9,7 +9,13 @@ sources; later ones win:
 3. individual plugin options.
 
 Unknown keys or malformed values in a file fail the build. A typo never silently disables a
-rule.
+rule. The parsers are strict on purpose: a value that is rejected today may be given a meaning
+in a later version, so nothing that builds now changes meaning then.
+
+Keys follow one convention. A rule's switch is `rules.<rule>`, and everything else about that
+rule hangs off its key: `severity.<rule>`, `note.<rule>`, `exclude.<rule>`, and its settings as
+`<rule>.<setting>`. The only keys outside a rule are `enabled`, `note`, `exclude`, and
+`test.annotations`, which several test rules and the `test` predicate share.
 
 ## Keys
 
@@ -47,6 +53,8 @@ rule.
 | `rules.visibilityPolicy` | `true` | [Visibility policy](rules/visibility-policy.md); inert until a policy is set. |
 | `visibilityPolicy.private` | (empty) | A predicate (see [Excluding by pattern](#excluding-by-pattern)); matching declarations must be `private`. |
 | `visibilityPolicy.internal` | (empty) | The same; matching declarations must be `internal` or `private`. |
+| `rules.requiredAnnotation` | `true` | [Required annotation](rules/required-annotation.md); inert until a policy is set. |
+| `requiredAnnotation.policy.<name>` | (empty) | `<predicate> -> <annotation fqn>`: matching declarations must carry the annotation. One entry per policy; `<name>` is a letter followed by letters, digits, `_` or `-`. |
 | `rules.namedArgumentsForRepeatedTypes` | `true` | [Named arguments for repeated types](rules/named-arguments-for-repeated-types.md). |
 | `namedArgumentsForRepeatedTypes.minArguments` | `3` | How many positional arguments of one type require names. |
 | `rules.mustBeSerializable` | `true` | [Must be serializable](rules/must-be-serializable.md). |
@@ -58,6 +66,7 @@ rule.
 | `functionLength.maxComposableLines` | `80` | The same limit for `@Composable` functions. |
 | `rules.compose.windowInsets` | `true` | [Window insets](rules/compose/window-insets.md): contract check and inferred metadata. |
 | `rules.compose.windowInsetsHandledTwice` | `true` | Doubled inset padding warning (needs `rules.compose.windowInsets`). |
+| `compose.windowInsets.known.<composable fqn>` | (built-in Material 3 entries) | What a library composable handles, as `Type` or `Type:Side+Side` entries separated by commas, or `None`. See [the knowledge base](rules/compose/window-insets.md#knowledge-base). |
 | `rules.compose.stateDelegation` | `true` | [State delegation](rules/compose/state-delegation.md). |
 | `rules.compose.nesting` | `true` | [Nesting limit](rules/compose/nesting.md). |
 | `compose.nesting.maxDepth` | `5` | Nesting limit for composable calls; `0` disables the rule. |
@@ -101,6 +110,7 @@ adopt a rule gradually.
 | `severity.noMutableCollectionInPublicApi` | `error` |
 | `severity.noDataClassInPublicApi` | `error` |
 | `severity.visibilityPolicy` | `error` |
+| `severity.requiredAnnotation` | `error` |
 | `severity.namedArgumentsForRepeatedTypes` | `error` |
 | `severity.mustBeSerializable` | `error` |
 | `severity.noUnimplemented` | `error` |
@@ -167,6 +177,7 @@ configuration is read, so a typo fails the build with its position.
 | `package(glob)`, `file(glob)` | the file's package or file name matches |
 | `name(glob)` | the innermost enclosing declaration (function, property, class) has that name |
 | `class(glob)` | any enclosing class, or the declaration itself if it is a class, has that name |
+| `function`, `property`, `class` | the innermost declaration is a function, a property, or a class |
 | `annotated(fqn)` | the innermost declaration or any enclosing one carries that annotation |
 | `extension`, `extension(fqn)` | the innermost declaration is an extension, of that receiver type |
 | `context`, `context(fqn)` | the innermost declaration has a context parameter, of that type |
@@ -200,7 +211,8 @@ narrowModelParameters.scope=all
 rules.noPassThroughReturn=false
 ```
 
-A build that wires the compiler plugin by hand passes the same keys as plugin options:
+A build that wires the compiler plugin by hand passes the file, and may override single
+settings with plugin options of the same name:
 
 ```kotlin
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
@@ -212,6 +224,12 @@ tasks.withType<KotlinCompile>().configureEach {
     )
 }
 ```
+
+Keep list-valued settings and the named entries in the file: the compiler splits a `-P` value
+on commas, so `forbiddenCall.functions=a,b` cannot be passed as an option. The two named-entry
+families have plugin options with a fixed name and the entry name inside the value,
+`requiredAnnotation=<name>=<predicate> -> <fqn>` and `compose.windowInsets.known=<fqn>=<spec>`,
+each of which may be given more than once.
 
 ## Test source sets
 
@@ -237,6 +255,13 @@ kotrail {
 rules.preferExplicitBackingField=false
 rules.compose.nesting=false
 ```
+
+An empty value in a later file takes an entry of the earlier one away: `exclude=` clears the
+project-wide predicate, `visibilityPolicy.private=` drops that policy,
+`requiredAnnotation.policy.screens=` drops that one policy and keeps the others, and
+`compose.windowInsets.known.com.acme.AppScaffold=` removes the override so that the built-in
+knowledge applies again. A list is the exception: `test.annotations=` is an empty list, not the
+default.
 
 A build that wires the compiler plugin by hand gives `compileTestKotlin` its own file instead:
 

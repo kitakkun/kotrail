@@ -1,5 +1,6 @@
 package com.kitakkun.kotrail
 
+import com.kitakkun.kotrail.compose.insets.InsetsSet
 import com.kitakkun.kotrail.exclude.ExcludePredicate
 import org.jetbrains.kotlin.config.CompilerConfigurationKey
 import org.jetbrains.kotlin.diagnostics.Severity
@@ -36,6 +37,12 @@ object KotrailConfigurationKeys {
     val TEST_ANNOTATIONS = CompilerConfigurationKey<List<String>>(KotrailConfig.KEY_TEST_ANNOTATIONS)
     val TEST_NAMING_STYLE = CompilerConfigurationKey<TestNamingStyle>(KotrailConfig.KEY_TEST_NAMING_STYLE)
     val TEST_MIN_NAME_WORDS = CompilerConfigurationKey<Int>(KotrailConfig.KEY_TEST_MIN_NAME_WORDS)
+
+    /** Entries of the `requiredAnnotation` option by name, the last occurrence of a name winning; `null` drops the policy. */
+    val REQUIRED_ANNOTATIONS = CompilerConfigurationKey<Map<String, KotrailRequiredAnnotation?>>("requiredAnnotation")
+
+    /** Entries of the `compose.windowInsets.known` option by composable, the last occurrence winning; `null` removes the entry. */
+    val KNOWN_INSETS_HANDLERS = CompilerConfigurationKey<Map<String, InsetsSet?>>("compose.windowInsets.known")
 
     private val switchKeys: Map<KotrailRule, CompilerConfigurationKey<Boolean>> =
         KotrailRule.switchable.associateWith { CompilerConfigurationKey<Boolean>(it.switchKey) }

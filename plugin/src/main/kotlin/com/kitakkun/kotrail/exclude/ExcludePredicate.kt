@@ -11,6 +11,7 @@ package com.kitakkun.kotrail.exclude
  * | `package(glob)`, `file(glob)` | the file's package / file name matches |
  * | `name(glob)` | the innermost declaration's name matches |
  * | `class(glob)` | any enclosing class (or the declaration itself, if a class) matches |
+ * | `function`, `property`, `class` | the innermost declaration is one |
  * | `annotated(fqn)` | the innermost or any enclosing declaration carries the annotation |
  * | `extension`, `extension(fqn)` | the innermost declaration is an extension (of that type) |
  * | `context`, `context(fqn)` | the innermost declaration has a context parameter (of that type) |
@@ -75,6 +76,15 @@ sealed class ExcludePredicate {
 
     data object Test : ExcludePredicate() {
         override fun matches(site: ReportSite): Boolean = site.isTest
+    }
+
+    data class KindIs(val kind: DeclarationKind) : ExcludePredicate() {
+        override fun matches(site: ReportSite): Boolean = site.kind == kind
+    }
+
+    /** Matches nothing; what an empty configuration value parses to, so that a layer can clear a predicate. */
+    data object Never : ExcludePredicate() {
+        override fun matches(site: ReportSite): Boolean = false
     }
 
     data class Not(val operand: ExcludePredicate) : ExcludePredicate() {
