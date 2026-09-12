@@ -21,6 +21,7 @@ import org.jetbrains.kotlin.fir.declarations.utils.isInline
 import org.jetbrains.kotlin.fir.declarations.utils.isLocal
 import org.jetbrains.kotlin.fir.declarations.utils.isOperator
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
+import org.jetbrains.kotlin.fir.declarations.utils.isSuspend
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
@@ -34,7 +35,6 @@ import org.jetbrains.kotlin.fir.expressions.unwrapArgument
 import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
 import org.jetbrains.kotlin.fir.references.toResolvedNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
-import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.coneType
@@ -44,26 +44,26 @@ import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.types.AbstractTypeChecker
 
 /**
- * Reports a function whose whole body is one call that receives the function's own parameters
- * unchanged and returns what the call returns:
+ * Reports a function that is another function under a different name: its whole body is one call
+ * with the same shape as its own signature, receiving its parameters unchanged, in order, and
+ * returning what the call returns.
  *
  * ```kotlin
- * fun saveUser(user: User) = repository.save(user)       // reported: call repository.save directly
- * fun String.loud(): String = uppercase()                 // reported: a rename of uppercase()
- * fun connect(host: String) = connect(host, DEFAULT_PORT) // fine: supplies a default
- * fun items(): List<Item> = mutableItems()                // fine: narrows the type
- * override fun close() = delegate.close()                 // fine: implements the interface
+ * fun persist(user: User, force: Boolean): Boolean = store(user, force)   // reported
+ * fun String.loud(): String = uppercase()                                  // reported
+ * fun saveUser(user: User): Boolean = repository.save(user)               // fine: encapsulates repository
+ * fun String.size(): Int = parseImpl(this)                                 // fine: changes the call shape
+ * fun connect(host: String) = connect(host, DEFAULT_PORT)                  // fine: supplies a default
  * ```
  *
- * Such a function is a layer with nothing in it. Every reader has to open it to learn that it
- * does nothing, and an assistant adding "one more layer" is how they accumulate. A wrapper earns
- * its place by doing something: a default value, a conversion, a narrower or wider type, a
- * receiver the callee did not have.
- *
- * Left alone, because forwarding is their purpose: overrides, `operator`, `inline`, `actual`,
- * `external` and local functions; functions carrying a `kotlin.jvm` annotation (Java-facing
- * adapters); factory functions calling a constructor; and a public function over a narrower
- * callee, which is a deliberate facade.
+ * Only the unambiguous shape is reported: a caller could replace the call with the callee's,
+ * argument for argument, and nothing would change. Anything that could be a decision is left
+ * alone: reaching the callee through a property (that is encapsulation), turning a receiver into
+ * an argument or the reverse (a different call shape), generics, a change of `suspend`, a
+ * reordering, a default, a conversion, a narrower type, or leaving some of the callee's parameters
+ * to their defaults (a narrower API). Overrides, `operator`, `inline`, `actual`, `external` and
+ * local functions, `kotlin.jvm`-annotated adapters, factories over a constructor, previews, and a
+ * public function over a narrower callee (a facade) are also left alone.
  */
 object PassThroughFunctionChecker : FirSimpleFunctionChecker(MppCheckerKind.Common) {
     private val KOTLIN_JVM = FqName("kotlin.jvm")
@@ -76,38 +76,31 @@ object PassThroughFunctionChecker : FirSimpleFunctionChecker(MppCheckerKind.Comm
         if (source.kind is KtFakeSourceElementKind) return
         if (declaration.isOverride || declaration.isExpect || declaration.isActual || declaration.isOperator) return
         if (declaration.isInline || declaration.isExternal || declaration.isLocal) return
+        if (declaration.typeParameters.isNotEmpty()) return
         if (declaration.annotations.any { it.toAnnotationClassId(session)?.packageFqName == KOTLIN_JVM }) return
-        // A preview exists to call the composable it previews; compose.previewRequired asks for it.
         if (declaration.symbol.isPreview(session)) return
         if (declaration.valueParameters.any { it.defaultValue != null }) return
 
         val call = singleCall(declaration) ?: return
         val callee = call.calleeReference.toResolvedNamedFunctionSymbol() ?: return
         if (callee == declaration.symbol) return
-        // `block()`, `a + b`: forwarding to an operator gives syntax a name, which is a decision.
-        if (callee.isOperator) return
-        // A public function over a narrower callee is a facade, which is a decision.
+        if (callee.isOperator || callee.isSuspend != declaration.isSuspend) return
+        if (callee.typeParameterSymbols.isNotEmpty()) return
+        // A public function over a narrower callee is a facade.
         if (declaration.effectiveVisibility.publicApi && !callee.effectiveVisibility.publicApi) return
 
-        val parameters = declaration.valueParameters.map { it.symbol }
         val receiver = declaration.receiverParameter?.symbol
-        val forwarded = HashSet<FirBasedSymbol<*>>()
+        if (!sameReceiverShape(call, receiver)) return
 
-        if (!receiverIsForwarded(call, receiver, parameters, forwarded)) return
+        val parameters = declaration.valueParameters.map { it.symbol }
         val mapping = call.resolvedArgumentMapping ?: return
-        // Leaving some of the callee's parameters to their defaults narrows the API surface,
-        // which is work of the wrapper's own: `fun Caption(text: String) = Text(text)`.
-        if (mapping.size != callee.valueParameterSymbols.size) return
-        for ((argument, parameter) in mapping) {
-            val symbol = forwardedSymbol(argument, receiver) ?: return
-            if (!forwarded.add(symbol)) return
-            if (symbol is FirValueParameterSymbol) {
-                if (symbol !in parameters) return
-                if (!sameType(session, symbol.resolvedReturnType, parameter.returnTypeRef.coneType)) return
-            }
+        if (mapping.size != parameters.size || mapping.size != callee.valueParameterSymbols.size) return
+        for ((index, entry) in mapping.entries.withIndex()) {
+            val (argument, calleeParameter) = entry
+            val forwarded = forwardedParameter(argument) ?: return
+            if (forwarded != parameters[index]) return
+            if (!sameType(session, forwarded.resolvedReturnType, calleeParameter.returnTypeRef.coneType)) return
         }
-        if (parameters.any { it !in forwarded }) return
-        if (receiver != null && receiver !in forwarded) return
         if (!sameType(session, declaration.returnTypeRef.coneType, call.resolvedType)) return
 
         val calleeName = callee.callableId.callableName.asString()
@@ -122,52 +115,29 @@ object PassThroughFunctionChecker : FirSimpleFunctionChecker(MppCheckerKind.Comm
     }
 
     /**
-     * The callee may be reached through nothing, `this`, a property of `this`, or one of the
-     * function's own parameters; anything else (a call result, a local) is work of its own.
+     * The call has the same receiver shape as the function: no explicit receiver, or `this`. An
+     * extension's receiver must be the callee's receiver too; a property, a parameter, or a call
+     * result as receiver is a choice the function makes.
      */
-    private fun receiverIsForwarded(
-        call: FirFunctionCall,
-        receiver: FirBasedSymbol<*>?,
-        parameters: List<FirValueParameterSymbol>,
-        forwarded: MutableSet<FirBasedSymbol<*>>,
-    ): Boolean {
+    private fun sameReceiverShape(call: FirFunctionCall, receiver: FirBasedSymbol<*>?): Boolean {
         val explicit = call.explicitReceiver?.let(::unwrap)
-        if (explicit == null) {
-            // Implicit receiver: the function's own extension receiver counts as forwarded when the
-            // callee is bound to it.
-            val implicit = (call.extensionReceiver ?: call.dispatchReceiver)?.let(::unwrap)
-            if (implicit is FirThisReceiverExpression && receiver != null && implicit.calleeReference.boundSymbol == receiver) {
-                forwarded += receiver
-            }
-            return true
-        }
-        return when (explicit) {
-            is FirThisReceiverExpression -> {
-                if (receiver != null && explicit.calleeReference.boundSymbol == receiver) forwarded += receiver
-                true
-            }
-            is FirPropertyAccessExpression -> when (val symbol = explicit.calleeReference.toResolvedCallableSymbol()) {
-                is FirValueParameterSymbol -> symbol in parameters && forwarded.add(symbol)
-                is FirPropertySymbol -> explicit.explicitReceiver.let { it == null || unwrap(it) is FirThisReceiverExpression }
-                else -> false
-            }
-            else -> false
-        }
+        if (explicit != null && explicit !is FirThisReceiverExpression) return false
+        if (receiver == null) return true
+        val bound = ((explicit ?: call.extensionReceiver ?: call.dispatchReceiver)?.let(::unwrap) as? FirThisReceiverExpression)
+            ?.calleeReference?.boundSymbol
+        return bound == receiver
     }
 
-    /** The parameter or receiver an argument passes through unchanged, or `null` when it is anything else. */
-    private fun forwardedSymbol(argument: FirExpression, receiver: FirBasedSymbol<*>?): FirBasedSymbol<*>? {
+    /** The function's own parameter an argument passes through unchanged, or `null` for anything else. */
+    private fun forwardedParameter(argument: FirExpression): FirValueParameterSymbol? {
         var expression = argument.unwrapArgument()
         if (expression is FirVarargArgumentsExpression) {
             val spread = expression.arguments.singleOrNull() as? FirSpreadArgumentExpression ?: return null
             expression = spread.expression
         }
-        return when (val unwrapped = unwrap(expression)) {
-            is FirPropertyAccessExpression ->
-                if (unwrapped.explicitReceiver != null) null else unwrapped.calleeReference.toResolvedCallableSymbol() as? FirValueParameterSymbol
-            is FirThisReceiverExpression -> receiver?.takeIf { unwrapped.calleeReference.boundSymbol == it }
-            else -> null
-        }
+        val access = unwrap(expression) as? FirPropertyAccessExpression ?: return null
+        if (access.explicitReceiver != null) return null
+        return access.calleeReference.toResolvedCallableSymbol() as? FirValueParameterSymbol
     }
 
     private fun unwrap(expression: FirExpression): FirExpression =

@@ -41,7 +41,7 @@ Full pages, with every condition and fixture, live under [`docs/rules/`](docs/ru
 | [Prefer explicit backing fields](docs/rules/prefer-explicit-backing-field.md) | `private val _items` exposed through `val items` | `val items: StateFlow<...>` with `field = MutableStateFlow(...)` (Kotlin 2.4) |
 | [Narrow model parameters](docs/rules/narrow-model-parameters.md) | A data-class parameter of which the function reads only a few properties | The values it reads, or a smaller model |
 | [No pass-through return](docs/rules/no-pass-through-return.md) | A function that returns one of its inputs unchanged on every path | `Unit`, or a computed result |
-| [No pass-through function](docs/rules/no-pass-through-function.md) | `fun saveUser(user: User) = repository.save(user)` | Call the target directly, or make the wrapper do something |
+| [No pass-through function](docs/rules/no-pass-through-function.md) | `fun persist(user: User) = store(user)`: another function under a new name, same call shape | Call the target directly, or make the wrapper do something |
 | [Prefer function references](docs/rules/prefer-function-references.md) | `{ transform(it) }`, `{ it.name }`, `{ repo.save(it) }` | `::transform`, `User::name`, `repo::save` |
 | [Comment length](docs/rules/comment-length.md) | More than 5 consecutive `//` lines or a block comment longer than 5 lines | Shorter comments; KDoc for documentation |
 | [No FQN references](docs/rules/no-fqn-references.md) | `java.util.UUID.randomUUID()`, `val f: java.io.File` | `import java.util.UUID` and a simple name |

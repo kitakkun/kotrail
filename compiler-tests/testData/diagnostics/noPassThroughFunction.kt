@@ -19,6 +19,15 @@ class Audit {
 
 fun store(user: User, force: Boolean): Boolean = user.name.isNotEmpty() && force
 
+fun record(event: String) {
+    println(event)
+}
+
+// Reported: a block body with one statement is the same thing.
+fun <!PASS_THROUGH_FUNCTION!>note<!>(event: String) {
+    record(event)
+}
+
 fun mutableItems(): MutableList<String> = mutableListOf("a")
 
 fun parseImpl(text: String): Int = text.length
@@ -26,18 +35,19 @@ fun parseImpl(text: String): Int = text.length
 private fun hidden(text: String): Int = text.length
 
 class UserService(private val repository: Repository, private val audit: Audit) {
-    // Reported: nothing but a forwarding call to a member of a property of this.
-    fun <!PASS_THROUGH_FUNCTION!>saveUser<!>(user: User): Boolean = repository.save(user)
+    // Not reported: reaching the callee through a property is encapsulation, and callers of
+    // saveUser could not call repository.save themselves.
+    fun saveUser(user: User): Boolean = repository.save(user)
 
-    // Reported: a block body with one statement is the same thing.
-    fun <!PASS_THROUGH_FUNCTION!>log<!>(event: String) {
+    fun log(event: String) {
         audit.record(event)
     }
 
-    // Reported: a `return` does not change it either.
+    // Reported: the same call shape as the function's own signature, under another name.
     fun <!PASS_THROUGH_FUNCTION!>persist<!>(user: User, force: Boolean): Boolean {
         return store(user, force)
     }
+
 
     // Not reported: an argument the wrapper supplies itself is a default.
     fun saveForced(user: User): Boolean = store(user, true)
@@ -60,8 +70,11 @@ class UserService(private val repository: Repository, private val audit: Audit) 
 // Reported: an extension that only renames a member of its receiver.
 fun String.<!PASS_THROUGH_FUNCTION!>loud<!>(): String = uppercase()
 
-// Reported: the receiver is passed on as an argument, unchanged.
-fun String.<!PASS_THROUGH_FUNCTION!>size<!>(): Int = parseImpl(this)
+// Not reported: turning the receiver into an argument is a different call shape.
+fun String.size(): Int = parseImpl(this)
+
+// Not reported: the arguments arrive in a different order, which is an adapter.
+fun stash(force: Boolean, user: User): Boolean = store(user, force)
 
 // Reported: a vararg spread through.
 fun greet(vararg names: String): String = names.joinToString(", ")

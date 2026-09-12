@@ -7,62 +7,58 @@
 
 ## What it rejects
 
-A function whose whole body is one call that receives the function's own parameters unchanged
-and returns what the call returns:
+A function that is another function under a different name: its whole body is one call with the
+same shape as its own signature, receiving its parameters unchanged and in order, and returning
+what the call returns.
 
 ```kotlin
-fun saveUser(user: User): Boolean = repository.save(user)
+fun persist(user: User, force: Boolean): Boolean = store(user, force)
 fun String.loud(): String = uppercase()
 fun hello(vararg names: String): String = greet(*names)
 ```
 
 ## What it asks for
 
-Call the target directly, or make the wrapper do something. Each of these is a function with a
-reason to exist, and none is reported:
+Call the target directly. A caller can replace `persist(user, force)` with `store(user, force)`
+argument for argument, and nothing changes; the function only costs every reader a jump to learn
+that. An assistant adding "one more layer" is how these accumulate.
+
+## What it deliberately does not report
+
+The rule reports only the unambiguous shape. Everything that could be a decision is left alone,
+even when the body is a single forwarding call:
 
 ```kotlin
-fun connect(host: String) = connect(host, DEFAULT_PORT)   // supplies a default
-fun items(): List<Item> = mutableItems()                  // narrows the type
-fun parse(text: String): Json = JsonParser.parse(text)    // public over a private callee: a facade
-fun user(name: String): User = User(name)                 // a factory over a constructor
+class UserService(private val repository: Repository) {
+    fun saveUser(user: User) = repository.save(user)   // encapsulation: callers cannot reach repository
+}
+fun String.size(): Int = parseImpl(this)               // a different call shape (receiver -> argument)
+fun stash(force: Boolean, user: User) = store(user, force)   // reordered: an adapter
+fun Caption(text: String) = Text(text)                 // Text has more parameters: a narrower API
+fun connect(host: String) = connect(host, DEFAULT_PORT) // supplies a default
+fun items(): List<Item> = mutableItems()               // narrows the type
+fun user(name: String): User = User(name)              // a factory over a constructor
+fun parse(text: String): Json = JsonParser.parse(text) // public over a non-public callee: a facade
 ```
 
-A layer with nothing in it costs every reader a jump to learn that it does nothing, and it is
-how "one more layer" accumulates when an assistant adds a service method for every repository
-method.
+Also left alone: overrides, `operator`, `inline`, `actual`, `external` and local functions;
+generic functions and generic callees (a specialization); a change of `suspend`; functions with a
+`kotlin.jvm` annotation (Java-facing adapters); a callee reached through operator syntax
+(`block()`, `a + b`); and `@Preview` composables, which exist to call what they preview and which
+[preview-required](compose/preview-required.md) asks for.
 
 ## When it fires
 
 All of the following hold:
 
 - the body is one call, written as an expression body, a `return`, or a single statement;
-- every argument is one of the function's own parameters (a `vararg` may be spread through),
-  each passed exactly once, every parameter is passed, and every parameter of the callee receives
-  one: leaving some of the callee's parameters to their defaults (`fun Caption(text: String) =
-  Text(text)`) narrows the API surface, which is a decision;
-- the callee is reached through nothing, `this`, a property of `this`, or one of the parameters;
-  the function's extension receiver, if it has one, is passed on as the callee's receiver or as
-  an argument;
+- the callee has no explicit receiver, or `this`; an extension's receiver is the callee's receiver;
+- every argument is the function's own parameter at the same position (a `vararg` may be spread
+  through), every parameter is passed, and every parameter of the callee receives one;
 - each parameter has the same type as the callee's parameter, and the function's return type is
   the call's type;
-- the callee is a function other than the function itself.
-
-## When it stays quiet
-
-- Overrides, `operator`, `inline`, `actual`, `external` and local functions: forwarding is their
-  purpose or their shape.
-- Functions with a `kotlin.jvm` annotation (`@JvmStatic`, `@JvmName`, `@JvmOverloads`): adapters
-  for Java callers.
-- A callee that is a constructor: a factory function keeps the option of changing how instances
-  are made.
-- A callee reached through operator syntax (`block()`, `a + b`): the wrapper gives syntax a name,
-  which is a decision.
-- A `@Preview` composable (directly or through a multipreview annotation): a preview exists to
-  call the composable it previews, and [preview-required](compose/preview-required.md) asks for it.
-- A public function whose callee is not public: a facade that hides the implementation.
-- Any parameter with a default value, any argument the wrapper supplies itself, any conversion of
-  a type, any receiver obtained by a call.
+- the callee is a function other than the function itself, with the same `suspend`-ness, and
+  no less visible than the function.
 
 A public facade over a callee of the *same* visibility is reported, since the two cannot be told
 apart from the outside; that is what `@Suppress("PASS_THROUGH_FUNCTION")` is for.
@@ -81,7 +77,6 @@ that delegates everything.
 ## Implementation notes
 
 `fir/checkers/PassThroughFunctionChecker.kt`. A `FirSimpleFunctionChecker` that takes the body's
-single statement (unwrapping a `return`), reads the call's `resolvedArgumentMapping`, and checks
-each argument resolves to a distinct parameter of the function. Types are compared with
-`AbstractTypeChecker.equalTypes`, so a wrapper over a generic callee with a concrete type is a
-specialization and is left alone.
+single statement (unwrapping a `return`), checks the call's receiver shape against the function's
+own, and walks `resolvedArgumentMapping` in order, requiring each argument to resolve to the
+function's parameter at that position. Types are compared with `AbstractTypeChecker.equalTypes`.
