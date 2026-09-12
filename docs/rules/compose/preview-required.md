@@ -1,6 +1,6 @@
 # Preview required (Compose)
 
-**Diagnostic:** `COMPOSABLE_WITHOUT_PREVIEW` (error, on the function name)
+**Diagnostic:** `KOTRAIL_COMPOSABLE_WITHOUT_PREVIEW` (error, on the function name)
 **Switch:** `rules.compose.previewRequired` (default `true`)
 **Severity key:** `severity.compose.previewRequired`
 **Setting:** `compose.previewRequired.scope` (`public`, `internal` (default: public and internal), `all`)
@@ -47,7 +47,7 @@ calls it directly.
   preview's body (a preview wrapped in a theme lambda still counts).
 
 Composables that cannot be previewed (they take a ViewModel, need a navigation controller)
-should be suppressed at the spot with `@Suppress("COMPOSABLE_WITHOUT_PREVIEW")`, or better,
+should be suppressed at the spot with `@Suppress("KOTRAIL_COMPOSABLE_WITHOUT_PREVIEW")`, or better,
 split into a thin stateful wrapper and a previewable stateless component.
 
 ## Fixtures

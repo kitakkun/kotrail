@@ -12,7 +12,7 @@ class DeviceTest {
 
     // Reported: the name would not survive on the device.
     @Test
-    fun <!TEST_NAME_NOT_IDENTIFIER!>`opens the drawer on swipe`<!>() {
+    fun <!KOTRAIL_TEST_NAME_NOT_IDENTIFIER!>`opens the drawer on swipe`<!>() {
     }
 }
 

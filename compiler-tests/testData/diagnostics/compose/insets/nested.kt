@@ -64,7 +64,7 @@ fun LocalScreen() {
 // Not satisfied: the member handles the IME, not the status bars.
 @HandlesWindowInsets(WindowInsetsType.StatusBars)
 @Composable
-fun <!WINDOW_INSETS_NOT_HANDLED!>MemberMismatchScreen<!>(components: ChatComponents) {
+fun <!KOTRAIL_WINDOW_INSETS_NOT_HANDLED!>MemberMismatchScreen<!>(components: ChatComponents) {
     components.Composer()
 }
 

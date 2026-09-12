@@ -1,6 +1,6 @@
 # Function length
 
-**Diagnostic:** `FUNCTION_TOO_LONG` (error, on the function name)
+**Diagnostic:** `KOTRAIL_FUNCTION_TOO_LONG` (error, on the function name)
 **Switch:** `rules.functionLength` (default `true`)
 **Severity key:** `severity.functionLength`
 **Settings:** `functionLength.maxLines` (default `50`), `functionLength.maxComposableLines` (default `80`); `0` for unlimited

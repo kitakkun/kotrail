@@ -1,6 +1,6 @@
 # State delegation (Compose)
 
-**Diagnostic:** `PREFER_STATE_DELEGATION` (error, on the local's name)
+**Diagnostic:** `KOTRAIL_PREFER_STATE_DELEGATION` (error, on the local's name)
 **Switch:** `rules.compose.stateDelegation` (default `true`)
 
 ## What it rejects

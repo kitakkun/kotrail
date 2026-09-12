@@ -20,8 +20,11 @@ import org.jetbrains.kotlin.psi.KtProperty
 
 /**
  * A diagnostic that exists at both severities so that each rule's severity can be configured.
- * The factory at the rule's default severity carries the bare name; the other one carries a
- * `_WARNING` / `_ERROR` suffix, following the compiler's own deprecation diagnostics.
+ * Every name starts with `KOTRAIL_`, so that a `@Suppress` says where the rule comes from and
+ * never meets a compiler or other-plugin diagnostic of the same name. The factory at the rule's
+ * default severity carries that base name; the other one carries a `_WARNING` / `_ERROR` suffix,
+ * following the compiler's own deprecation diagnostics. [baseName] is what `@Suppress` matches
+ * at either severity (see [com.kitakkun.kotrail.fir.reportKotrail]).
  *
  * Every factory carries one parameter more than the diagnostic's own arguments: the project's
  * note, appended to the message. It is empty unless the project set `note` or `note.<rule>`, and
@@ -31,6 +34,7 @@ import org.jetbrains.kotlin.psi.KtProperty
  */
 class TunableDiagnostic0(
     val rule: KotrailRule,
+    val baseName: String,
     val error: KtDiagnosticFactory1<String>,
     val warning: KtDiagnosticFactory1<String>,
 ) {
@@ -39,6 +43,7 @@ class TunableDiagnostic0(
 
 class TunableDiagnostic1<A>(
     val rule: KotrailRule,
+    val baseName: String,
     val error: KtDiagnosticFactory2<A, String>,
     val warning: KtDiagnosticFactory2<A, String>,
 ) {
@@ -47,6 +52,7 @@ class TunableDiagnostic1<A>(
 
 class TunableDiagnostic2<A, B>(
     val rule: KotrailRule,
+    val baseName: String,
     val error: KtDiagnosticFactory3<A, B, String>,
     val warning: KtDiagnosticFactory3<A, B, String>,
 ) {
@@ -180,6 +186,7 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
         strategy: AbstractSourceElementPositioningStrategy,
     ): TunableDiagnostic0 = TunableDiagnostic0(
         rule = rule,
+        baseName = PREFIX + name,
         error = KtDiagnosticFactory1(name.withSuffix(Severity.ERROR, rule.defaultSeverity), Severity.ERROR, strategy, P::class, KotrailDiagnosticRenderers),
         warning = KtDiagnosticFactory1(name.withSuffix(Severity.WARNING, rule.defaultSeverity), Severity.WARNING, strategy, P::class, KotrailDiagnosticRenderers),
     )
@@ -190,6 +197,7 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
         strategy: AbstractSourceElementPositioningStrategy,
     ): TunableDiagnostic1<A> = TunableDiagnostic1(
         rule = rule,
+        baseName = PREFIX + name,
         error = KtDiagnosticFactory2(name.withSuffix(Severity.ERROR, rule.defaultSeverity), Severity.ERROR, strategy, P::class, KotrailDiagnosticRenderers),
         warning = KtDiagnosticFactory2(name.withSuffix(Severity.WARNING, rule.defaultSeverity), Severity.WARNING, strategy, P::class, KotrailDiagnosticRenderers),
     )
@@ -200,12 +208,16 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
         strategy: AbstractSourceElementPositioningStrategy,
     ): TunableDiagnostic2<A, B> = TunableDiagnostic2(
         rule = rule,
+        baseName = PREFIX + name,
         error = KtDiagnosticFactory3(name.withSuffix(Severity.ERROR, rule.defaultSeverity), Severity.ERROR, strategy, P::class, KotrailDiagnosticRenderers),
         warning = KtDiagnosticFactory3(name.withSuffix(Severity.WARNING, rule.defaultSeverity), Severity.WARNING, strategy, P::class, KotrailDiagnosticRenderers),
     )
 
+    /** The name every Kotrail diagnostic starts with. */
+    const val PREFIX = "KOTRAIL_"
+
     private fun String.withSuffix(severity: Severity, default: Severity): String =
-        if (severity == default) this else "${this}_${severity.name}"
+        if (severity == default) PREFIX + this else "$PREFIX${this}_${severity.name}"
 }
 
 object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {

@@ -84,14 +84,14 @@ fun ScaffoldScreen() {
 // Not satisfied: only status bars are handled out of the whole safe-drawing set.
 @HandlesWindowInsets(WindowInsetsType.SafeDrawing)
 @Composable
-fun <!WINDOW_INSETS_NOT_HANDLED!>MissingScreen<!>() {
+fun <!KOTRAIL_WINDOW_INSETS_NOT_HANDLED!>MissingScreen<!>() {
     Column(modifier = Modifier.statusBarsPadding()) { Text("missing") }
 }
 
 // Not satisfied: the declared side is not the handled side.
 @HandlesWindowInsets(WindowInsetsType.NavigationBars, sides = [WindowInsetsSide.Bottom])
 @Composable
-fun <!WINDOW_INSETS_NOT_HANDLED!>WrongSideScreen<!>() {
+fun <!KOTRAIL_WINDOW_INSETS_NOT_HANDLED!>WrongSideScreen<!>() {
     Column(modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars.only(WindowInsetsSides.Top))) {
         Text("wrong side")
     }
@@ -100,7 +100,7 @@ fun <!WINDOW_INSETS_NOT_HANDLED!>WrongSideScreen<!>() {
 // Not satisfied: an explicit Scaffold argument replaces the knowledge-base default.
 @HandlesWindowInsets(WindowInsetsType.SystemBars)
 @Composable
-fun <!WINDOW_INSETS_NOT_HANDLED!>ScaffoldOverrideScreen<!>() {
+fun <!KOTRAIL_WINDOW_INSETS_NOT_HANDLED!>ScaffoldOverrideScreen<!>() {
     Scaffold(contentWindowInsets = WindowInsets.ime) { _ -> Text("override") }
 }
 

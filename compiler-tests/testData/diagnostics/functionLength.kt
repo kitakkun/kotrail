@@ -12,7 +12,7 @@ fun withinLimit(items: List<Int>): Int {
 }
 
 // Reported: five lines of code.
-fun <!FUNCTION_TOO_LONG!>overLimit<!>(items: List<Int>): Int {
+fun <!KOTRAIL_FUNCTION_TOO_LONG!>overLimit<!>(items: List<Int>): Int {
     val doubled = items.map { it * 2 }
     val filtered = doubled.filter { it > 2 }
     val capped = filtered.take(10)
@@ -35,7 +35,7 @@ fun paddedButShort(items: List<Int>): Int {
 }
 
 // Reported: an expression body is measured the same way.
-fun <!FUNCTION_TOO_LONG!>longExpression<!>(items: List<Int>): Int = items
+fun <!KOTRAIL_FUNCTION_TOO_LONG!>longExpression<!>(items: List<Int>): Int = items
     .map { it * 2 }
     .filter { it > 2 }
     .take(10)
@@ -54,7 +54,7 @@ fun Summary(items: List<Int>) {
 
 // Reported: past the composable limit.
 @Composable
-fun <!FUNCTION_TOO_LONG!>Details<!>(items: List<Int>) {
+fun <!KOTRAIL_FUNCTION_TOO_LONG!>Details<!>(items: List<Int>) {
     Column {
         Text("first: ${items.first()}")
         Text("last: ${items.last()}")

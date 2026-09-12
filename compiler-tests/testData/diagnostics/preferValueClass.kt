@@ -8,13 +8,13 @@ open class Entity
 annotation class Model
 
 // Reported: a single read-only property and nothing else.
-data class <!PREFER_VALUE_CLASS!>UserId<!>(val raw: Long)
+data class <!KOTRAIL_PREFER_VALUE_CLASS!>UserId<!>(val raw: Long)
 
 // Reported: value classes may implement interfaces.
-data class <!PREFER_VALUE_CLASS!>OrderId<!>(override val raw: Long) : Identifier
+data class <!KOTRAIL_PREFER_VALUE_CLASS!>OrderId<!>(override val raw: Long) : Identifier
 
 // Reported: computed properties and functions do not need a backing field.
-data class <!PREFER_VALUE_CLASS!>Email<!>(val address: String) {
+data class <!KOTRAIL_PREFER_VALUE_CLASS!>Email<!>(val address: String) {
     val domain: String get() = address.substringAfter('@')
 
     fun isCorporate(): Boolean = domain == "example.com"
@@ -22,7 +22,7 @@ data class <!PREFER_VALUE_CLASS!>Email<!>(val address: String) {
 
 // Reported: nested (non-inner) classes are fine.
 object Ids {
-    data class <!PREFER_VALUE_CLASS!>SessionId<!>(val raw: String)
+    data class <!KOTRAIL_PREFER_VALUE_CLASS!>SessionId<!>(val raw: String)
 }
 
 // Not reported: a value class property must be `val`.

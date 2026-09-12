@@ -1,6 +1,6 @@
 # Narrow model parameters
 
-**Diagnostic:** `MODEL_PARAMETER_TOO_WIDE` (error, on the parameter name)
+**Diagnostic:** `KOTRAIL_MODEL_PARAMETER_TOO_WIDE` (error, on the parameter name)
 **Switch:** `rules.narrowModelParameters` (default `true`)
 **Settings:** `narrowModelParameters.maxUnusedProperties` (default `3`),
 `narrowModelParameters.scope` (`composables` by default, or `all`)

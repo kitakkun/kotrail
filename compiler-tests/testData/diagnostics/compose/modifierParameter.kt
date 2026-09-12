@@ -42,7 +42,7 @@ fun OptionalAfter(title: String, modifier: Modifier = Modifier, subtitle: String
 
 // Reported: two Modifier parameters.
 @Composable
-fun <!COMPOSABLE_MODIFIER_PARAMETER!>TwoModifiers<!>(modifier: Modifier = Modifier, contentModifier: Modifier = Modifier) {
+fun <!KOTRAIL_COMPOSABLE_MODIFIER_PARAMETER!>TwoModifiers<!>(modifier: Modifier = Modifier, contentModifier: Modifier = Modifier) {
     Box(modifier) {
         Text("two", contentModifier)
     }
@@ -50,7 +50,7 @@ fun <!COMPOSABLE_MODIFIER_PARAMETER!>TwoModifiers<!>(modifier: Modifier = Modifi
 
 // Reported: not named `modifier`.
 @Composable
-fun <!COMPOSABLE_MODIFIER_PARAMETER!>WrongName<!>(mod: Modifier = Modifier) {
+fun <!KOTRAIL_COMPOSABLE_MODIFIER_PARAMETER!>WrongName<!>(mod: Modifier = Modifier) {
     Box(mod) {
         Text("name")
     }
@@ -58,7 +58,7 @@ fun <!COMPOSABLE_MODIFIER_PARAMETER!>WrongName<!>(mod: Modifier = Modifier) {
 
 // Reported: no default value.
 @Composable
-fun <!COMPOSABLE_MODIFIER_PARAMETER!>NoDefault<!>(modifier: Modifier) {
+fun <!KOTRAIL_COMPOSABLE_MODIFIER_PARAMETER!>NoDefault<!>(modifier: Modifier) {
     Box(modifier) {
         Text("default")
     }
@@ -66,7 +66,7 @@ fun <!COMPOSABLE_MODIFIER_PARAMETER!>NoDefault<!>(modifier: Modifier) {
 
 // Reported: the default is not the `Modifier` companion.
 @Composable
-fun <!COMPOSABLE_MODIFIER_PARAMETER!>WrongDefault<!>(modifier: Modifier = Modifier.padding(PaddingValues())) {
+fun <!KOTRAIL_COMPOSABLE_MODIFIER_PARAMETER!>WrongDefault<!>(modifier: Modifier = Modifier.padding(PaddingValues())) {
     Box(modifier) {
         Text("default")
     }
@@ -74,7 +74,7 @@ fun <!COMPOSABLE_MODIFIER_PARAMETER!>WrongDefault<!>(modifier: Modifier = Modifi
 
 // Reported: an optional parameter precedes `modifier`.
 @Composable
-fun <!COMPOSABLE_MODIFIER_PARAMETER!>OptionalBefore<!>(title: String = "", modifier: Modifier = Modifier) {
+fun <!KOTRAIL_COMPOSABLE_MODIFIER_PARAMETER!>OptionalBefore<!>(title: String = "", modifier: Modifier = Modifier) {
     Box(modifier) {
         Text(title)
     }
@@ -82,13 +82,13 @@ fun <!COMPOSABLE_MODIFIER_PARAMETER!>OptionalBefore<!>(title: String = "", modif
 
 // Reported: `modifier` is never applied.
 @Composable
-fun <!COMPOSABLE_MODIFIER_PARAMETER!>Unused<!>(modifier: Modifier = Modifier) {
+fun <!KOTRAIL_COMPOSABLE_MODIFIER_PARAMETER!>Unused<!>(modifier: Modifier = Modifier) {
     Text("unused")
 }
 
 // Reported: `modifier` is applied to two elements.
 @Composable
-fun <!COMPOSABLE_MODIFIER_PARAMETER!>UsedTwice<!>(modifier: Modifier = Modifier) {
+fun <!KOTRAIL_COMPOSABLE_MODIFIER_PARAMETER!>UsedTwice<!>(modifier: Modifier = Modifier) {
     Column(modifier) {
         Box(modifier) {
             Text("twice")
@@ -98,13 +98,13 @@ fun <!COMPOSABLE_MODIFIER_PARAMETER!>UsedTwice<!>(modifier: Modifier = Modifier)
 
 // Reported: several problems yield a single diagnostic.
 @Composable
-fun <!COMPOSABLE_MODIFIER_PARAMETER!>Everything<!>(title: String = "", mod: Modifier) {
+fun <!KOTRAIL_COMPOSABLE_MODIFIER_PARAMETER!>Everything<!>(title: String = "", mod: Modifier) {
     Text(title)
 }
 
 // Reported: internal composables are part of the module's API.
 @Composable
-internal fun <!COMPOSABLE_MODIFIER_PARAMETER!>InternalWrongName<!>(mod: Modifier = Modifier) {
+internal fun <!KOTRAIL_COMPOSABLE_MODIFIER_PARAMETER!>InternalWrongName<!>(mod: Modifier = Modifier) {
     Box(mod) {
         Text("internal")
     }
@@ -143,7 +143,7 @@ fun rememberDecorated(base: Modifier): Modifier = base.padding(PaddingValues())
 // The interface declaration is reported (name, default); the override inherits its signature.
 interface Slot {
     @Composable
-    fun <!COMPOSABLE_MODIFIER_PARAMETER!>Content<!>(mod: Modifier)
+    fun <!KOTRAIL_COMPOSABLE_MODIFIER_PARAMETER!>Content<!>(mod: Modifier)
 }
 
 class TextSlot : Slot {

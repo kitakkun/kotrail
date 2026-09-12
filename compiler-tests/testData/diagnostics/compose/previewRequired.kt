@@ -12,13 +12,13 @@ annotation class ThemePreviews
 
 // Reported: a public UI composable with no preview in this file.
 @Composable
-fun <!COMPOSABLE_WITHOUT_PREVIEW!>Orphan<!>(modifier: Modifier = Modifier) {
+fun <!KOTRAIL_COMPOSABLE_WITHOUT_PREVIEW!>Orphan<!>(modifier: Modifier = Modifier) {
     Box(modifier) { Text("orphan") }
 }
 
 // Reported: internal composables need one too (default scope).
 @Composable
-internal fun <!COMPOSABLE_WITHOUT_PREVIEW!>InternalOrphan<!>(modifier: Modifier = Modifier) {
+internal fun <!KOTRAIL_COMPOSABLE_WITHOUT_PREVIEW!>InternalOrphan<!>(modifier: Modifier = Modifier) {
     Box(modifier) { Text("internal") }
 }
 

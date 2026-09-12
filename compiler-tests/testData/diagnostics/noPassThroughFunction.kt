@@ -24,7 +24,7 @@ fun record(event: String) {
 }
 
 // Reported: a block body with one statement is the same thing.
-fun <!PASS_THROUGH_FUNCTION!>note<!>(event: String) {
+fun <!KOTRAIL_PASS_THROUGH_FUNCTION!>note<!>(event: String) {
     record(event)
 }
 
@@ -44,7 +44,7 @@ class UserService(private val repository: Repository, private val audit: Audit) 
     }
 
     // Reported: the same call shape as the function's own signature, under another name.
-    fun <!PASS_THROUGH_FUNCTION!>persist<!>(user: User, force: Boolean): Boolean {
+    fun <!KOTRAIL_PASS_THROUGH_FUNCTION!>persist<!>(user: User, force: Boolean): Boolean {
         return store(user, force)
     }
 
@@ -68,7 +68,7 @@ class UserService(private val repository: Repository, private val audit: Audit) 
 }
 
 // Reported: an extension that only renames a member of its receiver.
-fun String.<!PASS_THROUGH_FUNCTION!>loud<!>(): String = uppercase()
+fun String.<!KOTRAIL_PASS_THROUGH_FUNCTION!>loud<!>(): String = uppercase()
 
 // Not reported: turning the receiver into an argument is a different call shape.
 fun String.size(): Int = parseImpl(this)
@@ -78,7 +78,7 @@ fun stash(force: Boolean, user: User): Boolean = store(user, force)
 
 // Reported: a vararg spread through.
 fun greet(vararg names: String): String = names.joinToString(", ")
-fun <!PASS_THROUGH_FUNCTION!>hello<!>(vararg names: String): String = greet(*names)
+fun <!KOTRAIL_PASS_THROUGH_FUNCTION!>hello<!>(vararg names: String): String = greet(*names)
 
 // Not reported: the wrapper narrows the type it exposes.
 fun items(): List<String> = mutableItems()
@@ -129,7 +129,7 @@ fun ScreenPreview() = Screen("preview")
 
 // Reported: a composable that is not a preview and only forwards is still a layer with nothing in it.
 @Composable
-fun <!PASS_THROUGH_FUNCTION!>TitledScreen<!>(title: String) = Screen(title)
+fun <!KOTRAIL_PASS_THROUGH_FUNCTION!>TitledScreen<!>(title: String) = Screen(title)
 
 /* GENERATED_FIR_TAGS: additiveExpression, andExpression, classDeclaration, funWithExtensionReceiver,
 functionDeclaration, functionalType, inline, interfaceDeclaration, objectDeclaration, operator, outProjection, override,

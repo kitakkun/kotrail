@@ -1,6 +1,6 @@
 # No ignored exception
 
-**Diagnostic:** `IGNORED_EXCEPTION` (error, on the catch clause; argument: the parameter name)
+**Diagnostic:** `KOTRAIL_IGNORED_EXCEPTION` (error, on the catch clause; argument: the parameter name)
 **Switch:** `rules.noIgnoredException` (default `true`)
 **Severity key:** `severity.noIgnoredException`
 **Settings:** none

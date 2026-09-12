@@ -9,7 +9,7 @@ import androidx.compose.ui.Modifier
 import com.kitakkun.kotrail.compose.insets.HandlesWindowInsets
 import com.kitakkun.kotrail.compose.insets.WindowInsetsType
 
-@Suppress("COMPOSABLE_NESTING_TOO_DEEP")
+@Suppress("KOTRAIL_COMPOSABLE_NESTING_TOO_DEEP")
 @Composable
 fun DeepButAllowed() {
     Column { Box { Column { Box { Column { Box { Text("seven") } } } } } }
@@ -17,16 +17,16 @@ fun DeepButAllowed() {
 
 @Composable
 fun DeepAndReported() {
-    Column { Box { Column { Box { Column { <!COMPOSABLE_NESTING_TOO_DEEP!>Box<!> { Text("seven") } } } } } }
+    Column { Box { Column { Box { Column { <!KOTRAIL_COMPOSABLE_NESTING_TOO_DEEP!>Box<!> { Text("seven") } } } } } }
 }
 
 class Suppressed {
     private val _a = mutableListOf<String>()
-    @Suppress("PREFER_EXPLICIT_BACKING_FIELD")
+    @Suppress("KOTRAIL_PREFER_EXPLICIT_BACKING_FIELD")
     val a: List<String> get() = _a
 }
 
-@Suppress("WINDOW_INSETS_NOT_HANDLED")
+@Suppress("KOTRAIL_WINDOW_INSETS_NOT_HANDLED")
 @HandlesWindowInsets(WindowInsetsType.SafeDrawing)
 @Composable
 fun MissingButAllowed() {

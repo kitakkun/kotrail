@@ -1,6 +1,6 @@
 # No redundant else
 
-**Diagnostic:** `REDUNDANT_ELSE_IN_EXHAUSTIVE_WHEN` (error, on the `else` branch)
+**Diagnostic:** `KOTRAIL_REDUNDANT_ELSE_IN_EXHAUSTIVE_WHEN` (error, on the `else` branch)
 **Switch:** `rules.noRedundantElse` (default `true`)
 **Severity key:** `severity.noRedundantElse` (default `error`)
 **Settings:** none

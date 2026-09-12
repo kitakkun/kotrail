@@ -14,7 +14,7 @@ fun runLater(block: () -> Unit) {
 suspend fun logsAndContinues(): String {
     return try {
         fetch()
-    } <!SWALLOWED_CANCELLATION!>catch (e: Exception) {
+    } <!KOTRAIL_SWALLOWED_CANCELLATION!>catch (e: Exception) {
         println(e)
         ""
     }<!>
@@ -24,7 +24,7 @@ suspend fun logsAndContinues(): String {
 suspend fun catchesThrowable() {
     try {
         fetch()
-    } <!SWALLOWED_CANCELLATION!>catch (t: Throwable) {
+    } <!KOTRAIL_SWALLOWED_CANCELLATION!>catch (t: Throwable) {
         println(t)
     }<!>
 }
@@ -32,7 +32,7 @@ suspend fun catchesThrowable() {
 suspend fun catchesRuntime() {
     try {
         fetch()
-    } <!SWALLOWED_CANCELLATION!>catch (e: RuntimeException) {
+    } <!KOTRAIL_SWALLOWED_CANCELLATION!>catch (e: RuntimeException) {
         println(e)
     }<!>
 }
@@ -40,7 +40,7 @@ suspend fun catchesRuntime() {
 suspend fun catchesIllegalState() {
     try {
         fetch()
-    } <!SWALLOWED_CANCELLATION!>catch (e: IllegalStateException) {
+    } <!KOTRAIL_SWALLOWED_CANCELLATION!>catch (e: IllegalStateException) {
         println(e)
     }<!>
 }
@@ -49,7 +49,7 @@ suspend fun catchesIllegalState() {
 suspend fun twoBroadClauses() {
     try {
         fetch()
-    } <!SWALLOWED_CANCELLATION!>catch (e: IllegalStateException) {
+    } <!KOTRAIL_SWALLOWED_CANCELLATION!>catch (e: IllegalStateException) {
         println(e)
     }<!> catch (e: Exception) {
         println(e)
@@ -60,7 +60,7 @@ suspend fun twoBroadClauses() {
 val suspendBlock: suspend () -> Unit = {
     try {
         fetch()
-    } <!SWALLOWED_CANCELLATION!>catch (e: Exception) {
+    } <!KOTRAIL_SWALLOWED_CANCELLATION!>catch (e: Exception) {
         println(e)
     }<!>
 }
@@ -70,7 +70,7 @@ suspend fun insideInlineLambda(items: List<Int>) {
     items.forEach { item ->
         try {
             fetch()
-        } <!SWALLOWED_CANCELLATION!>catch (e: Exception) {
+        } <!KOTRAIL_SWALLOWED_CANCELLATION!>catch (e: Exception) {
             println("$item ${e.message}")
         }<!>
     }

@@ -5,33 +5,33 @@ import androidx.compose.ui.Modifier
 
 // Reported: a callback in the trailing position reads as a content slot at the call site.
 @Composable
-fun ActionCard(title: String, modifier: Modifier = Modifier, <!COMPOSABLE_TRAILING_CALLBACK!>onClick<!>: () -> Unit) {
+fun ActionCard(title: String, modifier: Modifier = Modifier, <!KOTRAIL_COMPOSABLE_TRAILING_CALLBACK!>onClick<!>: () -> Unit) {
     Text(title, modifier)
     onClick()
 }
 
 // Reported: nullable, parameterized, and suspend function types are callbacks too.
 @Composable
-fun Dialog(title: String, <!COMPOSABLE_TRAILING_CALLBACK!>onDismiss<!>: (() -> Unit)?) {
+fun Dialog(title: String, <!KOTRAIL_COMPOSABLE_TRAILING_CALLBACK!>onDismiss<!>: (() -> Unit)?) {
     Text(title)
     onDismiss?.invoke()
 }
 
 @Composable
-fun Field(value: String, <!COMPOSABLE_TRAILING_CALLBACK!>onValueChange<!>: (String) -> Unit) {
+fun Field(value: String, <!KOTRAIL_COMPOSABLE_TRAILING_CALLBACK!>onValueChange<!>: (String) -> Unit) {
     Text(value)
     onValueChange(value)
 }
 
 @Composable
-fun Loader(<!COMPOSABLE_TRAILING_CALLBACK!>onLoad<!>: suspend () -> Unit) {
+fun Loader(<!KOTRAIL_COMPOSABLE_TRAILING_CALLBACK!>onLoad<!>: suspend () -> Unit) {
     Text("loading")
 }
 
 // Reported on the interface declaration only; the override below has no say in its signature.
 interface Slot {
     @Composable
-    fun Render(<!COMPOSABLE_TRAILING_CALLBACK!>onClick<!>: () -> Unit)
+    fun Render(<!KOTRAIL_COMPOSABLE_TRAILING_CALLBACK!>onClick<!>: () -> Unit)
 }
 
 class ButtonSlot : Slot {

@@ -5,19 +5,19 @@ fun load(): User? = null
 
 fun reported(user: User?, other: User?, third: User?, names: Map<String, String>) {
     // Reported: plain `!!`.
-    val forced = <!NOT_NULL_ASSERTION!>user!!<!>
+    val forced = <!KOTRAIL_NOT_NULL_ASSERTION!>user!!<!>
 
     // Reported: `!!` at the start of a chain.
-    val name = <!NOT_NULL_ASSERTION!>other!!<!>.name
+    val name = <!KOTRAIL_NOT_NULL_ASSERTION!>other!!<!>.name
 
     // Reported: `!!` on a call result.
-    val loaded = <!NOT_NULL_ASSERTION!>load()!!<!>
+    val loaded = <!KOTRAIL_NOT_NULL_ASSERTION!>load()!!<!>
 
     // Reported: `!!` on an indexed access.
-    val first = <!NOT_NULL_ASSERTION!>names["first"]!!<!>
+    val first = <!KOTRAIL_NOT_NULL_ASSERTION!>names["first"]!!<!>
 
     // Reported: nested chain with two assertions, each reported once.
-    val length = <!NOT_NULL_ASSERTION!><!NOT_NULL_ASSERTION!>third!!<!>.name!!<!>.length
+    val length = <!KOTRAIL_NOT_NULL_ASSERTION!><!KOTRAIL_NOT_NULL_ASSERTION!>third!!<!>.name!!<!>.length
     print("$forced $name $loaded $first $length")
 }
 

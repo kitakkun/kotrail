@@ -14,7 +14,7 @@ import com.kitakkun.kotrail.compose.insets.WindowInsetsType
 // Depth 3 exceeds the lowered limit of 2.
 @Composable
 fun Deep() {
-    Column { Box { <!COMPOSABLE_NESTING_TOO_DEEP!>Text<!>("three") } }
+    Column { Box { <!KOTRAIL_COMPOSABLE_NESTING_TOO_DEEP!>Text<!>("three") } }
 }
 
 @Composable
@@ -31,7 +31,7 @@ fun DoublePadded() {
 // Still reported: the contract check is on.
 @HandlesWindowInsets(WindowInsetsType.SafeDrawing)
 @Composable
-fun <!WINDOW_INSETS_NOT_HANDLED!>MissingScreen<!>() {
+fun <!KOTRAIL_WINDOW_INSETS_NOT_HANDLED!>MissingScreen<!>() {
     Column(modifier = Modifier.statusBarsPadding()) { Text("missing") }
 }
 

@@ -1,9 +1,9 @@
 # Window insets handling (Compose)
 
 **Diagnostics:**
-`WINDOW_INSETS_NOT_HANDLED` (error, on the function name),
-`WINDOW_INSETS_HANDLING_UNVERIFIABLE` (warning, on the function name),
-`WINDOW_INSETS_HANDLED_TWICE` (warning, on the call)
+`KOTRAIL_WINDOW_INSETS_NOT_HANDLED` (error, on the function name),
+`KOTRAIL_WINDOW_INSETS_HANDLING_UNVERIFIABLE` (warning, on the function name),
+`KOTRAIL_WINDOW_INSETS_HANDLED_TWICE` (warning, on the call)
 **Switches:** `rules.compose.windowInsets`, `rules.compose.windowInsetsHandledTwice` (default `true`)
 **Artifact:** `annotations` (`com.kitakkun.kotrail.compose.insets`), needed on the
 compile classpath of every module the plugin is applied to.
@@ -100,9 +100,9 @@ Anything else is unknown.
 
 | Diagnostic | Condition |
 |---|---|
-| `WINDOW_INSETS_NOT_HANDLED` | Declared contract minus handled set is non-empty. The message lists the missing primitives and sides. |
-| `WINDOW_INSETS_HANDLING_UNVERIFIABLE` | An insets expression could not be evaluated and the contract is not already satisfied by what could be. |
-| `WINDOW_INSETS_HANDLED_TWICE` | At a call to composable `G`, a `Modifier` argument applies inset padding whose set intersects what `G` handles. |
+| `KOTRAIL_WINDOW_INSETS_NOT_HANDLED` | Declared contract minus handled set is non-empty. The message lists the missing primitives and sides. |
+| `KOTRAIL_WINDOW_INSETS_HANDLING_UNVERIFIABLE` | An insets expression could not be evaluated and the contract is not already satisfied by what could be. |
+| `KOTRAIL_WINDOW_INSETS_HANDLED_TWICE` | At a call to composable `G`, a `Modifier` argument applies inset padding whose set intersects what `G` handles. |
 
 Composables without a contract are never reported. Members of classes and objects, and local
 composables, are analyzed like any other callee.

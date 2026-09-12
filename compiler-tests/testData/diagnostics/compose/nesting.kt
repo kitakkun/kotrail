@@ -30,7 +30,7 @@ fun PastLimit() {
             Column {                           // 3
                 Box {                          // 4
                     Column {                   // 5
-                        <!COMPOSABLE_NESTING_TOO_DEEP!>Box<!> {   // 6: reported
+                        <!KOTRAIL_COMPOSABLE_NESTING_TOO_DEEP!>Box<!> {   // 6: reported
                             Text("seven")      // 7: not reported again
                         }
                     }

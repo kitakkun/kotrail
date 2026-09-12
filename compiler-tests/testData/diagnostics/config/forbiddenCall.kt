@@ -15,19 +15,19 @@ fun sleep(millis: Long) {}
 
 fun reported() {
     // Reported: top-level function `kotlin.io.println`.
-    <!FORBIDDEN_CALL!>println("debug")<!>
+    <!KOTRAIL_FORBIDDEN_CALL!>println("debug")<!>
 
     // Reported: Java static method `java.lang.Thread.sleep`.
-    <!FORBIDDEN_CALL!>Thread.sleep(10)<!>
+    <!KOTRAIL_FORBIDDEN_CALL!>Thread.sleep(10)<!>
 
     // Reported: constructor, listed as the class name `java.util.Date`.
-    val now = <!FORBIDDEN_CALL!>Date()<!>
+    val now = <!KOTRAIL_FORBIDDEN_CALL!>Date()<!>
 
     // Reported: member of an object, `Logger.debug`.
-    <!FORBIDDEN_CALL!>Logger.debug("message")<!>
+    <!KOTRAIL_FORBIDDEN_CALL!>Logger.debug("message")<!>
 
     // Reported: extension called through an object qualifier, `Scope.launch`.
-    <!FORBIDDEN_CALL!>Scope.launch { }<!>
+    <!KOTRAIL_FORBIDDEN_CALL!>Scope.launch { }<!>
 }
 
 fun quiet() {

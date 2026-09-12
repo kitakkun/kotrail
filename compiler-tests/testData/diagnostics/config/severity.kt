@@ -8,7 +8,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
-fun <!PASS_THROUGH_RETURN_WARNING!>identity<!>(x: Int) = x
+fun <!KOTRAIL_PASS_THROUGH_RETURN_WARNING!>identity<!>(x: Int) = x
 
 @Composable
 fun TopBarArea(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
@@ -17,12 +17,12 @@ fun TopBarArea(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
 
 @Composable
 fun DoublePadded() {
-    <!WINDOW_INSETS_HANDLED_TWICE_ERROR!>TopBarArea(modifier = Modifier.safeDrawingPadding()) { Text("twice") }<!>
+    <!KOTRAIL_WINDOW_INSETS_HANDLED_TWICE_ERROR!>TopBarArea(modifier = Modifier.safeDrawingPadding()) { Text("twice") }<!>
 }
 
 class Cases {
     private val _a = mutableListOf<String>()
-    val <!PREFER_EXPLICIT_BACKING_FIELD!>a<!>: List<String> get() = _a
+    val <!KOTRAIL_PREFER_EXPLICIT_BACKING_FIELD!>a<!>: List<String> get() = _a
 }
 
 /* GENERATED_FIR_TAGS: classDeclaration, functionDeclaration, functionalType, getter, lambdaLiteral, propertyDeclaration,

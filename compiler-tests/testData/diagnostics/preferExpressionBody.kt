@@ -2,23 +2,23 @@
 data class Item(val name: String, val price: Int)
 
 // Reported: the block body is a single `return` of an expression.
-fun <!PREFER_EXPRESSION_BODY!>total<!>(items: List<Item>): Int {
+fun <!KOTRAIL_PREFER_EXPRESSION_BODY!>total<!>(items: List<Item>): Int {
     return items.sumOf { it.price * 2 }
 }
 
 // Reported: an explicit return type is fine with an expression body too.
-fun <!PREFER_EXPRESSION_BODY!>label<!>(count: Int): String {
+fun <!KOTRAIL_PREFER_EXPRESSION_BODY!>label<!>(count: Int): String {
     return "count=$count"
 }
 
 // Reported: an extension function with a single return.
-fun String.<!PREFER_EXPRESSION_BODY!>shout<!>(): String {
+fun String.<!KOTRAIL_PREFER_EXPRESSION_BODY!>shout<!>(): String {
     return uppercase()
 }
 
 // Reported: local functions are checked like any other.
 fun outer(values: List<Int>): Int {
-    fun <!PREFER_EXPRESSION_BODY!>doubled<!>(v: Int): Int {
+    fun <!KOTRAIL_PREFER_EXPRESSION_BODY!>doubled<!>(v: Int): Int {
         return v * 2
     }
     return values.sumOf(::doubled)
@@ -30,7 +30,7 @@ interface Namer {
 }
 
 class DefaultNamer : Namer {
-    override fun <!PREFER_EXPRESSION_BODY!>name<!>(item: Item): String {
+    override fun <!KOTRAIL_PREFER_EXPRESSION_BODY!>name<!>(item: Item): String {
         return "item-${item.price}"
     }
 }

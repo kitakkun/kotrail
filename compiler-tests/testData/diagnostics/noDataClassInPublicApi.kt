@@ -4,11 +4,11 @@
 // This module compiles with explicit API mode, so it is a library and the rule applies.
 
 // Reported: the constructor, copy() and componentN() of a public data class are a binary contract.
-public data class <!DATA_CLASS_IN_PUBLIC_API!>Config<!>(val timeout: Int, val retries: Int)
+public data class <!KOTRAIL_DATA_CLASS_IN_PUBLIC_API!>Config<!>(val timeout: Int, val retries: Int)
 
 // Reported: a subtype in a public sealed hierarchy is just as public.
 public sealed interface Outcome {
-    public data class <!DATA_CLASS_IN_PUBLIC_API!>Success<!>(val value: String, val elapsedMillis: Long) : Outcome
+    public data class <!KOTRAIL_DATA_CLASS_IN_PUBLIC_API!>Success<!>(val value: String, val elapsedMillis: Long) : Outcome
     public data object Cancelled : Outcome
 }
 

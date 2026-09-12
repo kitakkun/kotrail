@@ -4,22 +4,22 @@ data class User(val id: Long, val name: String)
 private val store = mutableListOf<User>()
 
 // Reported: side effect, then the input comes straight back.
-fun <!PASS_THROUGH_RETURN!>cache<!>(user: User): User {
+fun <!KOTRAIL_PASS_THROUGH_RETURN!>cache<!>(user: User): User {
     store.add(user)
     return user
 }
 
 // Reported: expression body that is the parameter.
-fun <!PASS_THROUGH_RETURN!>identity<!>(x: Int) = x
+fun <!KOTRAIL_PASS_THROUGH_RETURN!>identity<!>(x: Int) = x
 
 // Reported: the receiver is returned on every path.
-fun String.<!PASS_THROUGH_RETURN!>logged<!>(): String {
+fun String.<!KOTRAIL_PASS_THROUGH_RETURN!>logged<!>(): String {
     println(this)
     return this
 }
 
 // Reported: both paths return the same parameter.
-fun <!PASS_THROUGH_RETURN!>validate<!>(user: User): User {
+fun <!KOTRAIL_PASS_THROUGH_RETURN!>validate<!>(user: User): User {
     if (user.name.isEmpty()) {
         println("empty name")
         return user

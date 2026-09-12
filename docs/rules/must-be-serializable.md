@@ -1,6 +1,6 @@
 # Must be serializable
 
-**Diagnostic:** `TYPE_NOT_SERIALIZABLE` (error, on the call)
+**Diagnostic:** `KOTRAIL_TYPE_NOT_SERIALIZABLE` (error, on the call)
 **Switch:** `rules.mustBeSerializable` (default `true`)
 **Severity key:** `severity.mustBeSerializable`
 **Setting:** `mustBeSerializable.requiredFor` (default `androidx.compose.runtime.saveable.rememberSerializable`)

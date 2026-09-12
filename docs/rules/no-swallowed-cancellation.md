@@ -1,6 +1,6 @@
 # No swallowed cancellation
 
-**Diagnostic:** `SWALLOWED_CANCELLATION` (error, on the catch clause)
+**Diagnostic:** `KOTRAIL_SWALLOWED_CANCELLATION` (error, on the catch clause)
 **Switch:** `rules.noSwallowedCancellation` (default `true`)
 **Severity key:** `severity.noSwallowedCancellation`
 **Settings:** none

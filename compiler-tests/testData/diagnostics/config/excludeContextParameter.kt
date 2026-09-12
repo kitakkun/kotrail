@@ -10,11 +10,11 @@ context(scope: Scope)
 fun scoped(x: String?): Int = x!!.length
 
 // Reported: no context parameter.
-fun unscoped(x: String?): Int = <!NOT_NULL_ASSERTION!>x!!<!>.length
+fun unscoped(x: String?): Int = <!KOTRAIL_NOT_NULL_ASSERTION!>x!!<!>.length
 
 // Reported: a context parameter of another type.
 context(other: String)
-fun otherwise(x: String?): Int = <!NOT_NULL_ASSERTION!>x!!<!>.length
+fun otherwise(x: String?): Int = <!KOTRAIL_NOT_NULL_ASSERTION!>x!!<!>.length
 
 /* GENERATED_FIR_TAGS: checkNotNullCall, classDeclaration, functionDeclaration, functionDeclarationWithContext,
 nullableType */

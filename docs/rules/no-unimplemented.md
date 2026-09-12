@@ -1,6 +1,6 @@
 # No unimplemented code
 
-**Diagnostic:** `UNIMPLEMENTED_CODE` (error, on the call)
+**Diagnostic:** `KOTRAIL_UNIMPLEMENTED_CODE` (error, on the call)
 **Switch:** `rules.noUnimplemented` (default `true`)
 **Severity key:** `severity.noUnimplemented`
 

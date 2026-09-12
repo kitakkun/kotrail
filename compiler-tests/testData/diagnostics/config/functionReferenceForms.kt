@@ -12,10 +12,10 @@ class Repository {
 
 fun examples(users: List<User>, repository: Repository) {
     // Reported: topLevel.
-    users.map <!PREFER_FUNCTION_REFERENCE!>{ transform(it) }<!>
+    users.map <!KOTRAIL_PREFER_FUNCTION_REFERENCE!>{ transform(it) }<!>
 
     // Reported: bound.
-    users.forEach <!PREFER_FUNCTION_REFERENCE!>{ repository.save(it) }<!>
+    users.forEach <!KOTRAIL_PREFER_FUNCTION_REFERENCE!>{ repository.save(it) }<!>
 
     // Not reported: these would be typeQualified, which is switched off.
     users.map { it.name }

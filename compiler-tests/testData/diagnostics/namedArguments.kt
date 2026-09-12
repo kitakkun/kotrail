@@ -24,15 +24,15 @@ class Grid {
 
 // Reported: three positional Int arguments to a function, a constructor, and a member.
 fun reported(mover: Mover) {
-    <!NAMED_ARGUMENTS_REQUIRED!>move(1, 2, 3)<!>
-    <!NAMED_ARGUMENTS_REQUIRED!>Point(1, 2, 3)<!>
-    <!NAMED_ARGUMENTS_REQUIRED!>mover.move(1, 2, 3)<!>
+    <!KOTRAIL_NAMED_ARGUMENTS_REQUIRED!>move(1, 2, 3)<!>
+    <!KOTRAIL_NAMED_ARGUMENTS_REQUIRED!>Point(1, 2, 3)<!>
+    <!KOTRAIL_NAMED_ARGUMENTS_REQUIRED!>mover.move(1, 2, 3)<!>
 }
 
 // Reported: three positional String arguments; the declared type is what counts, so `T` too.
 fun reportedOtherTypes() {
-    <!NAMED_ARGUMENTS_REQUIRED!>User("1", "Ann", "ann@example.com")<!>
-    <!NAMED_ARGUMENTS_REQUIRED!>triple(1, 2, 3)<!>
+    <!KOTRAIL_NAMED_ARGUMENTS_REQUIRED!>User("1", "Ann", "ann@example.com")<!>
+    <!KOTRAIL_NAMED_ARGUMENTS_REQUIRED!>triple(1, 2, 3)<!>
 }
 
 // Not reported: named arguments, or only two positional arguments of one type.

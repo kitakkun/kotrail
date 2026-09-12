@@ -4,10 +4,10 @@
 data class Order(val id: Long, val total: Int, val currency: String, val note: String)
 
 // Reported: reads 1 of 4.
-fun formatTotal(<!MODEL_PARAMETER_TOO_WIDE!>order<!>: Order): String = "${order.total}"
+fun formatTotal(<!KOTRAIL_MODEL_PARAMETER_TOO_WIDE!>order<!>: Order): String = "${order.total}"
 
 // Reported: reads 2 of 4 (2 unread, limit 1).
-fun formatMoney(<!MODEL_PARAMETER_TOO_WIDE!>order<!>: Order): String = "${order.total} ${order.currency}"
+fun formatMoney(<!KOTRAIL_MODEL_PARAMETER_TOO_WIDE!>order<!>: Order): String = "${order.total} ${order.currency}"
 
 // Not reported: reads 3 of 4.
 fun summary(order: Order): String = "${order.id}: ${order.total} ${order.currency}"

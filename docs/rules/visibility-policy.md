@@ -1,6 +1,6 @@
 # Visibility policy
 
-**Diagnostic:** `VISIBILITY_TOO_WIDE` (error, on the declaration name)
+**Diagnostic:** `KOTRAIL_VISIBILITY_TOO_WIDE` (error, on the declaration name)
 **Switch:** `rules.visibilityPolicy` (default `true`; inert until a policy is set)
 **Severity key:** `severity.visibilityPolicy`
 **Settings:** `visibilityPolicy.private`, `visibilityPolicy.internal` (predicates)

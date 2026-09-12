@@ -32,8 +32,8 @@ var clicks = 0
 fun Screen() {
     Column {
         // Reported: a callback passed as a trailing lambda.
-        IconAction <!COMPOSABLE_CALLBACK_AS_TRAILING_LAMBDA!>{ clicks++ }<!>
-        IconAction(Modifier) <!COMPOSABLE_CALLBACK_AS_TRAILING_LAMBDA!>{ clicks++ }<!>
+        IconAction <!KOTRAIL_COMPOSABLE_CALLBACK_AS_TRAILING_LAMBDA!>{ clicks++ }<!>
+        IconAction(Modifier) <!KOTRAIL_COMPOSABLE_CALLBACK_AS_TRAILING_LAMBDA!>{ clicks++ }<!>
 
         // Not reported: named, or inside the parentheses.
         IconAction(onClick = { clicks++ })

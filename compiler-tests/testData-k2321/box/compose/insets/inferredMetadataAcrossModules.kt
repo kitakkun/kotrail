@@ -4,7 +4,7 @@
 // Exercises the IR metadata writer end to end: `lib` is compiled to class files, so `main`
 // can only satisfy its contracts through the @InferredWindowInsetsHandling annotation that
 // the plugin wrote onto lib's composables. A missing annotation surfaces as
-// WINDOW_INSETS_NOT_HANDLED in `main`, which fails the test.
+// KOTRAIL_WINDOW_INSETS_NOT_HANDLED in `main`, which fails the test.
 
 // MODULE: lib
 // FILE: Lib.kt

@@ -29,7 +29,7 @@ fun LeftByLeft() {
 // Not satisfied: Left contract, Start handled (missing "left in RTL").
 @HandlesWindowInsets(WindowInsetsType.DisplayCutout, sides = [WindowInsetsSide.Left])
 @Composable
-fun <!WINDOW_INSETS_NOT_HANDLED!>LeftByStart<!>() {
+fun <!KOTRAIL_WINDOW_INSETS_NOT_HANDLED!>LeftByStart<!>() {
     Column(modifier = Modifier.windowInsetsPadding(WindowInsets.displayCutout.only(WindowInsetsSides.Start))) { Text("rtl gap") }
 }
 
@@ -57,7 +57,7 @@ fun HorizontalByStartPlusEnd() {
 // Not satisfied: Horizontal contract, only End handled.
 @HandlesWindowInsets(WindowInsetsType.DisplayCutout, sides = [WindowInsetsSide.Horizontal])
 @Composable
-fun <!WINDOW_INSETS_NOT_HANDLED!>HorizontalByEnd<!>() {
+fun <!KOTRAIL_WINDOW_INSETS_NOT_HANDLED!>HorizontalByEnd<!>() {
     Column(modifier = Modifier.windowInsetsEndWidth(WindowInsets.displayCutout)) { Text("missing start") }
 }
 

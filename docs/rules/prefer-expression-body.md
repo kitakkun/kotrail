@@ -1,6 +1,6 @@
 # Prefer expression body
 
-**Diagnostic:** `PREFER_EXPRESSION_BODY` (error, on the function name)
+**Diagnostic:** `KOTRAIL_PREFER_EXPRESSION_BODY` (error, on the function name)
 **Switch:** `rules.preferExpressionBody` (default `true`)
 **Severity key:** `severity.preferExpressionBody`
 **Settings:** none

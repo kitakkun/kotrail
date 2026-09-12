@@ -18,7 +18,7 @@ data class Pair2(val first: String, val second: String)
 
 // Reported: reads 2 of 6 (4 unread).
 @Composable
-fun UserCard(<!MODEL_PARAMETER_TOO_WIDE!>user<!>: User) {
+fun UserCard(<!KOTRAIL_MODEL_PARAMETER_TOO_WIDE!>user<!>: User) {
     Column {
         Text(user.name)
         Text(user.avatarUrl)
@@ -27,7 +27,7 @@ fun UserCard(<!MODEL_PARAMETER_TOO_WIDE!>user<!>: User) {
 
 // Reported: reads nothing at all.
 @Composable
-fun Placeholder(<!MODEL_PARAMETER_TOO_WIDE!>user<!>: User) {
+fun Placeholder(<!KOTRAIL_MODEL_PARAMETER_TOO_WIDE!>user<!>: User) {
     Text("placeholder")
 }
 

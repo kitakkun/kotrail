@@ -4,7 +4,7 @@ fun pair(x: Int, y: Int) {}
 fun two(count: Int, label: String) {}
 
 fun reported() {
-    <!NAMED_ARGUMENTS_REQUIRED!>pair(1, 2)<!>
+    <!KOTRAIL_NAMED_ARGUMENTS_REQUIRED!>pair(1, 2)<!>
 }
 
 fun quiet() {

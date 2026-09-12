@@ -7,7 +7,7 @@ package com.kitakkun.kotrail.serialization
  * checked; on a value parameter, the argument's type is checked. A type is serializable when it is
  * a primitive, `String`, `Unit`, an enum, a standard collection or array of serializable types, or
  * a class annotated with `@kotlinx.serialization.Serializable`. Kotrail reports
- * `TYPE_NOT_SERIALIZABLE` otherwise, so that a `serializer<T>()` lookup that would fail at runtime
+ * `KOTRAIL_TYPE_NOT_SERIALIZABLE` otherwise, so that a `serializer<T>()` lookup that would fail at runtime
  * fails at compile time instead.
  */
 @Target(AnnotationTarget.TYPE_PARAMETER, AnnotationTarget.VALUE_PARAMETER)

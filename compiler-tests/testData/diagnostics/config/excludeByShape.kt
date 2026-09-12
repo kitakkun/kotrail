@@ -8,13 +8,13 @@ import org.junit.jupiter.api.Test
 
 annotation class Generated
 
-fun plain(x: String?): Int = <!NOT_NULL_ASSERTION!>x!!<!>.length
+fun plain(x: String?): Int = <!KOTRAIL_NOT_NULL_ASSERTION!>x!!<!>.length
 
 // Not reported: an extension of exactly kotlin.String.
 fun String.onString(x: String?): Int = x!!.length
 
 // Reported: an extension of another type.
-fun Int.onInt(x: String?): Int = <!NOT_NULL_ASSERTION!>x!!<!>.length
+fun Int.onInt(x: String?): Int = <!KOTRAIL_NOT_NULL_ASSERTION!>x!!<!>.length
 
 // Not reported: annotated, directly or through an enclosing class.
 @Generated
@@ -29,7 +29,7 @@ class Holder {
 private suspend fun quiet(x: String?): Int = x!!.length
 
 // Reported: suspend but public.
-suspend fun loud(x: String?): Int = <!NOT_NULL_ASSERTION!>x!!<!>.length
+suspend fun loud(x: String?): Int = <!KOTRAIL_NOT_NULL_ASSERTION!>x!!<!>.length
 
 // Not reported: a composable.
 @Composable

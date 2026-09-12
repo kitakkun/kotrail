@@ -7,16 +7,16 @@ interface Repository {
 
 class DraftRepository : Repository {
     // Reported: an expression body that is nothing but a placeholder.
-    override fun load(): String = <!UNIMPLEMENTED_CODE!>TODO()<!>
+    override fun load(): String = <!KOTRAIL_UNIMPLEMENTED_CODE!>TODO()<!>
 
     // Reported: a placeholder with a reason still ships nothing.
     override fun save(value: String) {
-        <!UNIMPLEMENTED_CODE!>TODO("persist $value")<!>
+        <!KOTRAIL_UNIMPLEMENTED_CODE!>TODO("persist $value")<!>
     }
 
     // Reported: throwing the error directly is the same placeholder spelled out.
     override fun clear() {
-        throw <!UNIMPLEMENTED_CODE!>NotImplementedError("clear is not supported yet")<!>
+        throw <!KOTRAIL_UNIMPLEMENTED_CODE!>NotImplementedError("clear is not supported yet")<!>
     }
 }
 

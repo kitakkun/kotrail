@@ -20,7 +20,7 @@ class CheckoutSpec {
 
     // Reported: a single word is still below the minimum.
     @Scenario
-    fun <!TEST_NAME_NOT_DESCRIPTIVE!>charges<!>() {
+    fun <!KOTRAIL_TEST_NAME_NOT_DESCRIPTIVE!>charges<!>() {
     }
 
     // Not reported: the configured list replaces the default one, so @Test no longer marks a test.

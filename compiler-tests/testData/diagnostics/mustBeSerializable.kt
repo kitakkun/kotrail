@@ -40,13 +40,13 @@ fun Screen() {
     val wrapped = rememberSerializable { Envelope(Filter("q", 2)) }
 
     // Reported: a plain data class has no serializer.
-    val draft = <!TYPE_NOT_SERIALIZABLE!>rememberSerializable { Draft("d", 1) }<!>
+    val draft = <!KOTRAIL_TYPE_NOT_SERIALIZABLE!>rememberSerializable { Draft("d", 1) }<!>
 
     // Reported: a collection of a non-serializable class.
-    val drafts = <!TYPE_NOT_SERIALIZABLE!>rememberSerializable { listOf(Draft("d", 1)) }<!>
+    val drafts = <!KOTRAIL_TYPE_NOT_SERIALIZABLE!>rememberSerializable { listOf(Draft("d", 1)) }<!>
 
     // Reported: a serializable wrapper around a non-serializable argument.
-    val badEnvelope = <!TYPE_NOT_SERIALIZABLE!>rememberSerializable { Envelope(Draft("d", 1)) }<!>
+    val badEnvelope = <!KOTRAIL_TYPE_NOT_SERIALIZABLE!>rememberSerializable { Envelope(Draft("d", 1)) }<!>
 
     // Not reported: an explicit serializer takes responsibility.
     val custom = rememberSerializable(serializer = serializerFor()) { Draft("d", 1) }
@@ -57,11 +57,11 @@ fun Screen() {
 fun contracts() {
     // @MustBeSerializable on a type parameter: checked per call site.
     persist(Filter("q", 1))
-    <!TYPE_NOT_SERIALIZABLE!>persist(Draft("d", 1))<!>
+    <!KOTRAIL_TYPE_NOT_SERIALIZABLE!>persist(Draft("d", 1))<!>
 
     // @MustBeSerializable on a value parameter: the argument's type is checked.
     send(Tab.Search)
-    <!TYPE_NOT_SERIALIZABLE!>send(Draft("d", 1))<!>
+    <!KOTRAIL_TYPE_NOT_SERIALIZABLE!>send(Draft("d", 1))<!>
 
     // Not reported: no contract at all.
     keep(Draft("d", 1))

@@ -7,7 +7,7 @@ class Cases {
     private val _items = mutableListOf<String>()
 
     // Reported: the rule is on.
-    val <!PREFER_EXPLICIT_BACKING_FIELD!>items<!>: List<String> get() = _items
+    val <!KOTRAIL_PREFER_EXPLICIT_BACKING_FIELD!>items<!>: List<String> get() = _items
 }
 
 // Not reported: the rule is off.

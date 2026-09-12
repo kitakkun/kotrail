@@ -1,6 +1,6 @@
 # No data class in public API
 
-**Diagnostic:** `DATA_CLASS_IN_PUBLIC_API` (error, on the class name)
+**Diagnostic:** `KOTRAIL_DATA_CLASS_IN_PUBLIC_API` (error, on the class name)
 **Switch:** `rules.noDataClassInPublicApi` (default `true`)
 **Severity key:** `severity.noDataClassInPublicApi`
 **Setting:** `noDataClassInPublicApi.scope` (default `explicitApi`; `all` applies it to every module)

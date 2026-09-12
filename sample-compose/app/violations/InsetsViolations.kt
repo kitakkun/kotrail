@@ -14,7 +14,7 @@ import com.kitakkun.kotrail.compose.insets.HandlesWindowInsets
 import com.kitakkun.kotrail.compose.insets.WindowInsetsType
 import com.kitakkun.kotrail.sample.lib.TopBarArea
 
-// WINDOW_INSETS_NOT_HANDLED: declares SafeDrawing but only handles status bars.
+// KOTRAIL_WINDOW_INSETS_NOT_HANDLED: declares SafeDrawing but only handles status bars.
 @HandlesWindowInsets(WindowInsetsType.SafeDrawing)
 @Composable
 fun MissingScreen() {
@@ -23,14 +23,14 @@ fun MissingScreen() {
     }
 }
 
-// WINDOW_INSETS_NOT_HANDLED: the callee from :lib handles status bars top only, not the IME.
+// KOTRAIL_WINDOW_INSETS_NOT_HANDLED: the callee from :lib handles status bars top only, not the IME.
 @HandlesWindowInsets(WindowInsetsType.Ime)
 @Composable
 fun CrossModuleMissingScreen() {
     TopBarArea { Text("title") }
 }
 
-// WINDOW_INSETS_HANDLING_UNVERIFIABLE: the insets come from a parameter, so nothing can be proven.
+// KOTRAIL_WINDOW_INSETS_HANDLING_UNVERIFIABLE: the insets come from a parameter, so nothing can be proven.
 @HandlesWindowInsets(WindowInsetsType.SafeDrawing)
 @Composable
 fun DynamicInsetsScreen(insets: WindowInsets) {
@@ -39,7 +39,7 @@ fun DynamicInsetsScreen(insets: WindowInsets) {
     }
 }
 
-// WINDOW_INSETS_HANDLED_TWICE: TopBarArea already handles status bars on top; the Modifier
+// KOTRAIL_WINDOW_INSETS_HANDLED_TWICE: TopBarArea already handles status bars on top; the Modifier
 // passed to it applies safe-drawing padding, which includes status bars again.
 @Composable
 fun DoublePaddedScreen() {

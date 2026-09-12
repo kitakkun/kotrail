@@ -1,6 +1,6 @@
 # Prefer value class
 
-**Diagnostic:** `PREFER_VALUE_CLASS` (error, on the class name)
+**Diagnostic:** `KOTRAIL_PREFER_VALUE_CLASS` (error, on the class name)
 **Switch:** `rules.preferValueClass` (default `true`)
 **Severity key:** `severity.preferValueClass` (default `error`)
 **Settings:** none

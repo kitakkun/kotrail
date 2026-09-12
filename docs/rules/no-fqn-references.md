@@ -1,6 +1,6 @@
 # No FQN references
 
-**Diagnostic:** `FQN_REFERENCE` (error, on the qualified name)
+**Diagnostic:** `KOTRAIL_FQN_REFERENCE` (error, on the qualified name)
 **Switch:** `rules.noFqnReferences` (default `true`)
 **Severity key:** `severity.noFqnReferences`
 **Setting:** `noFqnReferences.allow` (comma-separated package prefixes, default empty)

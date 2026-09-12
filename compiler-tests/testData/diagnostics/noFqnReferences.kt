@@ -5,22 +5,22 @@ import java.io.File
 import java.sql.Date
 
 // Reported: a class reached through its package; `import java.util.UUID` would work.
-val id = <!FQN_REFERENCE!>java.util.UUID<!>.randomUUID()
+val id = <!KOTRAIL_FQN_REFERENCE!>java.util.UUID<!>.randomUUID()
 
 // Reported: a fully qualified constructor call.
-val scanner = <!FQN_REFERENCE!>java.util<!>.Scanner("x")
+val scanner = <!KOTRAIL_FQN_REFERENCE!>java.util<!>.Scanner("x")
 
 // Reported: a fully qualified type in a declaration.
-val temp: <!FQN_REFERENCE!>java.io.File<!> = File("x")
+val temp: <!KOTRAIL_FQN_REFERENCE!>java.io.File<!> = File("x")
 
 // Reported: a fully qualified type argument.
-val files: List<<!FQN_REFERENCE!>java.io.File<!>> = emptyList()
+val files: List<<!KOTRAIL_FQN_REFERENCE!>java.io.File<!>> = emptyList()
 
 // Reported: a fully qualified nested class; the outer class is what gets imported.
-val category: <!FQN_REFERENCE!>java.util.Locale.Category?<!> = null
+val category: <!KOTRAIL_FQN_REFERENCE!>java.util.Locale.Category?<!> = null
 
 // Reported: a top-level function reached through its package.
-fun greet() = <!FQN_REFERENCE!>kotlin.io<!>.println("hi")
+fun greet() = <!KOTRAIL_FQN_REFERENCE!>kotlin.io<!>.println("hi")
 
 // Not reported: imported and used by simple name.
 val local = File("y")

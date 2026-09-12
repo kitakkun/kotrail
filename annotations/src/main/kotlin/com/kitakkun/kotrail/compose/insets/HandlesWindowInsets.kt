@@ -6,7 +6,7 @@ package com.kitakkun.kotrail.compose.insets
  *
  * Kotrail verifies the contract at compile time: if the body (including the composables it
  * calls, across modules) does not handle every declared inset on every declared side, the build
- * fails with `WINDOW_INSETS_NOT_HANDLED`.
+ * fails with `KOTRAIL_WINDOW_INSETS_NOT_HANDLED`.
  *
  * [sides] defaults to all sides because that is what the vast majority of contracts mean; the
  * default makes the common case readable and the exception explicit.

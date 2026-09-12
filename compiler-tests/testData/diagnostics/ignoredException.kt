@@ -11,7 +11,7 @@ fun report(message: String) {
 fun emptyCatch(input: String) {
     try {
         parse(input)
-    } <!IGNORED_EXCEPTION!>catch (e: NumberFormatException) {
+    } <!KOTRAIL_IGNORED_EXCEPTION!>catch (e: NumberFormatException) {
     }<!>
 }
 
@@ -19,7 +19,7 @@ fun emptyCatch(input: String) {
 fun fallbackWithoutLooking(input: String): Int {
     return try {
         parse(input)
-    } <!IGNORED_EXCEPTION!>catch (e: NumberFormatException) {
+    } <!KOTRAIL_IGNORED_EXCEPTION!>catch (e: NumberFormatException) {
         report("bad input")
         0
     }<!>
@@ -31,7 +31,7 @@ fun twoClauses(input: String) {
         parse(input)
     } catch (e: NumberFormatException) {
         report(e.message.orEmpty())
-    } <!IGNORED_EXCEPTION!>catch (e: IllegalStateException) {
+    } <!KOTRAIL_IGNORED_EXCEPTION!>catch (e: IllegalStateException) {
         report("state")
     }<!>
 }
@@ -40,7 +40,7 @@ fun twoClauses(input: String) {
 fun shadowed(input: String) {
     try {
         parse(input)
-    } <!IGNORED_EXCEPTION!>catch (e: NumberFormatException) {
+    } <!KOTRAIL_IGNORED_EXCEPTION!>catch (e: NumberFormatException) {
         val message = "unrelated"
         report(message)
     }<!>

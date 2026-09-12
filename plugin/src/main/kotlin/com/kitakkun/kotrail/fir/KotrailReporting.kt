@@ -13,10 +13,16 @@ import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
  *
  * Every diagnostic knows which rule it belongs to, so a checker names neither the rule nor the
  * severity here: it says what it found and where.
+ *
+ * `@Suppress` with the diagnostic's base name works at either severity: the compiler matches the
+ * name of the factory in use, which carries a `_WARNING` / `_ERROR` suffix when the project moved
+ * the rule off its default severity, so the base name is checked here against the same set of
+ * suppressed names. A suppression written for one severity survives a change of the other.
  */
 context(context: CheckerContext, reporter: DiagnosticReporter)
 internal fun reportKotrail(source: KtSourceElement?, diagnostic: TunableDiagnostic0) {
     val config = context.session.kotrailConfig
+    if (diagnostic.baseName in context.suppressedDiagnostics) return
     if (isExcluded(diagnostic.rule)) return
     reporter.reportOn(source, diagnostic.at(config.severity(diagnostic.rule)), config.note(diagnostic.rule))
 }
@@ -24,6 +30,7 @@ internal fun reportKotrail(source: KtSourceElement?, diagnostic: TunableDiagnost
 context(context: CheckerContext, reporter: DiagnosticReporter)
 internal fun reportKotrail(source: KtSourceElement?, diagnostic: TunableDiagnostic1<String>, a: String) {
     val config = context.session.kotrailConfig
+    if (diagnostic.baseName in context.suppressedDiagnostics) return
     if (isExcluded(diagnostic.rule)) return
     reporter.reportOn(source, diagnostic.at(config.severity(diagnostic.rule)), a, config.note(diagnostic.rule))
 }
@@ -36,6 +43,7 @@ internal fun reportKotrail(
     b: String,
 ) {
     val config = context.session.kotrailConfig
+    if (diagnostic.baseName in context.suppressedDiagnostics) return
     if (isExcluded(diagnostic.rule)) return
     reporter.reportOn(source, diagnostic.at(config.severity(diagnostic.rule)), a, b, config.note(diagnostic.rule))
 }

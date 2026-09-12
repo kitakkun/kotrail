@@ -10,7 +10,7 @@ annotation class Persisted
 
 // Reported: a composable named *Screen must carry @Screen.
 @Composable
-fun <!REQUIRED_ANNOTATION_MISSING!>HomeScreen<!>() {
+fun <!KOTRAIL_REQUIRED_ANNOTATION_MISSING!>HomeScreen<!>() {
     Text("home")
 }
 
@@ -31,7 +31,7 @@ fun Home() {
 }
 
 // Reported: a class named *Entity must carry @Persisted.
-class <!REQUIRED_ANNOTATION_MISSING!>UserEntity<!>(val id: Int)
+class <!KOTRAIL_REQUIRED_ANNOTATION_MISSING!>UserEntity<!>(val id: Int)
 
 // Not reported: the class is annotated, and the policy asks about classes only, so its
 // members are left alone even though they sit inside a class named *Entity.
@@ -45,7 +45,7 @@ class OrderEntity(val id: Int) {
 @Screen
 class ScreenHolder {
     @Composable
-    fun <!REQUIRED_ANNOTATION_MISSING!>InnerScreen<!>() {
+    fun <!KOTRAIL_REQUIRED_ANNOTATION_MISSING!>InnerScreen<!>() {
         Text("inner")
     }
 }

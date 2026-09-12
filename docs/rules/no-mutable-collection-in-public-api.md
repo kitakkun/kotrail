@@ -1,6 +1,6 @@
 # No mutable collection in public API
 
-**Diagnostic:** `MUTABLE_COLLECTION_IN_PUBLIC_API` (error, on the type reference; on the whole declaration when the type is inferred)
+**Diagnostic:** `KOTRAIL_MUTABLE_COLLECTION_IN_PUBLIC_API` (error, on the type reference; on the whole declaration when the type is inferred)
 **Switch:** `rules.noMutableCollectionInPublicApi` (default `true`)
 **Severity key:** `severity.noMutableCollectionInPublicApi`
 **Settings:** none

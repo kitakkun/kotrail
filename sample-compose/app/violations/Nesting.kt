@@ -1,5 +1,5 @@
 // Not part of the sample source set. Copy this file into sample-compose/app/src/main/kotlin/
-// and run ./gradlew :sample-compose:app:compileKotlin to see COMPOSABLE_NESTING_TOO_DEEP fire.
+// and run ./gradlew :sample-compose:app:compileKotlin to see KOTRAIL_COMPOSABLE_NESTING_TOO_DEEP fire.
 package com.kitakkun.kotrail.sample.app
 
 import androidx.compose.foundation.layout.Box

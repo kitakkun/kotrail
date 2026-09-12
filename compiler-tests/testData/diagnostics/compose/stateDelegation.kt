@@ -16,7 +16,7 @@ import androidx.compose.runtime.setValue
 // Reported: a MutableState used only through .value (reads and writes). Suggests `var ... by`.
 @Composable
 fun Counter() {
-    val <!PREFER_STATE_DELEGATION!>count<!> = remember { mutableStateOf(0) }
+    val <!KOTRAIL_PREFER_STATE_DELEGATION!>count<!> = remember { mutableStateOf(0) }
     Column {
         Text("count = ${count.value}")
         count.value = count.value + 1
@@ -26,14 +26,14 @@ fun Counter() {
 // Reported: a read-only State from derivedStateOf. Suggests `val ... by`.
 @Composable
 fun Derived(items: List<String>) {
-    val <!PREFER_STATE_DELEGATION!>size<!> = remember { derivedStateOf { items.size } }
+    val <!KOTRAIL_PREFER_STATE_DELEGATION!>size<!> = remember { derivedStateOf { items.size } }
     Text("size = ${size.value}")
 }
 
 // Reported: rememberSaveable counts too, and usages inside nested lambdas are found.
 @Composable
 fun Saved() {
-    val <!PREFER_STATE_DELEGATION!>query<!> = rememberSaveable { mutableStateOf("") }
+    val <!KOTRAIL_PREFER_STATE_DELEGATION!>query<!> = rememberSaveable { mutableStateOf("") }
     LazyColumn {
         items(3) { Text(query.value) }
     }

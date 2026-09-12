@@ -1,6 +1,6 @@
 # Named arguments for repeated types
 
-**Diagnostic:** `NAMED_ARGUMENTS_REQUIRED` (error, on the whole call)
+**Diagnostic:** `KOTRAIL_NAMED_ARGUMENTS_REQUIRED` (error, on the whole call)
 **Switch:** `rules.namedArgumentsForRepeatedTypes` (default `true`)
 **Severity key:** `severity.namedArgumentsForRepeatedTypes`
 **Setting:** `namedArgumentsForRepeatedTypes.minArguments` (default `3`)

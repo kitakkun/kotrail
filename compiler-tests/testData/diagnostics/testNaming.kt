@@ -14,17 +14,17 @@ class OrderTest {
 
     // Reported: an identifier only hints at what is verified.
     @Test
-    fun <!TEST_NAME_NOT_DESCRIPTIVE!>returnsEmptyList<!>() {
+    fun <!KOTRAIL_TEST_NAME_NOT_DESCRIPTIVE!>returnsEmptyList<!>() {
     }
 
     // Reported: backticks alone are not a description.
     @Test
-    fun <!TEST_NAME_NOT_DESCRIPTIVE!>`fails`<!>() {
+    fun <!KOTRAIL_TEST_NAME_NOT_DESCRIPTIVE!>`fails`<!>() {
     }
 
     // Reported: two words are below the default minimum of three.
     @Test
-    fun <!TEST_NAME_NOT_DESCRIPTIVE!>`rejects duplicates`<!>() {
+    fun <!KOTRAIL_TEST_NAME_NOT_DESCRIPTIVE!>`rejects duplicates`<!>() {
     }
 
     // Not reported: no test annotation, so the rule does not apply.

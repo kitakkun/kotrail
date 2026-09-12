@@ -1,6 +1,6 @@
 # No pass-through function
 
-**Diagnostic:** `PASS_THROUGH_FUNCTION` (error, on the function name)
+**Diagnostic:** `KOTRAIL_PASS_THROUGH_FUNCTION` (error, on the function name)
 **Switch:** `rules.noPassThroughFunction` (default `true`)
 **Severity key:** `severity.noPassThroughFunction`
 **Settings:** none
@@ -61,7 +61,7 @@ All of the following hold:
   no less visible than the function.
 
 A public facade over a callee of the *same* visibility is reported, since the two cannot be told
-apart from the outside; that is what `@Suppress("PASS_THROUGH_FUNCTION")` is for.
+apart from the outside; that is what `@Suppress("KOTRAIL_PASS_THROUGH_FUNCTION")` is for.
 
 ## Relation to no-pass-through-return
 

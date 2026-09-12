@@ -8,7 +8,7 @@
 // Five: exactly the limit, allowed.
 val atLimit = 1
 
-<!COMMENT_TOO_LONG!>// One
+<!KOTRAIL_COMMENT_TOO_LONG!>// One
 // Two
 // Three
 // Four
@@ -33,7 +33,7 @@ val trailing = 4 // trailing comments never start a line, so they never join a r
 // Six: the trailing comment above does not count, so this run has five lines.
 val afterTrailing = 5
 
-<!COMMENT_TOO_LONG!>/*
+<!KOTRAIL_COMMENT_TOO_LONG!>/*
  * a block comment
  * spanning
  * more

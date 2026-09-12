@@ -1,6 +1,6 @@
 # Nesting limit (Compose)
 
-**Diagnostic:** `COMPOSABLE_NESTING_TOO_DEEP` (error, on the callee name of the first call past the limit)
+**Diagnostic:** `KOTRAIL_COMPOSABLE_NESTING_TOO_DEEP` (error, on the callee name of the first call past the limit)
 **Switch:** `rules.compose.nesting` (default `true`)
 **Setting:** `compose.nesting.maxDepth` (default `5`; `0` also disables the rule)
 
@@ -9,7 +9,7 @@
 One screen composable that keeps growing into a single deep tree:
 
 ```
-e: Screen.kt:18:17 [COMPOSABLE_NESTING_TOO_DEEP] [Kotrail] Composable calls are nested 6 levels deep here; the limit is 5. Extract this subtree into its own composable.
+e: Screen.kt:18:17 [KOTRAIL_COMPOSABLE_NESTING_TOO_DEEP] [Kotrail] Composable calls are nested 6 levels deep here; the limit is 5. Extract this subtree into its own composable.
 ```
 
 ## What it asks for

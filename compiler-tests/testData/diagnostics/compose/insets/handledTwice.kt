@@ -22,13 +22,13 @@ fun TopBarArea(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
 @Composable
 fun Screen() {
     // Overlap: TopBarArea handles status bars (top); safeDrawingPadding includes them.
-    <!WINDOW_INSETS_HANDLED_TWICE!>TopBarArea(modifier = Modifier.safeDrawingPadding()) { Text("twice") }<!>
+    <!KOTRAIL_WINDOW_INSETS_HANDLED_TWICE!>TopBarArea(modifier = Modifier.safeDrawingPadding()) { Text("twice") }<!>
 
     // No overlap: the IME is not handled by TopBarArea.
     TopBarArea(modifier = Modifier.imePadding()) { Text("fine") }
 
     // Overlap through the knowledge base: Scaffold handles system bars.
-    <!WINDOW_INSETS_HANDLED_TWICE!>Scaffold(modifier = Modifier.safeDrawingPadding()) { _ -> Text("twice") }<!>
+    <!KOTRAIL_WINDOW_INSETS_HANDLED_TWICE!>Scaffold(modifier = Modifier.safeDrawingPadding()) { _ -> Text("twice") }<!>
 }
 
 /* GENERATED_FIR_TAGS: functionDeclaration, functionalType, lambdaLiteral, stringLiteral */

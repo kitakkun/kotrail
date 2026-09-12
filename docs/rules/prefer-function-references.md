@@ -1,6 +1,6 @@
 # Prefer function references
 
-**Diagnostic:** `PREFER_FUNCTION_REFERENCE` (error, on the lambda)
+**Diagnostic:** `KOTRAIL_PREFER_FUNCTION_REFERENCE` (error, on the lambda)
 **Switch:** `rules.preferFunctionReferences` (default `true`)
 **Severity key:** `severity.preferFunctionReferences`
 **Setting:** `preferFunctionReferences.forms` (default `topLevel,bound,typeQualified`)

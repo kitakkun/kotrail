@@ -10,11 +10,11 @@ abstract class Base {
 class Cases {
     // Reported: getter delegation.
     private val _a = mutableListOf<String>()
-    val <!PREFER_EXPLICIT_BACKING_FIELD!>a<!>: List<String> get() = _a
+    val <!KOTRAIL_PREFER_EXPLICIT_BACKING_FIELD!>a<!>: List<String> get() = _a
 
     // Reported: initializer delegation through a call on the backing property.
     private val _b = mutableMapOf<String, Int>()
-    val <!PREFER_EXPLICIT_BACKING_FIELD!>b<!>: Map<String, Int> = _b.toMap()
+    val <!KOTRAIL_PREFER_EXPLICIT_BACKING_FIELD!>b<!>: Map<String, Int> = _b.toMap()
 
     // Not reported: the exposing side is a var.
     private val _c = 0
@@ -30,7 +30,7 @@ class Cases {
 
     // Reported: internal is narrower than public.
     internal val _f = 1
-    val <!PREFER_EXPLICIT_BACKING_FIELD!>f<!>: Int get() = _f
+    val <!KOTRAIL_PREFER_EXPLICIT_BACKING_FIELD!>f<!>: Int get() = _f
 
     // Not reported: extension property.
     private val _g = 1

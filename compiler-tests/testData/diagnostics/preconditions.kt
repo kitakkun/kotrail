@@ -81,43 +81,43 @@ fun fromLibrary(delayMillis: Long) {
 
 fun literals() {
     retry(3)
-    <!PRECONDITION_VIOLATED!>retry(-1)<!>
+    <!KOTRAIL_PRECONDITION_VIOLATED!>retry(-1)<!>
 
     window(0, 10)
-    <!PRECONDITION_VIOLATED!>window(10, 0)<!>
-    <!PRECONDITION_VIOLATED!>window(0, 500)<!>
+    <!KOTRAIL_PRECONDITION_VIOLATED!>window(10, 0)<!>
+    <!KOTRAIL_PRECONDITION_VIOLATED!>window(0, 500)<!>
 
     greet("kotrail")
-    <!PRECONDITION_VIOLATED!>greet("   ")<!>
+    <!KOTRAIL_PRECONDITION_VIOLATED!>greet("   ")<!>
 
     opacity(0.5f)
-    <!PRECONDITION_VIOLATED!>opacity(1.5f)<!>
+    <!KOTRAIL_PRECONDITION_VIOLATED!>opacity(1.5f)<!>
 
     pick(0, listOf("a", "b"))
-    <!PRECONDITION_VIOLATED!>pick(2, listOf("a", "b"))<!>
-    <!PRECONDITION_VIOLATED!>pick(0, emptyList())<!>
+    <!KOTRAIL_PRECONDITION_VIOLATED!>pick(2, listOf("a", "b"))<!>
+    <!KOTRAIL_PRECONDITION_VIOLATED!>pick(0, emptyList())<!>
 
     label("x")
-    <!PRECONDITION_VIOLATED!>label(null)<!>
+    <!KOTRAIL_PRECONDITION_VIOLATED!>label(null)<!>
 
     code("abc", true)
     code("abcd", false)
-    <!PRECONDITION_VIOLATED!>code("abcd", true)<!>
+    <!KOTRAIL_PRECONDITION_VIOLATED!>code("abcd", true)<!>
 
     Percent(50)
-    <!PRECONDITION_VIOLATED!>Percent(150)<!>
+    <!KOTRAIL_PRECONDITION_VIOLATED!>Percent(150)<!>
     Port(8080, "http")
-    <!PRECONDITION_VIOLATED!>Port(0, "http")<!>
-    <!PRECONDITION_VIOLATED!>Port(80, "")<!>
+    <!KOTRAIL_PRECONDITION_VIOLATED!>Port(0, "http")<!>
+    <!KOTRAIL_PRECONDITION_VIOLATED!>Port(80, "")<!>
 
     fromLibrary(10L)
-    <!PRECONDITION_VIOLATED!>fromLibrary(0L)<!>
+    <!KOTRAIL_PRECONDITION_VIOLATED!>fromLibrary(0L)<!>
 }
 
 fun folded() {
     // Reported: the value is reached through constants and a local, and folds to -1.
     val attempts = BASE * 2 - MAX_RETRIES
-    <!PRECONDITION_VIOLATED!>retry(attempts)<!>
+    <!KOTRAIL_PRECONDITION_VIOLATED!>retry(attempts)<!>
 
     // Not reported: the same shape, folding to a value that satisfies the contract.
     val allowed = MAX_RETRIES - BASE
@@ -125,20 +125,20 @@ fun folded() {
 
     // Reported: a string template built from locals is folded as well.
     val padding = "  "
-    <!PRECONDITION_VIOLATED!>greet("$padding ")<!>
+    <!KOTRAIL_PRECONDITION_VIOLATED!>greet("$padding ")<!>
     val prefix = "Ms."
     greet("$prefix Doe")
 
     // Reported: a constant `if` chooses the failing branch.
     val debug = true
     retry(if (debug) 1 else -1)
-    <!PRECONDITION_VIOLATED!>retry(if (debug) -1 else 1)<!>
+    <!KOTRAIL_PRECONDITION_VIOLATED!>retry(if (debug) -1 else 1)<!>
 
     // Reported: defaults take part. `limit` defaults to `count * 2`, so only the explicit limit fails.
     bounded()
     bounded(count = 4)
-    <!PRECONDITION_VIOLATED!>bounded(count = 4, limit = 1)<!>
-    <!PRECONDITION_VIOLATED!>bounded(limit = 1)<!>
+    <!KOTRAIL_PRECONDITION_VIOLATED!>bounded(count = 4, limit = 1)<!>
+    <!KOTRAIL_PRECONDITION_VIOLATED!>bounded(limit = 1)<!>
 }
 
 fun unknown(input: Int, flag: Boolean, text: String) {

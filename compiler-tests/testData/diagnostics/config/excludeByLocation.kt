@@ -4,9 +4,9 @@
 // what name(...) sees, not an enclosing one.
 data class UserId(val value: String)
 
-data class <!PREFER_VALUE_CLASS!>Token<!>(val value: String)
+data class <!KOTRAIL_PREFER_VALUE_CLASS!>Token<!>(val value: String)
 
-fun plain(x: String?): Int = <!NOT_NULL_ASSERTION!>x!!<!>.length
+fun plain(x: String?): Int = <!KOTRAIL_NOT_NULL_ASSERTION!>x!!<!>.length
 
 // Not reported: the declaration name matches *Legacy*.
 fun parseLegacy(x: String?): Int = x!!.length
@@ -21,7 +21,7 @@ class GeneratedMapper {
 }
 
 class Mapper {
-    fun map(x: String?): Int = <!NOT_NULL_ASSERTION!>x!!<!>.length
+    fun map(x: String?): Int = <!KOTRAIL_NOT_NULL_ASSERTION!>x!!<!>.length
 }
 
 /* GENERATED_FIR_TAGS: checkNotNullCall, classDeclaration, data, functionDeclaration, nestedClass, nullableType,

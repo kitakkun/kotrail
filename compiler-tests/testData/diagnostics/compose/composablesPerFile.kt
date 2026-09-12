@@ -26,12 +26,12 @@ object Grouped {
 
 // Reported: the fourth and fifth non-private composables in this file.
 @Composable
-fun <!TOO_MANY_COMPOSABLES_IN_FILE!>Fourth<!>(modifier: Modifier = Modifier) {
+fun <!KOTRAIL_TOO_MANY_COMPOSABLES_IN_FILE!>Fourth<!>(modifier: Modifier = Modifier) {
     Box(modifier) { Text("4") }
 }
 
 @Composable
-fun <!TOO_MANY_COMPOSABLES_IN_FILE!>Fifth<!>(modifier: Modifier = Modifier) {
+fun <!KOTRAIL_TOO_MANY_COMPOSABLES_IN_FILE!>Fifth<!>(modifier: Modifier = Modifier) {
     Box(modifier) { Text("5") }
 }
 

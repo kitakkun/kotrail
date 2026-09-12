@@ -14,7 +14,7 @@ fun Home(title: String) {
 
 // Reported: a preview must be private.
 @Composable
-fun <!VISIBILITY_TOO_WIDE!>HomePreview<!>() = Home("home")
+fun <!KOTRAIL_VISIBILITY_TOO_WIDE!>HomePreview<!>() = Home("home")
 
 // Not reported: private, as the policy asks.
 @Composable
@@ -28,7 +28,7 @@ interface Repository {
 }
 
 // Reported: *Impl must be internal.
-class <!VISIBILITY_TOO_WIDE!>RepositoryImpl<!> : Repository {
+class <!KOTRAIL_VISIBILITY_TOO_WIDE!>RepositoryImpl<!> : Repository {
     override fun load(): String = "impl"
 }
 
@@ -44,7 +44,7 @@ internal class Session {
 
 // Reported: annotated, so the internal policy applies; the property is public.
 @Internal
-val <!VISIBILITY_TOO_WIDE!>registry<!>: List<String> = emptyList()
+val <!KOTRAIL_VISIBILITY_TOO_WIDE!>registry<!>: List<String> = emptyList()
 
 // Not reported: an override's visibility is fixed by what it overrides, policy or not.
 class Remote : Repository {

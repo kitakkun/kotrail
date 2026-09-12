@@ -1,6 +1,6 @@
 # Required annotation
 
-**Diagnostic:** `REQUIRED_ANNOTATION_MISSING` (error, on the declaration name)
+**Diagnostic:** `KOTRAIL_REQUIRED_ANNOTATION_MISSING` (error, on the declaration name)
 **Switch:** `rules.requiredAnnotation` (default `true`; inert until a policy is set)
 **Severity key:** `severity.requiredAnnotation`
 **Settings:** `requiredAnnotation.policy.<name>` (one predicate and annotation per policy)

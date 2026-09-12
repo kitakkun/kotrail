@@ -1,6 +1,6 @@
 # Forbidden call
 
-**Diagnostic:** `FORBIDDEN_CALL` (error, on the whole call)
+**Diagnostic:** `KOTRAIL_FORBIDDEN_CALL` (error, on the whole call)
 **Switch:** `rules.forbiddenCall` (default `true`)
 **Severity key:** `severity.forbiddenCall`
 **Setting:** `forbiddenCall.functions` (comma-separated fully qualified callables, default empty)

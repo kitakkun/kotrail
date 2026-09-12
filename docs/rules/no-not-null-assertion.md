@@ -1,6 +1,6 @@
 # No not-null assertion
 
-**Diagnostic:** `NOT_NULL_ASSERTION` (error, on the `x!!` expression)
+**Diagnostic:** `KOTRAIL_NOT_NULL_ASSERTION` (error, on the `x!!` expression)
 **Switch:** `rules.noNotNullAssertion` (default `true`)
 **Severity key:** `severity.noNotNullAssertion`
 **Settings:** none
@@ -37,7 +37,7 @@ Every `!!` written in source, once per operator: `user!!.name!!` yields two diag
 - Everything that is not `!!`: `?.`, `?:`, `requireNotNull`, `checkNotNull`, smart casts.
 
 There are no exemptions. A deliberate use (for example in a test that asserts non-nullness) can be
-kept with `@Suppress("NOT_NULL_ASSERTION")` at the spot.
+kept with `@Suppress("KOTRAIL_NOT_NULL_ASSERTION")` at the spot.
 
 ## Fixtures
 

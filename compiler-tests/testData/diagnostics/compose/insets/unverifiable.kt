@@ -12,7 +12,7 @@ import com.kitakkun.kotrail.compose.insets.WindowInsetsType
 // The insets come from a parameter, so the contract cannot be proven: warning, not error.
 @HandlesWindowInsets(WindowInsetsType.SafeDrawing)
 @Composable
-fun <!WINDOW_INSETS_HANDLING_UNVERIFIABLE!>DynamicScreen<!>(insets: WindowInsets) {
+fun <!KOTRAIL_WINDOW_INSETS_HANDLING_UNVERIFIABLE!>DynamicScreen<!>(insets: WindowInsets) {
     Column(modifier = Modifier.windowInsetsPadding(insets)) { Text("dynamic") }
 }
 

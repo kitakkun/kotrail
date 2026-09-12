@@ -1,6 +1,6 @@
 # Test naming
 
-**Diagnostics:** `TEST_NAME_NOT_DESCRIPTIVE`, `TEST_NAME_NOT_IDENTIFIER` (error, on the function name)
+**Diagnostics:** `KOTRAIL_TEST_NAME_NOT_DESCRIPTIVE`, `KOTRAIL_TEST_NAME_NOT_IDENTIFIER` (error, on the function name)
 **Switch:** `rules.test.naming` (default `true`)
 **Severity key:** `severity.test.naming`
 **Settings:** `test.annotations`, `test.naming.style`, `test.naming.minWords`
@@ -53,7 +53,7 @@ makes the rule inert — switch the rule off instead.
 
 An instrumented test runs on a device, and a method name with spaces fails there. Give that
 compilation `test.naming.style=identifier` and the rule asks for the opposite, reporting
-`TEST_NAME_NOT_IDENTIFIER` for a name that is not a plain identifier. As with every per-source-set
+`KOTRAIL_TEST_NAME_NOT_IDENTIFIER` for a name that is not a plain identifier. As with every per-source-set
 setting, this is expressed by handing the compilation its own configuration file (see
 [Test source sets](../../configuration.md#test-source-sets)):
 

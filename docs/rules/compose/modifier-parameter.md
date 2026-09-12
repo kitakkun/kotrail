@@ -1,6 +1,6 @@
 # Modifier parameter (Compose)
 
-**Diagnostic:** `COMPOSABLE_MODIFIER_PARAMETER` (error, on the function name)
+**Diagnostic:** `KOTRAIL_COMPOSABLE_MODIFIER_PARAMETER` (error, on the function name)
 **Switch:** `rules.compose.modifierParameter` (default `true`)
 **Severity key:** `severity.compose.modifierParameter`
 **Settings:** none
@@ -17,7 +17,7 @@ fun Card(mod: Modifier, title: String = "") {   // wrong name, no default, optio
 ```
 
 ```
-e: Card.kt:8:5 [COMPOSABLE_MODIFIER_PARAMETER] [Kotrail] Modifier parameter convention: the Modifier parameter must be named 'modifier'; 'modifier' must default to 'Modifier'; 'modifier' must be the first optional parameter; 'modifier' is passed more than once (apply it to a single root element).
+e: Card.kt:8:5 [KOTRAIL_COMPOSABLE_MODIFIER_PARAMETER] [Kotrail] Modifier parameter convention: the Modifier parameter must be named 'modifier'; 'modifier' must default to 'Modifier'; 'modifier' must be the first optional parameter; 'modifier' is passed more than once (apply it to a single root element).
 ```
 
 ## What it asks for

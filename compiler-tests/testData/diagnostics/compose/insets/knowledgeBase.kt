@@ -34,7 +34,7 @@ fun HomeScreen() {
 // Reported: the knowledge says system bars only; display cutout and IME are still missing.
 @HandlesWindowInsets(WindowInsetsType.SafeDrawing)
 @Composable
-fun <!WINDOW_INSETS_NOT_HANDLED!>SafeScreen<!>() {
+fun <!KOTRAIL_WINDOW_INSETS_NOT_HANDLED!>SafeScreen<!>() {
     AppScaffold { Text("safe") }
 }
 
@@ -48,7 +48,7 @@ fun TopScreen() {
 // Reported: the bottom side of the status bars is not in the top bar's entry.
 @HandlesWindowInsets(WindowInsetsType.StatusBars)
 @Composable
-fun <!WINDOW_INSETS_NOT_HANDLED!>AllSidesScreen<!>() {
+fun <!KOTRAIL_WINDOW_INSETS_NOT_HANDLED!>AllSidesScreen<!>() {
     AppTopBar()
 }
 
@@ -62,7 +62,7 @@ fun ImeScreen() {
 // Reported: the built-in entry for Material's Scaffold was replaced with None.
 @HandlesWindowInsets(WindowInsetsType.SystemBars)
 @Composable
-fun <!WINDOW_INSETS_NOT_HANDLED!>MaterialScreen<!>() {
+fun <!KOTRAIL_WINDOW_INSETS_NOT_HANDLED!>MaterialScreen<!>() {
     Scaffold { Text("material") }
 }
 

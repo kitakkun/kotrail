@@ -6,17 +6,17 @@ import androidx.compose.runtime.remember
 
 // Reported: emits UI (returns Unit) but starts with a lowercase letter.
 @Composable
-fun <!COMPOSABLE_NAMING!>profileCard<!>(name: String) {
+fun <!KOTRAIL_COMPOSABLE_NAMING!>profileCard<!>(name: String) {
     Text(name)
 }
 
 // Reported: returns a value but starts with an uppercase letter.
 @Composable
-fun <!COMPOSABLE_NAMING!>RememberLabel<!>(name: String): String = remember { "Label: $name" }
+fun <!KOTRAIL_COMPOSABLE_NAMING!>RememberLabel<!>(name: String): String = remember { "Label: $name" }
 
 // Reported: an explicit Unit return type is still a UI composable.
 @Composable
-fun <!COMPOSABLE_NAMING!>footer<!>(): Unit {
+fun <!KOTRAIL_COMPOSABLE_NAMING!>footer<!>(): Unit {
     Text("footer")
 }
 
@@ -24,7 +24,7 @@ fun <!COMPOSABLE_NAMING!>footer<!>(): Unit {
 @Composable
 fun Screen() {
     @Composable
-    fun <!COMPOSABLE_NAMING!>header<!>() {
+    fun <!KOTRAIL_COMPOSABLE_NAMING!>header<!>() {
         Text("header")
     }
     Box {
@@ -63,7 +63,7 @@ fun Helper() {
 // The interface declaration is reported; the override is exempt because its name is fixed.
 interface Slot {
     @Composable
-    fun <!COMPOSABLE_NAMING!>render<!>()
+    fun <!KOTRAIL_COMPOSABLE_NAMING!>render<!>()
 }
 
 class TextSlot : Slot {

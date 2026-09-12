@@ -1,6 +1,6 @@
 # Comment length
 
-**Diagnostic:** `COMMENT_TOO_LONG` (error, on the comment)
+**Diagnostic:** `KOTRAIL_COMMENT_TOO_LONG` (error, on the comment)
 **Switch:** `rules.commentLength` (default `true`)
 **Severity key:** `severity.commentLength`
 **Settings:** `commentLength.maxLines` (default `5`), `commentLength.maxKDocLines` (default `0`, unlimited)
@@ -44,7 +44,7 @@ not a comment and is ignored; nested block comments are handled.
 Comments belong to no declaration, so suppression is per file:
 
 ```kotlin
-@file:Suppress("COMMENT_TOO_LONG")   // e.g. a file with a long license header
+@file:Suppress("KOTRAIL_COMMENT_TOO_LONG")   // e.g. a file with a long license header
 ```
 
 ## Fixtures

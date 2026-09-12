@@ -131,9 +131,10 @@ adopt a rule gradually.
 
 Values are `error` or `warning`. A diagnostic reported at a non-default severity carries a
 suffixed name, following the compiler's own convention for deprecations: demoting
-`PASS_THROUGH_RETURN` yields `PASS_THROUGH_RETURN_WARNING`, promoting
-`WINDOW_INSETS_HANDLED_TWICE` yields `WINDOW_INSETS_HANDLED_TWICE_ERROR`. `@Suppress` uses
-whichever name is in effect.
+`KOTRAIL_PASS_THROUGH_RETURN` yields `KOTRAIL_PASS_THROUGH_RETURN_WARNING`, promoting
+`KOTRAIL_WINDOW_INSETS_HANDLED_TWICE` yields `KOTRAIL_WINDOW_INSETS_HANDLED_TWICE_ERROR`. `@Suppress`
+accepts either the name in effect or the base name, so a suppression written before the
+severity changed keeps working.
 
 ## Project notes
 
@@ -287,10 +288,11 @@ off in tests has no such effect.
 ## Suppressing a single occurrence
 
 Every Kotrail diagnostic can be suppressed by name, per declaration or per file, exactly like a
-built-in one:
+built-in one. The names all start with `KOTRAIL_`, so a suppression says where the rule comes
+from and cannot meet a compiler diagnostic of the same name:
 
 ```kotlin
-@Suppress("COMPOSABLE_NESTING_TOO_DEEP")
+@Suppress("KOTRAIL_COMPOSABLE_NESTING_TOO_DEEP")
 @Composable
 fun LegacyScreen() { ... }
 ```

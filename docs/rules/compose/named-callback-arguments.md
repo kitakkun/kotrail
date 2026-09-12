@@ -1,6 +1,6 @@
 # Named callback arguments (Compose)
 
-**Diagnostic:** `COMPOSABLE_CALLBACK_AS_TRAILING_LAMBDA` (error, on the lambda)
+**Diagnostic:** `KOTRAIL_COMPOSABLE_CALLBACK_AS_TRAILING_LAMBDA` (error, on the lambda)
 **Switch:** `rules.compose.namedCallbackArguments` (default `true`)
 **Severity key:** `severity.compose.namedCallbackArguments`
 **Setting:** `compose.noTrailingCallback.allowedPackages` (default `androidx.compose.runtime`)
