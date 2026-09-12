@@ -1,4 +1,7 @@
 // KOTRAIL_CONFIG: rules.noPassThroughFunction=true
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.tooling.preview.Preview
 import kotlin.jvm.JvmStatic
 
 class User(val name: String, val age: Int)
@@ -99,6 +102,21 @@ object Factory {
 inline fun measured(block: () -> Int): Int = block()
 inline fun timed(block: () -> Int): Int = measured(block)
 fun invoked(block: () -> Int): Int = block()
+
+// Not reported: `Text` has many more parameters than `title`; exposing one of them is a decision.
+@Composable
+fun Screen(title: String) {
+    Text(title)
+}
+
+// Not reported: a preview forwards to the composable it previews; that is what a preview is.
+@Preview
+@Composable
+fun ScreenPreview() = Screen("preview")
+
+// Reported: a composable that is not a preview and only forwards is still a layer with nothing in it.
+@Composable
+fun <!PASS_THROUGH_FUNCTION!>TitledScreen<!>(title: String) = Screen(title)
 
 /* GENERATED_FIR_TAGS: additiveExpression, andExpression, classDeclaration, funWithExtensionReceiver,
 functionDeclaration, functionalType, inline, interfaceDeclaration, objectDeclaration, operator, outProjection, override,

@@ -7,6 +7,7 @@ import com.kitakkun.kotrail.PreviewScope
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.compose.ComposeNames
 import com.kitakkun.kotrail.fir.compose.isComposable
+import com.kitakkun.kotrail.fir.compose.isPreview
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
@@ -99,13 +100,7 @@ object ComposablePreviewRequiredChecker : FirFileChecker(MppCheckerKind.Common) 
         }
     }
 
-    /** `@Preview` itself, or a multipreview annotation (an annotation class annotated with `@Preview`). */
-    private fun FirNamedFunction.isPreview(session: FirSession): Boolean {
-        if (symbol.hasAnnotation(ComposeNames.PREVIEW, session)) return true
-        return symbol.resolvedAnnotationsWithClassIds.any { annotation ->
-            annotation.toAnnotationClassLikeSymbol(session)?.hasAnnotation(ComposeNames.PREVIEW, session) == true
-        }
-    }
+    private fun FirNamedFunction.isPreview(session: FirSession): Boolean = symbol.isPreview(session)
 
     private class CalleeCollector : FirVisitorVoid() {
         val callees = mutableSetOf<FirNamedFunctionSymbol>()

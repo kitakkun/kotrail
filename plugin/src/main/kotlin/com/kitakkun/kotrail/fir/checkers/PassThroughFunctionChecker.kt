@@ -2,6 +2,7 @@ package com.kitakkun.kotrail.fir.checkers
 
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
+import com.kitakkun.kotrail.fir.compose.isPreview
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
@@ -76,6 +77,8 @@ object PassThroughFunctionChecker : FirSimpleFunctionChecker(MppCheckerKind.Comm
         if (declaration.isOverride || declaration.isExpect || declaration.isActual || declaration.isOperator) return
         if (declaration.isInline || declaration.isExternal || declaration.isLocal) return
         if (declaration.annotations.any { it.toAnnotationClassId(session)?.packageFqName == KOTLIN_JVM }) return
+        // A preview exists to call the composable it previews; compose.previewRequired asks for it.
+        if (declaration.symbol.isPreview(session)) return
         if (declaration.valueParameters.any { it.defaultValue != null }) return
 
         val call = singleCall(declaration) ?: return
@@ -92,6 +95,9 @@ object PassThroughFunctionChecker : FirSimpleFunctionChecker(MppCheckerKind.Comm
 
         if (!receiverIsForwarded(call, receiver, parameters, forwarded)) return
         val mapping = call.resolvedArgumentMapping ?: return
+        // Leaving some of the callee's parameters to their defaults narrows the API surface,
+        // which is work of the wrapper's own: `fun Caption(text: String) = Text(text)`.
+        if (mapping.size != callee.valueParameterSymbols.size) return
         for ((argument, parameter) in mapping) {
             val symbol = forwardedSymbol(argument, receiver) ?: return
             if (!forwarded.add(symbol)) return

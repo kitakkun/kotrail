@@ -38,7 +38,9 @@ All of the following hold:
 
 - the body is one call, written as an expression body, a `return`, or a single statement;
 - every argument is one of the function's own parameters (a `vararg` may be spread through),
-  each passed exactly once, and every parameter is passed;
+  each passed exactly once, every parameter is passed, and every parameter of the callee receives
+  one: leaving some of the callee's parameters to their defaults (`fun Caption(text: String) =
+  Text(text)`) narrows the API surface, which is a decision;
 - the callee is reached through nothing, `this`, a property of `this`, or one of the parameters;
   the function's extension receiver, if it has one, is passed on as the callee's receiver or as
   an argument;
@@ -56,6 +58,8 @@ All of the following hold:
   are made.
 - A callee reached through operator syntax (`block()`, `a + b`): the wrapper gives syntax a name,
   which is a decision.
+- A `@Preview` composable (directly or through a multipreview annotation): a preview exists to
+  call the composable it previews, and [preview-required](compose/preview-required.md) asks for it.
 - A public function whose callee is not public: a facade that hides the implementation.
 - Any parameter with a default value, any argument the wrapper supplies itself, any conversion of
   a type, any receiver obtained by a call.
