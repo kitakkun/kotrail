@@ -54,6 +54,8 @@ All of the following hold:
   for Java callers.
 - A callee that is a constructor: a factory function keeps the option of changing how instances
   are made.
+- A callee reached through operator syntax (`block()`, `a + b`): the wrapper gives syntax a name,
+  which is a decision.
 - A public function whose callee is not public: a facade that hides the implementation.
 - Any parameter with a default value, any argument the wrapper supplies itself, any conversion of
   a type, any receiver obtained by a call.

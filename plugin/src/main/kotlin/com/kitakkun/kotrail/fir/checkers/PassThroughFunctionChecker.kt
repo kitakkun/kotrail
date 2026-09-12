@@ -81,6 +81,8 @@ object PassThroughFunctionChecker : FirSimpleFunctionChecker(MppCheckerKind.Comm
         val call = singleCall(declaration) ?: return
         val callee = call.calleeReference.toResolvedNamedFunctionSymbol() ?: return
         if (callee == declaration.symbol) return
+        // `block()`, `a + b`: forwarding to an operator gives syntax a name, which is a decision.
+        if (callee.isOperator) return
         // A public function over a narrower callee is a facade, which is a decision.
         if (declaration.effectiveVisibility.publicApi && !callee.effectiveVisibility.publicApi) return
 

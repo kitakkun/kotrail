@@ -94,9 +94,11 @@ object Factory {
     fun make(name: String, age: Int): User = user(name, age)
 }
 
-// Not reported: inline, whether or not it does anything, is a deliberate shape.
-fun <!PASS_THROUGH_FUNCTION!>measure<!>(block: () -> Int): Int = block()
-inline fun timed(block: () -> Int): Int = measure(<!USAGE_IS_NOT_INLINABLE!>block<!>)
+// Not reported: inline, whether or not it does anything, is a deliberate shape. Nor is
+// `block()`: forwarding to an operator gives syntax a name.
+inline fun measured(block: () -> Int): Int = block()
+inline fun timed(block: () -> Int): Int = measured(block)
+fun invoked(block: () -> Int): Int = block()
 
 /* GENERATED_FIR_TAGS: additiveExpression, andExpression, classDeclaration, funWithExtensionReceiver,
 functionDeclaration, functionalType, inline, interfaceDeclaration, objectDeclaration, operator, outProjection, override,
