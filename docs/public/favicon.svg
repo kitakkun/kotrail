@@ -1,13 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="Kotrail">
 <g transform="translate(4 4) scale(1.000000)">
   <g stroke="#98A4AF" stroke-width="5" stroke-linecap="round" fill="none">
-    <path d="M31 16H59M31 34H59M31 52H59M31 70H54M31 88H54M31 106H59"/>
-    <path d="M65.9 27.4L90.1 41.4M56.9 43L81.1 57"/>
+    <path d="M31 16H59M31 34H59M31 52H54M31 70H54M31 88H59M31 106H59"/>
+    <path d="M69.2 25L91.3 42.3M60 36.9L82 54.1"/>
   </g>
   <g stroke="#6B7987" stroke-width="7" stroke-linecap="round" fill="none">
     <path d="M36 6V114M54 6V114"/>
-    <path d="M54 94L91.8 28.5M54 58L76.2 19.5"/>
+    <path d="M54 81.9L94.1 30.5M54 52.6L79.9 19.5"/>
   </g>
-  <path stroke="#F0672A" d="M79 10.7L98 21.7" stroke-width="7" stroke-linecap="round" fill="none"/>
+  <path stroke="#F0672A" d="M83.9 11.1L101.2 24.7" stroke-width="7" stroke-linecap="round" fill="none"/>
 </g>
 </svg>
