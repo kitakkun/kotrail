@@ -74,6 +74,9 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: the callable reference that replaces the lambda, e.g. `::transform` or `User::name`. */
     val PREFER_FUNCTION_REFERENCE = tunable1<KtElement, String>("PREFER_FUNCTION_REFERENCE", KotrailRule.PREFER_FUNCTION_REFERENCES, WHOLE)
 
+    /** Arguments: the declaration name, the visibility the policy requires. */
+    val VISIBILITY_TOO_WIDE = tunable2<KtElement, String, String>("VISIBILITY_TOO_WIDE", KotrailRule.VISIBILITY_POLICY, NAME)
+
     /** Argument: the class name. */
     val DATA_CLASS_IN_PUBLIC_API = tunable1<KtClass, String>("DATA_CLASS_IN_PUBLIC_API", KotrailRule.NO_DATA_CLASS_IN_PUBLIC_API, NAME)
 
@@ -345,6 +348,11 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             KotrailDiagnostics.PASS_THROUGH_FUNCTION,
             "[Kotrail] ''{0}'' only forwards its arguments to ''{1}''. Call ''{1}'' directly, or give this " +
                 "function something of its own to do: a default, a conversion, a narrower type.",
+        )
+        map.put2(
+            KotrailDiagnostics.VISIBILITY_TOO_WIDE,
+            "[Kotrail] ''{0}'' must be {1}: the project's visibility policy covers this declaration. " +
+                "Narrow it, or move it out of the pattern the policy names.",
         )
         map.put1(
             KotrailDiagnostics.DATA_CLASS_IN_PUBLIC_API,

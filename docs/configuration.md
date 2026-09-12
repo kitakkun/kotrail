@@ -44,6 +44,9 @@ rule.
 | `rules.noMutableCollectionInPublicApi` | `true` | [No mutable collection in public API](rules/no-mutable-collection-in-public-api.md). |
 | `rules.noDataClassInPublicApi` | `true` | [No data class in public API](rules/no-data-class-in-public-api.md). |
 | `noDataClassInPublicApi.scope` | `explicitApi` | `explicitApi` applies the rule only to modules compiled with explicit API mode; `all` everywhere. |
+| `rules.visibilityPolicy` | `true` | [Visibility policy](rules/visibility-policy.md); inert until a policy is set. |
+| `visibilityPolicy.private` | (empty) | A predicate (see [Excluding by pattern](#excluding-by-pattern)); matching declarations must be `private`. |
+| `visibilityPolicy.internal` | (empty) | The same; matching declarations must be `internal` or `private`. |
 | `rules.namedArgumentsForRepeatedTypes` | `true` | [Named arguments for repeated types](rules/named-arguments-for-repeated-types.md). |
 | `namedArguments.minSameTypeArguments` | `3` | How many positional arguments of one type require names. |
 | `rules.mustBeSerializable` | `true` | [Must be serializable](rules/must-be-serializable.md). |
@@ -97,6 +100,7 @@ adopt a rule gradually.
 | `severity.preferExpressionBody` | `error` |
 | `severity.noMutableCollectionInPublicApi` | `error` |
 | `severity.noDataClassInPublicApi` | `error` |
+| `severity.visibilityPolicy` | `error` |
 | `severity.namedArgumentsForRepeatedTypes` | `error` |
 | `severity.mustBeSerializable` | `error` |
 | `severity.noUnimplemented` | `error` |

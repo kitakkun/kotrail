@@ -30,6 +30,8 @@ object KotrailConfigurationKeys {
     val MIN_SAME_TYPE_ARGUMENTS = CompilerConfigurationKey<Int>(KotrailConfig.KEY_MIN_SAME_TYPE_ARGUMENTS)
     val FUNCTION_MAX_LINES = CompilerConfigurationKey<Int>(KotrailConfig.KEY_FUNCTION_MAX_LINES)
     val NO_DATA_CLASS_SCOPE = CompilerConfigurationKey<PublicApiScope>(KotrailConfig.KEY_NO_DATA_CLASS_SCOPE)
+    val VISIBILITY_PRIVATE = CompilerConfigurationKey<ExcludePredicate>(KotrailConfig.KEY_VISIBILITY_PRIVATE)
+    val VISIBILITY_INTERNAL = CompilerConfigurationKey<ExcludePredicate>(KotrailConfig.KEY_VISIBILITY_INTERNAL)
     val COMPOSABLE_MAX_LINES = CompilerConfigurationKey<Int>(KotrailConfig.KEY_COMPOSABLE_MAX_LINES)
     val TEST_ANNOTATIONS = CompilerConfigurationKey<List<String>>(KotrailConfig.KEY_TEST_ANNOTATIONS)
     val TEST_NAMING_STYLE = CompilerConfigurationKey<TestNamingStyle>(KotrailConfig.KEY_TEST_NAMING_STYLE)

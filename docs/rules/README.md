@@ -29,6 +29,7 @@ fixtures that pin its behavior.
 | Preconditions | `PRECONDITION_VIOLATED` | [preconditions.md](preconditions.md) |
 | Function length | `FUNCTION_TOO_LONG` | [function-length.md](function-length.md) |
 | No data class in public API | `DATA_CLASS_IN_PUBLIC_API` | [no-data-class-in-public-api.md](no-data-class-in-public-api.md) |
+| Visibility policy | `VISIBILITY_TOO_WIDE` | [visibility-policy.md](visibility-policy.md) |
 
 ## Compose
 

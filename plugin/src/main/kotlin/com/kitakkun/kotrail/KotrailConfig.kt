@@ -124,6 +124,20 @@ class KotrailExcludes(
     }
 }
 
+/**
+ * Tunables for the visibility-policy rule. Keys are `visibilityPolicy.<name>`. Each holds a
+ * predicate over declarations (the same language as `exclude`); a matching declaration must be
+ * at most that visible.
+ */
+data class KotrailVisibilityPolicy(
+    /** Declarations that must be `private`. */
+    val private: ExcludePredicate?,
+    /** Declarations that must be `internal` or `private`. */
+    val internal: ExcludePredicate?,
+) {
+    val isEmpty: Boolean get() = private == null && internal == null
+}
+
 /** Which modules a library-facing rule applies to. */
 enum class PublicApiScope(val key: String) {
     /** Only modules compiled with explicit API mode, which is how a library declares itself. */
@@ -205,6 +219,7 @@ data class KotrailConfig(
     val test: KotrailTest,
     val functionLength: KotrailFunctionLength,
     val noDataClassInPublicApi: KotrailNoDataClassInPublicApi,
+    val visibilityPolicy: KotrailVisibilityPolicy,
 ) {
     fun isEnabled(rule: KotrailRule): Boolean = switches[rule] ?: true
 
@@ -266,6 +281,8 @@ data class KotrailConfig(
         const val KEY_MIN_SAME_TYPE_ARGUMENTS = "namedArguments.minSameTypeArguments"
         const val KEY_FUNCTION_MAX_LINES = "functionLength.maxLines"
         const val KEY_NO_DATA_CLASS_SCOPE = "noDataClassInPublicApi.scope"
+        const val KEY_VISIBILITY_PRIVATE = "visibilityPolicy.private"
+        const val KEY_VISIBILITY_INTERNAL = "visibilityPolicy.internal"
         const val KEY_COMPOSABLE_MAX_LINES = "functionLength.maxComposableLines"
         const val KEY_TEST_ANNOTATIONS = "test.annotations"
         const val KEY_TEST_NAMING_STYLE = "test.naming.style"
@@ -291,6 +308,8 @@ data class KotrailConfig(
             KEY_FUNCTION_MAX_LINES,
             KEY_COMPOSABLE_MAX_LINES,
             KEY_NO_DATA_CLASS_SCOPE,
+            KEY_VISIBILITY_PRIVATE,
+            KEY_VISIBILITY_INTERNAL,
             KEY_TEST_ANNOTATIONS,
             KEY_TEST_NAMING_STYLE,
             KEY_TEST_MIN_NAME_WORDS,
@@ -384,6 +403,12 @@ data class KotrailConfig(
             val noDataClassScope = configuration.get(KotrailConfigurationKeys.NO_DATA_CLASS_SCOPE)
                 ?: file.getProperty(KEY_NO_DATA_CLASS_SCOPE)?.let { parsePublicApiScope(KEY_NO_DATA_CLASS_SCOPE, it) }
                 ?: DEFAULT_NO_DATA_CLASS_SCOPE
+            val visibilityPolicy = KotrailVisibilityPolicy(
+                private = configuration.get(KotrailConfigurationKeys.VISIBILITY_PRIVATE)
+                    ?: file.getProperty(KEY_VISIBILITY_PRIVATE)?.let { parseExclude(KEY_VISIBILITY_PRIVATE, it) },
+                internal = configuration.get(KotrailConfigurationKeys.VISIBILITY_INTERNAL)
+                    ?: file.getProperty(KEY_VISIBILITY_INTERNAL)?.let { parseExclude(KEY_VISIBILITY_INTERNAL, it) },
+            )
             val testAnnotations = configuration.get(KotrailConfigurationKeys.TEST_ANNOTATIONS)
                 ?: file.getProperty(KEY_TEST_ANNOTATIONS)?.let { parseList(it) }
                 ?: DEFAULT_TEST_ANNOTATIONS
@@ -423,6 +448,7 @@ data class KotrailConfig(
                     maxComposableLines = composableMaxLines,
                 ),
                 noDataClassInPublicApi = KotrailNoDataClassInPublicApi(scope = noDataClassScope),
+                visibilityPolicy = visibilityPolicy,
             )
         }
 

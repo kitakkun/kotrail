@@ -113,6 +113,14 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
         "Which modules the no-data-class-in-public-API rule applies to " +
             "(default ${KotrailConfig.DEFAULT_NO_DATA_CLASS_SCOPE.key}: only those compiled with explicit API mode)",
     )
+    private val visibilityPrivateOption = option(
+        KotrailConfig.KEY_VISIBILITY_PRIVATE, "<predicate>",
+        "Declarations that must be private, e.g. composable && name(*Preview)",
+    )
+    private val visibilityInternalOption = option(
+        KotrailConfig.KEY_VISIBILITY_INTERNAL, "<predicate>",
+        "Declarations that must be internal or private, e.g. name(*Impl)",
+    )
     private val testAnnotationsOption = option(
         KotrailConfig.KEY_TEST_ANNOTATIONS, "<fqName,fqName,...>",
         "Comma-separated annotations that mark a function as a test " +
@@ -169,6 +177,8 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
         functionMaxLinesOption,
         composableMaxLinesOption,
         noDataClassScopeOption,
+        visibilityPrivateOption,
+        visibilityInternalOption,
         testAnnotationsOption,
         testNamingStyleOption,
         testMinNameWordsOption,
@@ -233,6 +243,10 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
                 configuration.put(KotrailConfigurationKeys.COMPOSABLE_MAX_LINES, KotrailConfig.parseInt(name, value))
             noDataClassScopeOption.optionName ->
                 configuration.put(KotrailConfigurationKeys.NO_DATA_CLASS_SCOPE, KotrailConfig.parsePublicApiScope(name, value))
+            visibilityPrivateOption.optionName ->
+                configuration.put(KotrailConfigurationKeys.VISIBILITY_PRIVATE, KotrailConfig.parseExclude(name, value))
+            visibilityInternalOption.optionName ->
+                configuration.put(KotrailConfigurationKeys.VISIBILITY_INTERNAL, KotrailConfig.parseExclude(name, value))
             testAnnotationsOption.optionName ->
                 configuration.put(KotrailConfigurationKeys.TEST_ANNOTATIONS, KotrailConfig.parseList(value))
             testNamingStyleOption.optionName ->

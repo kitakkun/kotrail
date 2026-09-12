@@ -6,6 +6,7 @@ import com.kitakkun.kotrail.fir.checkers.FunctionLengthChecker
 import com.kitakkun.kotrail.fir.preconditions.checkers.PreconditionChecker
 import com.kitakkun.kotrail.fir.preconditions.checkers.PreconditionWarmup
 import com.kitakkun.kotrail.fir.checkers.UnimplementedCodeChecker
+import com.kitakkun.kotrail.fir.checkers.VisibilityPolicyChecker
 import com.kitakkun.kotrail.fir.checkers.IgnoredExceptionChecker
 import com.kitakkun.kotrail.fir.checkers.MutableCollectionInPublicApiChecker
 import com.kitakkun.kotrail.fir.checkers.NoDataClassInPublicApiChecker
@@ -36,6 +37,7 @@ import com.kitakkun.kotrail.fir.compose.insets.checkers.WindowInsetsHandledTwice
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.DeclarationCheckers
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirAnonymousFunctionChecker
+import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirBasicDeclarationChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirCallableDeclarationChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirFileChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirPropertyChecker
@@ -59,6 +61,9 @@ class KotrailCheckersExtension(session: FirSession) : FirAdditionalCheckersExten
 }
 
 object KotrailDeclarationCheckers : DeclarationCheckers() {
+    override val basicDeclarationCheckers: Set<FirBasicDeclarationChecker> = setOf(
+        VisibilityPolicyChecker,
+    )
     override val fileCheckers: Set<FirFileChecker> = setOf(
         CommentLengthChecker,
         ComposablePreviewRequiredChecker,
