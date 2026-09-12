@@ -159,9 +159,11 @@ supported Kotlin version. See [`docs/publishing.md`](docs/publishing.md).
 
 - [x] Plugin skeleton, FIR checker infrastructure, official test infrastructure
 - [x] Thirty-three rules, each switchable and severity-tunable, with settings from plugin options or a properties file
-- [ ] Gradle plugin (`kotrail { }` DSL, per-source-set settings, IDE support)
-- [ ] Configuration-driven rules (`forbidden-call`, `required-annotation`, ...)
-- [ ] User-extensible knowledge base for library composables that handle insets
+- [x] Gradle plugin (`kotrail { }` DSL, per-compilation settings, layered configuration files)
+- [x] Configuration-driven rules (`forbiddenCall`, `requiredAnnotation`, `visibilityPolicy`, `exclude` predicates)
+- [x] User-extensible knowledge base for library composables that handle insets
+- [ ] IDE highlighting, once the K2 IDE loads third-party checkers
+- [ ] Rules that need a whole-project view (unused public API across modules) through a Gradle aggregation task
 
 ## Contributing
 
