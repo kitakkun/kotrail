@@ -88,8 +88,9 @@ Walking the body, including every lambda:
 - Calls to other composables: their declared contract, their inferred metadata (other modules),
   the built-in knowledge base, or their source body (same module), in that order.
 - Knowledge base: `Scaffold` (SystemBars), `TopAppBar` and variants (SystemBars, top and
-  horizontal), `NavigationBar` and `ModalBottomSheet` (SystemBars, bottom and horizontal). A
-  `WindowInsets` argument passed to any of them replaces the default.
+  horizontal), `NavigationBar` and `ModalBottomSheet` (SystemBars, bottom and horizontal), plus
+  the project's own entries (see [Knowledge base](#knowledge-base)). A `WindowInsets` argument
+  passed to any of them replaces the entry.
 
 Insets expressions are evaluated statically: `WindowInsets.<type>` companion properties,
 `only(sides)`, `union`, `add`, `exclude`, and `WindowInsetsSides` constants combined with `+`.
@@ -105,6 +106,27 @@ Anything else is unknown.
 
 Composables without a contract are never reported. Members of classes and objects, and local
 composables, are analyzed like any other callee.
+
+## Knowledge base
+
+A composable whose body the analysis cannot see through, or cannot see at all, is taught with
+one entry per composable, keyed by its fully qualified name:
+
+```properties
+compose.windowInsets.known.com.acme.ui.AppScaffold=SystemBars
+compose.windowInsets.known.com.acme.ui.AppTopBar=StatusBars:Top+Horizontal
+compose.windowInsets.known.com.acme.ui.Sheet=NavigationBars:Bottom, Ime
+compose.windowInsets.known.androidx.compose.material3.Scaffold=None
+```
+
+A value is a comma-separated list of `Type` or `Type:Side+Side` entries, with the entry names
+of `WindowInsetsType` and `WindowInsetsSide`, or `None` for a composable that handles nothing.
+An entry replaces the built-in one for that composable, so the last line above turns the
+Material `Scaffold` into an ordinary composable. An empty value removes the project's entry
+again, which is how a later configuration file restores the built-in knowledge.
+
+The entries are consulted after a declared contract and inferred metadata, and before the
+source body, so they also override what the analysis would find in the same module.
 
 ## Cross-module metadata
 
@@ -125,7 +147,7 @@ both plugins are passed by the Kotlin Gradle plugin the same way.
 ## Fixtures
 
 - `compiler-tests/testData/diagnostics/compose/insets/contract.kt`, `sides.kt`, `nested.kt`,
-  `unverifiable.kt`, `handledTwice.kt`
+  `unverifiable.kt`, `handledTwice.kt`, `knowledgeBase.kt`
 - `compiler-tests/testData/box/compose/insets/inferredMetadataAcrossModules.kt`,
   `inferredMetadataOnMembers.kt`: compile `lib` to class files, satisfy contracts in `main`
   only through the written metadata, and keep IR golden dumps showing the annotation
@@ -138,5 +160,4 @@ both plugins are passed by the Kotlin Gradle plugin the same way.
 checkers. `compose/insets/InsetsModel.kt` holds the algebra shared with
 `ir/compose/insets/InferredWindowInsetsMetadataWriter.kt`.
 
-Not covered yet: a user-extensible knowledge base for library composables, and IDE highlighting
-(which needs the Gradle plugin).
+Not covered yet: IDE highlighting, which needs the K2 IDE to load third-party checkers.

@@ -5,6 +5,7 @@ package com.kitakkun.kotrail.fir.compose.insets
 import com.kitakkun.kotrail.compose.insets.InsetsAnalysis
 import com.kitakkun.kotrail.compose.insets.InsetsSet
 import com.kitakkun.kotrail.compose.insets.Sides
+import com.kitakkun.kotrail.fir.kotrailConfig
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
@@ -41,6 +42,21 @@ class WindowInsetsHandlingService(session: FirSession) : FirExtensionSessionComp
     private val cache = HashMap<FirNamedFunctionSymbol, InsetsAnalysis>()
     private val visiting = HashSet<FirNamedFunctionSymbol>()
 
+    /**
+     * Composables known to handle insets without being analyzed: the built-in entries for
+     * Material 3, changed entry by entry by the project's `compose.windowInsets.known.<fqn>`.
+     */
+    private val knowledgeBase: Map<String, InsetsSet> by lazy {
+        val base = WindowInsetsNames.KNOWN_LIBRARY_COMPOSABLES
+            .mapKeysTo(HashMap()) { (id, _) -> id.asSingleFqName().asString() }
+        for ((fqn, insets) in session.kotrailConfig.compose.knownInsetsHandlers) {
+            if (insets == null) base.remove(fqn) else base[fqn] = insets
+        }
+        base
+    }
+
+    private fun known(callableId: CallableId): InsetsSet? = knowledgeBase[callableId.asSingleFqName().asString()]
+
     fun isComposable(symbol: FirNamedFunctionSymbol): Boolean =
         symbol.hasAnnotation(WindowInsetsNames.COMPOSABLE, session)
 
@@ -75,7 +91,7 @@ class WindowInsetsHandlingService(session: FirSession) : FirExtensionSessionComp
     private fun compute(symbol: FirNamedFunctionSymbol): InsetsAnalysis {
         declaredContract(symbol)?.let { return InsetsAnalysis(it, unverifiable = false) }
         inferredMetadata(symbol)?.let { return InsetsAnalysis(it, unverifiable = false) }
-        WindowInsetsNames.KNOWN_LIBRARY_COMPOSABLES[symbol.callableId]?.let { return InsetsAnalysis(it, unverifiable = false) }
+        known(symbol.callableId)?.let { return InsetsAnalysis(it, unverifiable = false) }
         return analyzeBody(symbol)
     }
 
@@ -153,7 +169,7 @@ class WindowInsetsHandlingService(session: FirSession) : FirExtensionSessionComp
         }
         if (!isComposable(callee)) return null
         val insetsArgument = call.windowInsetsArgument()
-        if (insetsArgument != null && callableId in WindowInsetsNames.KNOWN_LIBRARY_COMPOSABLES) {
+        if (insetsArgument != null && known(callableId) != null) {
             return evaluated(insetsArgument)
         }
         return handledInsets(callee)
