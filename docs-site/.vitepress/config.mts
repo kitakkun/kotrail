@@ -34,6 +34,7 @@ export default defineConfig({
   srcDir: docs,
   base: '/kotrail/',
   cleanUrls: true,
+  head: [['link', { rel: 'icon', type: 'image/svg+xml', href: '/kotrail/favicon.svg' }]],
   vite: {
     resolve: {
       // Pages live outside this directory, so Vite would look for `vue` next to them and fail;
@@ -47,6 +48,7 @@ export default defineConfig({
     },
   },
   themeConfig: {
+    logo: { light: '/kotrail-mark.svg', dark: '/kotrail-mark-dark.svg' },
     nav: [
       { text: 'Guide', link: '/gradle-plugin' },
       { text: 'Rules', link: '/rules/README' },

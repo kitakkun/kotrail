@@ -1,4 +1,9 @@
-# Kotrail
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/public/kotrail-lockup-dark.svg">
+    <img src="docs/public/kotrail-lockup.svg" alt="Kotrail" width="242" height="72">
+  </picture>
+</p>
 
 **A flexible set of compiler checker rules that keep your Kotlin code durable when developing with AI.**
 

@@ -3,6 +3,10 @@ layout: home
 hero:
   name: Kotrail
   text: Compiler checker rules for Kotlin
+  image:
+    light: /kotrail-mark.svg
+    dark: /kotrail-mark-dark.svg
+    alt: Kotrail
   tagline: A flexible set of compiler checker rules that keep your Kotlin code durable when developing with AI.
   actions:
     - theme: brand
