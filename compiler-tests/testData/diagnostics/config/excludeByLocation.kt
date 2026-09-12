@@ -1,8 +1,10 @@
-// KOTRAIL_CONFIG: rules.noNotNullAssertion=true, rules.preferValueClass=true, exclude.noNotNullAssertion=name(*Legacy*) || class(Generated*), exclude.preferValueClass=file(excludeByLocation.kt)
+// KOTRAIL_CONFIG: rules.noNotNullAssertion=true, rules.preferValueClass=true, exclude.noNotNullAssertion=name(*Legacy*) || class(Generated*), exclude.preferValueClass=name(*Id) || file(other.kt)
 
-// Not reported anywhere in this file: preferValueClass is excluded by file name. The exclusion
-// applies to the class declaration itself, which is not among the enclosing declarations.
+// For a diagnostic on a declaration, the declaration itself is the subject: the class name is
+// what name(...) sees, not an enclosing one.
 data class UserId(val value: String)
+
+data class <!PREFER_VALUE_CLASS!>Token<!>(val value: String)
 
 fun plain(x: String?): Int = <!NOT_NULL_ASSERTION!>x!!<!>.length
 
