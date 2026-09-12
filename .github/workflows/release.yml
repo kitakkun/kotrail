@@ -3,7 +3,10 @@ name: Release
 # Pushing a tag such as v0.1.0 publishes that version. The compiler plugin is built and published
 # once per supported Kotlin version, because its JAR links against one compiler; the annotations
 # and the Gradle plugin are Kotlin-version independent and are published once. Each job uploads
-# its own Central Portal deployment and releases it. See docs/publishing.md.
+# its own Central Portal deployment and releases it.
+#
+# Credentials are environment secrets of the `release` environment, which is also where an
+# approval gate (required reviewers) can be put in front of publishing. See docs/publishing.md.
 
 on:
   push:
@@ -11,13 +14,6 @@ on:
 
 permissions:
   contents: read
-
-env:
-  ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
-  ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
-  ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_KEY }}
-  ORG_GRADLE_PROJECT_signingInMemoryKeyId: ${{ secrets.SIGNING_KEY_ID }}
-  ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_KEY_PASSWORD }}
 
 jobs:
   version:
@@ -33,6 +29,13 @@ jobs:
     name: Compiler plugin for Kotlin ${{ matrix.kotlin }}
     needs: version
     runs-on: ubuntu-latest
+    environment: release
+    env:
+      ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+      ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+      ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_KEY }}
+      ORG_GRADLE_PROJECT_signingInMemoryKeyId: ${{ secrets.SIGNING_KEY_ID }}
+      ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_KEY_PASSWORD }}
     strategy:
       fail-fast: false
       matrix:
@@ -62,6 +65,13 @@ jobs:
     name: Annotations and Gradle plugin
     needs: [version, compiler-plugin]
     runs-on: ubuntu-latest
+    environment: release
+    env:
+      ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+      ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+      ORG_GRADLE_PROJECT_signingInMemoryKey: ${{ secrets.SIGNING_KEY }}
+      ORG_GRADLE_PROJECT_signingInMemoryKeyId: ${{ secrets.SIGNING_KEY_ID }}
+      ORG_GRADLE_PROJECT_signingInMemoryKeyPassword: ${{ secrets.SIGNING_KEY_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-java@v4

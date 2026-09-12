@@ -68,7 +68,13 @@ An account at <https://plugins.gradle.org/> with an API key and secret. The plug
 `com.kitakkun.kotrail` is claimed on first publication, and the portal may ask for proof of
 ownership of the `com.kitakkun` namespace as well.
 
-### Repository secrets
+### The `release` environment and its secrets
+
+The publishing jobs declare `environment: release`, so the credentials are **environment secrets**
+of a GitHub environment named `release` (Settings → Environments → New environment), not
+repository secrets. Environment secrets are only handed to jobs that declare the environment, and
+the environment is also where an approval gate goes: add required reviewers to it and every
+release pauses for approval before anything is uploaded.
 
 | Secret | Value |
 | --- | --- |
