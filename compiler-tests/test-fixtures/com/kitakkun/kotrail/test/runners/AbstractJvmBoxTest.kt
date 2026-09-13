@@ -1,5 +1,6 @@
 package com.kitakkun.kotrail.test.runners
 
+import com.kitakkun.kotrail.test.compat.BoxTestBase
 import com.kitakkun.kotrail.test.services.TestDataOverlay
 import com.kitakkun.kotrail.test.services.configureKotrail
 import org.jetbrains.kotlin.test.FirParser
@@ -7,7 +8,6 @@ import org.jetbrains.kotlin.test.builders.TestConfigurationBuilder
 import org.jetbrains.kotlin.test.directives.CodegenTestDirectives
 import org.jetbrains.kotlin.test.directives.JvmEnvironmentConfigurationDirectives
 import org.jetbrains.kotlin.test.directives.TestPhaseDirectives.RUN_PIPELINE_TILL
-import org.jetbrains.kotlin.test.runners.codegen.AbstractFirBlackBoxCodegenTestBase
 import org.jetbrains.kotlin.test.services.EnvironmentBasedStandardLibrariesPathProvider
 import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
 import org.jetbrains.kotlin.test.services.TestPhase
@@ -17,7 +17,7 @@ import org.jetbrains.kotlin.test.services.TestPhase
  * pipeline, so multi-module fixtures exercise the IR metadata writer on the dependency module
  * and the metadata reader on the dependent module.
  */
-open class AbstractJvmBoxTest : AbstractFirBlackBoxCodegenTestBase(FirParser.LightTree) {
+open class AbstractJvmBoxTest : BoxTestBase(FirParser.LightTree) {
     override fun createKotlinStandardLibrariesPathProvider(): KotlinStandardLibrariesPathProvider =
         EnvironmentBasedStandardLibrariesPathProvider
 

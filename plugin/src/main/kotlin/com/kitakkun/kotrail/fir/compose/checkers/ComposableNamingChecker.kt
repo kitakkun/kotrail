@@ -9,7 +9,7 @@ import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
-import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirSimpleFunctionChecker
+import com.kitakkun.kotrail.compat.NamedFunctionChecker
 import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
 import org.jetbrains.kotlin.fir.declarations.utils.isExpect
 import org.jetbrains.kotlin.fir.declarations.utils.isOperator
@@ -31,7 +31,7 @@ import org.jetbrains.kotlin.fir.types.isUnit
  * overrides and `expect` declarations (the name is fixed elsewhere), operator functions (the
  * name is fixed by the language), and names that do not start with a letter.
  */
-object ComposableNamingChecker : FirSimpleFunctionChecker(MppCheckerKind.Common) {
+object ComposableNamingChecker : NamedFunctionChecker(MppCheckerKind.Common) {
     private const val PASCAL_CASE = "PascalCase"
     private const val CAMEL_CASE = "camelCase"
 

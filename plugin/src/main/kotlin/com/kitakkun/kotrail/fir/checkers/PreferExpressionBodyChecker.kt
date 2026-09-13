@@ -9,7 +9,7 @@ import org.jetbrains.kotlin.KtRealSourceElementKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
-import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirSimpleFunctionChecker
+import com.kitakkun.kotrail.compat.NamedFunctionChecker
 import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
 import org.jetbrains.kotlin.fir.expressions.FirReturnExpression
 
@@ -30,7 +30,7 @@ import org.jetbrains.kotlin.fir.expressions.FirReturnExpression
  * `Unit` function (its result is the synthesized `Unit` with a fake source), and returns nested
  * in inner constructs are left alone. Local functions and overrides are reported like any other.
  */
-object PreferExpressionBodyChecker : FirSimpleFunctionChecker(MppCheckerKind.Common) {
+object PreferExpressionBodyChecker : NamedFunctionChecker(MppCheckerKind.Common) {
     context(context: CheckerContext, reporter: DiagnosticReporter)
     override fun check(declaration: FirNamedFunction) {
         if (!context.session.kotrailConfig.isEnabled(KotrailRule.PREFER_EXPRESSION_BODY)) return

@@ -1,5 +1,6 @@
 package com.kitakkun.kotrail.fir.checkers
 
+import com.kitakkun.kotrail.compat.PLUGIN_GENERATED_SOURCE_KIND
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.comments.Comment
 import com.kitakkun.kotrail.comments.CommentKind
@@ -7,7 +8,6 @@ import com.kitakkun.kotrail.comments.CommentScanner
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.reportKotrail
-import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.KtSourceElementOffsetStrategy
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -137,7 +137,7 @@ object CommentLengthChecker : FirFileChecker(MppCheckerKind.Common) {
             val end = endOffset - endDelta
             if (start > end) return null
             return source.fakeElement(
-                KtFakeSourceElementKind.PluginGenerated,
+                PLUGIN_GENERATED_SOURCE_KIND,
                 KtSourceElementOffsetStrategy.Custom.Initialized(start, end),
             )
         }

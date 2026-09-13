@@ -35,7 +35,7 @@ tasks.withType<KotlinCompile>().configureEach {
     // Checker `check()` overrides use context parameters. They are enabled by default from
     // Kotlin 2.4.0 on; 2.3.x still gates them behind the flag, and passing it on 2.4.0 would
     // only produce a "redundant flag" warning.
-    if (kotlinCompatFamily != "k240") {
+    if (kotlinCompatFamily == "k2321") {
         compilerOptions.freeCompilerArgs.add("-Xcontext-parameters")
     }
 }

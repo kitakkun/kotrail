@@ -20,7 +20,7 @@ val kotlinCompilerVersion: String = providers.gradleProperty("kotlin.compiler").
  * The family key also selects the per-version test data overlay
  * (`compiler-tests/testData-<family>`).
  *
- * Later phases add `k230` (2.3.0 <= v < 2.3.20), `k2220`, `k220`, `k210` and `k200`.
+ * Families: `k2420` (2.4.20 and newer), `k240` (2.4.0 <= v < 2.4.20), `k2321` (2.3.20 <= v < 2.4.0).
  */
 fun kotlinCompatFamily(version: String): String {
     val numbers = version.substringBefore('-').split('.').map { it.toIntOrNull() ?: 0 }
@@ -28,7 +28,8 @@ fun kotlinCompatFamily(version: String): String {
     val minor = numbers.getOrElse(1) { 0 }
     val patch = numbers.getOrElse(2) { 0 }
     return when {
-        major > 2 || (major == 2 && minor >= 4) -> "k240"
+        major > 2 || (major == 2 && minor > 4) || (major == 2 && minor == 4 && patch >= 20) -> "k2420"
+        major == 2 && minor == 4 -> "k240"
         major == 2 && minor == 3 && patch >= 20 -> "k2321"
         else -> error(
             "Kotlin $version is not supported by Kotrail; supported versions are 2.3.20 and newer. " +
@@ -46,7 +47,7 @@ fun kotlinCompatFamily(version: String): String {
  * Keep in sync with the matrix in `.github/workflows/ci.yml` and the table in
  * `docs/supported-kotlin-versions.md`.
  */
-val publishedKotlinVersions = listOf("2.3.21", "2.4.0")
+val publishedKotlinVersions = listOf("2.3.21", "2.4.0", "2.4.10", "2.4.20")
 
 // Read by the subprojects that need to know which compiler they are building against.
 extra["kotlinCompilerVersion"] = kotlinCompilerVersion

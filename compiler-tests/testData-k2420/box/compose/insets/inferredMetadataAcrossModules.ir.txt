@@ -1,0 +1,82 @@
+Module: lib
+FILE fqName:lib fileName:/Lib.kt
+  FUN name:BottomBarArea visibility:public modality:FINAL returnType:kotlin.Unit
+    VALUE_PARAMETER kind:Regular name:modifier index:0 type:androidx.compose.ui.Modifier
+      EXPRESSION_BODY
+        GET_OBJECT 'CLASS IR_EXTERNAL_DECLARATION_STUB OBJECT name:Companion modality:FINAL visibility:public [companion] superTypes:[androidx.compose.ui.Modifier]' type=androidx.compose.ui.Modifier.Companion
+    VALUE_PARAMETER kind:Regular name:content index:1 type:@[Composable] kotlin.Function0<kotlin.Unit>
+    annotations:
+      Composable
+      InferredWindowInsetsHandling(handled = ["navigationBars:b", "ime:tblrLR"] type=kotlin.Array<kotlin.String> varargElementType=kotlin.String)
+    BLOCK_BODY
+      CALL 'public final fun Column (modifier: androidx.compose.ui.Modifier, content: @[Composable] kotlin.Function0<kotlin.Unit>): kotlin.Unit declared in androidx.compose.foundation.layout' type=kotlin.Unit origin=null
+        ARG modifier: CALL 'public final fun imePadding (<this>: androidx.compose.ui.Modifier): androidx.compose.ui.Modifier declared in androidx.compose.foundation.layout' type=androidx.compose.ui.Modifier origin=null
+          ARG <this>: CALL 'public final fun windowInsetsPadding (<this>: androidx.compose.ui.Modifier, insets: androidx.compose.foundation.layout.WindowInsets): androidx.compose.ui.Modifier declared in androidx.compose.foundation.layout' type=androidx.compose.ui.Modifier origin=null
+            ARG <this>: GET_VAR 'modifier: androidx.compose.ui.Modifier declared in lib.BottomBarArea' type=androidx.compose.ui.Modifier origin=null
+            ARG insets: CALL 'public final fun only (<this>: androidx.compose.foundation.layout.WindowInsets, sides: androidx.compose.foundation.layout.WindowInsetsSides): androidx.compose.foundation.layout.WindowInsets declared in androidx.compose.foundation.layout' type=androidx.compose.foundation.layout.WindowInsets origin=null
+              ARG <this>: CALL 'public final fun <get-navigationBars> (<this>: androidx.compose.foundation.layout.WindowInsets.Companion): androidx.compose.foundation.layout.WindowInsets declared in androidx.compose.foundation.layout' type=androidx.compose.foundation.layout.WindowInsets origin=GET_PROPERTY
+                ARG <this>: GET_OBJECT 'CLASS IR_EXTERNAL_DECLARATION_STUB OBJECT name:Companion modality:FINAL visibility:public [companion] superTypes:[kotlin.Any]' type=androidx.compose.foundation.layout.WindowInsets.Companion
+              ARG sides: CALL 'public final fun <get-Bottom> (): androidx.compose.foundation.layout.WindowInsetsSides declared in androidx.compose.foundation.layout.WindowInsetsSides.Companion' type=androidx.compose.foundation.layout.WindowInsetsSides origin=GET_PROPERTY
+                ARG <this>: GET_OBJECT 'CLASS IR_EXTERNAL_DECLARATION_STUB OBJECT name:Companion modality:FINAL visibility:public [companion] superTypes:[kotlin.Any]' type=androidx.compose.foundation.layout.WindowInsetsSides.Companion
+        ARG content: FUN_EXPR type=kotlin.Function0<kotlin.Unit> origin=LAMBDA
+          FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL returnType:kotlin.Unit
+            BLOCK_BODY
+              CALL 'public abstract fun invoke (): R of kotlin.Function0 declared in kotlin.Function0' type=kotlin.Unit origin=INVOKE
+                ARG <this>: GET_VAR 'content: @[Composable] kotlin.Function0<kotlin.Unit> declared in lib.BottomBarArea' type=@[Composable] kotlin.Function0<kotlin.Unit> origin=VARIABLE_AS_FUNCTION
+  FUN name:PlainContent visibility:public modality:FINAL returnType:kotlin.Unit
+    annotations:
+      Composable
+    BLOCK_BODY
+  FUN name:TopBarArea visibility:public modality:FINAL returnType:kotlin.Unit
+    VALUE_PARAMETER kind:Regular name:modifier index:0 type:androidx.compose.ui.Modifier
+      EXPRESSION_BODY
+        GET_OBJECT 'CLASS IR_EXTERNAL_DECLARATION_STUB OBJECT name:Companion modality:FINAL visibility:public [companion] superTypes:[androidx.compose.ui.Modifier]' type=androidx.compose.ui.Modifier.Companion
+    VALUE_PARAMETER kind:Regular name:content index:1 type:@[Composable] kotlin.Function0<kotlin.Unit>
+    annotations:
+      Composable
+      InferredWindowInsetsHandling(handled = ["statusBars:t"] type=kotlin.Array<kotlin.String> varargElementType=kotlin.String)
+    BLOCK_BODY
+      CALL 'public final fun Box (modifier: androidx.compose.ui.Modifier, content: @[Composable] kotlin.Function0<kotlin.Unit>): kotlin.Unit declared in androidx.compose.foundation.layout' type=kotlin.Unit origin=null
+        ARG modifier: CALL 'public final fun windowInsetsPadding (<this>: androidx.compose.ui.Modifier, insets: androidx.compose.foundation.layout.WindowInsets): androidx.compose.ui.Modifier declared in androidx.compose.foundation.layout' type=androidx.compose.ui.Modifier origin=null
+          ARG <this>: GET_VAR 'modifier: androidx.compose.ui.Modifier declared in lib.TopBarArea' type=androidx.compose.ui.Modifier origin=null
+          ARG insets: CALL 'public final fun only (<this>: androidx.compose.foundation.layout.WindowInsets, sides: androidx.compose.foundation.layout.WindowInsetsSides): androidx.compose.foundation.layout.WindowInsets declared in androidx.compose.foundation.layout' type=androidx.compose.foundation.layout.WindowInsets origin=null
+            ARG <this>: CALL 'public final fun <get-statusBars> (<this>: androidx.compose.foundation.layout.WindowInsets.Companion): androidx.compose.foundation.layout.WindowInsets declared in androidx.compose.foundation.layout' type=androidx.compose.foundation.layout.WindowInsets origin=GET_PROPERTY
+              ARG <this>: GET_OBJECT 'CLASS IR_EXTERNAL_DECLARATION_STUB OBJECT name:Companion modality:FINAL visibility:public [companion] superTypes:[kotlin.Any]' type=androidx.compose.foundation.layout.WindowInsets.Companion
+            ARG sides: CALL 'public final fun <get-Top> (): androidx.compose.foundation.layout.WindowInsetsSides declared in androidx.compose.foundation.layout.WindowInsetsSides.Companion' type=androidx.compose.foundation.layout.WindowInsetsSides origin=GET_PROPERTY
+              ARG <this>: GET_OBJECT 'CLASS IR_EXTERNAL_DECLARATION_STUB OBJECT name:Companion modality:FINAL visibility:public [companion] superTypes:[kotlin.Any]' type=androidx.compose.foundation.layout.WindowInsetsSides.Companion
+        ARG content: FUN_EXPR type=kotlin.Function0<kotlin.Unit> origin=LAMBDA
+          FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL returnType:kotlin.Unit
+            BLOCK_BODY
+              CALL 'public abstract fun invoke (): R of kotlin.Function0 declared in kotlin.Function0' type=kotlin.Unit origin=INVOKE
+                ARG <this>: GET_VAR 'content: @[Composable] kotlin.Function0<kotlin.Unit> declared in lib.TopBarArea' type=@[Composable] kotlin.Function0<kotlin.Unit> origin=VARIABLE_AS_FUNCTION
+Module: main
+FILE fqName:<root> fileName:/Main.kt
+  FUN name:ChatScreen visibility:public modality:FINAL returnType:kotlin.Unit
+    annotations:
+      HandlesWindowInsets(type = WindowInsetsType.StatusBars, sides = [WindowInsetsSide.Top] type=kotlin.Array<com.kitakkun.kotrail.compose.insets.WindowInsetsSide> varargElementType=com.kitakkun.kotrail.compose.insets.WindowInsetsSide)
+      HandlesWindowInsets(type = WindowInsetsType.NavigationBars, sides = [WindowInsetsSide.Bottom] type=kotlin.Array<com.kitakkun.kotrail.compose.insets.WindowInsetsSide> varargElementType=com.kitakkun.kotrail.compose.insets.WindowInsetsSide)
+      HandlesWindowInsets(type = WindowInsetsType.Ime, sides = <null>)
+      Composable
+    BLOCK_BODY
+      CALL 'public final fun Column (modifier: androidx.compose.ui.Modifier, content: @[Composable] kotlin.Function0<kotlin.Unit>): kotlin.Unit declared in androidx.compose.foundation.layout' type=kotlin.Unit origin=null
+        ARG content: FUN_EXPR type=kotlin.Function0<kotlin.Unit> origin=LAMBDA
+          FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL returnType:kotlin.Unit
+            BLOCK_BODY
+              CALL 'public final fun TopBarArea (modifier: androidx.compose.ui.Modifier, content: @[Composable] kotlin.Function0<kotlin.Unit>): kotlin.Unit declared in lib' type=kotlin.Unit origin=null
+                ARG content: FUN_EXPR type=kotlin.Function0<kotlin.Unit> origin=LAMBDA
+                  FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL returnType:kotlin.Unit
+                    BLOCK_BODY
+                      RETURN type=kotlin.Nothing from='local final fun <anonymous> (): kotlin.Unit declared in <root>.ChatScreen.<anonymous>'
+                        GET_OBJECT 'CLASS IR_EXTERNAL_DECLARATION_STUB OBJECT name:Unit modality:FINAL visibility:public superTypes:[kotlin.Any]' type=kotlin.Unit
+              CALL 'public final fun PlainContent (): kotlin.Unit declared in lib' type=kotlin.Unit origin=null
+              CALL 'public final fun BottomBarArea (modifier: androidx.compose.ui.Modifier, content: @[Composable] kotlin.Function0<kotlin.Unit>): kotlin.Unit declared in lib' type=kotlin.Unit origin=null
+                ARG content: FUN_EXPR type=kotlin.Function0<kotlin.Unit> origin=LAMBDA
+                  FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL returnType:kotlin.Unit
+                    BLOCK_BODY
+                      RETURN type=kotlin.Nothing from='local final fun <anonymous> (): kotlin.Unit declared in <root>.ChatScreen.<anonymous>'
+                        GET_OBJECT 'CLASS IR_EXTERNAL_DECLARATION_STUB OBJECT name:Unit modality:FINAL visibility:public superTypes:[kotlin.Any]' type=kotlin.Unit
+  FUN name:box visibility:public modality:FINAL returnType:kotlin.String
+    BLOCK_BODY
+      CALL 'public final fun ChatScreen (): kotlin.Unit declared in <root>' type=kotlin.Unit origin=null
+      RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in <root>'
+        CONST String type=kotlin.String value="OK"

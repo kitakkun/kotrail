@@ -10,7 +10,7 @@ import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
-import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirSimpleFunctionChecker
+import com.kitakkun.kotrail.compat.NamedFunctionChecker
 import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.utils.effectiveVisibility
@@ -65,7 +65,7 @@ import org.jetbrains.kotlin.types.AbstractTypeChecker
  * local functions, `kotlin.jvm`-annotated adapters, factories over a constructor, previews, and a
  * public function over a narrower callee (a facade) are also left alone.
  */
-object PassThroughFunctionChecker : FirSimpleFunctionChecker(MppCheckerKind.Common) {
+object PassThroughFunctionChecker : NamedFunctionChecker(MppCheckerKind.Common) {
     private val KOTLIN_JVM = FqName("kotlin.jvm")
 
     context(context: CheckerContext, reporter: DiagnosticReporter)

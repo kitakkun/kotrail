@@ -1,5 +1,6 @@
 package com.kitakkun.kotrail.fir.compose.checkers
 
+import com.kitakkun.kotrail.compat.qualifierClassId
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.compose.ComposeNames
@@ -12,7 +13,7 @@ import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
-import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirSimpleFunctionChecker
+import com.kitakkun.kotrail.compat.NamedFunctionChecker
 import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
 import org.jetbrains.kotlin.fir.declarations.utils.isExpect
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
@@ -47,7 +48,7 @@ import org.jetbrains.kotlin.name.Name
  * composables, value-returning composables, overrides and `expect` declarations, and composables
  * without any `Modifier` parameter (it does not demand adding one).
  */
-object ComposableModifierParameterChecker : FirSimpleFunctionChecker(MppCheckerKind.Common) {
+object ComposableModifierParameterChecker : NamedFunctionChecker(MppCheckerKind.Common) {
     private val MODIFIER_NAME = Name.identifier("modifier")
     private val MODIFIER_COMPANION: ClassId = ComposeNames.MODIFIER.createNestedClassId(Name.identifier("Companion"))
 
@@ -97,7 +98,7 @@ object ComposableModifierParameterChecker : FirSimpleFunctionChecker(MppCheckerK
     /** True for a default value written as `Modifier` (resolved to the companion) or `Modifier.Companion`. */
     private fun FirExpression?.isModifierCompanion(): Boolean {
         val qualifier = this as? FirResolvedQualifier ?: return false
-        val classId = qualifier.classId ?: return false
+        val classId = qualifier.qualifierClassId ?: return false
         return classId == MODIFIER_COMPANION || (classId == ComposeNames.MODIFIER && qualifier.resolvedToCompanionObject)
     }
 

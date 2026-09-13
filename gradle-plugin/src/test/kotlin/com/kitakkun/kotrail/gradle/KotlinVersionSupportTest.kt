@@ -18,7 +18,7 @@ class KotlinVersionSupportTest {
         }
         val message = failure.message.orEmpty()
         assertTrue(message.contains("Kotlin 2.2.20"), message)
-        assertTrue(message.contains("2.3.21, 2.4.0"), message)
+        assertTrue(message.contains("2.3.21, 2.4.0, 2.4.10, 2.4.20"), message)
         assertTrue(message.contains("supported-kotlin-versions.md"), message)
     }
 
@@ -29,6 +29,6 @@ class KotlinVersionSupportTest {
     }
 
     private companion object {
-        val SUPPORTED = listOf("2.3.21", "2.4.0")
+        val SUPPORTED = listOf("2.3.21", "2.4.0", "2.4.10", "2.4.20")
     }
 }

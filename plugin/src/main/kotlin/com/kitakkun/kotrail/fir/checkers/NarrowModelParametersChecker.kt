@@ -11,7 +11,7 @@ import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
-import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirSimpleFunctionChecker
+import com.kitakkun.kotrail.compat.NamedFunctionChecker
 import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
 import org.jetbrains.kotlin.fir.declarations.declaredProperties
 import org.jetbrains.kotlin.fir.declarations.utils.isData
@@ -40,7 +40,7 @@ import org.jetbrains.kotlin.name.Name
  * a whole (passed on, copied, compared, destructured, used as a receiver of anything but a
  * property read) is not reported because narrowing would change the program.
  */
-object NarrowModelParametersChecker : FirSimpleFunctionChecker(MppCheckerKind.Common) {
+object NarrowModelParametersChecker : NamedFunctionChecker(MppCheckerKind.Common) {
     context(context: CheckerContext, reporter: DiagnosticReporter)
     override fun check(declaration: FirNamedFunction) {
         val config = context.session.kotrailConfig

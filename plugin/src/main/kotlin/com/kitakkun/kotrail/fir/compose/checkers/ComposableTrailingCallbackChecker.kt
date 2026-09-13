@@ -10,7 +10,7 @@ import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
-import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirSimpleFunctionChecker
+import com.kitakkun.kotrail.compat.NamedFunctionChecker
 import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.utils.isExpect
@@ -38,7 +38,7 @@ import org.jetbrains.kotlin.fir.types.isUnit
  * is not a function type at all, and for `override` / `expect` functions whose signature is
  * fixed elsewhere.
  */
-object ComposableTrailingCallbackChecker : FirSimpleFunctionChecker(MppCheckerKind.Common) {
+object ComposableTrailingCallbackChecker : NamedFunctionChecker(MppCheckerKind.Common) {
     context(context: CheckerContext, reporter: DiagnosticReporter)
     override fun check(declaration: FirNamedFunction) {
         val config = context.session.kotrailConfig

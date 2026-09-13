@@ -2,6 +2,7 @@
 
 package com.kitakkun.kotrail.fir.checkers
 
+import com.kitakkun.kotrail.compat.qualifierClassId
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.kotrailConfig
@@ -56,9 +57,9 @@ object NoFqnReferences {
         context(context: CheckerContext, reporter: DiagnosticReporter)
         override fun check(expression: FirResolvedQualifier) {
             if (!expression.isWrittenWithPackage()) return
-            val classId = expression.classId ?: return
+            val classId = expression.qualifierClassId ?: return
             // Report the first class in a chain like `java.util.Map.Entry` once.
-            if (expression.explicitParent?.classId != null) return
+            if (expression.explicitParent?.qualifierClassId != null) return
             reportClass(expression.source, classId)
         }
     }
@@ -68,7 +69,7 @@ object NoFqnReferences {
         context(context: CheckerContext, reporter: DiagnosticReporter)
         override fun check(expression: FirQualifiedAccessExpression) {
             val qualifier = expression.explicitReceiver as? FirResolvedQualifier ?: return
-            if (!qualifier.isWrittenWithPackage() || qualifier.classId != null) return
+            if (!qualifier.isWrittenWithPackage() || qualifier.qualifierClassId != null) return
             val callee = expression.calleeReference.toResolvedCallableSymbol() ?: return
             val callableId = callee.callableId ?: return
             if (callee is FirConstructorSymbol) {

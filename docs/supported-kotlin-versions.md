@@ -24,10 +24,12 @@ configuration with an explicit message rather than a confusing compile error.
 
 | Kotlin | Compat family | Notes |
 | --- | --- | --- |
+| 2.4.20 | `k2420` | `FirNamedFunctionChecker` and the `namedFunctionCheckers` bucket, `FirResolvedQualifier.classId` as an extension, `PluginGenerated` as a sealed class, `AbstractJvmBlackBoxCodegenTestBase` in the test framework, IR dumps named `.ir.txt`. |
+| 2.4.10 | `k240` | Same API surface as 2.4.0. |
 | 2.4.0 (default) | `k240` | Reference version. Explicit backing fields and context parameters are on by default. |
 | 2.3.21 | `k2321` | Also covers 2.3.20. Explicit backing fields need `-Xexplicit-backing-fields`; the plugin module compiles with `-Xcontext-parameters`. |
 
-Both versions are built and tested on every push by `.github/workflows/ci.yml`.
+Every version is built and tested on every push by `.github/workflows/ci.yml`.
 
 ## What gets published per version
 
@@ -54,7 +56,8 @@ version agrees on. Where the versions differ, the shared code calls into the pac
 ```
 plugin/src/
 ├── main/kotlin/          # shared; never references a version-specific compiler API directly
-├── k240/kotlin/          # com.kitakkun.kotrail.compat for Kotlin 2.4.0+
+├── k2420/kotlin/         # com.kitakkun.kotrail.compat for Kotlin 2.4.20+
+├── k240/kotlin/          # com.kitakkun.kotrail.compat for Kotlin 2.4.0 <= v < 2.4.20
 └── k2321/kotlin/         # com.kitakkun.kotrail.compat for Kotlin 2.3.20 <= v < 2.4.0
 ```
 
@@ -65,6 +68,10 @@ compiles unchanged whichever one is active. Each compat declaration carries a KD
 with `Since <version>:` describing what changed upstream, so a shim can be retired once the
 versions that needed it are dropped.
 
+The compiler test framework renames its runner base classes too, so `compiler-tests` has the
+same split: `test-fixtures/` is shared and `test-fixtures-<family>/` holds
+`com.kitakkun.kotrail.test.compat`, currently one alias for the box-test base class.
+
 ## Test data overlays
 
 Most fixtures under `compiler-tests/testData/` are shared. A few depend on the surrounding compiler
@@ -74,7 +81,8 @@ rendering changed — and those are overridden per family:
 ```
 compiler-tests/
 ├── testData/            # shared fixtures; the only directory test discovery walks
-└── testData-k2321/      # files that replace the same relative path when building on 2.3.x
+├── testData-k2321/      # files that replace the same relative path when building on 2.3.x
+└── testData-k2420/      # the same for 2.4.20+, where the framework names IR dumps `.ir.txt`
 ```
 
 The override is resolved at run time by `TestDataOverlay` in `compiler-tests/test-fixtures`. It is

@@ -29,7 +29,9 @@ sourceSets {
         resources.setSrcDirs(listOf("testData"))
     }
     testFixtures {
-        java.setSrcDirs(listOf("test-fixtures"))
+        // The runner base classes the framework renames between Kotlin versions live under
+        // test-fixtures-<family>/, one directory per family, like plugin/src/<family>.
+        java.setSrcDirs(listOf("test-fixtures", "test-fixtures-$kotlinCompatFamily"))
     }
 }
 

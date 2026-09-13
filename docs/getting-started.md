@@ -15,8 +15,8 @@ plugins {
 ```
 
 Apply a Kotlin plugin first: Kotrail reads the Kotlin version from it and picks the matching
-compiler plugin. The [supported Kotlin versions](supported-kotlin-versions.md) are 2.3.21 and
-2.4.0; any other version fails with a message that says so.
+compiler plugin. The [supported Kotlin versions](supported-kotlin-versions.md) are 2.3.21, 2.4.0,
+2.4.10, and 2.4.20; any other version fails with a message that says so.
 
 ## 2. Build
 

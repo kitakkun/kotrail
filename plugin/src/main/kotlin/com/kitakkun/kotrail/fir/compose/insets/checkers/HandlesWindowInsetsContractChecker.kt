@@ -9,7 +9,7 @@ import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
-import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirSimpleFunctionChecker
+import com.kitakkun.kotrail.compat.NamedFunctionChecker
 import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
 
 /**
@@ -20,7 +20,7 @@ import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
  * cached while FIR bodies are available; the IR metadata writer reads that cache after Fir2Ir,
  * when bodies have already been released.
  */
-object HandlesWindowInsetsContractChecker : FirSimpleFunctionChecker(MppCheckerKind.Common) {
+object HandlesWindowInsetsContractChecker : NamedFunctionChecker(MppCheckerKind.Common) {
     context(context: CheckerContext, reporter: DiagnosticReporter)
     override fun check(declaration: FirNamedFunction) {
         if (!context.session.kotrailConfig.isEnabled(KotrailRule.COMPOSE_WINDOW_INSETS)) return

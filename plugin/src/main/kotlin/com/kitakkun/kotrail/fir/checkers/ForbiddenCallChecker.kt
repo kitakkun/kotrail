@@ -1,5 +1,6 @@
 package com.kitakkun.kotrail.fir.checkers
 
+import com.kitakkun.kotrail.compat.qualifierClassId
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.kotrailConfig
@@ -60,7 +61,7 @@ object ForbiddenCallChecker : FirFunctionCallChecker(MppCheckerKind.Common) {
                 val callableId = callee.callableId
                 val names = mutableSetOf(callableId.asSingleFqName().asString())
                 // `GlobalScope.launch { }`: an extension reached through an object qualifier.
-                val qualifier = (call.explicitReceiver as? FirResolvedQualifier)?.classId
+                val qualifier = (call.explicitReceiver as? FirResolvedQualifier)?.qualifierClassId
                 if (qualifier != null) {
                     names += qualifier.asSingleFqName().child(callableId.callableName).asString()
                 }

@@ -9,7 +9,7 @@ import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
-import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirSimpleFunctionChecker
+import com.kitakkun.kotrail.compat.NamedFunctionChecker
 import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
 import org.jetbrains.kotlin.fir.declarations.utils.isExpect
 import org.jetbrains.kotlin.fir.declarations.utils.isInline
@@ -35,7 +35,7 @@ import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
  * something). Functions that pick between inputs, return a different value on some path, are
  * overrides, operators, or inline helpers are left alone.
  */
-object PassThroughReturnChecker : FirSimpleFunctionChecker(MppCheckerKind.Common) {
+object PassThroughReturnChecker : NamedFunctionChecker(MppCheckerKind.Common) {
     context(context: CheckerContext, reporter: DiagnosticReporter)
     override fun check(declaration: FirNamedFunction) {
         if (!context.session.kotrailConfig.isEnabled(KotrailRule.NO_PASS_THROUGH_RETURN)) return

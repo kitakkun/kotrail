@@ -43,7 +43,8 @@ import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirCallableDeclara
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirFileChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirPropertyChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirRegularClassChecker
-import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirSimpleFunctionChecker
+import com.kitakkun.kotrail.compat.CompatDeclarationCheckers
+import com.kitakkun.kotrail.compat.NamedFunctionChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.ExpressionCheckers
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirCheckNotNullCallChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirFunctionCallChecker
@@ -61,7 +62,7 @@ class KotrailCheckersExtension(session: FirSession) : FirAdditionalCheckersExten
     override val typeCheckers: TypeCheckers = KotrailTypeCheckers
 }
 
-object KotrailDeclarationCheckers : DeclarationCheckers() {
+object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
     override val basicDeclarationCheckers: Set<FirBasicDeclarationChecker> = setOf(
         VisibilityPolicyChecker,
         RequiredAnnotationChecker,
@@ -80,7 +81,7 @@ object KotrailDeclarationCheckers : DeclarationCheckers() {
         PreferExplicitBackingFieldChecker,
         PreferStateDelegationChecker,
     )
-    override val simpleFunctionCheckers: Set<FirSimpleFunctionChecker> = setOf(
+    override val namedFunctionCheckersCompat: Set<NamedFunctionChecker> = setOf(
         PreconditionWarmup.FunctionChecker,
         HandlesWindowInsetsContractChecker,
         ComposableNestingChecker,

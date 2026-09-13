@@ -86,7 +86,7 @@ A Kotlin version nothing was published for fails at configuration time with the 
 exist, rather than as a dependency-resolution error naming a coordinate the reader has never seen:
 
 ```
-Kotrail 0.1.0 has no compiler plugin for Kotlin 2.2.20. It is published for 2.3.21, 2.4.0.
+Kotrail 0.1.0 has no compiler plugin for Kotlin 2.2.20. It is published for 2.3.21, 2.4.0, 2.4.10, 2.4.20.
 See docs/supported-kotlin-versions.md.
 ```
 

@@ -1,5 +1,6 @@
 package com.kitakkun.kotrail.fir.checkers
 
+import com.kitakkun.kotrail.compat.qualifierClassId
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.ReferenceForm
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
@@ -168,7 +169,7 @@ object PreferFunctionReferenceChecker : FirAnonymousFunctionChecker(MppCheckerKi
     /** `this`, an object or companion, or a plain `val` / parameter; anything else could be re-evaluated differently. */
     private fun stableReceiverText(receiver: FirExpression): String? = when (receiver) {
         is FirThisReceiverExpression -> "this"
-        is FirResolvedQualifier -> receiver.classId?.shortClassName?.asString()
+        is FirResolvedQualifier -> receiver.qualifierClassId?.shortClassName?.asString()
         is FirPropertyAccessExpression -> {
             if (receiver.explicitReceiver != null) return null
             when (val variable = receiver.calleeReference.toResolvedVariableSymbol()) {

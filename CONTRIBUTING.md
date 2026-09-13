@@ -33,7 +33,7 @@ kotrail/
 
 ## Building and testing
 
-Requirements: Kotlin 2.3.21 or 2.4.0, JDK 21 and Gradle 9.5 (the wrapper is included).
+Requirements: one of the supported Kotlin versions (2.3.21, 2.4.0, 2.4.10, 2.4.20), JDK 21 and Gradle 9.5 (the wrapper is included).
 
 ```bash
 ./gradlew build                                  # builds everything and runs the compiler tests
@@ -41,7 +41,7 @@ Requirements: Kotlin 2.3.21 or 2.4.0, JDK 21 and Gradle 9.5 (the wrapper is incl
 ./gradlew :compiler-tests:test -PupdateTestData=true   # rewrite expected markers and golden files
 ./gradlew :sample:run
 ./gradlew :sample-compose:app:compileKotlin
-./gradlew build -Pkotlin.compiler=2.3.21          # build against the other supported Kotlin
+./gradlew build -Pkotlin.compiler=2.3.21          # build against another supported Kotlin
 ```
 
 The Kotlin version the build uses is selected by the `kotlin.compiler` Gradle property and defaults
