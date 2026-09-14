@@ -13,7 +13,7 @@ import org.junit.jupiter.api.io.TempDir
 import java.io.File
 
 /** The properties-file side of the configuration: bracketed entry families, layering, and clearing. */
-@OptIn(ExperimentalCompilerApi::class, CompilerConfiguration.Internals::class)
+@OptIn(ExperimentalCompilerApi::class)
 class KotrailConfigTest {
     @TempDir
     lateinit var dir: File

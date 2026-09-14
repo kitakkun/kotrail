@@ -33,6 +33,14 @@ tasks.test {
     useJUnitPlatform()
 }
 
+tasks.named<KotlinCompile>("compileTestKotlin") {
+    // The configuration loader's unit test builds a CompilerConfiguration, whose constructor is
+    // opt-in from Kotlin 2.4.0 on; the marker does not exist on 2.3.x.
+    if (kotlinCompatFamily != "k2321") {
+        compilerOptions.freeCompilerArgs.add("-opt-in=org.jetbrains.kotlin.config.CompilerConfiguration.Internals")
+    }
+}
+
 tasks.withType<KotlinCompile>().configureEach {
     // Checker `check()` overrides use context parameters. They are enabled by default from
     // Kotlin 2.4.0 on; 2.3.x still gates them behind the flag, and passing it on 2.4.0 would
