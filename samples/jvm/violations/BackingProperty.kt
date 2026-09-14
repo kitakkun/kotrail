@@ -1,5 +1,5 @@
-// Not part of the sample source set. Copy this file into sample/src/main/kotlin/
-// and run ./gradlew :sample:compileKotlin to see Kotrail reject the backing-property idiom.
+// Not part of the sample source set. Copy this file into samples/jvm/src/main/kotlin/
+// and run ./gradlew :samples:jvm:compileKotlin to see Kotrail reject the backing-property idiom.
 abstract class Base {
     // Not reported: open property in an open class.
     private val _label = "x"

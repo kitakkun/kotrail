@@ -35,7 +35,7 @@ error.
 
 `compiler-tests/testData/diagnostics/compose/nesting.kt` pins: depth 5 accepted, depth 6
 reported once, `LazyColumn` content not counted, `remember` not counted, siblings independent,
-extraction resets the count. `sample-compose/app/violations/Nesting.kt` shows the error on real
+extraction resets the count. `samples/compose/app/violations/Nesting.kt` shows the error on real
 Material 3 code.
 
 ## Implementation notes

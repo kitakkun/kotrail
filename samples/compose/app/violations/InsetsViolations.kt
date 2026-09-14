@@ -1,5 +1,5 @@
-// Not part of the sample source set. Copy this file into sample-compose/app/src/main/kotlin/
-// and run ./gradlew :sample-compose:app:compileKotlin to see each insets diagnostic fire.
+// Not part of the sample source set. Copy this file into samples/compose/app/src/main/kotlin/
+// and run ./gradlew :samples:compose:app:compileKotlin to see each insets diagnostic fire.
 package com.kitakkun.kotrail.sample.app
 
 import androidx.compose.foundation.layout.Column

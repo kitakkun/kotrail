@@ -1,4 +1,4 @@
-// Copy into sample/src/main/kotlin to see KOTRAIL_PRECONDITION_VIOLATED.
+// Copy into samples/jvm/src/main/kotlin to see KOTRAIL_PRECONDITION_VIOLATED.
 package violations
 
 const val MAX_RETRIES = 5

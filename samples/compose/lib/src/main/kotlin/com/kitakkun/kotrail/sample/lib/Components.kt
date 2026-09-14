@@ -16,7 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 
 // None of these declare a contract. Kotrail infers what they handle and records it as
-// @InferredWindowInsetsHandling metadata so that :sample-compose:app can be verified.
+// @InferredWindowInsetsHandling metadata so that :samples:compose:app can be verified.
 
 /** Handles status bars on the top edge only. */
 @Composable

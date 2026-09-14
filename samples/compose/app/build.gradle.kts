@@ -15,7 +15,7 @@ dependencies {
     // coexists with the Compose compiler plugin, which is registered the same way.
     kotlinCompilerPluginClasspath(project(":plugin"))
     implementation(project(":annotations"))
-    implementation(project(":sample-compose:lib"))
+    implementation(project(":samples:compose:lib"))
     implementation(libs.compose.foundation)
     implementation(libs.compose.material3)
     implementation(libs.compose.ui.tooling.preview)

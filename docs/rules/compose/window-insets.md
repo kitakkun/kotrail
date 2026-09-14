@@ -151,7 +151,7 @@ both plugins are passed by the Kotlin Gradle plugin the same way.
 - `compiler-tests/testData/box/compose/insets/inferredMetadataAcrossModules.kt`,
   `inferredMetadataOnMembers.kt`: compile `lib` to class files, satisfy contracts in `main`
   only through the written metadata, and keep IR golden dumps showing the annotation
-- `sample-compose/`: real Compose Multiplatform modules; `app/violations/` triggers each diagnostic
+- `samples/compose/`: real Compose Multiplatform modules; `app/violations/` triggers each diagnostic
 
 ## Implementation notes
 

@@ -41,9 +41,9 @@ include(
     "plugin",
     "gradle-plugin",
     "annotations",
-    "sample",
-    "sample-compose:lib",
-    "sample-compose:app",
+    "samples:jvm",
+    "samples:compose:lib",
+    "samples:compose:app",
     "compiler-tests",
     "compiler-tests:compose-stubs",
 )

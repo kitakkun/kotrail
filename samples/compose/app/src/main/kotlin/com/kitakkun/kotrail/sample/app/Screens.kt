@@ -29,7 +29,7 @@ fun HomeScreen() {
 
 /**
  * Satisfied across the module boundary: TopBarArea (status bars, top) and BottomBarArea
- * (navigation bars bottom, IME all sides) live in :sample-compose:lib and carry inferred metadata.
+ * (navigation bars bottom, IME all sides) live in :samples:compose:lib and carry inferred metadata.
  */
 @HandlesWindowInsets(WindowInsetsType.StatusBars, sides = [WindowInsetsSide.Top])
 @HandlesWindowInsets(WindowInsetsType.NavigationBars, sides = [WindowInsetsSide.Bottom])

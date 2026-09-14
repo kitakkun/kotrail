@@ -28,7 +28,7 @@ tasks.withType<KotlinCompile>().configureEach {
     compilerOptions.freeCompilerArgs.add("-Xrender-internal-diagnostic-names")
     // Counter.kt uses an explicit backing field. The feature is on by default from Kotlin 2.4.0;
     // 2.3.x still requires the opt-in flag.
-    if (kotlinCompatFamily != "k240") {
+    if (kotlinCompatFamily == "k2321") {
         compilerOptions.freeCompilerArgs.add("-Xexplicit-backing-fields")
     }
     compilerOptions.freeCompilerArgs.add(
