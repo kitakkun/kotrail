@@ -54,7 +54,7 @@ rule hangs off its key: `severity.<rule>`, `note.<rule>`, `exclude.<rule>`, and 
 | `visibilityPolicy.private` | (empty) | A predicate (see [Excluding by pattern](#excluding-by-pattern)); matching declarations must be `private`. |
 | `visibilityPolicy.internal` | (empty) | The same; matching declarations must be `internal` or `private`. |
 | `rules.requiredAnnotation` | `true` | [Required annotation](rules/required-annotation.md); inert until a policy is set. |
-| `requiredAnnotation.policy.<name>` | (empty) | `<predicate> -> <annotation fqn>`: matching declarations must carry the annotation. One entry per policy; `<name>` is a letter followed by letters, digits, `_` or `-`. |
+| `requiredAnnotation.policy[<name>]` | (empty) | `<predicate> -> <annotation fqn>`: matching declarations must carry the annotation. One entry per policy; the name in brackets is yours. |
 | `rules.namedArgumentsForRepeatedTypes` | `true` | [Named arguments for repeated types](rules/named-arguments-for-repeated-types.md). |
 | `namedArgumentsForRepeatedTypes.minArguments` | `3` | How many positional arguments of one type require names. |
 | `rules.mustBeSerializable` | `true` | [Must be serializable](rules/must-be-serializable.md). |
@@ -66,12 +66,12 @@ rule hangs off its key: `severity.<rule>`, `note.<rule>`, `exclude.<rule>`, and 
 | `functionLength.maxComposableLines` | `80` | The same limit for `@Composable` functions. |
 | `rules.compose.windowInsets` | `true` | [Window insets](rules/compose/window-insets.md): contract check and inferred metadata. |
 | `rules.compose.windowInsetsHandledTwice` | `true` | Doubled inset padding warning (needs `rules.compose.windowInsets`). |
-| `compose.windowInsets.known.<composable fqn>` | (built-in Material 3 entries) | What a library composable handles, as `Type` or `Type:Side+Side` entries separated by commas, or `None`. See [the knowledge base](rules/compose/window-insets.md#knowledge-base). |
+| `compose.windowInsets.known[<composable fqn>]` | (built-in Material 3 entries) | What a library composable handles, as `Type` or `Type:Side+Side` entries separated by commas, or `None`. See [the knowledge base](rules/compose/window-insets.md#knowledge-base). |
 | `rules.compose.compositionLocals` | `true` | [Composition locals](rules/compose/composition-locals.md): required locals must be provided below every root. |
 | `compose.compositionLocals.platform` | (empty) | Locals the platform provides at every root; reads of these are never reported. |
 | `compose.compositionLocals.required` | (empty) | Locals to treat as required although their default does not throw. |
 | `compose.compositionLocals.roots` | `setContent`, `Window`, `application`, ... | Functions whose composable lambda is a root of composition. |
-| `compose.compositionLocals.known.<composable fqn>` | (empty) | What a library composable reads (`fqn`) and provides to a lambda parameter (`param:fqn`), comma separated, or `None`. See [the knowledge base](rules/compose/composition-locals.md#knowledge-base). |
+| `compose.compositionLocals.known[<composable fqn>]` | (empty) | What a library composable reads (`fqn`) and provides to a lambda parameter (`param:fqn`), comma separated, or `None`. See [the knowledge base](rules/compose/composition-locals.md#knowledge-base). |
 | `rules.compose.stateDelegation` | `true` | [State delegation](rules/compose/state-delegation.md). |
 | `rules.compose.nesting` | `true` | [Nesting limit](rules/compose/nesting.md). |
 | `compose.nesting.maxDepth` | `5` | Nesting limit for composable calls; `0` disables the rule. |
@@ -265,8 +265,8 @@ rules.compose.nesting=false
 
 An empty value in a later file takes an entry of the earlier one away: `exclude=` clears the
 project-wide predicate, `visibilityPolicy.private=` drops that policy,
-`requiredAnnotation.policy.screens=` drops that one policy and keeps the others, and
-`compose.windowInsets.known.com.acme.AppScaffold=` removes the override so that the built-in
+`requiredAnnotation.policy[screens]=` drops that one policy and keeps the others, and
+`compose.windowInsets.known[com.acme.AppScaffold]=` removes the override so that the built-in
 knowledge applies again. A list is the exception: `test.annotations=` is an empty list, not the
 default.
 

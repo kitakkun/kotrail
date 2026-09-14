@@ -3,16 +3,16 @@
 **Diagnostic:** `KOTRAIL_REQUIRED_ANNOTATION_MISSING` (error, on the declaration name)
 **Switch:** `rules.requiredAnnotation` (default `true`; inert until a policy is set)
 **Severity key:** `severity.requiredAnnotation`
-**Settings:** `requiredAnnotation.policy.<name>` (one predicate and annotation per policy)
+**Settings:** `requiredAnnotation.policy[<name>]` (one predicate and annotation per policy)
 
 ## What it rejects
 
 A declaration a policy covers that does not carry the annotation the policy names:
 
 ```properties
-requiredAnnotation.policy.screens=composable && name(*Screen) -> com.acme.navigation.Screen
-requiredAnnotation.policy.entities=class && name(*Entity) -> com.acme.db.Persisted
-requiredAnnotation.policy.api=visibility(public) && package(com.acme.sdk.*) -> com.acme.sdk.PublicApi
+requiredAnnotation.policy[screens]=composable && name(*Screen) -> com.acme.navigation.Screen
+requiredAnnotation.policy[entities]=class && name(*Entity) -> com.acme.db.Persisted
+requiredAnnotation.policy[api]=visibility(public) && package(com.acme.sdk.*) -> com.acme.sdk.PublicApi
 ```
 
 ```kotlin
@@ -37,8 +37,8 @@ enclosing classes, extension receivers, context parameters, modifiers, and the k
 declaration (`function`, `property`, bare `class`). The annotation is one fully qualified class
 name; a leading `@` is accepted.
 
-The name after `policy.` is yours; it appears in the message so that a reader can find the
-entry. Names are a letter followed by letters, digits, `_` or `-`.
+The name in the brackets is yours; it appears in the message so that a reader can find the
+entry. Names start with a letter and may contain letters, digits, dots, `_` and `-`.
 
 Only the declaration's own annotations satisfy a policy. `class(*Entity)` matches the members
 of an entity class as well, so a policy about classes says `class && name(*Entity)`; otherwise
@@ -53,7 +53,7 @@ every function inside the class would be asked to carry the annotation too.
 ## Configuration files
 
 Entries are keyed by name, so a later file can replace one policy, add another, or drop one
-with an empty value (`requiredAnnotation.policy.screens=`) while the rest stay in force.
+with an empty value (`requiredAnnotation.policy[screens]=`) while the rest stay in force.
 
 ## Fixtures
 

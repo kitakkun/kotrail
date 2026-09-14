@@ -67,7 +67,7 @@ what no assistant can guess:
 ```properties
 forbiddenCall.functions=kotlin.io.println, kotlinx.coroutines.GlobalScope.launch
 visibilityPolicy.private=composable && name(*Preview)
-requiredAnnotation.policy.screens=composable && name(*Screen) -> com.acme.navigation.Screen
+requiredAnnotation.policy[screens]=composable && name(*Screen) -> com.acme.navigation.Screen
 note=See docs/conventions.md before changing this.
 ```
 

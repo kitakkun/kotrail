@@ -22,6 +22,8 @@ kotlin {
 
 dependencies {
     compileOnly(libs.kotlin.compiler.embeddable)
+    // The configuration loader is unit-tested against a CompilerConfiguration.
+    testImplementation(libs.kotlin.compiler.embeddable)
     // Unit tests for the compiler-independent parts: the precondition and exclusion languages.
     testImplementation(libs.junit.jupiter)
     testRuntimeOnly(libs.junit.platform.launcher)

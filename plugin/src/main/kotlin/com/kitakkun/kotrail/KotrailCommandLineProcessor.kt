@@ -123,14 +123,14 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
     )
     private val requiredAnnotationOption = option(
         "requiredAnnotation", "<name>=<predicate> -> <annotation fqn>",
-        "The requiredAnnotation.policy.<name> entry: declarations matching the predicate must carry the " +
+        "The requiredAnnotation.policy[<name>] entry: declarations matching the predicate must carry the " +
             "annotation, e.g. screens=composable && name(*Screen) -> com.acme.Screen. May be given more than " +
             "once; '<name>=' drops the policy",
         allowMultipleOccurrences = true,
     )
     private val knownInsetsOption = option(
         "compose.windowInsets.known", "<composable fqn>=<Type[:Side+Side],...|None>",
-        "The compose.windowInsets.known.<fqn> entry: a library composable that handles window insets, " +
+        "The compose.windowInsets.known[<fqn>] entry: a library composable that handles window insets, " +
             "e.g. com.acme.ui.AppScaffold=SystemBars, or None for one that handles nothing. May be given " +
             "more than once; '<fqn>=' removes the entry",
         allowMultipleOccurrences = true,
@@ -150,7 +150,7 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
     )
     private val knownLocalsOption = option(
         "compose.compositionLocals.known", "<composable fqn>=<local>, <param>:<local>, ...|None",
-        "The compose.compositionLocals.known.<fqn> entry: the locals a library composable reads and the ones " +
+        "The compose.compositionLocals.known[<fqn>] entry: the locals a library composable reads and the ones " +
             "it provides to each lambda parameter, e.g. com.acme.ui.AppTheme=content:com.acme.ui.LocalPalette. " +
             "May be given more than once; '<fqn>=' removes the entry",
         allowMultipleOccurrences = true,

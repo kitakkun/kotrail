@@ -44,7 +44,7 @@ class WindowInsetsHandlingService(session: FirSession) : FirExtensionSessionComp
 
     /**
      * Composables known to handle insets without being analyzed: the built-in entries for
-     * Material 3, changed entry by entry by the project's `compose.windowInsets.known.<fqn>`.
+     * Material 3, changed entry by entry by the project's `compose.windowInsets.known[<fqn>]`.
      */
     private val knowledgeBase: Map<String, InsetsSet> by lazy {
         val base = WindowInsetsNames.KNOWN_LIBRARY_COMPOSABLES

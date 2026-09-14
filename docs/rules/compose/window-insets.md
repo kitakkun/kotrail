@@ -113,10 +113,10 @@ A composable whose body the analysis cannot see through, or cannot see at all, i
 one entry per composable, keyed by its fully qualified name:
 
 ```properties
-compose.windowInsets.known.com.acme.ui.AppScaffold=SystemBars
-compose.windowInsets.known.com.acme.ui.AppTopBar=StatusBars:Top+Horizontal
-compose.windowInsets.known.com.acme.ui.Sheet=NavigationBars:Bottom, Ime
-compose.windowInsets.known.androidx.compose.material3.Scaffold=None
+compose.windowInsets.known[com.acme.ui.AppScaffold]=SystemBars
+compose.windowInsets.known[com.acme.ui.AppTopBar]=StatusBars:Top+Horizontal
+compose.windowInsets.known[com.acme.ui.Sheet]=NavigationBars:Bottom, Ime
+compose.windowInsets.known[androidx.compose.material3.Scaffold]=None
 ```
 
 A value is a comma-separated list of `Type` or `Type:Side+Side` entries, with the entry names

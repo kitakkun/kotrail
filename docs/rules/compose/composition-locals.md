@@ -4,7 +4,7 @@
 `KOTRAIL_COMPOSITION_LOCAL_NOT_PROVIDED` (error, on the root function name),
 `KOTRAIL_COMPOSITION_LOCAL_NOT_PROVIDED_AT_ENTRY_POINT` (error, on the entry point's name)
 **Switch:** `rules.compose.compositionLocals` (default `true`)
-**Settings:** `compose.compositionLocals.platform`, `.required`, `.roots`, `.known.<fqn>`
+**Settings:** `compose.compositionLocals.platform`, `.required`, `.roots`, `.known[<fqn>]`
 **Artifact:** `annotations` (`com.kitakkun.kotrail.compose.locals`), needed on the compile
 classpath of every module the plugin is applied to.
 
@@ -102,9 +102,9 @@ Library composables are understood through their `@InferredCompositionLocals` me
 library was compiled with Kotrail, and through the project's own entries otherwise:
 
 ```properties
-compose.compositionLocals.known.com.acme.ui.AppTheme=content:com.acme.ui.LocalPalette
-compose.compositionLocals.known.com.acme.ui.Avatar=com.acme.ui.LocalImageLoader
-compose.compositionLocals.known.com.acme.ui.Plain=None
+compose.compositionLocals.known[com.acme.ui.AppTheme]=content:com.acme.ui.LocalPalette
+compose.compositionLocals.known[com.acme.ui.Avatar]=com.acme.ui.LocalImageLoader
+compose.compositionLocals.known[com.acme.ui.Plain]=None
 ```
 
 A value is a comma-separated list of locals the composable reads (`com.acme.ui.LocalImageLoader`)

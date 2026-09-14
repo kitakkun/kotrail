@@ -60,7 +60,7 @@ Full pages, with every condition and fixture, live under [`docs/rules/`](docs/ru
 | [No mutable collection in public API](docs/rules/no-mutable-collection-in-public-api.md) | `fun items(): MutableList<Item>` | `List<Item>` |
 | [No data class in public API](docs/rules/no-data-class-in-public-api.md) | `public data class Config(...)` in a module with explicit API mode | A regular class with explicit `equals`/`hashCode`, or `internal` |
 | [Visibility policy](docs/rules/visibility-policy.md) | A declaration matching `visibilityPolicy.private=composable && name(*Preview)` that is not private | The visibility the policy names |
-| [Required annotation](docs/rules/required-annotation.md) | A declaration matching `requiredAnnotation.policy.screens=composable && name(*Screen) -> com.acme.Screen` without the annotation | The annotation the policy names |
+| [Required annotation](docs/rules/required-annotation.md) | A declaration matching `requiredAnnotation.policy[screens]=composable && name(*Screen) -> com.acme.Screen` without the annotation | The annotation the policy names |
 | [Named arguments for repeated types](docs/rules/named-arguments-for-repeated-types.md) | `Padding(8, 16, 8, 16)` | `Padding(start = 8, top = 16, end = 8, bottom = 16)` |
 | [Must be serializable](docs/rules/must-be-serializable.md) | `rememberSerializable { Filter() }`, or `save<@MustBeSerializable T>(value)`, with a type that is not `@Serializable` | `@Serializable` on the class, or an explicit serializer |
 | [No unimplemented code](docs/rules/no-unimplemented.md) | `TODO()`, `throw NotImplementedError()` (switch it off for debug and test compilations) | The implementation, or an explicit `UnsupportedOperationException` |

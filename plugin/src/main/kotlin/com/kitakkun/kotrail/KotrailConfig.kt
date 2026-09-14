@@ -24,7 +24,7 @@ data class KotrailComposeSettings(
     val maxComposablesPerFile: Int,
     /**
      * The project's changes to the insets knowledge base, keyed by the composable's fully
-     * qualified name, from the `compose.windowInsets.known.<fqn>` entries. A set replaces the
+     * qualified name, from the `compose.windowInsets.known[<fqn>]` entries. A set replaces the
      * built-in entry (an empty set, written `None`, says the composable handles nothing); `null`
      * removes an earlier override so that the built-in entry applies again.
      */
@@ -47,7 +47,7 @@ data class KotrailCompositionLocals(
     /** Functions whose composable lambda argument is a root of composition: `setContent`, `Window`, ... */
     val roots: List<String>,
     /**
-     * Library composables described by `compose.compositionLocals.known.<fqn>`; `null` removes
+     * Library composables described by `compose.compositionLocals.known[<fqn>]`; `null` removes
      * an earlier entry so that the composable is analyzed like any other.
      */
     val known: Map<String, KotrailCompositionLocalKnowledge?>,
@@ -171,7 +171,7 @@ data class KotrailVisibilityPolicy(
 
 /**
  * One policy of the required-annotation rule: declarations matching [predicate] must carry
- * [annotation]. [name] is what the policy was configured under (`requiredAnnotation.policy.<name>`)
+ * [annotation]. [name] is what the policy was configured under (`requiredAnnotation.policy[<name>]`)
  * and appears in the message.
  */
 data class KotrailRequiredAnnotation(
@@ -263,7 +263,7 @@ data class KotrailConfig(
     val functionLength: KotrailFunctionLength,
     val noDataClassInPublicApi: KotrailNoDataClassInPublicApi,
     val visibilityPolicy: KotrailVisibilityPolicy,
-    /** The `requiredAnnotation.policy.<name>` entries, by name. */
+    /** The `requiredAnnotation.policy[<name>]` entries, by name. */
     val requiredAnnotations: List<KotrailRequiredAnnotation>,
 ) {
     fun isEnabled(rule: KotrailRule): Boolean = switches[rule] ?: true
@@ -337,27 +337,23 @@ data class KotrailConfig(
         const val KEY_LOCALS_ROOTS = "compose.compositionLocals.roots"
 
         /**
-         * Prefix of `requiredAnnotation.policy.<name>=<predicate> -> <annotation fqn>` entries.
-         * Names have no dots ([ENTRY_NAME]), so `requiredAnnotation.<setting>` and a future
-         * `requiredAnnotation.policy.<name>.<setting>` stay parseable next to them.
+         * Family of `requiredAnnotation.policy[<name>]=<predicate> -> <annotation fqn>` entries.
+         * A user-chosen key sits in brackets, so that it can hold dots (a fully qualified name)
+         * and still leave `<family>.<setting>` and `<family>[<key>].<setting>` parseable.
          */
-        const val KEY_PREFIX_REQUIRED_ANNOTATION = "requiredAnnotation.policy."
+        const val KEY_FAMILY_REQUIRED_ANNOTATION = "requiredAnnotation.policy"
 
-        /**
-         * Prefix of `compose.windowInsets.known.<composable fqn>=<Type[:Sides],...|None>` entries.
-         * The suffix is a fully qualified name, dots included, so `known.` is a leaf namespace:
-         * settings of the rule go under `compose.windowInsets.<setting>`, never under `known.`.
-         */
-        const val KEY_PREFIX_KNOWN_INSETS = "compose.windowInsets.known."
+        /** Family of `compose.windowInsets.known[<composable fqn>]=<Type[:Sides],...|None>` entries. */
+        const val KEY_FAMILY_KNOWN_INSETS = "compose.windowInsets.known"
 
-        /**
-         * Prefix of `compose.compositionLocals.known.<composable fqn>=<local>, <param>:<local>, ...|None`
-         * entries; like [KEY_PREFIX_KNOWN_INSETS], `known.` is a leaf namespace.
-         */
-        const val KEY_PREFIX_KNOWN_LOCALS = "compose.compositionLocals.known."
+        /** Family of `compose.compositionLocals.known[<composable fqn>]=<local>, <param>:<local>, ...|None` entries. */
+        const val KEY_FAMILY_KNOWN_LOCALS = "compose.compositionLocals.known"
 
-        /** Key families whose suffix is chosen by the project, accepted by the config file next to [ALL_KEYS]. */
-        val KEY_PREFIXES: List<String> = listOf(KEY_PREFIX_REQUIRED_ANNOTATION, KEY_PREFIX_KNOWN_INSETS, KEY_PREFIX_KNOWN_LOCALS)
+        /** Key families whose bracketed key is chosen by the project, accepted by the config file next to [ALL_KEYS]. */
+        val KEY_FAMILIES: List<String> = listOf(KEY_FAMILY_REQUIRED_ANNOTATION, KEY_FAMILY_KNOWN_INSETS, KEY_FAMILY_KNOWN_LOCALS)
+
+        /** What a user-chosen key may look like: letters, digits, dots, `_` and `-`, starting with a letter. */
+        val ENTRY_NAME = Regex("[A-Za-z][A-Za-z0-9_.-]*")
 
         val DEFAULT_LOCALS_PLATFORM: List<String> = emptyList()
         val DEFAULT_LOCALS_REQUIRED: List<String> = emptyList()
@@ -370,9 +366,6 @@ data class KotrailConfig(
             "androidx.compose.ui.window.ComposeViewport",
             "androidx.compose.ui.window.CanvasBasedWindow",
         )
-
-        /** What a user-chosen entry name may look like: a letter, then letters, digits, `_` or `-`. */
-        val ENTRY_NAME = Regex("[A-Za-z][A-Za-z0-9_-]*")
 
         val SETTING_KEYS = listOf(
             KEY_ENABLED,
@@ -512,13 +505,13 @@ data class KotrailConfig(
             // other entry stays, so a test source set can add or drop one policy without restating
             // them all. An empty value is the way to drop one (it parses to null).
             val requiredAnnotations = (
-                file.entriesWithPrefix(KEY_PREFIX_REQUIRED_ANNOTATION)
+                file.entriesOf(KEY_FAMILY_REQUIRED_ANNOTATION)
                     .associate { (name, value) -> name to parseRequiredAnnotation(name, value) } +
                     configuration.get(KotrailConfigurationKeys.REQUIRED_ANNOTATIONS).orEmpty()
                 ).values.filterNotNull()
             val knownInsetsHandlers =
-                file.entriesWithPrefix(KEY_PREFIX_KNOWN_INSETS)
-                    .associate { (fqn, value) -> fqn to parseInsetsSpec(KEY_PREFIX_KNOWN_INSETS + fqn, value) } +
+                file.entriesOf(KEY_FAMILY_KNOWN_INSETS)
+                    .associate { (fqn, value) -> fqn to parseInsetsSpec(entryKey(KEY_FAMILY_KNOWN_INSETS, fqn), value) } +
                     configuration.get(KotrailConfigurationKeys.KNOWN_INSETS_HANDLERS).orEmpty()
             val compositionLocals = KotrailCompositionLocals(
                 platform = configuration.get(KotrailConfigurationKeys.LOCALS_PLATFORM)
@@ -530,8 +523,8 @@ data class KotrailConfig(
                 roots = configuration.get(KotrailConfigurationKeys.LOCALS_ROOTS)
                     ?: file.getProperty(KEY_LOCALS_ROOTS)?.let { parseList(it) }
                     ?: DEFAULT_LOCALS_ROOTS,
-                known = file.entriesWithPrefix(KEY_PREFIX_KNOWN_LOCALS)
-                    .associate { (fqn, value) -> fqn to parseLocalsSpec(KEY_PREFIX_KNOWN_LOCALS + fqn, value) } +
+                known = file.entriesOf(KEY_FAMILY_KNOWN_LOCALS)
+                    .associate { (fqn, value) -> fqn to parseLocalsSpec(entryKey(KEY_FAMILY_KNOWN_LOCALS, fqn), value) } +
                     configuration.get(KotrailConfigurationKeys.KNOWN_LOCALS).orEmpty(),
             )
             val testAnnotations = configuration.get(KotrailConfigurationKeys.TEST_ANNOTATIONS)
@@ -581,15 +574,15 @@ data class KotrailConfig(
         }
 
         /**
-         * A `requiredAnnotation.policy.<name>` value: a predicate, `->`, and the annotation's fully
+         * A `requiredAnnotation.policy[<name>]` value: a predicate, `->`, and the annotation's fully
          * qualified name. An empty value drops the policy of that name and gives `null`.
          */
         @OptIn(ExperimentalCompilerApi::class)
         fun parseRequiredAnnotation(name: String, value: String): KotrailRequiredAnnotation? {
-            val key = KEY_PREFIX_REQUIRED_ANNOTATION + name
+            val key = entryKey(KEY_FAMILY_REQUIRED_ANNOTATION, name)
             if (!ENTRY_NAME.matches(name)) {
                 throw CliOptionProcessingException(
-                    "Kotrail config key $key: a policy name is a letter followed by letters, digits, '_' or '-', got '$name'",
+                    "Kotrail config key $key: a policy name is a letter followed by letters, digits, '.', '_' or '-', got '$name'",
                 )
             }
             if (value.isBlank()) return null
@@ -699,7 +692,7 @@ data class KotrailConfig(
                 )
             }
             val fqn = parts[0].trim()
-            return fqn to parseLocalsSpec(KEY_PREFIX_KNOWN_LOCALS + fqn, parts[1])
+            return fqn to parseLocalsSpec(entryKey(KEY_FAMILY_KNOWN_LOCALS, fqn), parts[1])
         }
 
         /** A `compose.windowInsets.known` option value, `<composable fqn>=<spec>`; `<fqn>=` removes the entry. */
@@ -712,16 +705,23 @@ data class KotrailConfig(
                 )
             }
             val fqn = parts[0].trim()
-            return fqn to parseInsetsSpec(KEY_PREFIX_KNOWN_INSETS + fqn, parts[1])
+            return fqn to parseInsetsSpec(entryKey(KEY_FAMILY_KNOWN_INSETS, fqn), parts[1])
         }
 
         /** A predicate as configured, or `null` when it was cleared with an empty value. */
         private fun ExcludePredicate?.unlessNever(): ExcludePredicate? = takeUnless { it is ExcludePredicate.Never }
 
-        /** `(suffix, value)` for every property whose key starts with [prefix], sorted by key. */
-        private fun Properties.entriesWithPrefix(prefix: String): List<Pair<String, String>> =
-            stringPropertyNames().filter { it.startsWith(prefix) }.sorted()
-                .map { it.removePrefix(prefix) to getProperty(it) }
+        /** The key of one entry of a family: `family[name]`. */
+        fun entryKey(family: String, name: String): String = "$family[$name]"
+
+        private fun entryPattern(family: String) = Regex("^" + Regex.escape(family) + """\[([^\]]+)]$""")
+
+        /** `(name, value)` for every `family[name]` property, sorted by key. */
+        private fun Properties.entriesOf(family: String): List<Pair<String, String>> {
+            val pattern = entryPattern(family)
+            return stringPropertyNames().mapNotNull { key -> pattern.matchEntire(key)?.let { it.groupValues[1] to getProperty(key) } }
+                .sortedBy { it.first }
+        }
 
         /** Comma-separated values, trimmed, empties dropped. */
         fun parseList(value: String): List<String> = value.split(',').map { it.trim() }.filter { it.isNotEmpty() }
@@ -748,7 +748,7 @@ data class KotrailConfig(
                 val properties = Properties()
                 file.reader().use(properties::load)
                 val unknown = properties.stringPropertyNames()
-                    .filter { key -> key !in ALL_KEYS && KEY_PREFIXES.none { key.startsWith(it) && key.length > it.length } }
+                    .filter { key -> key !in ALL_KEYS && KEY_FAMILIES.none { entryPattern(it).matches(key) } }
                 if (unknown.isNotEmpty()) {
                     throw CliOptionProcessingException(
                         "Unknown keys in Kotrail config file $path: ${unknown.sorted().joinToString()}",
