@@ -1,8 +1,19 @@
 pluginManagement {
-    // The Kotlin compiler version the whole build runs against. Override per invocation with
-    // -Pkotlin.compiler=<version>; the default lives in gradle.properties so that this script and
-    // the project scripts read the exact same value. See docs/supported-kotlin-versions.md.
-    val kotlinCompilerVersion: String = providers.gradleProperty("kotlin.compiler").get()
+    // The Kotlin versions Kotrail publishes a compiler plugin for, oldest first. This is the one
+    // list every other place derives from: the build defaults to the newest entry, the Gradle
+    // plugin refuses a consumer's Kotlin version that is not here, and the table in
+    // docs/supported-kotlin-versions.md and the CI matrix are kept in step with it by hand. It is
+    // declared here, in the block Gradle evaluates before anything else, because the Kotlin
+    // Gradle plugin has to be pinned to the same version.
+    val publishedKotlinVersions = listOf("2.3.21", "2.4.0", "2.4.10", "2.4.20")
+
+    // The Kotlin compiler version this build runs against: the newest published version, or the
+    // one given with -Pkotlin.compiler=<version>. See docs/supported-kotlin-versions.md.
+    val kotlinCompilerVersion: String =
+        providers.gradleProperty("kotlin.compiler").getOrElse(publishedKotlinVersions.last())
+
+    gradle.extra["publishedKotlinVersions"] = publishedKotlinVersions
+    gradle.extra["kotlinCompilerVersion"] = kotlinCompilerVersion
 
     // Compose Multiplatform is versioned independently of Kotlin, and 1.12.0 works with every
     // Kotlin version Kotrail supports today. Should a future supported version need a different

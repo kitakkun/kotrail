@@ -45,7 +45,7 @@ Requirements: one of the supported Kotlin versions (2.3.21, 2.4.0, 2.4.10, 2.4.2
 ```
 
 The Kotlin version the build uses is selected by the `kotlin.compiler` Gradle property and defaults
-to 2.4.0. See [supported Kotlin versions](docs/supported-kotlin-versions.md) for the version table,
+to the newest supported one. See [supported Kotlin versions](docs/supported-kotlin-versions.md) for the version table,
 the per-version source-set layout and how to add a new Kotlin version.
 
 To see a rule reject code, copy a file from `sample/violations/` or `sample-compose/app/violations/`

@@ -83,7 +83,7 @@ Ideas not started yet: `required-annotation` (predicate-driven), `forbidden-supe
 
 ```kotlin
 plugins {
-    kotlin("jvm") version "2.4.0"
+    kotlin("jvm") version "2.4.20"
     id("com.kitakkun.kotrail") version "0.1.0"
 }
 

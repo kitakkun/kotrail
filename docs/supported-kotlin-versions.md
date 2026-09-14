@@ -12,21 +12,22 @@ A single Gradle property selects the Kotlin version for the whole build — the 
 artifacts, the samples, and the compat sources described below.
 
 ```bash
-./gradlew build                          # the default, currently Kotlin 2.4.0
+./gradlew build                          # the newest supported version, currently Kotlin 2.4.20
 ./gradlew build -Pkotlin.compiler=2.3.21 # the same build against Kotlin 2.3.21
 ```
 
-The default lives in `gradle.properties` (`kotlin.compiler=2.4.0`) so that `settings.gradle.kts`
-and the project build scripts always read the same value. Passing an unsupported version fails
-configuration with an explicit message rather than a confusing compile error.
+The default is the newest entry of `publishedKotlinVersions` in `settings.gradle.kts`, which is
+where the Kotlin Gradle plugin is pinned, so the settings and the project build scripts always
+agree. Passing an unsupported version fails configuration with an explicit message rather than a
+confusing compile error.
 
 ## Supported versions
 
 | Kotlin | Compat family | Notes |
 | --- | --- | --- |
-| 2.4.20 | `k2420` | `FirNamedFunctionChecker` and the `namedFunctionCheckers` bucket, `FirResolvedQualifier.classId` as an extension, `PluginGenerated` as a sealed class, `AbstractJvmBlackBoxCodegenTestBase` in the test framework, IR dumps named `.ir.txt`. |
+| 2.4.20 (default) | `k2420` | `FirNamedFunctionChecker` and the `namedFunctionCheckers` bucket, `FirResolvedQualifier.classId` as an extension, `PluginGenerated` as a sealed class, `AbstractJvmBlackBoxCodegenTestBase` in the test framework, IR dumps named `.ir.txt`. |
 | 2.4.10 | `k240` | Same API surface as 2.4.0. |
-| 2.4.0 (default) | `k240` | Reference version. Explicit backing fields and context parameters are on by default. |
+| 2.4.0 | `k240` | Explicit backing fields and context parameters are on by default. |
 | 2.3.21 | `k2321` | Also covers 2.3.20. Explicit backing fields need `-Xexplicit-backing-fields`; the plugin module compiles with `-Xcontext-parameters`. |
 
 Every version is built and tested on every push by `.github/workflows/ci.yml`.
@@ -43,9 +44,9 @@ so consumers never write it down. See [gradle-plugin.md](gradle-plugin.md).
 Releasing therefore means running the publish tasks once per supported Kotlin version
 (`-Pkotlin.compiler=<version>`), and the Gradle plugin's own publication only once.
 
-The list of published versions lives in the root `build.gradle.kts` as `publishedKotlinVersions`,
-is baked into the Gradle plugin, and is what it checks a consumer's Kotlin version against. Adding
-a version means adding it there, to the CI matrix, and to the table above.
+The list of published versions lives in `settings.gradle.kts` as `publishedKotlinVersions`, is
+baked into the Gradle plugin, and is what it checks a consumer's Kotlin version against. Adding a
+version means adding it there, to the CI and release matrices, and to the table above.
 
 ## Source-set layout
 

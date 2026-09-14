@@ -9,7 +9,7 @@ fix type errors.
 ```kotlin
 // build.gradle.kts
 plugins {
-    kotlin("jvm") version "2.4.0"           // or multiplatform, android, ...
+    kotlin("jvm") version "2.4.20"          // or multiplatform, android, ...
     id("com.kitakkun.kotrail") version "0.1.0"
 }
 ```
