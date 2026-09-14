@@ -29,9 +29,22 @@ fun addStringVarargMetadataAnnotation(
     declaration: IrDeclaration,
     constructor: IrConstructorSymbol,
     values: List<String>,
+) = addStringArraysMetadataAnnotation(pluginContext, declaration, constructor, listOf(values))
+
+/**
+ * The general form of [addStringVarargMetadataAnnotation]: [constructor] takes one `Array<String>`
+ * (or `vararg String`) parameter per entry of [arguments], in order, and an annotation with no
+ * parameters takes an empty list. Annotation array arguments are varargs in IR either way.
+ */
+fun addStringArraysMetadataAnnotation(
+    pluginContext: IrPluginContext,
+    declaration: IrDeclaration,
+    constructor: IrConstructorSymbol,
+    arguments: List<List<String>>,
 ) {
     val stringType = pluginContext.irBuiltIns.stringType
-    val parameter = constructor.owner.parameters.single()
+    val parameters = constructor.owner.parameters
+    require(parameters.size == arguments.size) { "${constructor.owner.name} takes ${parameters.size} parameters, got ${arguments.size} arguments" }
     val annotation = IrAnnotationImpl(
         startOffset = UNDEFINED_OFFSET,
         endOffset = UNDEFINED_OFFSET,
@@ -40,13 +53,15 @@ fun addStringVarargMetadataAnnotation(
         typeArgumentsCount = 0,
         constructorTypeArgumentsCount = 0,
     ).apply {
-        arguments[0] = IrVarargImpl(
-            startOffset = UNDEFINED_OFFSET,
-            endOffset = UNDEFINED_OFFSET,
-            type = parameter.type,
-            varargElementType = stringType,
-            elements = values.map { IrConstImpl.string(UNDEFINED_OFFSET, UNDEFINED_OFFSET, stringType, it) },
-        )
+        for ((index, values) in arguments.withIndex()) {
+            this.arguments[index] = IrVarargImpl(
+                startOffset = UNDEFINED_OFFSET,
+                endOffset = UNDEFINED_OFFSET,
+                type = parameters[index].type,
+                varargElementType = stringType,
+                elements = values.map { IrConstImpl.string(UNDEFINED_OFFSET, UNDEFINED_OFFSET, stringType, it) },
+            )
+        }
     }
     pluginContext.metadataDeclarationRegistrar.addMetadataVisibleAnnotationsToElement(declaration, annotation)
 }

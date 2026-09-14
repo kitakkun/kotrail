@@ -41,6 +41,7 @@ enum class KotrailRule(
     COMPOSE_WINDOW_INSETS("compose.windowInsets", Severity.ERROR),
     COMPOSE_WINDOW_INSETS_UNVERIFIABLE("compose.windowInsetsUnverifiable", Severity.WARNING, hasSwitch = false),
     COMPOSE_WINDOW_INSETS_HANDLED_TWICE("compose.windowInsetsHandledTwice", Severity.WARNING),
+    COMPOSE_COMPOSITION_LOCALS("compose.compositionLocals", Severity.ERROR),
     COMPOSE_NESTING("compose.nesting", Severity.ERROR),
     COMPOSE_STATE_DELEGATION("compose.stateDelegation", Severity.ERROR),
     COMPOSE_NO_TRAILING_CALLBACK("compose.noTrailingCallback", Severity.ERROR),

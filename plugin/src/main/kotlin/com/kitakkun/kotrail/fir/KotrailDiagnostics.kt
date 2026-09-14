@@ -62,6 +62,7 @@ class TunableDiagnostic2<A, B>(
 object KotrailDiagnostics : KtDiagnosticsContainer() {
     private val NAME = SourceElementPositioningStrategies.NAME_IDENTIFIER
     private val WHOLE = SourceElementPositioningStrategies.DEFAULT
+    private val REFERENCED_NAME = SourceElementPositioningStrategies.REFERENCED_NAME_BY_QUALIFIED
 
     // ---- general rules ----
 
@@ -142,6 +143,12 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
 
     /** Arguments: the called composable's name, description of the overlapping insets. */
     val WINDOW_INSETS_HANDLED_TWICE = tunable2<KtElement, String, String>("WINDOW_INSETS_HANDLED_TWICE", KotrailRule.COMPOSE_WINDOW_INSETS_HANDLED_TWICE, WHOLE)
+
+    /** Arguments: the local's fully qualified name, where it is read (`read here` or `read in A > B`). Reported on the root function name. */
+    val COMPOSITION_LOCAL_NOT_PROVIDED = tunable2<KtNamedFunction, String, String>("COMPOSITION_LOCAL_NOT_PROVIDED", KotrailRule.COMPOSE_COMPOSITION_LOCALS, NAME)
+
+    /** The same, reported on the callee name of an entry-point call such as `setContent { }`. */
+    val COMPOSITION_LOCAL_NOT_PROVIDED_AT_ENTRY_POINT = tunable2<KtElement, String, String>("COMPOSITION_LOCAL_NOT_PROVIDED_AT_ENTRY_POINT", KotrailRule.COMPOSE_COMPOSITION_LOCALS, REFERENCED_NAME)
 
     /** Arguments: the local's name, the keyword to use with delegation (`val` or `var`). */
     val PREFER_STATE_DELEGATION = tunable2<KtProperty, String, String>("PREFER_STATE_DELEGATION", KotrailRule.COMPOSE_STATE_DELEGATION, NAME)
@@ -314,6 +321,16 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             KotrailDiagnostics.WINDOW_INSETS_HANDLED_TWICE,
             "[Kotrail] ''{0}'' already handles {1} internally; the Modifier passed to it applies the same insets " +
                 "again, which doubles the padding.",
+        )
+        map.put2(
+            KotrailDiagnostics.COMPOSITION_LOCAL_NOT_PROVIDED,
+            "[Kotrail] ''{0}'' is {1}, but nothing between this root and the read provides it. " +
+                "Provide it with CompositionLocalProvider here or on the way, or give the local a default.",
+        )
+        map.put2(
+            KotrailDiagnostics.COMPOSITION_LOCAL_NOT_PROVIDED_AT_ENTRY_POINT,
+            "[Kotrail] ''{0}'' is {1}, but nothing inside this content provides it and nothing above it can. " +
+                "Provide it with CompositionLocalProvider inside the content, or give the local a default.",
         )
         map.put2(
             KotrailDiagnostics.PREFER_STATE_DELEGATION,

@@ -67,6 +67,11 @@ rule hangs off its key: `severity.<rule>`, `note.<rule>`, `exclude.<rule>`, and 
 | `rules.compose.windowInsets` | `true` | [Window insets](rules/compose/window-insets.md): contract check and inferred metadata. |
 | `rules.compose.windowInsetsHandledTwice` | `true` | Doubled inset padding warning (needs `rules.compose.windowInsets`). |
 | `compose.windowInsets.known.<composable fqn>` | (built-in Material 3 entries) | What a library composable handles, as `Type` or `Type:Side+Side` entries separated by commas, or `None`. See [the knowledge base](rules/compose/window-insets.md#knowledge-base). |
+| `rules.compose.compositionLocals` | `true` | [Composition locals](rules/compose/composition-locals.md): required locals must be provided below every root. |
+| `compose.compositionLocals.platform` | (empty) | Locals the platform provides at every root; reads of these are never reported. |
+| `compose.compositionLocals.required` | (empty) | Locals to treat as required although their default does not throw. |
+| `compose.compositionLocals.roots` | `setContent`, `Window`, `application`, ... | Functions whose composable lambda is a root of composition. |
+| `compose.compositionLocals.known.<composable fqn>` | (empty) | What a library composable reads (`fqn`) and provides to a lambda parameter (`param:fqn`), comma separated, or `None`. See [the knowledge base](rules/compose/composition-locals.md#knowledge-base). |
 | `rules.compose.stateDelegation` | `true` | [State delegation](rules/compose/state-delegation.md). |
 | `rules.compose.nesting` | `true` | [Nesting limit](rules/compose/nesting.md). |
 | `compose.nesting.maxDepth` | `5` | Nesting limit for composable calls; `0` disables the rule. |
@@ -119,6 +124,7 @@ adopt a rule gradually.
 | `severity.compose.windowInsets` | `error` |
 | `severity.compose.windowInsetsUnverifiable` | `warning` |
 | `severity.compose.windowInsetsHandledTwice` | `warning` |
+| `severity.compose.compositionLocals` | `error` |
 | `severity.compose.stateDelegation` | `error` |
 | `severity.compose.nesting` | `error` |
 | `severity.compose.noTrailingCallback` | `error` |

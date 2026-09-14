@@ -1,0 +1,83 @@
+Module: lib
+FILE fqName:lib fileName:/Lib.kt
+  PROPERTY name:LocalNav visibility:public modality:FINAL [val]
+    annotations:
+      InferredRequiredCompositionLocal
+    FIELD PROPERTY_BACKING_FIELD name:LocalNav type:androidx.compose.runtime.ProvidableCompositionLocal<kotlin.String> visibility:private [final,static]
+      EXPRESSION_BODY
+        CALL 'public final fun compositionLocalOf <T> (defaultFactory: kotlin.Function0<T of androidx.compose.runtime.compositionLocalOf>): androidx.compose.runtime.ProvidableCompositionLocal<T of androidx.compose.runtime.compositionLocalOf> declared in androidx.compose.runtime' type=androidx.compose.runtime.ProvidableCompositionLocal<kotlin.String> origin=null
+          TYPE_ARG T: kotlin.String
+          ARG defaultFactory: FUN_EXPR type=kotlin.Function0<kotlin.String> origin=LAMBDA
+            FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL returnType:kotlin.String
+              BLOCK_BODY
+                CALL 'public final fun error (message: kotlin.Any): kotlin.Nothing declared in kotlin' type=kotlin.Nothing origin=null
+                  ARG message: CONST String type=kotlin.String value="No nav provided"
+    FUN DEFAULT_PROPERTY_ACCESSOR name:<get-LocalNav> visibility:public modality:FINAL returnType:androidx.compose.runtime.ProvidableCompositionLocal<kotlin.String>
+      correspondingProperty: PROPERTY name:LocalNav visibility:public modality:FINAL [val]
+      BLOCK_BODY
+        RETURN type=kotlin.Nothing from='public final fun <get-LocalNav> (): androidx.compose.runtime.ProvidableCompositionLocal<kotlin.String> declared in lib'
+          GET_FIELD 'FIELD PROPERTY_BACKING_FIELD name:LocalNav type:androidx.compose.runtime.ProvidableCompositionLocal<kotlin.String> visibility:private [final,static]' type=androidx.compose.runtime.ProvidableCompositionLocal<kotlin.String> origin=null
+  PROPERTY name:LocalTitle visibility:public modality:FINAL [val]
+    FIELD PROPERTY_BACKING_FIELD name:LocalTitle type:androidx.compose.runtime.ProvidableCompositionLocal<kotlin.String> visibility:private [final,static]
+      EXPRESSION_BODY
+        CALL 'public final fun compositionLocalOf <T> (defaultFactory: kotlin.Function0<T of androidx.compose.runtime.compositionLocalOf>): androidx.compose.runtime.ProvidableCompositionLocal<T of androidx.compose.runtime.compositionLocalOf> declared in androidx.compose.runtime' type=androidx.compose.runtime.ProvidableCompositionLocal<kotlin.String> origin=null
+          TYPE_ARG T: kotlin.String
+          ARG defaultFactory: FUN_EXPR type=kotlin.Function0<kotlin.String> origin=LAMBDA
+            FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL returnType:kotlin.String
+              BLOCK_BODY
+                RETURN type=kotlin.Nothing from='local final fun <anonymous> (): kotlin.String declared in lib.LocalTitle'
+                  CONST String type=kotlin.String value="untitled"
+    FUN DEFAULT_PROPERTY_ACCESSOR name:<get-LocalTitle> visibility:public modality:FINAL returnType:androidx.compose.runtime.ProvidableCompositionLocal<kotlin.String>
+      correspondingProperty: PROPERTY name:LocalTitle visibility:public modality:FINAL [val]
+      BLOCK_BODY
+        RETURN type=kotlin.Nothing from='public final fun <get-LocalTitle> (): androidx.compose.runtime.ProvidableCompositionLocal<kotlin.String> declared in lib'
+          GET_FIELD 'FIELD PROPERTY_BACKING_FIELD name:LocalTitle type:androidx.compose.runtime.ProvidableCompositionLocal<kotlin.String> visibility:private [final,static]' type=androidx.compose.runtime.ProvidableCompositionLocal<kotlin.String> origin=null
+  FUN name:AppTheme visibility:public modality:FINAL returnType:kotlin.Unit
+    VALUE_PARAMETER kind:Regular name:content index:0 type:@[Composable] kotlin.Function0<kotlin.Unit>
+    annotations:
+      Composable
+      InferredCompositionLocals(reads = [] type=kotlin.Array<kotlin.String> varargElementType=kotlin.String, provides = ["content:lib.LocalNav"] type=kotlin.Array<kotlin.String> varargElementType=kotlin.String)
+    BLOCK_BODY
+      CALL 'public final fun CompositionLocalProvider (value: androidx.compose.runtime.ProvidedValue<*>, content: @[Composable] kotlin.Function0<kotlin.Unit>): kotlin.Unit declared in androidx.compose.runtime' type=kotlin.Unit origin=null
+        ARG value: CALL 'public final fun provides (value: T of androidx.compose.runtime.ProvidableCompositionLocal): androidx.compose.runtime.ProvidedValue<T of androidx.compose.runtime.ProvidableCompositionLocal> declared in androidx.compose.runtime.ProvidableCompositionLocal' type=androidx.compose.runtime.ProvidedValue<kotlin.String> origin=null
+          ARG <this>: CALL 'public final fun <get-LocalNav> (): androidx.compose.runtime.ProvidableCompositionLocal<kotlin.String> declared in lib' type=androidx.compose.runtime.ProvidableCompositionLocal<kotlin.String> origin=GET_PROPERTY
+          ARG value: CONST String type=kotlin.String value="nav"
+        ARG content: FUN_EXPR type=kotlin.Function0<kotlin.Unit> origin=LAMBDA
+          FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL returnType:kotlin.Unit
+            BLOCK_BODY
+              CALL 'public abstract fun invoke (): R of kotlin.Function0 declared in kotlin.Function0' type=kotlin.Unit origin=INVOKE
+                ARG <this>: GET_VAR 'content: @[Composable] kotlin.Function0<kotlin.Unit> declared in lib.AppTheme' type=@[Composable] kotlin.Function0<kotlin.Unit> origin=VARIABLE_AS_FUNCTION
+  FUN name:NavReader visibility:public modality:FINAL returnType:kotlin.Unit
+    annotations:
+      Composable
+      InferredCompositionLocals(reads = ["lib.LocalNav", "lib.LocalTitle"] type=kotlin.Array<kotlin.String> varargElementType=kotlin.String, provides = [] type=kotlin.Array<kotlin.String> varargElementType=kotlin.String)
+    BLOCK_BODY
+      CALL 'public final fun Text (text: kotlin.String, modifier: androidx.compose.ui.Modifier): kotlin.Unit declared in androidx.compose.material3' type=kotlin.Unit origin=null
+        ARG text: CALL 'public final fun <get-current> (): T of androidx.compose.runtime.ProvidableCompositionLocal declared in androidx.compose.runtime.ProvidableCompositionLocal' type=kotlin.String origin=GET_PROPERTY
+          ARG <this>: CALL 'public final fun <get-LocalNav> (): androidx.compose.runtime.ProvidableCompositionLocal<kotlin.String> declared in lib' type=androidx.compose.runtime.ProvidableCompositionLocal<kotlin.String> origin=GET_PROPERTY
+      CALL 'public final fun Text (text: kotlin.String, modifier: androidx.compose.ui.Modifier): kotlin.Unit declared in androidx.compose.material3' type=kotlin.Unit origin=null
+        ARG text: CALL 'public final fun <get-current> (): T of androidx.compose.runtime.ProvidableCompositionLocal declared in androidx.compose.runtime.ProvidableCompositionLocal' type=kotlin.String origin=GET_PROPERTY
+          ARG <this>: CALL 'public final fun <get-LocalTitle> (): androidx.compose.runtime.ProvidableCompositionLocal<kotlin.String> declared in lib' type=androidx.compose.runtime.ProvidableCompositionLocal<kotlin.String> origin=GET_PROPERTY
+  FUN name:Plain visibility:public modality:FINAL returnType:kotlin.Unit
+    annotations:
+      Composable
+    BLOCK_BODY
+Module: main
+FILE fqName:<root> fileName:/Main.kt
+  FUN name:Root visibility:public modality:FINAL returnType:kotlin.Unit
+    annotations:
+      CompositionLocalRoot
+      Composable
+      InferredCompositionLocals(reads = ["lib.LocalTitle"] type=kotlin.Array<kotlin.String> varargElementType=kotlin.String, provides = [] type=kotlin.Array<kotlin.String> varargElementType=kotlin.String)
+    BLOCK_BODY
+      CALL 'public final fun AppTheme (content: @[Composable] kotlin.Function0<kotlin.Unit>): kotlin.Unit declared in lib' type=kotlin.Unit origin=null
+        ARG content: FUN_EXPR type=kotlin.Function0<kotlin.Unit> origin=LAMBDA
+          FUN LOCAL_FUNCTION_FOR_LAMBDA name:<anonymous> visibility:local modality:FINAL returnType:kotlin.Unit
+            BLOCK_BODY
+              CALL 'public final fun NavReader (): kotlin.Unit declared in lib' type=kotlin.Unit origin=null
+      CALL 'public final fun Plain (): kotlin.Unit declared in lib' type=kotlin.Unit origin=null
+  FUN name:box visibility:public modality:FINAL returnType:kotlin.String
+    BLOCK_BODY
+      CALL 'public final fun Root (): kotlin.Unit declared in <root>' type=kotlin.Unit origin=null
+      RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in <root>'
+        CONST String type=kotlin.String value="OK"

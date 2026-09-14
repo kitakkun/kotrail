@@ -41,6 +41,13 @@ object KotrailConfigurationKeys {
     /** Entries of the `requiredAnnotation` option by name, the last occurrence of a name winning; `null` drops the policy. */
     val REQUIRED_ANNOTATIONS = CompilerConfigurationKey<Map<String, KotrailRequiredAnnotation?>>("requiredAnnotation")
 
+    val LOCALS_PLATFORM = CompilerConfigurationKey<List<String>>(KotrailConfig.KEY_LOCALS_PLATFORM)
+    val LOCALS_REQUIRED = CompilerConfigurationKey<List<String>>(KotrailConfig.KEY_LOCALS_REQUIRED)
+    val LOCALS_ROOTS = CompilerConfigurationKey<List<String>>(KotrailConfig.KEY_LOCALS_ROOTS)
+
+    /** Entries of the `compose.compositionLocals.known` option by composable, the last occurrence winning; `null` removes the entry. */
+    val KNOWN_LOCALS = CompilerConfigurationKey<Map<String, KotrailCompositionLocalKnowledge?>>("compose.compositionLocals.known")
+
     /** Entries of the `compose.windowInsets.known` option by composable, the last occurrence winning; `null` removes the entry. */
     val KNOWN_INSETS_HANDLERS = CompilerConfigurationKey<Map<String, InsetsSet?>>("compose.windowInsets.known")
 

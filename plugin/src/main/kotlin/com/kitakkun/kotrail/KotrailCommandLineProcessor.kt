@@ -135,6 +135,26 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
             "more than once; '<fqn>=' removes the entry",
         allowMultipleOccurrences = true,
     )
+    private val localsPlatformOption = option(
+        KotrailConfig.KEY_LOCALS_PLATFORM, "<fqName,fqName,...>",
+        "Composition locals the platform provides at every root; reads of these are never reported",
+    )
+    private val localsRequiredOption = option(
+        KotrailConfig.KEY_LOCALS_REQUIRED, "<fqName,fqName,...>",
+        "Composition locals that must be provided although their default does not throw",
+    )
+    private val localsRootsOption = option(
+        KotrailConfig.KEY_LOCALS_ROOTS, "<fqName,fqName,...>",
+        "Functions whose composable lambda is a root of composition " +
+            "(default ${KotrailConfig.DEFAULT_LOCALS_ROOTS.joinToString(",")})",
+    )
+    private val knownLocalsOption = option(
+        "compose.compositionLocals.known", "<composable fqn>=<local>, <param>:<local>, ...|None",
+        "The compose.compositionLocals.known.<fqn> entry: the locals a library composable reads and the ones " +
+            "it provides to each lambda parameter, e.g. com.acme.ui.AppTheme=content:com.acme.ui.LocalPalette. " +
+            "May be given more than once; '<fqn>=' removes the entry",
+        allowMultipleOccurrences = true,
+    )
     private val testAnnotationsOption = option(
         KotrailConfig.KEY_TEST_ANNOTATIONS, "<fqName,fqName,...>",
         "Comma-separated annotations that mark a function as a test " +
@@ -195,6 +215,10 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
         visibilityInternalOption,
         requiredAnnotationOption,
         knownInsetsOption,
+        localsPlatformOption,
+        localsRequiredOption,
+        localsRootsOption,
+        knownLocalsOption,
         testAnnotationsOption,
         testNamingStyleOption,
         testMinNameWordsOption,
@@ -275,6 +299,19 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
                 configuration.put(
                     KotrailConfigurationKeys.KNOWN_INSETS_HANDLERS,
                     configuration.get(KotrailConfigurationKeys.KNOWN_INSETS_HANDLERS).orEmpty() + (fqn to insets),
+                )
+            }
+            localsPlatformOption.optionName ->
+                configuration.put(KotrailConfigurationKeys.LOCALS_PLATFORM, KotrailConfig.parseList(value))
+            localsRequiredOption.optionName ->
+                configuration.put(KotrailConfigurationKeys.LOCALS_REQUIRED, KotrailConfig.parseList(value))
+            localsRootsOption.optionName ->
+                configuration.put(KotrailConfigurationKeys.LOCALS_ROOTS, KotrailConfig.parseList(value))
+            knownLocalsOption.optionName -> {
+                val (fqn, knowledge) = KotrailConfig.parseKnownLocalsOption(value)
+                configuration.put(
+                    KotrailConfigurationKeys.KNOWN_LOCALS,
+                    configuration.get(KotrailConfigurationKeys.KNOWN_LOCALS).orEmpty() + (fqn to knowledge),
                 )
             }
             testAnnotationsOption.optionName ->

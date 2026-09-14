@@ -12,7 +12,7 @@ needed) that adds checks the standard compiler does not provide. It turns the co
 team already agrees on into compile errors, so code written by AI assistants stays on the rails
 instead of drifting a little further with every generation.
 
-> **Status: early development.** Thirty-three rules ship today, applied through a Gradle plugin.
+> **Status: early development.** Thirty-four rules ship today, applied through a Gradle plugin.
 > Every rule can be switched off or demoted to a warning, per project and per compilation.
 > Nothing is published yet. Feedback on the direction is very welcome.
 
@@ -67,6 +67,7 @@ Full pages, with every condition and fixture, live under [`docs/rules/`](docs/ru
 | [Preconditions](docs/rules/preconditions.md) | `retry(-1)` where `retry` starts with `require(times >= 0)`; arguments folded through constants and locals, contracts carried across modules as metadata | Arguments that satisfy the callee's own `require` / `check` |
 | [Function length](docs/rules/function-length.md) | A function body over 50 lines of code (80 for a composable); blank, brace-only, and comment lines do not count | Extraction into named pieces |
 | [Window insets handling](docs/rules/compose/window-insets.md) (Compose) | A `@HandlesWindowInsets` contract that the body does not satisfy; insets applied twice | Contracts verified across modules through inferred metadata |
+| [Composition locals](docs/rules/compose/composition-locals.md) | A `@CompositionLocalRoot`, preview, or `setContent { }` below which a required local (`compositionLocalOf { error(...) }`) is read and never provided | A `CompositionLocalProvider` on the way, or a default |
 | [State delegation](docs/rules/compose/state-delegation.md) (Compose) | `val count = remember { mutableStateOf(0) }` used only through `.value` | `var count by remember { ... }` |
 | [Nesting limit](docs/rules/compose/nesting.md) (Compose) | Composable calls nested deeper than the limit | Extracting the subtree into its own composable |
 | [No trailing callback](docs/rules/compose/no-trailing-callback.md) (Compose) | `onClick: () -> Unit` as the last parameter of a UI composable | Callbacks before the optional parameters; `content` last |

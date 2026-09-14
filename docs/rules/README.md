@@ -37,6 +37,7 @@ fixtures that pin its behavior.
 | Rule | Diagnostics | Page |
 |---|---|---|
 | Window insets handling | `KOTRAIL_WINDOW_INSETS_NOT_HANDLED`, `KOTRAIL_WINDOW_INSETS_HANDLING_UNVERIFIABLE`, `KOTRAIL_WINDOW_INSETS_HANDLED_TWICE` | [compose/window-insets.md](compose/window-insets.md) |
+| Composition locals | `KOTRAIL_COMPOSITION_LOCAL_NOT_PROVIDED`, `KOTRAIL_COMPOSITION_LOCAL_NOT_PROVIDED_AT_ENTRY_POINT` | [compose/composition-locals.md](compose/composition-locals.md) |
 | State delegation | `KOTRAIL_PREFER_STATE_DELEGATION` | [compose/state-delegation.md](compose/state-delegation.md) |
 | Nesting limit | `KOTRAIL_COMPOSABLE_NESTING_TOO_DEEP` | [compose/nesting.md](compose/nesting.md) |
 | No trailing callback | `KOTRAIL_COMPOSABLE_TRAILING_CALLBACK` | [compose/no-trailing-callback.md](compose/no-trailing-callback.md) |

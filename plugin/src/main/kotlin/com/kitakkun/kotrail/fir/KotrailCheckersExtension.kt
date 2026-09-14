@@ -33,6 +33,9 @@ import com.kitakkun.kotrail.fir.checkers.MustBeSerializableChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposableTrailingCallbackChecker
 import com.kitakkun.kotrail.fir.compose.checkers.PreferStateDelegationChecker
 import com.kitakkun.kotrail.fir.compose.insets.checkers.HandlesWindowInsetsContractChecker
+import com.kitakkun.kotrail.fir.compose.locals.checkers.CompositionLocalEntryPointChecker
+import com.kitakkun.kotrail.fir.compose.locals.checkers.CompositionLocalPropertyWarmup
+import com.kitakkun.kotrail.fir.compose.locals.checkers.CompositionLocalRootChecker
 import com.kitakkun.kotrail.fir.test.checkers.TestNamingChecker
 import com.kitakkun.kotrail.fir.compose.insets.checkers.WindowInsetsHandledTwiceChecker
 import org.jetbrains.kotlin.fir.FirSession
@@ -80,10 +83,12 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
     override val propertyCheckers: Set<FirPropertyChecker> = setOf(
         PreferExplicitBackingFieldChecker,
         PreferStateDelegationChecker,
+        CompositionLocalPropertyWarmup,
     )
     override val namedFunctionCheckersCompat: Set<NamedFunctionChecker> = setOf(
         PreconditionWarmup.FunctionChecker,
         HandlesWindowInsetsContractChecker,
+        CompositionLocalRootChecker,
         ComposableNestingChecker,
         NarrowModelParametersChecker,
         PassThroughReturnChecker,
@@ -105,6 +110,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
 
 object KotrailExpressionCheckers : ExpressionCheckers() {
     override val functionCallCheckers: Set<FirFunctionCallChecker> = setOf(
+        CompositionLocalEntryPointChecker,
         WindowInsetsHandledTwiceChecker,
         ForbiddenCallChecker,
         PreconditionChecker,

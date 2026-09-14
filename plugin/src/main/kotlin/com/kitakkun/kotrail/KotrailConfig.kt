@@ -29,6 +29,28 @@ data class KotrailComposeSettings(
      * removes an earlier override so that the built-in entry applies again.
      */
     val knownInsetsHandlers: Map<String, InsetsSet?>,
+    val compositionLocals: KotrailCompositionLocals,
+)
+
+/** What the knowledge base says about one library composable: the locals it reads, and those it provides to each lambda parameter. */
+data class KotrailCompositionLocalKnowledge(
+    val reads: Set<String>,
+    val provides: Map<String, Set<String>>,
+)
+
+/** Tunables for the composition-locals rule. Keys are `compose.compositionLocals.<name>`. */
+data class KotrailCompositionLocals(
+    /** Locals the platform provides at every root (fully qualified property names); reads of these are never reported. */
+    val platform: List<String>,
+    /** Locals that must be provided even though their default does not throw. */
+    val required: List<String>,
+    /** Functions whose composable lambda argument is a root of composition: `setContent`, `Window`, ... */
+    val roots: List<String>,
+    /**
+     * Library composables described by `compose.compositionLocals.known.<fqn>`; `null` removes
+     * an earlier entry so that the composable is analyzed like any other.
+     */
+    val known: Map<String, KotrailCompositionLocalKnowledge?>,
 )
 
 /** Visibilities the preview-required rule inspects. */
@@ -310,6 +332,9 @@ data class KotrailConfig(
         const val KEY_TEST_ANNOTATIONS = "test.annotations"
         const val KEY_TEST_NAMING_STYLE = "test.naming.style"
         const val KEY_TEST_MIN_NAME_WORDS = "test.naming.minWords"
+        const val KEY_LOCALS_PLATFORM = "compose.compositionLocals.platform"
+        const val KEY_LOCALS_REQUIRED = "compose.compositionLocals.required"
+        const val KEY_LOCALS_ROOTS = "compose.compositionLocals.roots"
 
         /**
          * Prefix of `requiredAnnotation.policy.<name>=<predicate> -> <annotation fqn>` entries.
@@ -325,8 +350,26 @@ data class KotrailConfig(
          */
         const val KEY_PREFIX_KNOWN_INSETS = "compose.windowInsets.known."
 
+        /**
+         * Prefix of `compose.compositionLocals.known.<composable fqn>=<local>, <param>:<local>, ...|None`
+         * entries; like [KEY_PREFIX_KNOWN_INSETS], `known.` is a leaf namespace.
+         */
+        const val KEY_PREFIX_KNOWN_LOCALS = "compose.compositionLocals.known."
+
         /** Key families whose suffix is chosen by the project, accepted by the config file next to [ALL_KEYS]. */
-        val KEY_PREFIXES: List<String> = listOf(KEY_PREFIX_REQUIRED_ANNOTATION, KEY_PREFIX_KNOWN_INSETS)
+        val KEY_PREFIXES: List<String> = listOf(KEY_PREFIX_REQUIRED_ANNOTATION, KEY_PREFIX_KNOWN_INSETS, KEY_PREFIX_KNOWN_LOCALS)
+
+        val DEFAULT_LOCALS_PLATFORM: List<String> = emptyList()
+        val DEFAULT_LOCALS_REQUIRED: List<String> = emptyList()
+        val DEFAULT_LOCALS_ROOTS: List<String> = listOf(
+            "androidx.activity.compose.setContent",
+            "androidx.compose.ui.window.Window",
+            "androidx.compose.ui.window.application",
+            "androidx.compose.ui.window.singleWindowApplication",
+            "androidx.compose.ui.window.ComposeUIViewController",
+            "androidx.compose.ui.window.ComposeViewport",
+            "androidx.compose.ui.window.CanvasBasedWindow",
+        )
 
         /** What a user-chosen entry name may look like: a letter, then letters, digits, `_` or `-`. */
         val ENTRY_NAME = Regex("[A-Za-z][A-Za-z0-9_-]*")
@@ -356,6 +399,9 @@ data class KotrailConfig(
             KEY_TEST_ANNOTATIONS,
             KEY_TEST_NAMING_STYLE,
             KEY_TEST_MIN_NAME_WORDS,
+            KEY_LOCALS_PLATFORM,
+            KEY_LOCALS_REQUIRED,
+            KEY_LOCALS_ROOTS,
         )
 
         val ALL_KEYS: List<String> = SETTING_KEYS +
@@ -474,6 +520,20 @@ data class KotrailConfig(
                 file.entriesWithPrefix(KEY_PREFIX_KNOWN_INSETS)
                     .associate { (fqn, value) -> fqn to parseInsetsSpec(KEY_PREFIX_KNOWN_INSETS + fqn, value) } +
                     configuration.get(KotrailConfigurationKeys.KNOWN_INSETS_HANDLERS).orEmpty()
+            val compositionLocals = KotrailCompositionLocals(
+                platform = configuration.get(KotrailConfigurationKeys.LOCALS_PLATFORM)
+                    ?: file.getProperty(KEY_LOCALS_PLATFORM)?.let { parseList(it) }
+                    ?: DEFAULT_LOCALS_PLATFORM,
+                required = configuration.get(KotrailConfigurationKeys.LOCALS_REQUIRED)
+                    ?: file.getProperty(KEY_LOCALS_REQUIRED)?.let { parseList(it) }
+                    ?: DEFAULT_LOCALS_REQUIRED,
+                roots = configuration.get(KotrailConfigurationKeys.LOCALS_ROOTS)
+                    ?: file.getProperty(KEY_LOCALS_ROOTS)?.let { parseList(it) }
+                    ?: DEFAULT_LOCALS_ROOTS,
+                known = file.entriesWithPrefix(KEY_PREFIX_KNOWN_LOCALS)
+                    .associate { (fqn, value) -> fqn to parseLocalsSpec(KEY_PREFIX_KNOWN_LOCALS + fqn, value) } +
+                    configuration.get(KotrailConfigurationKeys.KNOWN_LOCALS).orEmpty(),
+            )
             val testAnnotations = configuration.get(KotrailConfigurationKeys.TEST_ANNOTATIONS)
                 ?: file.getProperty(KEY_TEST_ANNOTATIONS)?.let { parseList(it) }
                 ?: DEFAULT_TEST_ANNOTATIONS
@@ -496,6 +556,7 @@ data class KotrailConfig(
                     previewRequireFor = previewRequireFor,
                     maxComposablesPerFile = maxComposablesPerFile,
                     knownInsetsHandlers = knownInsetsHandlers,
+                    compositionLocals = compositionLocals,
                 ),
                 narrowModelParameters = KotrailNarrowModelParameters(maxUnusedProperties = maxUnused, scope = scope),
                 preferFunctionReferences = KotrailPreferFunctionReferences(forms = referenceForms),
@@ -601,8 +662,45 @@ data class KotrailConfig(
             return result
         }
 
-        /** The spec of a composable that handles no insets at all. */
+        /** The spec of a composable that handles no insets at all, or reads and provides no locals. */
         const val INSETS_NONE = "None"
+
+        /**
+         * A composition-locals specification: comma-separated entries, each a fully qualified
+         * local the composable reads, or `<parameter>:<local>` for a local it provides to that
+         * lambda parameter; `None` for a composable that does neither. An empty value removes
+         * the entry and gives `null`.
+         */
+        @OptIn(ExperimentalCompilerApi::class)
+        fun parseLocalsSpec(key: String, value: String): KotrailCompositionLocalKnowledge? {
+            if (value.isBlank()) return null
+            if (value.trim() == INSETS_NONE) return KotrailCompositionLocalKnowledge(emptySet(), emptyMap())
+            val reads = LinkedHashSet<String>()
+            val provides = LinkedHashMap<String, MutableSet<String>>()
+            for (entry in parseList(value)) {
+                val parts = entry.split(':', limit = 2).map { it.trim() }
+                if (parts.any { it.isEmpty() || it.any(Char::isWhitespace) }) {
+                    throw CliOptionProcessingException(
+                        "Kotrail config key $key: '$entry' is not a fully qualified local or '<parameter>:<local>'",
+                    )
+                }
+                if (parts.size == 2) provides.getOrPut(parts[0]) { LinkedHashSet() } += parts[1] else reads += parts[0]
+            }
+            return KotrailCompositionLocalKnowledge(reads, provides)
+        }
+
+        /** A `compose.compositionLocals.known` option value, `<composable fqn>=<spec>`; `<fqn>=` removes the entry. */
+        @OptIn(ExperimentalCompilerApi::class)
+        fun parseKnownLocalsOption(value: String): Pair<String, KotrailCompositionLocalKnowledge?> {
+            val parts = value.split('=', limit = 2)
+            if (parts.size != 2 || parts[0].isBlank()) {
+                throw CliOptionProcessingException(
+                    "Kotrail option compose.compositionLocals.known must be '<composable fqn>=<local>, <param>:<local>, ...|None', got '$value'",
+                )
+            }
+            val fqn = parts[0].trim()
+            return fqn to parseLocalsSpec(KEY_PREFIX_KNOWN_LOCALS + fqn, parts[1])
+        }
 
         /** A `compose.windowInsets.known` option value, `<composable fqn>=<spec>`; `<fqn>=` removes the entry. */
         @OptIn(ExperimentalCompilerApi::class)
