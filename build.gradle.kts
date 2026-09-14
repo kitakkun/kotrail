@@ -1,11 +1,11 @@
 import com.vanniktech.maven.publish.MavenPublishBaseExtension
 
 plugins {
-    kotlin("jvm") apply false
-    id("org.jetbrains.kotlin.plugin.compose") apply false
-    id("org.jetbrains.compose") apply false
-    id("com.vanniktech.maven.publish") apply false
-    id("com.gradle.plugin-publish") apply false
+    alias(libs.plugins.kotlin.jvm) apply false
+    alias(libs.plugins.kotlin.compose) apply false
+    alias(libs.plugins.compose.multiplatform) apply false
+    alias(libs.plugins.maven.publish) apply false
+    alias(libs.plugins.plugin.publish) apply false
 }
 
 // The Kotlin compiler version this build compiles and tests against. Selected by the

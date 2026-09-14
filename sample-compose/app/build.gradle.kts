@@ -1,9 +1,9 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
-    kotlin("jvm")
-    id("org.jetbrains.kotlin.plugin.compose")
-    id("org.jetbrains.compose")
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.compose.multiplatform)
 }
 
 kotlin {
@@ -16,9 +16,9 @@ dependencies {
     kotlinCompilerPluginClasspath(project(":plugin"))
     implementation(project(":annotations"))
     implementation(project(":sample-compose:lib"))
-    implementation("org.jetbrains.compose.foundation:foundation:1.12.0")
-    implementation("org.jetbrains.compose.material3:material3:1.9.0")
-    implementation("org.jetbrains.compose.ui:ui-tooling-preview:1.12.0")
+    implementation(libs.compose.foundation)
+    implementation(libs.compose.material3)
+    implementation(libs.compose.ui.tooling.preview)
 }
 
 tasks.withType<KotlinCompile>().configureEach {

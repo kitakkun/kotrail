@@ -3,7 +3,7 @@
 // against these instead of pulling real Compose artifacts (and the Compose compiler) into
 // the test classpath.
 plugins {
-    kotlin("jvm")
+    alias(libs.plugins.kotlin.jvm)
 }
 
 kotlin {
@@ -12,5 +12,5 @@ kotlin {
 
 dependencies {
     // The rememberSerializable stub takes a KSerializer, as the real API does.
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-core-jvm:1.9.0")
+    implementation(libs.kotlinx.serialization.core.jvm)
 }

@@ -15,22 +15,20 @@ pluginManagement {
     gradle.extra["publishedKotlinVersions"] = publishedKotlinVersions
     gradle.extra["kotlinCompilerVersion"] = kotlinCompilerVersion
 
-    // Compose Multiplatform is versioned independently of Kotlin, and 1.12.0 works with every
-    // Kotlin version Kotrail supports today. Should a future supported version need a different
-    // release, select it from kotlinCompilerVersion here.
-    val composeVersion = "1.12.0"
-
     repositories {
         gradlePluginPortal()
         mavenCentral()
         google()
     }
-    plugins {
-        kotlin("jvm") version kotlinCompilerVersion
-        id("org.jetbrains.kotlin.plugin.compose") version kotlinCompilerVersion
-        id("org.jetbrains.compose") version composeVersion
-        id("com.vanniktech.maven.publish") version "0.37.0"
-        id("com.gradle.plugin-publish") version "2.2.1"
+}
+
+// Every version is in gradle/libs.versions.toml, except Kotlin's, which the catalog carries as a
+// placeholder and this override replaces with the selected compiler version.
+dependencyResolutionManagement {
+    versionCatalogs {
+        create("libs") {
+            version("kotlin", gradle.extra["kotlinCompilerVersion"] as String)
+        }
     }
 }
 

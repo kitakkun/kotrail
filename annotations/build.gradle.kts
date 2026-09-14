@@ -5,8 +5,8 @@ import com.vanniktech.maven.publish.KotlinJvm
 import com.vanniktech.maven.publish.SourcesJar
 
 plugins {
-    kotlin("jvm")
-    id("com.vanniktech.maven.publish")
+    alias(libs.plugins.kotlin.jvm)
+    alias(libs.plugins.maven.publish)
 }
 
 kotlin {

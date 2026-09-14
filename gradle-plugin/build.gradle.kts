@@ -5,10 +5,10 @@
 import com.vanniktech.maven.publish.GradlePublishPlugin
 
 plugins {
-    kotlin("jvm")
+    alias(libs.plugins.kotlin.jvm)
     `java-gradle-plugin`
-    id("com.gradle.plugin-publish")
-    id("com.vanniktech.maven.publish")
+    alias(libs.plugins.plugin.publish)
+    alias(libs.plugins.maven.publish)
 }
 
 val kotlinCompilerVersion: String by rootProject.extra
@@ -20,10 +20,10 @@ kotlin {
 dependencies {
     // The oldest Kotlin Gradle plugin API Kotrail supports. Newer Kotlin versions stay compatible
     // with it, so one Gradle plugin build serves every supported Kotlin.
-    compileOnly("org.jetbrains.kotlin:kotlin-gradle-plugin-api:2.3.21")
+    compileOnly(libs.kotlin.gradle.plugin.api)
     testImplementation(gradleTestKit())
-    testImplementation("org.junit.jupiter:junit-jupiter:5.11.4")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+    testImplementation(libs.junit.jupiter)
+    testRuntimeOnly(libs.junit.platform.launcher)
 }
 
 gradlePlugin {

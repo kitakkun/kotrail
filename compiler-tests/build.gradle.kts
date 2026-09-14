@@ -1,7 +1,7 @@
 // FIR / IR level tests on JetBrains' compiler test framework. Test data lives in testData/,
 // runners in test-fixtures/, and the JUnit classes are generated into test-gen/ (gitignored).
 plugins {
-    kotlin("jvm")
+    alias(libs.plugins.kotlin.jvm)
     `java-test-fixtures`
 }
 
@@ -9,7 +9,6 @@ kotlin {
     jvmToolchain(21)
 }
 
-val kotlinVersion = rootProject.extra["kotlinCompilerVersion"] as String
 val kotlinCompatFamily = rootProject.extra["kotlinCompatFamily"] as String
 
 dependencies {
@@ -17,10 +16,10 @@ dependencies {
     // references to IntelliJ platform classes, so the JAR built against the embeddable
     // compiler loads fine here.
     testFixturesApi(project(":plugin"))
-    testFixturesApi("org.jetbrains.kotlin:kotlin-test-junit5:$kotlinVersion")
-    testFixturesApi("org.jetbrains.kotlin:kotlin-compiler-internal-test-framework:$kotlinVersion")
-    testFixturesApi("org.jetbrains.kotlin:kotlin-compiler:$kotlinVersion")
-    testFixturesRuntimeOnly("junit:junit:4.13.2")
+    testFixturesApi(libs.kotlin.test.junit5)
+    testFixturesApi(libs.kotlin.compiler.internal.test.framework)
+    testFixturesApi(libs.kotlin.compiler)
+    testFixturesRuntimeOnly(libs.junit4)
 }
 
 sourceSets {
@@ -41,19 +40,19 @@ val testArtifacts: Configuration by configurations.creating
 val testDataClasspath: Configuration by configurations.creating
 
 dependencies {
-    testArtifacts("org.jetbrains.kotlin:kotlin-stdlib:$kotlinVersion")
-    testArtifacts("org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlinVersion")
-    testArtifacts("org.jetbrains.kotlin:kotlin-reflect:$kotlinVersion")
-    testArtifacts("org.jetbrains.kotlin:kotlin-test:$kotlinVersion")
-    testArtifacts("org.jetbrains.kotlin:kotlin-script-runtime:$kotlinVersion")
-    testArtifacts("org.jetbrains.kotlin:kotlin-annotations-jvm:$kotlinVersion")
+    testArtifacts(libs.kotlin.stdlib)
+    testArtifacts(libs.kotlin.stdlib.jdk8)
+    testArtifacts(libs.kotlin.reflect)
+    testArtifacts(libs.kotlin.test)
+    testArtifacts(libs.kotlin.script.runtime)
+    testArtifacts(libs.kotlin.annotations.jvm)
 
     testDataClasspath(project(":annotations"))
     testDataClasspath(project(":compiler-tests:compose-stubs"))
-    testDataClasspath("org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.11.0")
-    testDataClasspath("org.jetbrains.kotlinx:kotlinx-serialization-core-jvm:1.9.0")
+    testDataClasspath(libs.kotlinx.coroutines.core.jvm)
+    testDataClasspath(libs.kotlinx.serialization.core.jvm)
     // Test data for the test rules is compiled against the real JUnit annotations.
-    testDataClasspath("org.junit.jupiter:junit-jupiter-api:5.11.4")
+    testDataClasspath(libs.junit.jupiter.api)
 }
 
 val generateTests by tasks.registering(JavaExec::class) {
