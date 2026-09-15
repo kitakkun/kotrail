@@ -320,7 +320,8 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         map.put2(
             KotrailDiagnostics.WINDOW_INSETS_HANDLED_TWICE,
             "[Kotrail] ''{0}'' already handles {1} internally; the Modifier passed to it applies the same insets " +
-                "again, which doubles the padding.",
+                "again. The inset padding modifiers consume what they apply, so one of the two is dead, and " +
+                "padding(insets.asPaddingValues()) does not consume, so the padding doubles.",
         )
         map.put2(
             KotrailDiagnostics.COMPOSITION_LOCAL_NOT_PROVIDED,

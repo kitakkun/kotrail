@@ -105,7 +105,7 @@ WindowInsets(0))` opts out of the scaffold's handling. Anything else is unknown.
 |---|---|
 | `KOTRAIL_WINDOW_INSETS_NOT_HANDLED` | Declared contract minus handled set is non-empty. The message lists the missing primitives and sides. |
 | `KOTRAIL_WINDOW_INSETS_HANDLING_UNVERIFIABLE` | An insets expression could not be evaluated and the contract is not already satisfied by what could be. |
-| `KOTRAIL_WINDOW_INSETS_HANDLED_TWICE` | At a call to composable `G`, a `Modifier` argument applies inset padding whose set intersects what `G` handles. |
+| `KOTRAIL_WINDOW_INSETS_HANDLED_TWICE` | At a call to composable `G`, a `Modifier` argument applies inset padding whose set intersects what `G` handles. Only the call's own `Modifier` is compared with `G`; siblings handling different insets, and a container's padding versus its children, are never compared. |
 
 Composables without a contract are never reported. Members of classes and objects, and local
 composables, are analyzed like any other callee.
