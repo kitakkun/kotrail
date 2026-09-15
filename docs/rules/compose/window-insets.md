@@ -93,8 +93,11 @@ Walking the body, including every lambda:
   passed to any of them replaces the entry.
 
 Insets expressions are evaluated statically: `WindowInsets.<type>` companion properties,
-`only(sides)`, `union`, `add`, `exclude`, and `WindowInsetsSides` constants combined with `+`.
-Anything else is unknown.
+`only(sides)`, `union`, `add`, `exclude`, `WindowInsetsSides` constants combined with `+`, the
+Material 3 `*Defaults.windowInsets` properties (`ScaffoldDefaults.contentWindowInsets`,
+`TopAppBarDefaults.windowInsets`, ...), and `WindowInsets(left, top, right, bottom)`, which is
+fixed insets and handles no system inset whatever the numbers: `Scaffold(contentWindowInsets =
+WindowInsets(0))` opts out of the scaffold's handling. Anything else is unknown.
 
 ## When each diagnostic fires
 

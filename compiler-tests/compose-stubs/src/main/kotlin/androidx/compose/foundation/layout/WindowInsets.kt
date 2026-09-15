@@ -11,6 +11,8 @@ interface WindowInsets {
 
 class StubInsets(val name: String) : WindowInsets
 
+fun WindowInsets(left: Int = 0, top: Int = 0, right: Int = 0, bottom: Int = 0): WindowInsets = StubInsets("fixed($left,$top,$right,$bottom)")
+
 val WindowInsets.Companion.statusBars: WindowInsets get() = StubInsets("statusBars")
 val WindowInsets.Companion.navigationBars: WindowInsets get() = StubInsets("navigationBars")
 val WindowInsets.Companion.captionBar: WindowInsets get() = StubInsets("captionBar")

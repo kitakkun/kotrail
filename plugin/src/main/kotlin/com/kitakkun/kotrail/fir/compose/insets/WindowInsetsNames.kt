@@ -61,6 +61,26 @@ object WindowInsetsNames {
     val EXCLUDE = Name.identifier("exclude")
     val PLUS = Name.identifier("plus")
 
+    /** `WindowInsets(left, top, right, bottom)`: fixed insets, which handle no system inset at all. */
+    val WINDOW_INSETS_FACTORY = CallableId(FOUNDATION_LAYOUT, Name.identifier("WindowInsets"))
+
+    /** Library properties that evaluate to a known insets set, such as Material 3's `*Defaults.windowInsets`. */
+    val KNOWN_INSETS_PROPERTIES: Map<CallableId, InsetsSet> = run {
+        val material3 = FqName("androidx.compose.material3")
+        val systemBars = InsetsSet.fromTypeName("SystemBars")!!
+        fun property(owner: String, name: String) = CallableId(ClassId(material3, Name.identifier(owner)), Name.identifier(name))
+        mapOf(
+            property("ScaffoldDefaults", "contentWindowInsets") to systemBars,
+            property("TopAppBarDefaults", "windowInsets") to systemBars.only(Sides.TOP or Sides.HORIZONTAL),
+            property("BottomAppBarDefaults", "windowInsets") to systemBars.only(Sides.BOTTOM or Sides.HORIZONTAL),
+            property("NavigationBarDefaults", "windowInsets") to systemBars.only(Sides.BOTTOM or Sides.HORIZONTAL),
+            property("NavigationRailDefaults", "windowInsets") to systemBars.only(Sides.VERTICAL or Sides.START),
+            property("DrawerDefaults", "windowInsets") to systemBars.only(Sides.VERTICAL or Sides.START),
+            property("BottomSheetDefaults", "windowInsets") to systemBars.only(Sides.TOP),
+            property("SearchBarDefaults", "windowInsets") to systemBars.only(Sides.TOP or Sides.HORIZONTAL),
+        )
+    }
+
     /** Library composables that handle insets by default, keyed by callable. */
     val KNOWN_LIBRARY_COMPOSABLES: Map<CallableId, InsetsSet> = run {
         val material3 = FqName("androidx.compose.material3")

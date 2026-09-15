@@ -12,6 +12,14 @@ import androidx.compose.ui.Modifier
 fun Text(text: String, modifier: Modifier = Modifier) {
 }
 
+object ScaffoldDefaults {
+    val contentWindowInsets: WindowInsets get() = WindowInsets.systemBars
+}
+
+object TopAppBarDefaults {
+    val windowInsets: WindowInsets get() = WindowInsets.systemBars
+}
+
 @Composable
 fun Scaffold(
     modifier: Modifier = Modifier,
