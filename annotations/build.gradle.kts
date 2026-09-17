@@ -19,7 +19,7 @@ mavenPublishing {
     configure(KotlinJvm(javadocJar = JavadocJar.Empty(), sourcesJar = SourcesJar.Sources()))
     pom {
         name.set("Kotrail annotations")
-        description.set("Annotations recognized by the Kotrail compiler plugin: @HandlesWindowInsets, @MustBeSerializable.")
+        description.set("Annotations recognized by the Kotrail compiler plugin: window insets contracts, composition local roots, serializability, and the metadata it writes.")
     }
 }
 
