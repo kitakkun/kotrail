@@ -42,6 +42,39 @@ Two sources of contracts are checked at every call site:
   checked. This lets a project or library express the requirement in the API itself, and it
   works across modules because the annotation is kept in the binary.
 
+## Several type arguments, inferred ones, lambdas
+
+Every type argument is checked on its own, explicit or inferred, so a function with several
+type parameters reports each annotated one that fails, and a type inferred from a lambda's
+result or parameter type is checked like a written one:
+
+```kotlin
+fun <K : Any, @MustBeSerializable V : Any> cache(key: K, value: V)
+fun <@MustBeSerializable T : Any> restore(init: () -> T): T
+
+cache(anything, Draft("d"))          // reported: V is Draft
+restore { Draft("d") }               // reported: T is inferred from the lambda's result
+onEvent { event: Draft -> ... }      // reported: T is inferred from the lambda's parameter
+```
+
+Type arguments nest: `Map<String, Draft>` and `Envelope<List<Draft>>` fail on the `Draft`
+inside, and `Map<Draft, String>` fails on the key.
+
+## Configuring more callables
+
+Any API that discovers a serializer from its type argument belongs in
+`mustBeSerializable.requiredFor`; the default is only `rememberSerializable`. Common ones:
+
+```properties
+mustBeSerializable.requiredFor=androidx.compose.runtime.saveable.rememberSerializable, \
+  kotlinx.serialization.encodeToString, kotlinx.serialization.decodeFromString, \
+  io.ktor.client.call.body, androidx.navigation.NavController.navigate, \
+  androidx.navigation.NavGraphBuilder.composable
+```
+
+Note that `requiredFor` replaces the default list, so `rememberSerializable` has to be
+repeated when the list is set.
+
 ## What counts as serializable
 
 Primitives and unsigned types, `String`, `Char`, `Unit`, `kotlin.time.Duration`, enums, arrays
