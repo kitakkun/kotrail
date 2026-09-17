@@ -12,7 +12,7 @@ needed) that adds checks the standard compiler does not provide. It turns the co
 team already agrees on into compile errors, so code written by AI assistants stays on the rails
 instead of drifting a little further with every generation.
 
-> **Status: early development.** Thirty-four rules ship today, applied through a Gradle plugin.
+> **Status: early development.** Thirty-five rules ship today, applied through a Gradle plugin.
 > Every rule can be switched off or demoted to a warning, per project and per compilation.
 > Nothing is published yet. Feedback on the direction is very welcome.
 
@@ -77,6 +77,7 @@ Full pages, with every condition and fixture, live under [`docs/rules/`](docs/ru
 | [Preview required](docs/rules/compose/preview-required.md) (Compose) | A UI composable whose file has no `@Preview` calling it | A preview composable next to it |
 | [Composables per file](docs/rules/compose/composables-per-file.md) (Compose) | More than 3 non-private UI composables in one file | One component (and its helpers) per file |
 | [Test naming](docs/rules/test/naming.md) (Test) | `@Test fun returnsEmptyList()` | `` @Test fun `returns an empty list when nothing matches`() `` |
+| [Objective-C identity](docs/rules/native/objc-identity.md) (Kotlin/Native) | `view.window === window`, `WeakReference(window)` | `==` (isEqual:) or `objcPtr()`, a strong reference |
 
 Ideas not started yet: `required-annotation` (predicate-driven), `forbidden-supertype`.
 

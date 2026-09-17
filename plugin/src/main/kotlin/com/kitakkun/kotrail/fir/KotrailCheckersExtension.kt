@@ -8,6 +8,8 @@ import com.kitakkun.kotrail.fir.preconditions.checkers.PreconditionWarmup
 import com.kitakkun.kotrail.fir.checkers.UnimplementedCodeChecker
 import com.kitakkun.kotrail.fir.checkers.RequiredAnnotationChecker
 import com.kitakkun.kotrail.fir.checkers.VisibilityPolicyChecker
+import com.kitakkun.kotrail.fir.native.checkers.ObjCIdentityChecker
+import com.kitakkun.kotrail.fir.native.checkers.ObjCWeakReferenceChecker
 import com.kitakkun.kotrail.fir.checkers.IgnoredExceptionChecker
 import com.kitakkun.kotrail.fir.checkers.MutableCollectionInPublicApiChecker
 import com.kitakkun.kotrail.fir.checkers.NoDataClassInPublicApiChecker
@@ -50,6 +52,7 @@ import com.kitakkun.kotrail.compat.CompatDeclarationCheckers
 import com.kitakkun.kotrail.compat.NamedFunctionChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.ExpressionCheckers
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirCheckNotNullCallChecker
+import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirEqualityOperatorCallChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirFunctionCallChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirQualifiedAccessExpressionChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirResolvedQualifierChecker
@@ -109,7 +112,11 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
 }
 
 object KotrailExpressionCheckers : ExpressionCheckers() {
+    override val equalityOperatorCallCheckers: Set<FirEqualityOperatorCallChecker> = setOf(
+        ObjCIdentityChecker,
+    )
     override val functionCallCheckers: Set<FirFunctionCallChecker> = setOf(
+        ObjCWeakReferenceChecker,
         CompositionLocalEntryPointChecker,
         WindowInsetsHandledTwiceChecker,
         ForbiddenCallChecker,

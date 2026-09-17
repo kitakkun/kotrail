@@ -88,6 +88,7 @@ rule hangs off its key: `severity.<rule>`, `note.<rule>`, `exclude.<rule>`, and 
 | `test.annotations` | `kotlin.test` and JUnit 4/5 test annotations | Fully qualified annotations that mark a function as a test. Replaces the default list. |
 | `test.naming.style` | `backticked` | `backticked` for a sentence name, `identifier` for targets that reject spaces (Android instrumented tests). |
 | `test.naming.minWords` | `3` | Words a backticked test name must have; `2` requires backticks only, `1` accepts any name. |
+| `rules.native.objcIdentity` | `true` | [Objective-C identity](rules/native/objc-identity.md): no `===` or `WeakReference` on Objective-C objects. |
 
 ## Severity
 
@@ -134,6 +135,7 @@ adopt a rule gradually.
 | `severity.compose.previewRequired` | `error` |
 | `severity.compose.composablesPerFile` | `error` |
 | `severity.test.naming` | `error` |
+| `severity.native.objcIdentity` | `error` |
 
 Values are `error` or `warning`. A diagnostic reported at a non-default severity carries a
 suffixed name, following the compiler's own convention for deprecations: demoting

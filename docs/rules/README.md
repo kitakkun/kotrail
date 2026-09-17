@@ -53,6 +53,12 @@ fixtures that pin its behavior.
 |---|---|---|
 | Test naming | `KOTRAIL_TEST_NAME_NOT_DESCRIPTIVE`, `KOTRAIL_TEST_NAME_NOT_IDENTIFIER` | [test/naming.md](test/naming.md) |
 
+## Kotlin/Native
+
+| Rule | Diagnostics | Page |
+|---|---|---|
+| Objective-C identity | `KOTRAIL_OBJC_IDENTITY_COMPARISON`, `KOTRAIL_OBJC_WEAK_REFERENCE` | [native/objc-identity.md](native/objc-identity.md) |
+
 Settings, precedence, per-source-set configuration, and suppression are described in
 [../configuration.md](../configuration.md).
 

@@ -51,7 +51,9 @@ enum class KotrailRule(
     COMPOSE_PREVIEW_REQUIRED("compose.previewRequired", Severity.ERROR),
     COMPOSE_COMPOSABLES_PER_FILE("compose.composablesPerFile", Severity.ERROR),
 
-    TEST_NAMING("test.naming", Severity.ERROR);
+    TEST_NAMING("test.naming", Severity.ERROR),
+
+    NATIVE_OBJC_IDENTITY("native.objcIdentity", Severity.ERROR);
 
     val switchKey: String get() = "rules.$key"
     val severityKey: String get() = "severity.$key"

@@ -187,6 +187,14 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: the test function name. */
     val TEST_NAME_NOT_IDENTIFIER = tunable1<KtNamedFunction, String>("TEST_NAME_NOT_IDENTIFIER", KotrailRule.TEST_NAMING, NAME)
 
+    // ---- Kotlin/Native rules ----
+
+    /** Arguments: the operator (`===` or `!==`), the Objective-C class or protocol compared. Reported on the whole comparison. */
+    val OBJC_IDENTITY_COMPARISON = tunable2<KtElement, String, String>("OBJC_IDENTITY_COMPARISON", KotrailRule.NATIVE_OBJC_IDENTITY, WHOLE)
+
+    /** Argument: the Objective-C class or protocol the weak reference points to. Reported on the constructor call. */
+    val OBJC_WEAK_REFERENCE = tunable1<KtElement, String>("OBJC_WEAK_REFERENCE", KotrailRule.NATIVE_OBJC_IDENTITY, WHOLE)
+
     private inline fun <reified P : KtElement> tunable0(
         name: String,
         rule: KotrailRule,
@@ -401,6 +409,18 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         map.put1(
             KotrailDiagnostics.FUNCTION_TOO_LONG,
             "[Kotrail] This function is {0}. Split it so that each piece does one thing and has a name.",
+        )
+        map.put2(
+            KotrailDiagnostics.OBJC_IDENTITY_COMPARISON,
+            "[Kotrail] ''{0}'' compares Kotlin wrappers, not the {1} objects: Kotlin/Native wraps an Objective-C " +
+                "object anew each time it crosses into Kotlin, so two wrappers of one object are not identical. " +
+                "Compare with '=='' (isEqual:, pointer equality by default) or compare objcPtr() addresses.",
+        )
+        map.put1(
+            KotrailDiagnostics.OBJC_WEAK_REFERENCE,
+            "[Kotrail] A WeakReference to {0} tracks the Kotlin wrapper, which is collected while the Objective-C " +
+                "object lives on, so it answers null for a live object. Hold the object strongly, or hold its " +
+                "objcPtr() address.",
         )
         map.put2(
             KotrailDiagnostics.TEST_NAME_NOT_DESCRIPTIVE,

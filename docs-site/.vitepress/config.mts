@@ -71,6 +71,7 @@ export default defineConfig({
       },
       { text: 'Compose rules', items: pages('rules/compose') },
       { text: 'Test rules', items: pages('rules/test') },
+      { text: 'Kotlin/Native rules', items: pages('rules/native') },
     ],
     socialLinks: [{ icon: 'github', link: 'https://github.com/kitakkun/kotrail' }],
     search: { provider: 'local' },
