@@ -20,6 +20,7 @@ enum class KotrailRule(
     NO_PASS_THROUGH_FUNCTION("noPassThroughFunction", Severity.ERROR),
     PREFER_FUNCTION_REFERENCES("preferFunctionReferences", Severity.ERROR),
     COMMENT_LENGTH("commentLength", Severity.ERROR),
+    NO_PARAMETER_COMMENTS("noParameterComments", Severity.ERROR),
     NO_FQN_REFERENCES("noFqnReferences", Severity.ERROR),
     NO_REDUNDANT_ELSE("noRedundantElse", Severity.ERROR),
     PREFER_VALUE_CLASS("preferValueClass", Severity.ERROR),

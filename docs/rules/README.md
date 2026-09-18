@@ -14,6 +14,7 @@ fixtures that pin its behavior.
 | No pass-through function | `KOTRAIL_PASS_THROUGH_FUNCTION` | [no-pass-through-function.md](no-pass-through-function.md) |
 | Prefer function references | `KOTRAIL_PREFER_FUNCTION_REFERENCE` | [prefer-function-references.md](prefer-function-references.md) |
 | Comment length | `KOTRAIL_COMMENT_TOO_LONG` | [comment-length.md](comment-length.md) |
+| No parameter comments | `KOTRAIL_COMMENT_IN_PARAMETER_LIST` | [no-parameter-comments.md](no-parameter-comments.md) |
 | No FQN references | `KOTRAIL_FQN_REFERENCE` | [no-fqn-references.md](no-fqn-references.md) |
 | No redundant else | `KOTRAIL_REDUNDANT_ELSE_IN_EXHAUSTIVE_WHEN` | [no-redundant-else.md](no-redundant-else.md) |
 | Prefer value class | `KOTRAIL_PREFER_VALUE_CLASS` | [prefer-value-class.md](prefer-value-class.md) |

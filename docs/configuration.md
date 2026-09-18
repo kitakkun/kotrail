@@ -37,6 +37,7 @@ rule hangs off its key: `severity.<rule>`, `note.<rule>`, `exclude.<rule>`, and 
 | `rules.commentLength` | `true` | [Comment length](rules/comment-length.md). |
 | `commentLength.maxLines` | `5` | Longest allowed block comment or run of consecutive `//` lines; `0` for unlimited. |
 | `commentLength.maxKDocLines` | `0` | Longest allowed KDoc; `0` for unlimited. |
+| `rules.noParameterComments` | `true` | [No parameter comments](rules/no-parameter-comments.md). |
 | `rules.noFqnReferences` | `true` | [No FQN references](rules/no-fqn-references.md). |
 | `noFqnReferences.allow` | (empty) | Package prefixes whose members may be referenced fully qualified. |
 | `rules.noRedundantElse` | `true` | [No redundant else](rules/no-redundant-else.md). |
@@ -105,6 +106,7 @@ adopt a rule gradually.
 | `severity.noPassThroughFunction` | `error` |
 | `severity.preferFunctionReferences` | `error` |
 | `severity.commentLength` | `error` |
+| `severity.noParameterComments` | `error` |
 | `severity.noFqnReferences` | `error` |
 | `severity.noRedundantElse` | `error` |
 | `severity.preferValueClass` | `error` |

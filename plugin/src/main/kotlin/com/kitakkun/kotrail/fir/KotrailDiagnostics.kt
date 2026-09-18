@@ -93,6 +93,9 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: what was measured, e.g. `72 lines of code (limit 50)`. */
     val FUNCTION_TOO_LONG = tunable1<KtNamedFunction, String>("FUNCTION_TOO_LONG", KotrailRule.FUNCTION_LENGTH, NAME)
 
+    /** Argument: the function the parameter list belongs to. Reported on the comment. */
+    val COMMENT_IN_PARAMETER_LIST = tunable1<KtElement, String>("COMMENT_IN_PARAMETER_LIST", KotrailRule.NO_PARAMETER_COMMENTS, WHOLE)
+
     /** Argument: what was measured, e.g. `7 consecutive comment lines (limit 5)`. */
     val COMMENT_TOO_LONG = tunable1<KtElement, String>("COMMENT_TOO_LONG", KotrailRule.COMMENT_LENGTH, WHOLE)
 
@@ -256,6 +259,11 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         map.put1(
             KotrailDiagnostics.PREFER_FUNCTION_REFERENCE,
             "[Kotrail] This lambda only forwards its parameters. Use the callable reference {0} instead.",
+        )
+        map.put1(
+            KotrailDiagnostics.COMMENT_IN_PARAMETER_LIST,
+            "[Kotrail] A comment inside the parameter list of ''{0}'' is shown nowhere the parameter is used and " +
+                "comes loose when parameters move. Say it in the KDoc as @param, or above the declaration.",
         )
         map.put1(
             KotrailDiagnostics.COMMENT_TOO_LONG,

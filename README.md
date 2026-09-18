@@ -12,7 +12,7 @@ needed) that adds checks the standard compiler does not provide. It turns the co
 team already agrees on into compile errors, so code written by AI assistants stays on the rails
 instead of drifting a little further with every generation.
 
-> **Status: early development.** Thirty-five rules ship today, applied through a Gradle plugin.
+> **Status: early development.** Thirty-six rules ship today, applied through a Gradle plugin.
 > Every rule can be switched off or demoted to a warning, per project and per compilation.
 > Nothing is published yet. Feedback on the direction is very welcome.
 
@@ -49,6 +49,7 @@ Full pages, with every condition and fixture, live under [`docs/rules/`](docs/ru
 | [No pass-through function](docs/rules/no-pass-through-function.md) | `fun persist(user: User) = store(user)`: another function under a new name, same call shape | Call the target directly, or make the wrapper do something |
 | [Prefer function references](docs/rules/prefer-function-references.md) | `{ transform(it) }`, `{ it.name }`, `{ repo.save(it) }` | `::transform`, `User::name`, `repo::save` |
 | [Comment length](docs/rules/comment-length.md) | More than 5 consecutive `//` lines or a block comment longer than 5 lines | Shorter comments; KDoc for documentation |
+| [No parameter comments](docs/rules/no-parameter-comments.md) | `fun f(x: Int, /* retries */ n: Int)` | `@param n` in the KDoc, or a comment above the declaration |
 | [No FQN references](docs/rules/no-fqn-references.md) | `java.util.UUID.randomUUID()`, `val f: java.io.File` | `import java.util.UUID` and a simple name |
 | [No redundant else](docs/rules/no-redundant-else.md) | `else ->` on a `when` that already covers every case | Remove it, so a new case fails to compile |
 | [Prefer value class](docs/rules/prefer-value-class.md) | `data class UserId(val value: String)` | `@JvmInline value class UserId(val value: String)` |

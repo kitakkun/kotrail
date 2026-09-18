@@ -1,6 +1,7 @@
 package com.kitakkun.kotrail.fir
 
 import com.kitakkun.kotrail.fir.checkers.CommentLengthChecker
+import com.kitakkun.kotrail.fir.checkers.ParameterCommentChecker
 import com.kitakkun.kotrail.fir.checkers.ForbiddenCallChecker
 import com.kitakkun.kotrail.fir.checkers.FunctionLengthChecker
 import com.kitakkun.kotrail.fir.preconditions.checkers.PreconditionChecker
@@ -75,6 +76,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
     )
     override val fileCheckers: Set<FirFileChecker> = setOf(
         CommentLengthChecker,
+        ParameterCommentChecker,
         ComposablePreviewRequiredChecker,
         ComposablesPerFileChecker,
     )
