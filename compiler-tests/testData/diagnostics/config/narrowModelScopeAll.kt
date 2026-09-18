@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.narrowModelParameters=true, narrowModelParameters.scope=all, narrowModelParameters.maxUnusedProperties=1
+// KOTRAIL_CONFIG: rules.narrowModelParameters=on, rules.narrowModelParameters.scope=all, rules.narrowModelParameters.maxUnusedProperties=1
 // With scope=all every function is inspected, and the stricter limit allows one unread property.
 
 data class Order(val id: Long, val total: Int, val currency: String, val note: String)

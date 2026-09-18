@@ -1,8 +1,7 @@
 # Naming (Compose)
 
 **Diagnostic:** `KOTRAIL_COMPOSABLE_NAMING` (error, on the function name)
-**Switch:** `rules.compose.naming` (default `true`)
-**Severity key:** `severity.compose.naming`
+**Key:** `rules.compose.naming` (on by default)
 **Settings:** none
 
 ## What it rejects

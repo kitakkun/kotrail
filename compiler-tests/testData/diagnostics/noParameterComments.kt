@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.noParameterComments=true
+// KOTRAIL_CONFIG: rules.noParameterComments=on
 
 package custom
 

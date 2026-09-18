@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.noIgnoredException=true
+// KOTRAIL_CONFIG: rules.noIgnoredException=on
 import java.io.IOException
 
 fun parse(input: String): Int = input.toInt()

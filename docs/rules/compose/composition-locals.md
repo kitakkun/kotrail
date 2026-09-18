@@ -3,8 +3,8 @@
 **Diagnostics:**
 `KOTRAIL_COMPOSITION_LOCAL_NOT_PROVIDED` (error, on the root function name),
 `KOTRAIL_COMPOSITION_LOCAL_NOT_PROVIDED_AT_ENTRY_POINT` (error, on the entry point's name)
-**Switch:** `rules.compose.compositionLocals` (default `true`)
-**Settings:** `compose.compositionLocals.platform`, `.required`, `.roots`, `.known[<fqn>]`
+**Key:** `rules.compose.compositionLocals` (on by default)
+**Settings:** `platform`, `required`, `roots`, `known`
 **Artifact:** `annotations` (`com.kitakkun.kotrail.compose.locals`), needed on the compile
 classpath of every module the plugin is applied to.
 
@@ -67,7 +67,7 @@ A root is a composable where the analysis can be sure nothing above provides any
 - a `@Preview` (or multipreview) function;
 - the composable lambda passed to an entry point: `setContent { }`, `Window { }`,
   `application { }`, `ComposeUIViewController { }`, and the others in
-  `compose.compositionLocals.roots`. These are reported on the entry point's name.
+  `roots`. These are reported on the entry point's name.
 
 Composables that are not roots are never reported. They only contribute what they read and
 provide to the roots above them.
@@ -78,11 +78,11 @@ provide to the roots above them.
   `staticCompositionLocalOf { noLocalProvidedFor("LocalX") }`, or any lambda that ends in a
   `throw` or a call returning `Nothing`.
 - Locals annotated `@RequiredCompositionLocal`.
-- Locals listed in `compose.compositionLocals.required`, which is how a library's local is made
+- Locals listed in `required`, which is how a library's local is made
   required without touching the library.
 
 A local with a real default is never required, whatever reads it. Locals listed in
-`compose.compositionLocals.platform` are provided at every root by the platform and are never
+`platform` are provided at every root by the platform and are never
 reported either.
 
 ## What counts as providing
@@ -101,20 +101,25 @@ reported either.
 Library composables are understood through their `@InferredCompositionLocals` metadata when the
 library was compiled with Kotrail, and through the project's own entries otherwise:
 
-```properties
-compose.compositionLocals.known[com.acme.ui.AppTheme]=content:com.acme.ui.LocalPalette
-compose.compositionLocals.known[com.acme.ui.Avatar]=com.acme.ui.LocalImageLoader
-compose.compositionLocals.known[com.acme.ui.Plain]=None
+```yaml
+rules:
+  compose.compositionLocals:
+    known:
+      com.acme.ui.AppTheme:
+        provides:
+          content: [com.acme.ui.LocalPalette]
+      com.acme.ui.Avatar:
+        reads: [com.acme.ui.LocalImageLoader]
+      com.acme.ui.Plain: none
 ```
 
-A value is a comma-separated list of locals the composable reads (`com.acme.ui.LocalImageLoader`)
-and locals it provides to a lambda parameter (`content:com.acme.ui.LocalPalette`), or `None`.
-An entry replaces what the analysis would otherwise find, including a source body in the same
-module; an empty value removes the entry again.
+An entry lists what the composable `reads` and what it `provides` to each of its lambda
+parameters, or is `none`. It replaces what the analysis would otherwise find, including a source
+body in the same module; `~` in a later file removes the entry again.
 
-`compose.compositionLocals.roots` lists the entry points (functions whose composable lambda is a
-root), `compose.compositionLocals.platform` the locals the platform provides everywhere, and
-`compose.compositionLocals.required` the locals to treat as required although their default does
+`roots` lists the entry points (functions whose composable lambda is a
+root), `platform` the locals the platform provides everywhere, and
+`required` the locals to treat as required although their default does
 not throw. Every one of them is a comma-separated list of fully qualified names.
 
 ## When it stays quiet

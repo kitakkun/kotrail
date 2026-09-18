@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.preferPrivateSetter=true
+// KOTRAIL_CONFIG: rules.preferPrivateSetter=on
 
 class Counter {
     // Reported: a var returned as is; `var count = 0` with `private set` says the same thing.

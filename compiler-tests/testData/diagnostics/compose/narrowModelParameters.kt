@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.narrowModelParameters=true
+// KOTRAIL_CONFIG: rules.narrowModelParameters=on
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable

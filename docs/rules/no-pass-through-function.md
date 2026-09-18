@@ -1,8 +1,7 @@
 # No pass-through function
 
 **Diagnostic:** `KOTRAIL_PASS_THROUGH_FUNCTION` (error, on the function name)
-**Switch:** `rules.noPassThroughFunction` (default `true`)
-**Severity key:** `severity.noPassThroughFunction`
+**Key:** `rules.noPassThroughFunction` (on by default)
 **Settings:** none
 
 ## What it rejects

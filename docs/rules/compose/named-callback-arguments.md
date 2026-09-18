@@ -1,9 +1,8 @@
 # Named callback arguments (Compose)
 
 **Diagnostic:** `KOTRAIL_COMPOSABLE_CALLBACK_AS_TRAILING_LAMBDA` (error, on the lambda)
-**Switch:** `rules.compose.namedCallbackArguments` (default `true`)
-**Severity key:** `severity.compose.namedCallbackArguments`
-**Setting:** `compose.noTrailingCallback.allowedPackages` (default `androidx.compose.runtime`)
+**Key:** `rules.compose.namedCallbackArguments` (on by default)
+**Setting:** `allowedPackages` (default `androidx.compose.runtime`)
 
 ## What it rejects
 
@@ -30,7 +29,7 @@ site names the argument so the reader is not misled.
 All of the following hold:
 
 - the call is inside a `@Composable` function (the closest enclosing function, lambdas included);
-- the callee is a `@Composable` function outside `compose.noTrailingCallback.allowedPackages`;
+- the callee is a `@Composable` function outside `allowedPackages`;
 - the last argument is a lambda written after the parentheses (or directly after the callee
   name), i.e. a trailing lambda;
 - it binds to a parameter whose type is a function type that is not `@Composable`, not

@@ -1,153 +1,140 @@
 # Configuration
 
-Every rule is on, at error severity, with no configuration at all. Settings come from three
-sources; later ones win:
+Every rule is on, at error severity, with no configuration at all. Settings live in a
+`kotrail.yaml` that the [Gradle plugin](gradle-plugin.md) points at, and come from three sources;
+later ones win:
 
 1. built-in defaults,
-2. `.properties` files passed through the `configFile` plugin option, in the order they are
-   passed, so a later file overrides the entries of an earlier one,
-3. individual plugin options.
+2. the YAML files passed through the `configFile` plugin option, in the order they are passed,
+   merged key by key,
+3. individual plugin options, which name the same keys as dotted paths.
 
-Unknown keys or malformed values in a file fail the build. A typo never silently disables a
-rule. The parsers are strict on purpose: a value that is rejected today may be given a meaning
-in a later version, so nothing that builds now changes meaning then.
+Unknown keys or malformed values fail the build, with the file, line, and column. A typo never
+silently disables a rule. The parsers are strict on purpose: a value that is rejected today may
+be given a meaning in a later version, so nothing that builds now changes meaning then.
 
-Keys follow one convention. A rule's switch is `rules.<rule>`, and everything else about that
-rule hangs off its key: `severity.<rule>`, `note.<rule>`, `exclude.<rule>`, and its settings as
-`<rule>.<setting>`. The only keys outside a rule are `enabled`, `note`, `exclude`, and
-`test.annotations`, which several test rules and the `test` predicate share.
+```yaml
+# kotrail.yaml
+note: Conventions live in CONTRIBUTING.md.
+exclude: package(com.acme.generated.*) || file(*Generated.kt)
 
-## Keys
+rules:
+  preferValueClass: off
+  commentLength: warning
 
-| Key | Default | Meaning |
-|---|---|---|
-| `enabled` | `true` | Turns the whole plugin off when `false`. |
-| `note` | (empty) | Text appended to every Kotrail message. See [Project notes](#project-notes). |
-| `note.<rule>` | (empty) | Text appended to one rule's messages, overriding `note`. |
-| `exclude` | (empty) | A predicate over locations; matching diagnostics of every rule are dropped. See [Excluding by pattern](#excluding-by-pattern). |
-| `exclude.<rule>` | (empty) | The same, for one rule; a diagnostic is dropped when either predicate matches. |
-| `rules.preferExplicitBackingField` | `true` | [Prefer explicit backing fields](rules/prefer-explicit-backing-field.md). |
-| `rules.preferPrivateSetter` | `true` | [Prefer private setter](rules/prefer-private-setter.md). |
-| `rules.narrowModelParameters` | `true` | [Narrow model parameters](rules/narrow-model-parameters.md). |
-| `narrowModelParameters.maxUnusedProperties` | `3` | How many properties of a data-class parameter may stay unread. |
-| `narrowModelParameters.scope` | `composables` | `composables` or `all`. |
-| `rules.noPassThroughReturn` | `true` | [No pass-through return](rules/no-pass-through-return.md). |
-| `rules.noPassThroughFunction` | `true` | [No pass-through function](rules/no-pass-through-function.md). |
-| `rules.preferFunctionReferences` | `true` | [Prefer function references](rules/prefer-function-references.md). |
-| `preferFunctionReferences.forms` | `topLevel,bound,typeQualified` | Which reference shapes the rule asks for; drop `typeQualified` to keep `{ it.readText() }`. |
-| `rules.commentLength` | `true` | [Comment length](rules/comment-length.md). |
-| `commentLength.maxLines` | `5` | Longest allowed block comment or run of consecutive `//` lines; `0` for unlimited. |
-| `commentLength.maxKDocLines` | `0` | Longest allowed KDoc; `0` for unlimited. |
-| `rules.noParameterComments` | `true` | [No parameter comments](rules/no-parameter-comments.md). |
-| `rules.noFqnReferences` | `true` | [No FQN references](rules/no-fqn-references.md). |
-| `noFqnReferences.allow` | (empty) | Package prefixes whose members may be referenced fully qualified. |
-| `rules.noRedundantElse` | `true` | [No redundant else](rules/no-redundant-else.md). |
-| `rules.preferValueClass` | `true` | [Prefer value class](rules/prefer-value-class.md). |
-| `rules.forbiddenCall` | `true` | [Forbidden call](rules/forbidden-call.md). |
-| `forbiddenCall.functions` | (empty) | Fully qualified callables that must not be called. |
-| `forbiddenCall[<name>]` | (empty) | A call predicate (`fqn`, `receiver`, `extension`, `context`, `params`, ...); matching calls are reported under that name. See [Forbidden call](rules/forbidden-call.md). |
-| `rules.noNotNullAssertion` | `true` | [No not-null assertion](rules/no-not-null-assertion.md). |
-| `rules.noSwallowedCancellation` | `true` | [No swallowed cancellation](rules/no-swallowed-cancellation.md). |
-| `rules.noIgnoredException` | `true` | [No ignored exception](rules/no-ignored-exception.md). |
-| `rules.preferExpressionBody` | `true` | [Prefer expression body](rules/prefer-expression-body.md). |
-| `rules.noMutableCollectionInPublicApi` | `true` | [No mutable collection in public API](rules/no-mutable-collection-in-public-api.md). |
-| `rules.noDataClassInPublicApi` | `true` | [No data class in public API](rules/no-data-class-in-public-api.md). |
-| `noDataClassInPublicApi.scope` | `explicitApi` | `explicitApi` applies the rule only to modules compiled with explicit API mode; `all` everywhere. |
-| `rules.visibilityPolicy` | `true` | [Visibility policy](rules/visibility-policy.md); inert until a policy is set. |
-| `visibilityPolicy.private` | (empty) | A predicate (see [Excluding by pattern](#excluding-by-pattern)); matching declarations must be `private`. |
-| `visibilityPolicy.internal` | (empty) | The same; matching declarations must be `internal` or `private`. |
-| `rules.requiredAnnotation` | `true` | [Required annotation](rules/required-annotation.md); inert until a policy is set. |
-| `requiredAnnotation.policy[<name>]` | (empty) | `<predicate> -> <annotation fqn>`: matching declarations must carry the annotation. One entry per policy; the name in brackets is yours. |
-| `rules.namedArgumentsForRepeatedTypes` | `true` | [Named arguments for repeated types](rules/named-arguments-for-repeated-types.md). |
-| `namedArgumentsForRepeatedTypes.minArguments` | `3` | How many positional arguments of one type require names. |
-| `rules.mustBeSerializable` | `true` | [Must be serializable](rules/must-be-serializable.md). |
-| `mustBeSerializable.requiredFor` | `androidx.compose.runtime.saveable.rememberSerializable` | Callables whose type arguments must be serializable, in addition to `@MustBeSerializable` contracts. |
-| `rules.noUnimplemented` | `true` | [No unimplemented code](rules/no-unimplemented.md). |
-| `rules.preconditions` | `true` | [Preconditions](rules/preconditions.md): call-site check and inferred metadata. |
-| `rules.functionLength` | `true` | [Function length](rules/function-length.md). |
-| `functionLength.maxLines` | `50` | Most lines of code a function body may have; `0` for unlimited. |
-| `functionLength.maxComposableLines` | `80` | The same limit for `@Composable` functions. |
-| `rules.compose.windowInsets` | `true` | [Window insets](rules/compose/window-insets.md): contract check and inferred metadata. |
-| `rules.compose.windowInsetsHandledTwice` | `true` | Doubled inset padding warning (needs `rules.compose.windowInsets`). |
-| `compose.windowInsets.known[<composable fqn>]` | (built-in Material 3 entries) | What a library composable handles, as `Type` or `Type:Side+Side` entries separated by commas, or `None`. See [the knowledge base](rules/compose/window-insets.md#knowledge-base). |
-| `rules.compose.compositionLocals` | `true` | [Composition locals](rules/compose/composition-locals.md): required locals must be provided below every root. |
-| `compose.compositionLocals.platform` | (empty) | Locals the platform provides at every root; reads of these are never reported. |
-| `compose.compositionLocals.required` | (empty) | Locals to treat as required although their default does not throw. |
-| `compose.compositionLocals.roots` | `setContent`, `Window`, `application`, ... | Functions whose composable lambda is a root of composition. |
-| `compose.compositionLocals.known[<composable fqn>]` | (empty) | What a library composable reads (`fqn`) and provides to a lambda parameter (`param:fqn`), comma separated, or `None`. See [the knowledge base](rules/compose/composition-locals.md#knowledge-base). |
-| `rules.compose.stateDelegation` | `true` | [State delegation](rules/compose/state-delegation.md). |
-| `rules.compose.nesting` | `true` | [Nesting limit](rules/compose/nesting.md). |
-| `compose.nesting.maxDepth` | `5` | Nesting limit for composable calls; `0` disables the rule. |
-| `rules.compose.noTrailingCallback` | `true` | [No trailing callback](rules/compose/no-trailing-callback.md). |
-| `rules.compose.naming` | `true` | [Composable naming](rules/compose/naming.md). |
-| `rules.compose.modifierParameter` | `true` | [Modifier parameter](rules/compose/modifier-parameter.md). |
-| `rules.compose.namedCallbackArguments` | `true` | [Named callback arguments](rules/compose/named-callback-arguments.md). |
-| `compose.noTrailingCallback.allowedPackages` | `androidx.compose.runtime` | Packages whose composables may still take a callback as a trailing lambda. |
-| `rules.compose.previewRequired` | `true` | [Preview required](rules/compose/preview-required.md). |
-| `compose.previewRequired.scope` | `internal` | Which UI composables need a `@Preview` in their file: `public`, `internal` (public and internal), or `all`. |
-| `rules.compose.composablesPerFile` | `true` | [Composables per file](rules/compose/composables-per-file.md). |
-| `compose.composablesPerFile.max` | `3` | Maximum non-private UI composables in one file, previews excluded; `0` disables. |
-| `rules.test.naming` | `true` | [Test naming](rules/test/naming.md). |
-| `test.annotations` | `kotlin.test` and JUnit 4/5 test annotations | Fully qualified annotations that mark a function as a test. Replaces the default list. |
-| `test.naming.style` | `backticked` | `backticked` for a sentence name, `identifier` for targets that reject spaces (Android instrumented tests). |
-| `test.naming.minWords` | `3` | Words a backticked test name must have; `2` requires backticks only, `1` accepts any name. |
-| `rules.native.objcIdentity` | `true` | [Objective-C identity](rules/native/objc-identity.md): no `===` or `WeakReference` on Objective-C objects. |
+  functionLength:
+    maxLines: 60
+    exclude: name(main)
+
+  forbiddenCall:
+    functions:
+      - kotlin.io.println
+      - kotlinx.coroutines.GlobalScope.launch
+    calls:
+      blockingInCompose: fqn(kotlinx.coroutines.runBlocking) && composable
+
+  requiredAnnotation:
+    policies:
+      screens:
+        where: composable && name(*Screen)
+        annotation: com.acme.navigation.Screen
+```
+
+Add `# yaml-language-server: $schema=https://kitakkun.github.io/kotrail/kotrail.schema.json` as
+the first line and IntelliJ and VS Code complete keys and values and flag unknown ones; the
+schema is generated from the same table the plugin validates against.
+
+## The shape of the file
+
+| Key | Meaning |
+|---|---|
+| `enabled` | `false` turns the whole plugin off. |
+| `note` | Text appended to every Kotrail message. See [Project notes](#project-notes). |
+| `exclude` | A predicate over locations; matching diagnostics of every rule are dropped. See [Excluding by pattern](#excluding-by-pattern). |
+| `test.annotations` | Fully qualified annotations that mark a function as a test; shared by the test rules and the `test` predicate. Replaces the default list. |
+| `rules.<rule>` | One entry per rule, named by the rule's full key (`functionLength`, `compose.nesting`, `test.naming`), as a shorthand or a mapping. |
+
+A rule entry is either a **shorthand**, for the common case,
+
+```yaml
+rules:
+  preferValueClass: off        # or on
+  commentLength: warning       # on, at that severity
+  noNotNullAssertion: error
+```
+
+or a **mapping** of the four keys every rule has and the rule's own settings:
+
+```yaml
+rules:
+  functionLength:
+    enabled: true              # the switch
+    severity: error            # error or warning
+    note: See ADR-014.         # appended to this rule's messages; wins over the top-level note
+    exclude: name(main)        # locations this rule skips
+    maxLines: 60               # the rule's settings, listed on its page
+    maxComposableLines: 100
+```
+
+Rule keys are never split on dots: `compose.nesting` is one key under `rules`, and a nested
+`compose:` group is an error. Diagnostics without a switch of their own
+(`compose.windowInsetsUnverifiable`) accept `error` and `warning` but not `on` or `off`.
+
+## Rules and their settings
+
+Every rule takes `enabled`, `severity`, `note`, and `exclude`. The settings below are the rule's
+own; a rule not listed has none.
+
+| Rule | Setting | Default | Meaning |
+|---|---|---|---|
+| `narrowModelParameters` | `maxUnusedProperties` | `3` | How many properties of a data-class parameter may stay unread. |
+| | `scope` | `composables` | `composables` or `all`. |
+| `preferFunctionReferences` | `forms` | `[topLevel, bound, typeQualified]` | Which reference shapes the rule asks for; drop `typeQualified` to keep `{ it.readText() }`. |
+| `commentLength` | `maxLines` | `5` | Longest allowed block comment or run of consecutive `//` lines; `0` for unlimited. |
+| | `maxKDocLines` | `0` | Longest allowed KDoc; `0` for unlimited. |
+| `noFqnReferences` | `allow` | `[]` | Package prefixes whose members may be referenced fully qualified. |
+| `forbiddenCall` | `functions` | `[]` | Fully qualified callables that must not be called. |
+| | `calls` | `{}` | Named call predicates; matching calls are reported under the entry's name. See [Forbidden call](rules/forbidden-call.md). |
+| `namedArgumentsForRepeatedTypes` | `minArguments` | `3` | How many positional arguments of one type require names. |
+| `mustBeSerializable` | `requiredFor` | `[androidx.compose.runtime.saveable.rememberSerializable]` | Callables whose type arguments must be serializable. Replaces the default list. |
+| `functionLength` | `maxLines` | `50` | Most lines of code a function body may have; `0` for unlimited. |
+| | `maxComposableLines` | `80` | The same limit for `@Composable` functions. |
+| `noDataClassInPublicApi` | `scope` | `explicitApi` | `explicitApi` applies the rule only to modules compiled with explicit API mode; `all` everywhere. |
+| `visibilityPolicy` | `private` | | A predicate; matching declarations must be `private`. |
+| | `internal` | | A predicate; matching declarations must be `internal` or `private`. |
+| `requiredAnnotation` | `policies` | `{}` | Named policies, each `where` (a predicate) and `annotation` (a fully qualified name). See [Required annotation](rules/required-annotation.md). |
+| `compose.windowInsets` | `known` | built-in Material 3 entries | What a library composable handles, keyed by its fully qualified name: `Type` or `Type:Side+Side` entries, or `none`. See [Window insets](rules/compose/window-insets.md#knowledge-base). |
+| `compose.compositionLocals` | `platform` | `[]` | Locals the platform provides at every root; reads of these are never reported. |
+| | `required` | `[]` | Locals to treat as required although their default does not throw. |
+| | `roots` | `[setContent, Window, application, ...]` | Functions whose composable lambda is a root of composition. Replaces the default list. |
+| | `known` | `{}` | What a library composable reads and provides, keyed by its fully qualified name. See [Composition locals](rules/compose/composition-locals.md#knowledge-base). |
+| `compose.nesting` | `maxDepth` | `5` | Nesting limit for composable calls; `0` disables the rule. |
+| `compose.noTrailingCallback` | `allowedPackages` | `[androidx.compose.runtime]` | Packages whose composables may still take a callback as a trailing lambda. |
+| `compose.previewRequired` | `scope` | `internal` | Which UI composables need a `@Preview` in their file: `public`, `internal` (public and internal), or `all`. |
+| `compose.composablesPerFile` | `max` | `3` | Maximum non-private UI composables in one file, previews excluded; `0` disables. |
+| `test.naming` | `style` | `backticked` | `backticked` for a sentence name, `identifier` for targets that reject spaces (Android instrumented tests). |
+| | `minWords` | `3` | Words a backticked test name must have; `2` requires backticks only, `1` accepts any name. |
+
+The rule keys, for `rules:` and for `@Suppress` names, are on the [rules index](rules/README.md).
 
 ## Severity
 
 Kotrail's stance is that a rule violation is an error and that genuine exceptions are marked
-with `@Suppress` at the spot. Severity keys exist for the other case: a rule that produces
-more findings in an existing codebase than can be fixed at once, or a team that wants to
-adopt a rule gradually.
+with `@Suppress` at the spot. Severity exists for the other case: a rule that produces more
+findings in an existing codebase than can be fixed at once, or a team that wants to adopt a rule
+gradually.
 
-| Key | Default |
-|---|---|
-| `severity.preferExplicitBackingField` | `error` |
-| `severity.preferPrivateSetter` | `error` |
-| `severity.narrowModelParameters` | `error` |
-| `severity.noPassThroughReturn` | `error` |
-| `severity.noPassThroughFunction` | `error` |
-| `severity.preferFunctionReferences` | `error` |
-| `severity.commentLength` | `error` |
-| `severity.noParameterComments` | `error` |
-| `severity.noFqnReferences` | `error` |
-| `severity.noRedundantElse` | `error` |
-| `severity.preferValueClass` | `error` |
-| `severity.forbiddenCall` | `error` |
-| `severity.noNotNullAssertion` | `error` |
-| `severity.noSwallowedCancellation` | `error` |
-| `severity.noIgnoredException` | `error` |
-| `severity.preferExpressionBody` | `error` |
-| `severity.noMutableCollectionInPublicApi` | `error` |
-| `severity.noDataClassInPublicApi` | `error` |
-| `severity.visibilityPolicy` | `error` |
-| `severity.requiredAnnotation` | `error` |
-| `severity.namedArgumentsForRepeatedTypes` | `error` |
-| `severity.mustBeSerializable` | `error` |
-| `severity.noUnimplemented` | `error` |
-| `severity.preconditions` | `error` |
-| `severity.functionLength` | `error` |
-| `severity.compose.windowInsets` | `error` |
-| `severity.compose.windowInsetsUnverifiable` | `warning` |
-| `severity.compose.windowInsetsHandledTwice` | `warning` |
-| `severity.compose.compositionLocals` | `error` |
-| `severity.compose.stateDelegation` | `error` |
-| `severity.compose.nesting` | `error` |
-| `severity.compose.noTrailingCallback` | `error` |
-| `severity.compose.naming` | `error` |
-| `severity.compose.modifierParameter` | `error` |
-| `severity.compose.namedCallbackArguments` | `error` |
-| `severity.compose.previewRequired` | `error` |
-| `severity.compose.composablesPerFile` | `error` |
-| `severity.test.naming` | `error` |
-| `severity.native.objcIdentity` | `error` |
+```yaml
+rules:
+  noPassThroughReturn: warning
+  compose.windowInsetsHandledTwice: error    # a warning by default
+```
 
-Values are `error` or `warning`. A diagnostic reported at a non-default severity carries a
-suffixed name, following the compiler's own convention for deprecations: demoting
-`KOTRAIL_PASS_THROUGH_RETURN` yields `KOTRAIL_PASS_THROUGH_RETURN_WARNING`, promoting
-`KOTRAIL_WINDOW_INSETS_HANDLED_TWICE` yields `KOTRAIL_WINDOW_INSETS_HANDLED_TWICE_ERROR`. `@Suppress`
-accepts either the name in effect or the base name, so a suppression written before the
-severity changed keeps working.
+A diagnostic reported at a non-default severity carries a suffixed name, following the
+compiler's own convention for deprecations: demoting `noPassThroughReturn` yields
+`KOTRAIL_PASS_THROUGH_RETURN_WARNING`, promoting `compose.windowInsetsHandledTwice` yields
+`KOTRAIL_WINDOW_INSETS_HANDLED_TWICE_ERROR`. `@Suppress` accepts either the name in effect or the
+base name, so a suppression written before the severity changed keeps working.
 
 ## Project notes
 
@@ -155,9 +142,11 @@ A rule's message says what it found and what to write instead. It does not know 
 decided this*, and that is often what a reader, or an assistant reading the compiler output, needs
 in order to make the right change rather than the smallest one.
 
-```properties
-note=Conventions live in CONTRIBUTING.md.
-note.preferExplicitBackingField=ViewModels expose StateFlow directly here; see ADR-014.
+```yaml
+note: Conventions live in CONTRIBUTING.md.
+rules:
+  preferExplicitBackingField:
+    note: ViewModels expose StateFlow directly here; see ADR-014.
 ```
 
 ```
@@ -166,8 +155,8 @@ e: Cases.kt:3:9 [Kotrail] This property is exposed through the backing property 
 ```
 
 The note is **appended** to the built-in message, never substituted for it, so the rewrite a rule
-asks for cannot be lost by configuring one. A rule's own `note.<rule>` replaces the project-wide
-`note` for that rule; leading and trailing whitespace is trimmed and a separating space is added.
+asks for cannot be lost by configuring one. A rule's own `note` replaces the top-level `note` for
+that rule; leading and trailing whitespace is trimmed and a separating space is added.
 
 ## Excluding by pattern
 
@@ -175,16 +164,22 @@ asks for cannot be lost by configuring one. A rule's own `note.<rule>` replaces 
 extension of one type, everything inside classes named a certain way — write a predicate over
 the location a diagnostic would be reported at:
 
-```properties
-exclude=package(com.acme.generated.*) || file(*Generated.kt)
-exclude.noPassThroughFunction=extension(kotlin.String) || annotated(com.acme.PublicApi)
-exclude.functionLength=test || name(main)
-exclude.noNotNullAssertion=class(*Migration) && !annotated(com.acme.Reviewed)
+```yaml
+exclude: package(com.acme.generated.*) || file(*Generated.kt)
+rules:
+  noPassThroughFunction:
+    exclude: extension(kotlin.String) || annotated(com.acme.PublicApi)
+  functionLength:
+    exclude: test || name(main)
+  noNotNullAssertion:
+    exclude: class(*Migration) && !annotated(com.acme.Reviewed)
 ```
 
-`exclude` applies to every rule and `exclude.<rule>` to one; a diagnostic is dropped when either
-matches. Predicates combine with `&&`, `||`, `!` and parentheses, and are checked when the
-configuration is read, so a typo fails the build with its position.
+The top-level `exclude` applies to every rule and a rule's own `exclude` to that rule; a
+diagnostic is dropped when either matches. Predicates combine with `&&`, `||`, `!` and
+parentheses, and are checked when the configuration is read, so a typo fails the build with its
+position. A predicate that starts with `!` has to be quoted, since YAML would read it as a tag:
+`exclude: "!annotated(com.acme.Reviewed)"`.
 
 | Predicate | True when |
 |---|---|
@@ -205,98 +200,82 @@ Globs match the whole value; `*` stands for any run of characters (dots included
 The predicates describe **where** a diagnostic is, never **what** it found. "Skip calls to
 functions from package X" is a rule-specific question, and lives in that rule's own settings.
 
-## Passing settings
+## Layering and test source sets
 
-Rules are configured in a properties file, and the [Gradle plugin](gradle-plugin.md) points at
-it:
+The compiler sees one compilation at a time, so per-source-set settings are a Gradle concern. The
+Gradle plugin has a block for it, matching every compilation whose name contains `test`, plus one
+for a single compilation by name:
 
 ```kotlin
 kotrail {
-    configFile = layout.projectDirectory.file("kotrail.properties")
+    configFile = layout.projectDirectory.file("kotrail.yaml")
+    test {
+        configFile = layout.projectDirectory.file("kotrail-test.yaml")
+    }
+    compilation("androidTest") {
+        configFile = layout.projectDirectory.file("kotrail-androidTest.yaml")
+    }
 }
 ```
 
-The file:
+Files are **layered, not replaced**: a compilation is given the project's file first and then the
+file of every override that matches it, and the trees are merged key by key. Mappings merge
+recursively; a scalar or a list replaces what was there; `~` (or `null`, or nothing after the
+colon) takes a key away, so that the built-in default applies again. An override's file therefore
+lists only what it changes:
 
-```properties
-# kotrail.properties
-compose.nesting.maxDepth=4
-narrowModelParameters.scope=all
-rules.noPassThroughReturn=false
+```yaml
+# kotrail-test.yaml: everything in kotrail.yaml still applies
+exclude: ~                       # the project-wide predicate is gone in tests
+rules:
+  preferExplicitBackingField: off
+  compose.nesting: off
+  functionLength:
+    maxLines: 120                # maxComposableLines and exclude still apply
+  requiredAnnotation:
+    policies:
+      screens: ~                 # this policy is dropped; the others stay
+  compose.windowInsets:
+    known:
+      androidx.compose.material3.Scaffold: ~   # the built-in entry applies again
 ```
 
-A build that wires the compiler plugin by hand passes the file, and may override single
-settings with plugin options of the same name:
+A list is replaced whole: `functions: [a]` in a later file is the whole list, and `roots: []` is
+an empty list rather than the default. Use `~` for the default.
+
+Turning `compose.windowInsets` off in a *main* source set also stops the inferred insets metadata
+from being written, so other modules can no longer verify calls into it. Turning it off in tests
+has no such effect.
+
+## Plugin options
+
+A build that wires the compiler plugin by hand passes the file, and may patch single entries with
+plugin options. An option is named by the key's dotted path, with the rule's own dots kept, and
+its value is read the way the file would read it:
 
 ```kotlin
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 tasks.withType<KotlinCompile>().configureEach {
-    compilerOptions.freeCompilerArgs.addAll(
-        "-P", "plugin:com.kitakkun.kotrail:configFile=${projectDir.resolve("kotrail.properties")}",
-        "-P", "plugin:com.kitakkun.kotrail:compose.nesting.maxDepth=6",   // overrides the file
-    )
-}
-```
-
-Keep list-valued settings and the named entries in the file: the compiler splits a `-P` value
-on commas, so `forbiddenCall.functions=a,b` cannot be passed as an option. The two named-entry
-families have plugin options with a fixed name and the entry name inside the value,
-`requiredAnnotation=<name>=<predicate> -> <fqn>` and `compose.windowInsets.known=<fqn>=<spec>`,
-each of which may be given more than once.
-
-## Test source sets
-
-The compiler sees one compilation at a time, so per-source-set settings are a Gradle concern. The
-Gradle plugin has a block for it, matching every compilation whose name contains `test`, plus one
-for a single compilation by name. The files are layered, so an override's file lists only what it
-changes:
-
-```kotlin
-kotrail {
-    configFile = layout.projectDirectory.file("kotrail.properties")
-    test {
-        configFile = layout.projectDirectory.file("kotrail-test.properties")
-    }
-    compilation("androidTest") {
-        configFile = layout.projectDirectory.file("kotrail-androidtest.properties")
-    }
-}
-```
-
-```properties
-# kotrail-test.properties: everything in kotrail.properties still applies
-rules.preferExplicitBackingField=false
-rules.compose.nesting=false
-```
-
-An empty value in a later file takes an entry of the earlier one away: `exclude=` clears the
-project-wide predicate, `visibilityPolicy.private=` drops that policy,
-`requiredAnnotation.policy[screens]=` drops that one policy and keeps the others, and
-`compose.windowInsets.known[com.acme.AppScaffold]=` removes the override so that the built-in
-knowledge applies again. A list is the exception: `test.annotations=` is an empty list, not the
-default.
-
-A build that wires the compiler plugin by hand gives `compileTestKotlin` its own file instead:
-
-```properties
-# kotrail-test.properties
-rules.preferExplicitBackingField=false
-rules.compose.nesting=false
-```
-
-```kotlin
-tasks.withType<KotlinCompile>().configureEach {
-    val file = if (name.contains("Test")) "kotrail-test.properties" else "kotrail.properties"
+    val file = if (name.contains("Test")) "kotrail-test.yaml" else "kotrail.yaml"
     compilerOptions.freeCompilerArgs.addAll(
         "-P", "plugin:com.kitakkun.kotrail:configFile=${projectDir.resolve(file)}",
+        "-P", "plugin:com.kitakkun.kotrail:rules.compose.nesting.maxDepth=6",   // patches the file
+        "-P", "plugin:com.kitakkun.kotrail:rules.preferValueClass=off",
     )
 }
 ```
 
-Turning `rules.compose.windowInsets` off in a *main* source set also stops the inferred insets
-metadata from being written, so other modules can no longer verify calls into it. Turning it
-off in tests has no such effect.
+| Option | Value |
+|---|---|
+| `enabled`, `note`, `exclude`, `test.annotations` | as in the file; a list is comma separated |
+| `rules.<rule>` | `off`, `on`, `error`, or `warning` |
+| `rules.<rule>.enabled` / `.severity` / `.note` / `.exclude` | as in the file |
+| `rules.<rule>.<setting>` | as in the file; a list is comma separated |
+| `rules.<rule>.<map setting>` | `<name>=<value>`, one entry per occurrence; `<name>=` drops the entry |
+
+An empty value unsets the key, like `~` in the file. The compiler splits a `-P` value on commas,
+so a list that needs more than one item belongs in the file.
 
 ## Suppressing a single occurrence
 
@@ -313,11 +292,11 @@ fun LegacyScreen() { ... }
 ## In the compiler tests
 
 Every rule is switched off before a fixture is compiled, and the fixture opts in to the ones it
-exercises through a directive on its first lines. The values go through the same command-line
-processor as real builds:
+exercises through a directive on its first lines. The values are plugin options and go through
+the same command-line processor as real builds:
 
 ```kotlin
-// KOTRAIL_CONFIG: rules.compose.nesting=true, compose.nesting.maxDepth=2
+// KOTRAIL_CONFIG: rules.compose.nesting=on, rules.compose.nesting.maxDepth=2
 ```
 
 Opting in keeps each fixture about one rule, and means a newly added rule cannot start reporting

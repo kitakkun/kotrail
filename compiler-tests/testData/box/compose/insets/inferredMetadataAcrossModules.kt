@@ -1,5 +1,5 @@
 // DUMP_IR
-// KOTRAIL_CONFIG: rules.compose.windowInsets=true
+// KOTRAIL_CONFIG: rules.compose.windowInsets=on
 
 // Exercises the IR metadata writer end to end: `lib` is compiled to class files, so `main`
 // can only satisfy its contracts through the @InferredWindowInsetsHandling annotation that

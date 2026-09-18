@@ -1,23 +1,25 @@
 # Forbidden call
 
 **Diagnostic:** `KOTRAIL_FORBIDDEN_CALL` (error, on the whole call)
-**Switch:** `rules.forbiddenCall` (default `true`; inert until something is listed)
-**Severity key:** `severity.forbiddenCall`
-**Settings:** `forbiddenCall.functions` (fully qualified names, comma separated), `forbiddenCall[<name>]` (one call predicate per entry)
+**Key:** `rules.forbiddenCall` (on by default; inert until something is listed)
+**Settings:** `functions` (fully qualified names), `calls` (named call predicates)
 
 ## What it rejects
 
-```properties
-forbiddenCall.functions=kotlin.io.println, java.lang.Thread.sleep
-forbiddenCall[globalScope]=fqn(kotlinx.coroutines.launch) && receiver(kotlinx.coroutines.GlobalScope)
-forbiddenCall[date]=constructor(java.util.Date)
+```yaml
+rules:
+  forbiddenCall:
+    functions: [kotlin.io.println, java.lang.Thread.sleep]
+    calls:
+      globalScope: fqn(kotlinx.coroutines.launch) && receiver(kotlinx.coroutines.GlobalScope)
+      date: constructor(java.util.Date)
 ```
 
 ```kotlin
-println("debug")                  // reported (forbiddenCall[kotlin.io.println])
-Thread.sleep(100)                 // reported (forbiddenCall[java.lang.Thread.sleep])
-GlobalScope.launch { sync() }     // reported (forbiddenCall[globalScope])
-val now = Date()                  // reported (forbiddenCall[date])
+println("debug")                  // reported (kotlin.io.println)
+Thread.sleep(100)                 // reported (java.lang.Thread.sleep)
+GlobalScope.launch { sync() }     // reported (globalScope)
+val now = Date()                  // reported (date)
 ```
 
 ## What it asks for
@@ -30,13 +32,13 @@ name that says why (`globalScope`, `blockingIo`) is the explanation.
 
 ## Two ways to list a call
 
-`forbiddenCall.functions` is the short form: fully qualified names, and every overload of a
+`functions` is the short form: fully qualified names, and every overload of a
 name is forbidden. Top-level functions are `package.name`, members (including Java statics and
 object members) are `class.name`, and a constructor is its class name. A `Type.name` also
 matches an extension `name` called on a `Type` receiver, explicit or implicit, which is how a
 reader sees `GlobalScope.launch { }`.
 
-`forbiddenCall[<name>]` takes a **call predicate**, for anything a bare name cannot say: which
+`calls` maps a name of your choosing to a **call predicate**, for anything a bare name cannot say: which
 receiver, which overload, which extension, with or without a context parameter. The grammar is
 the one `exclude` uses (`&&`, `||`, `!`, parentheses); the atoms ask about the call:
 
@@ -51,15 +53,18 @@ the one `exclude` uses (`&&`, `||`, `!`, parentheses); the atoms ask about the c
 | `annotated(fqn)` | the callee carries the annotation |
 | `suspend`, `composable` | the callee is one |
 
-```properties
-forbiddenCall[stringLog]=fqn(com.acme.log) && extension(kotlin.String)
-forbiddenCall[bareRead]=fqn(com.acme.io.read) && !context(com.acme.io.IoScope)
-forbiddenCall[legacyParse]=fqn(com.acme.parse) && params(kotlin.String, kotlin.Int)
-forbiddenCall[blockingInCompose]=fqn(kotlinx.coroutines.runBlocking) && composable
+```yaml
+rules:
+  forbiddenCall:
+    calls:
+      stringLog: fqn(com.acme.log) && extension(kotlin.String)
+      bareRead: fqn(com.acme.io.read) && !context(com.acme.io.IoScope)
+      legacyParse: fqn(com.acme.parse) && params(kotlin.String, kotlin.Int)
+      blockingInCompose: fqn(kotlinx.coroutines.runBlocking) && composable
 ```
 
 Entries are keyed by name, so a later configuration file can replace one, add one, or drop one
-with an empty value (`forbiddenCall[date]=`) while the rest stay in force.
+with `date: ~` while the rest stay in force.
 
 ## When it stays quiet
 
@@ -82,4 +87,4 @@ with an empty value (`forbiddenCall[date]=`) while the rest stay in force.
 call as a `CallSite` (callee name, constructed class, declared extension receiver, the receiver
 the call is made on, context and value parameter types, annotations, modifiers) and evaluates
 the configured `CallPredicate`s against it. The predicate grammar is shared with `exclude`
-through `PredicateGrammar`; the plain `forbiddenCall.functions` names become `fqn(...)` entries.
+through `PredicateGrammar`; the plain `functions` names become `fqn(...)` entries.

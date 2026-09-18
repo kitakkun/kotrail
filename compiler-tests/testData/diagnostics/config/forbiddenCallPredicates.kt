@@ -1,5 +1,5 @@
 // LANGUAGE: +ContextParameters
-// KOTRAIL_CONFIG: rules.forbiddenCall=true, forbiddenCall=globalScope=fqn(custom.launch) && receiver(custom.GlobalScope), forbiddenCall=stringLog=fqn(custom.log) && extension(kotlin.String), forbiddenCall=bareRead=fqn(custom.read) && !context(custom.IoScope), forbiddenCall=legacyParse=fqn(custom.parse) && params(kotlin.String, kotlin.Int), forbiddenCall=date=constructor(custom.Date), forbiddenCall=anyPrint=fqn(custom.print*)
+// KOTRAIL_CONFIG: rules.forbiddenCall=on, rules.forbiddenCall.calls=globalScope=fqn(custom.launch) && receiver(custom.GlobalScope), rules.forbiddenCall.calls=stringLog=fqn(custom.log) && extension(kotlin.String), rules.forbiddenCall.calls=bareRead=fqn(custom.read) && !context(custom.IoScope), rules.forbiddenCall.calls=legacyParse=fqn(custom.parse) && params(kotlin.String, kotlin.Int), rules.forbiddenCall.calls=date=constructor(custom.Date), rules.forbiddenCall.calls=anyPrint=fqn(custom.print*)
 
 package custom
 

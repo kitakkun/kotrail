@@ -36,20 +36,25 @@ to fix it without being told.
 
 ## 3. Tune what needs tuning
 
-Turn a rule off, soften it to a warning, or change a limit in one properties file:
+Turn a rule off, soften it to a warning, or change a limit in one `kotrail.yaml`:
 
-```properties
-# kotrail.properties
-rules.preferValueClass=false
-severity.commentLength=warning
-functionLength.maxLines=60
+```yaml
+# yaml-language-server: $schema=https://kitakkun.github.io/kotrail/kotrail.schema.json
+rules:
+  preferValueClass: off
+  commentLength: warning
+  functionLength:
+    maxLines: 60
 ```
+
+The first line gives IntelliJ and VS Code the schema, so keys and values complete and a typo is
+underlined before the build sees it.
 
 ```kotlin
 kotrail {
-    configFile = layout.projectDirectory.file("kotrail.properties")
+    configFile = layout.projectDirectory.file("kotrail.yaml")
     test {
-        configFile = layout.projectDirectory.file("kotrail-test.properties")   // relax rules in tests
+        configFile = layout.projectDirectory.file("kotrail-test.yaml")   // relax rules in tests
     }
 }
 ```
@@ -64,11 +69,18 @@ every message and the predicates that carve out generated code, is in
 Some rules are inert until the project says what it wants, and those are the ones that carry
 what no assistant can guess:
 
-```properties
-forbiddenCall.functions=kotlin.io.println, kotlinx.coroutines.GlobalScope.launch
-visibilityPolicy.private=composable && name(*Preview)
-requiredAnnotation.policy[screens]=composable && name(*Screen) -> com.acme.navigation.Screen
-note=See docs/conventions.md before changing this.
+```yaml
+note: See docs/conventions.md before changing this.
+rules:
+  forbiddenCall:
+    functions: [kotlin.io.println, kotlinx.coroutines.GlobalScope.launch]
+  visibilityPolicy:
+    private: composable && name(*Preview)
+  requiredAnnotation:
+    policies:
+      screens:
+        where: composable && name(*Screen)
+        annotation: com.acme.navigation.Screen
 ```
 
 ## Where to go next

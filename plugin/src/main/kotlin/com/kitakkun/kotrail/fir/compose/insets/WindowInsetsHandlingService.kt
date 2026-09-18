@@ -44,14 +44,12 @@ class WindowInsetsHandlingService(session: FirSession) : FirExtensionSessionComp
 
     /**
      * Composables known to handle insets without being analyzed: the built-in entries for
-     * Material 3, changed entry by entry by the project's `compose.windowInsets.known[<fqn>]`.
+     * Material 3, changed entry by entry by the project's `rules.compose.windowInsets.known`.
      */
     private val knowledgeBase: Map<String, InsetsSet> by lazy {
         val base = WindowInsetsNames.KNOWN_LIBRARY_COMPOSABLES
             .mapKeysTo(HashMap()) { (id, _) -> id.asSingleFqName().asString() }
-        for ((fqn, insets) in session.kotrailConfig.compose.knownInsetsHandlers) {
-            if (insets == null) base.remove(fqn) else base[fqn] = insets
-        }
+        base.putAll(session.kotrailConfig.compose.knownInsetsHandlers)
         base
     }
 

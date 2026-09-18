@@ -1,8 +1,7 @@
 # Prefer value class
 
 **Diagnostic:** `KOTRAIL_PREFER_VALUE_CLASS` (error, on the class name)
-**Switch:** `rules.preferValueClass` (default `true`)
-**Severity key:** `severity.preferValueClass` (default `error`)
+**Key:** `rules.preferValueClass` (on by default) (default `error`)
 **Settings:** none
 
 ## What it rejects

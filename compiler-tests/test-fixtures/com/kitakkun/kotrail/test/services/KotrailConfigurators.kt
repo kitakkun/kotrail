@@ -29,8 +29,8 @@ fun TestConfigurationBuilder.configureKotrail() {
 object KotrailTestDirectives : SimpleDirectivesContainer() {
     /**
      * Plugin options for the module, as `key=value` pairs, e.g.
-     * `// KOTRAIL_CONFIG: rules.compose.nesting=true, compose.nesting.maxDepth=2`.
-     * Keys are the same ones the command-line processor accepts.
+     * `// KOTRAIL_CONFIG: rules.compose.nesting=on, rules.compose.nesting.maxDepth=2`.
+     * Keys are the paths of kotrail.yaml, as the command-line processor accepts them.
      *
      * Rules are all off before this is applied, so a fixture enables what it exercises.
      *
@@ -56,7 +56,7 @@ internal class KotrailExtensionRegistrarConfigurator(testServices: TestServices)
         // in their own directive what they are about, and a newly added rule cannot start
         // reporting across fixtures that were written for something else.
         for (rule in KotrailRule.switchable) {
-            configuration.put(KotrailConfigurationKeys.switchKey(rule), false)
+            configuration.add(KotrailConfigurationKeys.OPTIONS, "rules.${rule.key}=off")
         }
 
         // Entries are separated by a comma that is followed by the next `key=`; commas inside a

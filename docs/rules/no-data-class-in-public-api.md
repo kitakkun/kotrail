@@ -1,9 +1,8 @@
 # No data class in public API
 
 **Diagnostic:** `KOTRAIL_DATA_CLASS_IN_PUBLIC_API` (error, on the class name)
-**Switch:** `rules.noDataClassInPublicApi` (default `true`)
-**Severity key:** `severity.noDataClassInPublicApi`
-**Setting:** `noDataClassInPublicApi.scope` (default `explicitApi`; `all` applies it to every module)
+**Key:** `rules.noDataClassInPublicApi` (on by default)
+**Setting:** `scope` (default `explicitApi`; `all` applies it to every module)
 
 ## What it rejects
 
@@ -46,7 +45,7 @@ its public API is a contract, and Kotlin's way of saying so is explicit API mode
 (`kotlin { explicitApi() }` / `-Xexplicit-api=strict`). By default the rule applies only to
 modules compiled with explicit API mode, strict or warning. A library that does not use it can
 set `noDataClassInPublicApi.scope=all`; a module that wants the rule off keeps
-`rules.noDataClassInPublicApi=false` in its own file.
+`noDataClassInPublicApi: off` in its own file.
 
 ## When it stays quiet
 

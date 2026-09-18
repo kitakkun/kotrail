@@ -1,9 +1,8 @@
 # Prefer function references
 
 **Diagnostic:** `KOTRAIL_PREFER_FUNCTION_REFERENCE` (error, on the lambda)
-**Switch:** `rules.preferFunctionReferences` (default `true`)
-**Severity key:** `severity.preferFunctionReferences`
-**Setting:** `preferFunctionReferences.forms` (default `topLevel,bound,typeQualified`)
+**Key:** `rules.preferFunctionReferences` (on by default)
+**Setting:** `forms` (default `topLevel,bound,typeQualified`)
 
 ## Choosing which forms to ask for
 
@@ -17,8 +16,10 @@ independently. Teams that find `File::readText`-style references harder to read 
 | `bound` | `repository::save`, `this::load`, `Formatter::format` | a member called on a stable value |
 | `typeQualified` | `User::name`, `String::trim`, `File::readText` | a member or extension called on the first lambda parameter |
 
-```properties
-preferFunctionReferences.forms=topLevel,bound
+```yaml
+rules:
+  preferFunctionReferences:
+    forms: [topLevel, bound]
 ```
 
 ## What it rejects

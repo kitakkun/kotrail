@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.compose.windowInsets=true, compose.windowInsets.known=custom.AppScaffold=SystemBars, compose.windowInsets.known=custom.AppTopBar=StatusBars:Top+Horizontal, compose.windowInsets.known=androidx.compose.material3.Scaffold=None
+// KOTRAIL_CONFIG: rules.compose.windowInsets=on, rules.compose.windowInsets.known=custom.AppScaffold=SystemBars, rules.compose.windowInsets.known=custom.AppTopBar=StatusBars:Top+Horizontal, rules.compose.windowInsets.known=androidx.compose.material3.Scaffold=None
 
 package custom
 

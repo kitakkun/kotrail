@@ -62,7 +62,7 @@ Full pages, with every condition and fixture, live under [`docs/rules/`](docs/ru
 | [No mutable collection in public API](docs/rules/no-mutable-collection-in-public-api.md) | `fun items(): MutableList<Item>` | `List<Item>` |
 | [No data class in public API](docs/rules/no-data-class-in-public-api.md) | `public data class Config(...)` in a module with explicit API mode | A regular class with explicit `equals`/`hashCode`, or `internal` |
 | [Visibility policy](docs/rules/visibility-policy.md) | A declaration matching `visibilityPolicy.private=composable && name(*Preview)` that is not private | The visibility the policy names |
-| [Required annotation](docs/rules/required-annotation.md) | A declaration matching `requiredAnnotation.policy[screens]=composable && name(*Screen) -> com.acme.Screen` without the annotation | The annotation the policy names |
+| [Required annotation](docs/rules/required-annotation.md) | A declaration matching a policy (`where: composable && name(*Screen)`) without its annotation | The annotation the policy names |
 | [Named arguments for repeated types](docs/rules/named-arguments-for-repeated-types.md) | `Padding(8, 16, 8, 16)` | `Padding(start = 8, top = 16, end = 8, bottom = 16)` |
 | [Must be serializable](docs/rules/must-be-serializable.md) | `rememberSerializable { Filter() }`, or `save<@MustBeSerializable T>(value)`, with a type that is not `@Serializable` | `@Serializable` on the class, or an explicit serializer |
 | [No unimplemented code](docs/rules/no-unimplemented.md) | `TODO()`, `throw NotImplementedError()` (switch it off for debug and test compilations) | The implementation, or an explicit `UnsupportedOperationException` |
@@ -92,19 +92,29 @@ plugins {
 }
 
 kotrail {
-    configFile = layout.projectDirectory.file("kotrail.properties")
+    configFile = layout.projectDirectory.file("kotrail.yaml")
     test {
-        configFile = layout.projectDirectory.file("kotrail-test.properties")
+        configFile = layout.projectDirectory.file("kotrail-test.yaml")
     }
 }
 ```
 
-Every rule is on at error severity with no configuration at all. A structural carve-out is a
-predicate in the properties file, such as `exclude=package(com.acme.generated.*)` or
-`exclude.noPassThroughFunction=extension(kotlin.String)`. See
-[`docs/gradle-plugin.md`](docs/gradle-plugin.md) for the whole DSL and the artifact scheme, and
-[`docs/configuration.md`](docs/configuration.md) for every key, precedence, the properties-file
-form, and suppression.
+Every rule is on at error severity with no configuration at all. Everything else is one
+`kotrail.yaml`, with a JSON Schema for editor completion:
+
+```yaml
+rules:
+  preferValueClass: off
+  commentLength: warning
+  functionLength:
+    maxLines: 60
+    exclude: name(main)
+  forbiddenCall:
+    functions: [kotlin.io.println, kotlinx.coroutines.GlobalScope.launch]
+```
+
+See [`docs/gradle-plugin.md`](docs/gradle-plugin.md) for the whole DSL and the artifact scheme, and
+[`docs/configuration.md`](docs/configuration.md) for every key, layering, and suppression.
 
 ## Contributing
 

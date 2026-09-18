@@ -1,6 +1,6 @@
 // FIR_IDENTICAL
 // DUMP_IR
-// KOTRAIL_CONFIG: rules.compose.compositionLocals=true
+// KOTRAIL_CONFIG: rules.compose.compositionLocals=on
 
 // Exercises the IR metadata writer end to end: `lib` is compiled to class files, so `main`
 // can only understand lib's composables through the @InferredCompositionLocals annotations

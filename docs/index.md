@@ -19,7 +19,7 @@ features:
   - title: Enforced, not suggested
     details: A rule violation is a compile error. The assistant sees it in the same loop it sees type errors, and fixes it before you review the change.
   - title: Flexible
-    details: Every rule has a switch, a severity, and settings, per project and per compilation. Structural carve-outs are one predicate in a properties file.
+    details: Every rule has a switch, a severity, and settings, per project and per compilation. Structural carve-outs are one predicate in a YAML file with editor completion.
   - title: Precise
     details: Rules run on the resolved FIR tree, so they reason about types, receivers, annotations, and call targets rather than pattern-match on text.
 ---

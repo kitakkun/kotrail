@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.noSwallowedCancellation=true
+// KOTRAIL_CONFIG: rules.noSwallowedCancellation=on
 import java.io.IOException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext

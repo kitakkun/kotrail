@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.preferFunctionReferences=true, preferFunctionReferences.forms=topLevel,bound
+// KOTRAIL_CONFIG: rules.preferFunctionReferences=on, rules.preferFunctionReferences.forms=topLevel,bound
 // Type-qualified references (`File::readText`, `User::name`) are not requested here, so lambdas
 // that would only become that form are left alone.
 data class User(val id: Long, val name: String)

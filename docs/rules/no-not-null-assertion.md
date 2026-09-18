@@ -1,8 +1,7 @@
 # No not-null assertion
 
 **Diagnostic:** `KOTRAIL_NOT_NULL_ASSERTION` (error, on the `x!!` expression)
-**Switch:** `rules.noNotNullAssertion` (default `true`)
-**Severity key:** `severity.noNotNullAssertion`
+**Key:** `rules.noNotNullAssertion` (on by default)
 **Settings:** none
 
 ## What it rejects

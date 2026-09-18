@@ -1,9 +1,8 @@
 # Preview required (Compose)
 
 **Diagnostic:** `KOTRAIL_COMPOSABLE_WITHOUT_PREVIEW` (error, on the function name)
-**Switch:** `rules.compose.previewRequired` (default `true`)
-**Severity key:** `severity.compose.previewRequired`
-**Setting:** `compose.previewRequired.scope` (`public`, `internal` (default: public and internal), `all`)
+**Key:** `rules.compose.previewRequired` (on by default)
+**Setting:** `scope` (`public`, `internal` (default: public and internal), `all`)
 
 ## What it rejects
 
@@ -34,7 +33,7 @@ convention that the preview lives in the same file as the component.
 ## When it fires
 
 For each `Unit`-returning `@Composable` function in the file (top-level, or a member of a class
-or object) whose visibility is within `compose.previewRequired.scope`: no function in the same file
+or object) whose visibility is within `scope`: no function in the same file
 annotated with `@Preview`, or with a multipreview annotation (an annotation class itself
 annotated with `@Preview`, such as `@PreviewLightDark` or a project-defined `@ThemePreviews`),
 calls it directly.

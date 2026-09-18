@@ -1,18 +1,24 @@
 # Required annotation
 
 **Diagnostic:** `KOTRAIL_REQUIRED_ANNOTATION_MISSING` (error, on the declaration name)
-**Switch:** `rules.requiredAnnotation` (default `true`; inert until a policy is set)
-**Severity key:** `severity.requiredAnnotation`
-**Settings:** `requiredAnnotation.policy[<name>]` (one predicate and annotation per policy)
+**Key:** `rules.requiredAnnotation` (on by default; inert until a policy is set)
+**Settings:** `policies` (named, each `where` and `annotation`)
 
 ## What it rejects
 
 A declaration a policy covers that does not carry the annotation the policy names:
 
-```properties
-requiredAnnotation.policy[screens]=composable && name(*Screen) -> com.acme.navigation.Screen
-requiredAnnotation.policy[entities]=class && name(*Entity) -> com.acme.db.Persisted
-requiredAnnotation.policy[api]=visibility(public) && package(com.acme.sdk.*) -> com.acme.sdk.PublicApi
+```yaml
+rules:
+  requiredAnnotation:
+    policies:
+      screens:
+        where: composable && name(*Screen)
+        annotation: com.acme.navigation.Screen
+      entities:
+        where: class && name(*Entity)
+        annotation: com.acme.db.Persisted
+      api: visibility(public) && package(com.acme.sdk.*) -> com.acme.sdk.PublicApi
 ```
 
 ```kotlin
@@ -31,14 +37,14 @@ says it back at the exact declaration.
 
 ## Writing a policy
 
-Each entry is `<predicate> -> <annotation fqn>`. The predicate is written in the same language
+Each policy has a `where` predicate and an `annotation`; the one-line form
+`<predicate> -> <annotation fqn>` says the same. The predicate is written in the same language
 as [`exclude`](../configuration.md#excluding-by-pattern): names, packages, files, annotations,
 enclosing classes, extension receivers, context parameters, modifiers, and the kind of
 declaration (`function`, `property`, bare `class`). The annotation is one fully qualified class
 name; a leading `@` is accepted.
 
-The name in the brackets is yours; it appears in the message so that a reader can find the
-entry. Names start with a letter and may contain letters, digits, dots, `_` and `-`.
+The policy's name is yours; it appears in the message so that a reader can find the entry. Names start with a letter and may contain letters, digits, dots, `_` and `-`.
 
 Only the declaration's own annotations satisfy a policy. `class(*Entity)` matches the members
 of an entity class as well, so a policy about classes says `class && name(*Entity)`; otherwise
@@ -53,7 +59,7 @@ every function inside the class would be asked to carry the annotation too.
 ## Configuration files
 
 Entries are keyed by name, so a later file can replace one policy, add another, or drop one
-with an empty value (`requiredAnnotation.policy[screens]=`) while the rest stay in force.
+with `screens: ~` while the rest stay in force.
 
 ## Fixtures
 

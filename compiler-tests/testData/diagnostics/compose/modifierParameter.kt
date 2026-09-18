@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.compose.modifierParameter=true
+// KOTRAIL_CONFIG: rules.compose.modifierParameter=on
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues

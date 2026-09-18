@@ -1,8 +1,7 @@
 # No trailing callback (Compose)
 
 **Diagnostic:** `KOTRAIL_COMPOSABLE_TRAILING_CALLBACK` (error, on the parameter name)
-**Switch:** `rules.compose.noTrailingCallback` (default `true`)
-**Severity key:** `severity.compose.noTrailingCallback`
+**Key:** `rules.compose.noTrailingCallback` (on by default)
 
 ## What it rejects
 

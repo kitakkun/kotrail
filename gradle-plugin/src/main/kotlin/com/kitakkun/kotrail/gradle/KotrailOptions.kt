@@ -7,7 +7,7 @@ import org.gradle.api.provider.Property
  * What can be said about the plugin for the whole project, or for one compilation.
  *
  * Rule switches, severities and rule settings are not part of this DSL: they live in the
- * properties file [configFile] points at, whose keys are listed in `docs/configuration.md`. That
+ * `kotrail.yaml` [configFile] points at, whose keys are listed in `docs/configuration.md`. That
  * keeps one list of keys rather than two, and rule configuration stays out of the build script.
  */
 abstract class KotrailOptions {
@@ -18,7 +18,7 @@ abstract class KotrailOptions {
     abstract val enabled: Property<Boolean>
 
     /**
-     * A `.properties` file with rule settings.
+     * A `kotrail.yaml` with rule settings.
      *
      * Files are layered rather than replaced: a compilation is given the project's file first and
      * then the file of every override that matches it, so an override's file only lists what it

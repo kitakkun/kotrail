@@ -22,14 +22,14 @@ the compile classpath so `@HandlesWindowInsets` and `@MustBeSerializable` can be
 
 ```kotlin
 kotrail {
-    configFile = layout.projectDirectory.file("kotrail.properties")
+    configFile = layout.projectDirectory.file("kotrail.yaml")
 
     test {
-        configFile = layout.projectDirectory.file("kotrail-test.properties")
+        configFile = layout.projectDirectory.file("kotrail-test.yaml")
     }
 
     compilation("androidTest") {
-        configFile = layout.projectDirectory.file("kotrail-androidtest.properties")
+        configFile = layout.projectDirectory.file("kotrail-androidTest.yaml")
     }
 
     // enabled = false      // do not run the plugin here at all
@@ -38,7 +38,7 @@ kotrail {
 ```
 
 Rule switches, severities, rule settings, and the project's own notes on why a rule exists are
-**not** part of this DSL. They live in the properties file, whose keys are listed in
+**not** part of this DSL. They live in `kotrail.yaml`, whose keys are listed in
 [configuration.md](configuration.md). One list of keys rather than two, and rule configuration
 stays out of the build script.
 
@@ -52,19 +52,22 @@ The compiler sees one compilation at a time, so relaxing a rule in tests is a Gr
 of every override that matches it, and a later file overrides only the entries it names. So an
 override's file lists just the differences:
 
-```properties
-# kotrail.properties
-compose.nesting.maxDepth=4
-severity.commentLength=warning
+```yaml
+# kotrail.yaml
+rules:
+  compose.nesting:
+    maxDepth: 4
+  commentLength: warning
 ```
 
-```properties
-# kotrail-test.properties — the nesting depth and the commentLength severity still apply
-rules.preferExplicitBackingField=false
+```yaml
+# kotrail-test.yaml — the nesting depth and the commentLength severity still apply
+rules:
+  preferExplicitBackingField: off
 ```
 
 A compilation with `enabled = false` never gets the compiler plugin on its classpath at all,
-which is different from `enabled=false` in a file: there the plugin loads and then returns.
+which is different from `enabled: false` in a file: there the plugin loads and then returns.
 
 Configuration files are registered as inputs of the compile task, so editing one recompiles.
 
@@ -112,7 +115,7 @@ dependencies {
 
 tasks.withType<KotlinCompile>().configureEach {
     compilerOptions.freeCompilerArgs.addAll(
-        "-P", "plugin:com.kitakkun.kotrail:configFile=${projectDir.resolve("kotrail.properties")}",
+        "-P", "plugin:com.kitakkun.kotrail:configFile=${projectDir.resolve("kotrail.yaml")}",
     )
 }
 ```

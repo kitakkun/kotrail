@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.noNotNullAssertion=true, rules.preferValueClass=true, exclude=package(com.acme.gen*)
+// KOTRAIL_CONFIG: rules.noNotNullAssertion=on, rules.preferValueClass=on, exclude=package(com.acme.gen*)
 
 // The project-wide predicate applies to every rule: nothing in this package is reported.
 package com.acme.generated

@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.compose.compositionLocals=true, compose.compositionLocals.platform=custom.LocalContextLike, compose.compositionLocals.required=custom.LocalSoftRequired, compose.compositionLocals.known=custom.LibraryTheme=content:custom.LocalPalette, compose.compositionLocals.known=custom.LibraryWidget=custom.LocalPalette
+// KOTRAIL_CONFIG: rules.compose.compositionLocals=on, rules.compose.compositionLocals.platform=custom.LocalContextLike, rules.compose.compositionLocals.required=custom.LocalSoftRequired, rules.compose.compositionLocals.known=custom.LibraryTheme=content:custom.LocalPalette, rules.compose.compositionLocals.known=custom.LibraryWidget=custom.LocalPalette
 
 package custom
 

@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.compose.nesting=true
+// KOTRAIL_CONFIG: rules.compose.nesting=on
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.lazy.LazyColumn

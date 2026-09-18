@@ -1,9 +1,8 @@
 # Composables per file (Compose)
 
 **Diagnostic:** `KOTRAIL_TOO_MANY_COMPOSABLES_IN_FILE` (error, on each composable past the limit)
-**Switch:** `rules.compose.composablesPerFile` (default `true`)
-**Severity key:** `severity.compose.composablesPerFile`
-**Setting:** `compose.composablesPerFile.max` (default `3`; `0` disables)
+**Key:** `rules.compose.composablesPerFile` (on by default)
+**Setting:** `max` (default `3`; `0` disables)
 
 ## What it rejects
 

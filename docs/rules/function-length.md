@@ -1,9 +1,8 @@
 # Function length
 
 **Diagnostic:** `KOTRAIL_FUNCTION_TOO_LONG` (error, on the function name)
-**Switch:** `rules.functionLength` (default `true`)
-**Severity key:** `severity.functionLength`
-**Settings:** `functionLength.maxLines` (default `50`), `functionLength.maxComposableLines` (default `80`); `0` for unlimited
+**Key:** `rules.functionLength` (on by default)
+**Settings:** `maxLines` (default `50`), `maxComposableLines` (default `80`); `0` for unlimited
 
 ## What it rejects
 
@@ -40,7 +39,7 @@ local functions inside the body count toward it, as they are part of what the re
 
 ## Composables
 
-A `@Composable` function gets `functionLength.maxComposableLines` instead. A UI tree runs
+A `@Composable` function gets `maxComposableLines` instead. A UI tree runs
 longer than logic of the same complexity, and splitting a layout too finely hurts more than it
 helps, so the default is higher.
 

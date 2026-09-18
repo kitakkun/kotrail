@@ -1,8 +1,7 @@
 # No unimplemented code
 
 **Diagnostic:** `KOTRAIL_UNIMPLEMENTED_CODE` (error, on the call)
-**Switch:** `rules.noUnimplemented` (default `true`)
-**Severity key:** `severity.noUnimplemented`
+**Key:** `rules.noUnimplemented` (on by default)
 
 ## What it rejects
 
@@ -27,15 +26,16 @@ build that ships, off everywhere else. The compiler sees one compilation at a ti
 is expressed by handing each compilation its own configuration file (see
 [Test source sets](../configuration.md#test-source-sets)):
 
-```properties
-# kotrail-dev.properties (debug variants and tests)
-rules.noUnimplemented=false
+```yaml
+# kotrail-dev.yaml (debug variants and tests)
+rules:
+  noUnimplemented: off
 ```
 
 ```kotlin
 tasks.withType<KotlinCompile>().configureEach {
     val shipping = name.contains("Release") && !name.contains("Test")
-    val file = if (shipping) "kotrail.properties" else "kotrail-dev.properties"
+    val file = if (shipping) "kotrail.yaml" else "kotrail-dev.yaml"
     compilerOptions.freeCompilerArgs.addAll(
         "-P", "plugin:com.kitakkun.kotrail:configFile=${projectDir.resolve(file)}",
     )

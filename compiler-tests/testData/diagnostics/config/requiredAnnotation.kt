@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.requiredAnnotation=true, requiredAnnotation=screens=composable && name(*Screen) -> custom.Screen, requiredAnnotation=entities=class && name(*Entity) -> custom.Persisted
+// KOTRAIL_CONFIG: rules.requiredAnnotation=on, rules.requiredAnnotation.policies=screens=composable && name(*Screen) -> custom.Screen, rules.requiredAnnotation.policies=entities=class && name(*Entity) -> custom.Persisted
 
 package custom
 

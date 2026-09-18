@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.noRedundantElse=true
+// KOTRAIL_CONFIG: rules.noRedundantElse=on
 sealed interface Shape
 class Circle(val radius: Double) : Shape
 class Square(val side: Double) : Shape

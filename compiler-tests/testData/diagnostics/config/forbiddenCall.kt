@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.forbiddenCall=true, forbiddenCall.functions=kotlin.io.println,java.lang.Thread.sleep,java.util.Date,Logger.debug,Scope.launch
+// KOTRAIL_CONFIG: rules.forbiddenCall=on, rules.forbiddenCall.functions=kotlin.io.println,java.lang.Thread.sleep,java.util.Date,Logger.debug,Scope.launch
 import java.util.Date
 
 object Logger {

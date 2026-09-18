@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.noDataClassInPublicApi=true, noDataClassInPublicApi.scope=all
+// KOTRAIL_CONFIG: rules.noDataClassInPublicApi=on, rules.noDataClassInPublicApi.scope=all
 
 // Without explicit API mode this module does not look like a library, so the default scope would
 // stay quiet; `scope=all` applies the rule regardless.

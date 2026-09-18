@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.compose.windowInsets=true
+// KOTRAIL_CONFIG: rules.compose.windowInsets=on
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.exclude

@@ -1,8 +1,7 @@
 # Preconditions
 
 **Diagnostic:** `KOTRAIL_PRECONDITION_VIOLATED` (error, on the call)
-**Switch:** `rules.preconditions` (default `true`)
-**Severity key:** `severity.preconditions`
+**Key:** `rules.preconditions` (on by default)
 **Artifact:** `annotations` (`com.kitakkun.kotrail.preconditions.InferredPreconditions`, written by the plugin)
 
 ## What it rejects

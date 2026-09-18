@@ -1,8 +1,7 @@
 # Modifier parameter (Compose)
 
 **Diagnostic:** `KOTRAIL_COMPOSABLE_MODIFIER_PARAMETER` (error, on the function name)
-**Switch:** `rules.compose.modifierParameter` (default `true`)
-**Severity key:** `severity.compose.modifierParameter`
+**Key:** `rules.compose.modifierParameter` (on by default)
 **Settings:** none
 
 ## What it rejects

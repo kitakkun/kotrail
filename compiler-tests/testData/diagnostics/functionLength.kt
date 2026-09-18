@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.functionLength=true, functionLength.maxLines=4, functionLength.maxComposableLines=6
+// KOTRAIL_CONFIG: rules.functionLength=on, rules.functionLength.maxLines=4, rules.functionLength.maxComposableLines=6
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable

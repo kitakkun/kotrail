@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.noPassThroughReturn=true
+// KOTRAIL_CONFIG: rules.noPassThroughReturn=on
 data class User(val id: Long, val name: String)
 
 private val store = mutableListOf<User>()

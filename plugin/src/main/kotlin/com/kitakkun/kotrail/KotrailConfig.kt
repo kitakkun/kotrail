@@ -8,14 +8,18 @@ import com.kitakkun.kotrail.exclude.ExcludeParser
 import com.kitakkun.kotrail.exclude.Glob
 import com.kitakkun.kotrail.exclude.ExcludePredicate
 import com.kitakkun.kotrail.exclude.ReportSite
+import com.kitakkun.kotrail.config.ConfigException
+import com.kitakkun.kotrail.config.ConfigNode
+import com.kitakkun.kotrail.config.ConfigSchema
+import com.kitakkun.kotrail.config.ConfigTree
+import com.kitakkun.kotrail.config.KotrailYaml
 import org.jetbrains.kotlin.compiler.plugin.CliOptionProcessingException
 import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.jetbrains.kotlin.diagnostics.Severity
 import java.io.File
-import java.util.Properties
 
-/** Tunables for the Compose rules. Keys are `compose.<rule>.<name>`. */
+/** Tunables for the Compose rules, from the `rules.compose.<rule>` mappings. */
 data class KotrailComposeSettings(
     /** Maximum nesting depth of composable calls inside one composable body; 0 disables the rule. */
     val maxNesting: Int,
@@ -27,11 +31,10 @@ data class KotrailComposeSettings(
     val maxComposablesPerFile: Int,
     /**
      * The project's changes to the insets knowledge base, keyed by the composable's fully
-     * qualified name, from the `compose.windowInsets.known[<fqn>]` entries. A set replaces the
-     * built-in entry (an empty set, written `None`, says the composable handles nothing); `null`
-     * removes an earlier override so that the built-in entry applies again.
+     * qualified name, from `rules.compose.windowInsets.known`. A set replaces the built-in entry;
+     * an empty set, written `none`, says the composable handles nothing.
      */
-    val knownInsetsHandlers: Map<String, InsetsSet?>,
+    val knownInsetsHandlers: Map<String, InsetsSet>,
     val compositionLocals: KotrailCompositionLocals,
 )
 
@@ -41,7 +44,7 @@ data class KotrailCompositionLocalKnowledge(
     val provides: Map<String, Set<String>>,
 )
 
-/** Tunables for the composition-locals rule. Keys are `compose.compositionLocals.<name>`. */
+/** Tunables for the composition-locals rule. From `rules.compose.compositionLocals`. */
 data class KotrailCompositionLocals(
     /** Locals the platform provides at every root (fully qualified property names); reads of these are never reported. */
     val platform: List<String>,
@@ -49,11 +52,8 @@ data class KotrailCompositionLocals(
     val required: List<String>,
     /** Functions whose composable lambda argument is a root of composition: `setContent`, `Window`, ... */
     val roots: List<String>,
-    /**
-     * Library composables described by `compose.compositionLocals.known[<fqn>]`; `null` removes
-     * an earlier entry so that the composable is analyzed like any other.
-     */
-    val known: Map<String, KotrailCompositionLocalKnowledge?>,
+    /** Library composables described under `known`, keyed by fully qualified name. */
+    val known: Map<String, KotrailCompositionLocalKnowledge>,
 )
 
 /** Visibilities the preview-required rule inspects. */
@@ -77,7 +77,7 @@ enum class NarrowModelParametersScope(val key: String) {
     }
 }
 
-/** Tunables for the narrow-model-parameters rule. Keys are `narrowModelParameters.<name>`. */
+/** Tunables for the narrow-model-parameters rule. From `rules.narrowModelParameters`. */
 data class KotrailNarrowModelParameters(
     /** A data-class parameter may leave at most this many properties unread. */
     val maxUnusedProperties: Int,
@@ -100,13 +100,13 @@ enum class ReferenceForm(val key: String) {
     }
 }
 
-/** Tunables for the prefer-function-references rule. Keys are `preferFunctionReferences.<name>`. */
+/** Tunables for the prefer-function-references rule. From `rules.preferFunctionReferences`. */
 data class KotrailPreferFunctionReferences(
     /** Only lambdas that can become one of these reference forms are reported. */
     val forms: Set<ReferenceForm>,
 )
 
-/** Tunables for the comment-length rule. Keys are `commentLength.<name>`; `0` means unlimited. */
+/** Tunables for the comment-length rule. From `rules.commentLength`; `0` means unlimited. */
 data class KotrailCommentSettings(
     /** Maximum lines for a block comment or a run of consecutive `//` lines. */
     val maxLines: Int,
@@ -114,7 +114,7 @@ data class KotrailCommentSettings(
     val maxKDocLines: Int,
 )
 
-/** Tunables for the no-FQN-references rule. Keys are `noFqnReferences.<name>`. */
+/** Tunables for the no-FQN-references rule. From `rules.noFqnReferences`. */
 data class KotrailNoFqnReferences(
     /** Package prefixes whose members may be referenced fully qualified. */
     val allow: List<String>,
@@ -126,17 +126,17 @@ data class KotrailForbiddenCallEntry(
     val predicate: CallPredicate,
 )
 
-/** Tunables for the forbidden-call rule. Keys are `forbiddenCall.<name>` and `forbiddenCall[<entry>]`. */
+/** Tunables for the forbidden-call rule. From `rules.forbiddenCall`. */
 data class KotrailForbiddenCall(
     /**
-     * The entries, from `forbiddenCall[<name>]=<call predicate>` and from the plain
-     * `forbiddenCall.functions` list, whose fully qualified names become `fqn(...)` entries
-     * named after themselves. Empty means the rule has nothing to report.
+     * The entries, from the `calls` map of named call predicates and from the plain `functions`
+     * list, whose fully qualified names become `fqn(...)` entries named after themselves. Empty
+     * means the rule has nothing to report.
      */
     val entries: List<KotrailForbiddenCallEntry>,
 )
 
-/** Tunables for the must-be-serializable rule. Keys are `mustBeSerializable.<name>`. */
+/** Tunables for the must-be-serializable rule. From `rules.mustBeSerializable`. */
 data class KotrailSerialization(
     /**
      * Fully qualified callables whose type arguments must be serializable with kotlinx.serialization,
@@ -165,7 +165,7 @@ class KotrailExcludes(
 }
 
 /**
- * Tunables for the visibility-policy rule. Keys are `visibilityPolicy.<name>`. Each holds a
+ * Tunables for the visibility-policy rule. From `rules.visibilityPolicy`. Each holds a
  * predicate over declarations (the same language as `exclude`); a matching declaration must be
  * at most that visible.
  */
@@ -180,7 +180,7 @@ data class KotrailVisibilityPolicy(
 
 /**
  * One policy of the required-annotation rule: declarations matching [predicate] must carry
- * [annotation]. [name] is what the policy was configured under (`requiredAnnotation.policy[<name>]`)
+ * [annotation]. [name] is what the policy was configured under (`rules.requiredAnnotation.policies`)
  * and appears in the message.
  */
 data class KotrailRequiredAnnotation(
@@ -201,12 +201,12 @@ enum class PublicApiScope(val key: String) {
     }
 }
 
-/** Tunables for the no-data-class-in-public-API rule. Keys are `noDataClassInPublicApi.<name>`. */
+/** Tunables for the no-data-class-in-public-API rule. From `rules.noDataClassInPublicApi`. */
 data class KotrailNoDataClassInPublicApi(
     val scope: PublicApiScope,
 )
 
-/** Tunables for the function-length rule. Keys are `functionLength.<name>`; `0` means unlimited. */
+/** Tunables for the function-length rule. From `rules.functionLength`; `0` means unlimited. */
 data class KotrailFunctionLength(
     /** Most lines of code a function body may have. */
     val maxLines: Int,
@@ -214,7 +214,7 @@ data class KotrailFunctionLength(
     val maxComposableLines: Int,
 )
 
-/** Tunables for the named-arguments rule. Keys are `namedArgumentsForRepeatedTypes.<name>`. */
+/** Tunables for the named-arguments rule. From `rules.namedArgumentsForRepeatedTypes`. */
 data class KotrailNamedArguments(
     /** When at least this many positional arguments share a type, they must be named. */
     val minSameTypeArguments: Int,
@@ -233,7 +233,7 @@ enum class TestNamingStyle(val key: String) {
     }
 }
 
-/** Tunables for the test rules. Keys are `test.<name>`. */
+/** Tunables for the test rules. From `test.annotations` and `rules.test.naming`. */
 data class KotrailTest(
     /**
      * Fully qualified annotations that mark a function as a test. Replacing the list is how a
@@ -247,12 +247,14 @@ data class KotrailTest(
 )
 
 /**
- * Rule settings resolved once per compilation. Sources, in increasing precedence:
- * built-in defaults, the properties file passed through the `configFile` option, and
- * individual plugin options. Pass a different file (or different options) to test
- * compilations to relax rules there.
+ * Rule settings resolved once per compilation. Sources, in increasing precedence: built-in
+ * defaults, the YAML files passed through the `configFile` option (in the order they are
+ * passed, deep-merged, a later file's entries winning key by key and `~` taking a key away),
+ * and individual plugin options, which are dotted paths into the same tree.
  *
- * Rule switches are `rules.<key>` and severities `severity.<key>`, with keys from [KotrailRule].
+ * The shape of the tree is [ConfigSchema]'s: `rules.<rule>` is a scalar shorthand (`off`,
+ * `on`, `error`, `warning`) or a mapping of `enabled`, `severity`, `note`, `exclude`, and the
+ * rule's own settings.
  */
 data class KotrailConfig(
     val enabled: Boolean,
@@ -272,7 +274,7 @@ data class KotrailConfig(
     val functionLength: KotrailFunctionLength,
     val noDataClassInPublicApi: KotrailNoDataClassInPublicApi,
     val visibilityPolicy: KotrailVisibilityPolicy,
-    /** The `requiredAnnotation.policy[<name>]` entries, by name. */
+    /** The `rules.requiredAnnotation.policies` entries, by name. */
     val requiredAnnotations: List<KotrailRequiredAnnotation>,
 ) {
     fun isEnabled(rule: KotrailRule): Boolean = switches[rule] ?: true
@@ -281,7 +283,7 @@ data class KotrailConfig(
 
     /**
      * The project's own text for this rule, appended to the built-in message and already prefixed
-     * with a space, or empty. A rule's own `note.<key>` wins over the project-wide `note`.
+     * with a space, or empty. A rule's own `note` wins over the top-level `note`.
      *
      * The note is added to the message the rule always reports, never substituted for it, so the
      * rewrite a rule asks for cannot be lost by configuring one.
@@ -299,8 +301,6 @@ data class KotrailConfig(
         val DEFAULT_REFERENCE_FORMS: Set<ReferenceForm> = ReferenceForm.entries.toSet()
         const val DEFAULT_COMMENT_MAX_LINES = 5
         const val DEFAULT_KDOC_MAX_LINES = 0
-        val DEFAULT_FQN_ALLOW: List<String> = emptyList()
-        val DEFAULT_FORBIDDEN_FUNCTIONS: List<String> = emptyList()
         const val DEFAULT_MIN_SAME_TYPE_ARGUMENTS = 3
         const val DEFAULT_FUNCTION_MAX_LINES = 50
         val DEFAULT_NO_DATA_CLASS_SCOPE = PublicApiScope.EXPLICIT_API
@@ -316,59 +316,6 @@ data class KotrailConfig(
         )
         val DEFAULT_TEST_NAMING_STYLE = TestNamingStyle.BACKTICKED
         const val DEFAULT_TEST_MIN_NAME_WORDS = 3
-
-        const val KEY_ENABLED = "enabled"
-        const val KEY_NOTE = "note"
-        const val KEY_EXCLUDE = "exclude"
-        const val KEY_COMPOSE_MAX_NESTING = "compose.nesting.maxDepth"
-        const val KEY_TRAILING_LAMBDA_ALLOWED_PACKAGES = "compose.noTrailingCallback.allowedPackages"
-        const val KEY_PREVIEW_REQUIRE_FOR = "compose.previewRequired.scope"
-        const val KEY_MAX_COMPOSABLES_PER_FILE = "compose.composablesPerFile.max"
-        const val KEY_SERIALIZATION_REQUIRED_FOR = "mustBeSerializable.requiredFor"
-        const val KEY_NARROW_MODEL_MAX_UNUSED = "narrowModelParameters.maxUnusedProperties"
-        const val KEY_NARROW_MODEL_SCOPE = "narrowModelParameters.scope"
-        const val KEY_REFERENCE_FORMS = "preferFunctionReferences.forms"
-        const val KEY_COMMENT_MAX_LINES = "commentLength.maxLines"
-        const val KEY_KDOC_MAX_LINES = "commentLength.maxKDocLines"
-        const val KEY_FQN_ALLOW = "noFqnReferences.allow"
-        const val KEY_FORBIDDEN_FUNCTIONS = "forbiddenCall.functions"
-        const val KEY_MIN_SAME_TYPE_ARGUMENTS = "namedArgumentsForRepeatedTypes.minArguments"
-        const val KEY_FUNCTION_MAX_LINES = "functionLength.maxLines"
-        const val KEY_NO_DATA_CLASS_SCOPE = "noDataClassInPublicApi.scope"
-        const val KEY_VISIBILITY_PRIVATE = "visibilityPolicy.private"
-        const val KEY_VISIBILITY_INTERNAL = "visibilityPolicy.internal"
-        const val KEY_COMPOSABLE_MAX_LINES = "functionLength.maxComposableLines"
-        const val KEY_TEST_ANNOTATIONS = "test.annotations"
-        const val KEY_TEST_NAMING_STYLE = "test.naming.style"
-        const val KEY_TEST_MIN_NAME_WORDS = "test.naming.minWords"
-        const val KEY_LOCALS_PLATFORM = "compose.compositionLocals.platform"
-        const val KEY_LOCALS_REQUIRED = "compose.compositionLocals.required"
-        const val KEY_LOCALS_ROOTS = "compose.compositionLocals.roots"
-
-        /**
-         * Family of `requiredAnnotation.policy[<name>]=<predicate> -> <annotation fqn>` entries.
-         * A user-chosen key sits in brackets, so that it can hold dots (a fully qualified name)
-         * and still leave `<family>.<setting>` and `<family>[<key>].<setting>` parseable.
-         */
-        const val KEY_FAMILY_REQUIRED_ANNOTATION = "requiredAnnotation.policy"
-
-        /** Family of `forbiddenCall[<name>]=<call predicate>` entries; `forbiddenCall.functions` stays for plain names. */
-        const val KEY_FAMILY_FORBIDDEN_CALL = "forbiddenCall"
-
-        /** Family of `compose.windowInsets.known[<composable fqn>]=<Type[:Sides],...|None>` entries. */
-        const val KEY_FAMILY_KNOWN_INSETS = "compose.windowInsets.known"
-
-        /** Family of `compose.compositionLocals.known[<composable fqn>]=<local>, <param>:<local>, ...|None` entries. */
-        const val KEY_FAMILY_KNOWN_LOCALS = "compose.compositionLocals.known"
-
-        /** Key families whose bracketed key is chosen by the project, accepted by the config file next to [ALL_KEYS]. */
-        val KEY_FAMILIES: List<String> = listOf(KEY_FAMILY_REQUIRED_ANNOTATION, KEY_FAMILY_FORBIDDEN_CALL, KEY_FAMILY_KNOWN_INSETS, KEY_FAMILY_KNOWN_LOCALS)
-
-        /** What a user-chosen key may look like: letters, digits, dots, `_` and `-`, starting with a letter. */
-        val ENTRY_NAME = Regex("[A-Za-z][A-Za-z0-9_.-]*")
-
-        val DEFAULT_LOCALS_PLATFORM: List<String> = emptyList()
-        val DEFAULT_LOCALS_REQUIRED: List<String> = emptyList()
         val DEFAULT_LOCALS_ROOTS: List<String> = listOf(
             "androidx.activity.compose.setContent",
             "androidx.compose.ui.window.Window",
@@ -379,515 +326,427 @@ data class KotrailConfig(
             "androidx.compose.ui.window.CanvasBasedWindow",
         )
 
-        val SETTING_KEYS = listOf(
-            KEY_ENABLED,
-            KEY_NOTE,
-            KEY_EXCLUDE,
-            KEY_COMPOSE_MAX_NESTING,
-            KEY_TRAILING_LAMBDA_ALLOWED_PACKAGES,
-            KEY_PREVIEW_REQUIRE_FOR,
-            KEY_MAX_COMPOSABLES_PER_FILE,
-            KEY_SERIALIZATION_REQUIRED_FOR,
-            KEY_NARROW_MODEL_MAX_UNUSED,
-            KEY_NARROW_MODEL_SCOPE,
-            KEY_REFERENCE_FORMS,
-            KEY_COMMENT_MAX_LINES,
-            KEY_KDOC_MAX_LINES,
-            KEY_FQN_ALLOW,
-            KEY_FORBIDDEN_FUNCTIONS,
-            KEY_MIN_SAME_TYPE_ARGUMENTS,
-            KEY_FUNCTION_MAX_LINES,
-            KEY_COMPOSABLE_MAX_LINES,
-            KEY_NO_DATA_CLASS_SCOPE,
-            KEY_VISIBILITY_PRIVATE,
-            KEY_VISIBILITY_INTERNAL,
-            KEY_TEST_ANNOTATIONS,
-            KEY_TEST_NAMING_STYLE,
-            KEY_TEST_MIN_NAME_WORDS,
-            KEY_LOCALS_PLATFORM,
-            KEY_LOCALS_REQUIRED,
-            KEY_LOCALS_ROOTS,
-        )
+        /** The value of an entry that says "nothing": no insets handled, no locals read or provided. */
+        const val NONE = "none"
 
-        val ALL_KEYS: List<String> = SETTING_KEYS +
-            KotrailRule.switchable.map { it.switchKey } +
-            KotrailRule.entries.map { it.severityKey } +
-            KotrailRule.entries.map { it.noteKey } +
-            KotrailRule.entries.map { it.excludeKey }
+        /** What a user-chosen entry name may look like: letters, digits, dots, `_` and `-`, starting with a letter. */
+        val ENTRY_NAME = Regex("[A-Za-z][A-Za-z0-9_.-]*")
 
         @OptIn(ExperimentalCompilerApi::class)
-        fun from(configuration: CompilerConfiguration): KotrailConfig {
-            val file = loadProperties(configuration.get(KotrailConfigurationKeys.CONFIG_FILE).orEmpty())
+        fun from(configuration: CompilerConfiguration): KotrailConfig = try {
+            val tree = loadTree(
+                configuration.get(KotrailConfigurationKeys.CONFIG_FILE).orEmpty(),
+                configuration.get(KotrailConfigurationKeys.OPTIONS).orEmpty(),
+            )
+            Reader(tree).read()
+        } catch (e: ConfigException) {
+            throw CliOptionProcessingException("Kotrail configuration: ${e.message}")
+        }
 
-            val switches = KotrailRule.switchable.associateWith { rule ->
-                configuration.get(KotrailConfigurationKeys.switchKey(rule))
-                    ?: file.boolean(rule.switchKey)
-                    ?: true
+        /**
+         * The configuration tree: every file parsed and desugared, merged in order, then every
+         * option applied as a patch on top. Unknown keys are rejected as each layer is read.
+         */
+        internal fun loadTree(files: List<String>, options: List<String>): ConfigNode.Mapping {
+            var tree: ConfigNode = ConfigNode.Mapping(LinkedHashMap(), "<defaults>")
+            for (path in files) {
+                val file = File(path)
+                if (!file.isFile) throw ConfigException("config file not found: $path")
+                val parsed = KotrailYaml.parse(file.name, file.readText())
+                validate(parsed)
+                tree = ConfigTree.merge(tree, desugar(parsed)) ?: tree
             }
-            val severities = KotrailRule.entries.associateWith { rule ->
-                configuration.get(KotrailConfigurationKeys.severityKey(rule))
-                    ?: file.getProperty(rule.severityKey)?.let { parseSeverity(rule.severityKey, it) }
-                    ?: rule.defaultSeverity
+            for (option in options) {
+                val patch = optionPatch(option)
+                validate(patch)
+                tree = ConfigTree.merge(tree, desugar(patch)) ?: tree
             }
+            return tree as ConfigNode.Mapping
+        }
 
-            val projectNote = configuration.get(KotrailConfigurationKeys.NOTE) ?: file.getProperty(KEY_NOTE)
+        /**
+         * A plugin option as a tree patch. The option name is a dotted path in which a rule key
+         * keeps its own dots (`rules.compose.nesting.maxDepth`); the value is read the way the
+         * file would read it: a list is comma separated, a named entry is `<name>=<value>`, and an
+         * empty value is `~`.
+         */
+        internal fun optionPatch(option: String): ConfigNode.Mapping {
+            val eq = option.indexOf('=')
+            if (eq < 0) throw ConfigException("option '$option' is not key=value")
+            val name = option.substring(0, eq).trim()
+            val value = option.substring(eq + 1)
+            val at = "option $name"
+            val (segments, kind) = optionPath(name) ?: throw ConfigException("unknown option '$name'")
+            val leaf: ConfigNode = when {
+                value.isBlank() -> ConfigNode.Null(at)
+                kind == ConfigSchema.Kind.LIST -> ConfigNode.Sequence(parseList(value).map { ConfigNode.Scalar(it, at) }, at)
+                kind == ConfigSchema.Kind.ENTRIES -> {
+                    val inner = value.indexOf('=')
+                    if (inner < 0) throw ConfigException("option '$name' takes '<name>=<value>', got '$value'")
+                    val entry = value.substring(0, inner).trim()
+                    val entryValue = value.substring(inner + 1)
+                    ConfigNode.Mapping(
+                        linkedMapOf(entry to (if (entryValue.isBlank()) ConfigNode.Null(at) else ConfigNode.Scalar(entryValue.trim(), at))),
+                        at,
+                    )
+                }
+                else -> ConfigNode.Scalar(value.trim(), at)
+            }
+            return ConfigTree.pathTo(segments, leaf, at) as ConfigNode.Mapping
+        }
+
+        /** The path segments and kind of an option name, or `null` if no such option exists. */
+        internal fun optionPath(name: String): Pair<List<String>, ConfigSchema.Kind>? {
+            ConfigSchema.TOP_LEVEL.firstOrNull { it.name == name }?.let { return listOf(it.name) to it.kind }
+            if (name.startsWith("test.")) {
+                ConfigSchema.TEST.firstOrNull { "test." + it.name == name }?.let { return listOf("test", it.name) to it.kind }
+                return null
+            }
+            if (!name.startsWith("rules.")) return null
+            val rest = name.removePrefix("rules.")
+            // A rule key may contain dots, so the longest rule key that is a prefix wins.
+            val rule = KotrailRule.entries.filter { rest == it.key || rest.startsWith(it.key + ".") }.maxByOrNull { it.key.length }
+                ?: return null
+            if (rest == rule.key) return listOf("rules", rule.key) to ConfigSchema.Kind.STRING
+            val setting = rest.removePrefix(rule.key + ".")
+            val known = (ConfigSchema.RESERVED + ConfigSchema.settingsOf(rule)).firstOrNull { it.name == setting } ?: return null
+            return listOf("rules", rule.key, setting) to known.kind
+        }
+
+        /** Every option name the command line accepts, with the kind of value it takes. */
+        val OPTION_NAMES: List<Pair<String, ConfigSchema.Kind>> =
+            ConfigSchema.TOP_LEVEL.map { it.name to it.kind } +
+                ConfigSchema.TEST.map { "test." + it.name to it.kind } +
+                KotrailRule.entries.flatMap { rule ->
+                    listOf("rules." + rule.key to ConfigSchema.Kind.STRING) +
+                        (ConfigSchema.RESERVED + ConfigSchema.settingsOf(rule)).map { "rules.${rule.key}.${it.name}" to it.kind }
+                }
+
+        /** `rules.<rule>: off` and friends become the mapping they stand for, so that layers merge key by key. */
+        private fun desugar(tree: ConfigNode.Mapping): ConfigNode.Mapping {
+            val rules = tree["rules"] as? ConfigNode.Mapping ?: return tree
+            val rewritten = LinkedHashMap<String, ConfigNode>()
+            for ((key, node) in rules.entries) {
+                rewritten[key] = if (node is ConfigNode.Scalar) {
+                    val rule = ConfigSchema.ruleByKey(key)
+                    val patch = LinkedHashMap<String, ConfigNode>()
+                    when (node.value) {
+                        "off", "on" -> {
+                            if (rule?.hasSwitch == false) throw ConfigException("${node.at}: '$key' has no switch; it is switched with the rule that owns it")
+                            patch["enabled"] = ConfigNode.Scalar((node.value == "on").toString(), node.at)
+                        }
+                        "error", "warning" -> {
+                            if (rule?.hasSwitch != false) patch["enabled"] = ConfigNode.Scalar("true", node.at)
+                            patch["severity"] = ConfigNode.Scalar(node.value, node.at)
+                        }
+                        else -> throw ConfigException("${node.at}: '$key' must be off, on, error, warning, or a mapping; got '${node.value}'")
+                    }
+                    ConfigNode.Mapping(patch, node.at)
+                } else {
+                    node
+                }
+            }
+            val top = LinkedHashMap(tree.entries)
+            top["rules"] = ConfigNode.Mapping(rewritten, rules.at)
+            return ConfigNode.Mapping(top, tree.at)
+        }
+
+        /** Rejects unknown keys and wrong shapes with the offending position, before anything is merged. */
+        private fun validate(tree: ConfigNode.Mapping) {
+            val topNames = ConfigSchema.TOP_LEVEL.map { it.name } + listOf("test", "rules")
+            for (key in tree.entries.keys) {
+                if (key !in topNames) throw ConfigException("${tree.keyAt(key)}: unknown key '$key'; expected one of ${topNames.joinToString()}")
+            }
+            (tree["test"] as? ConfigNode.Mapping)?.let { test ->
+                for (key in test.entries.keys) {
+                    if (ConfigSchema.TEST.none { it.name == key }) throw ConfigException("${test.keyAt(key)}: unknown key '$key' under test; expected ${ConfigSchema.TEST.joinToString { it.name }}")
+                }
+            }
+            val rules = tree["rules"] ?: return
+            if (rules !is ConfigNode.Mapping) {
+                if (rules is ConfigNode.Null) return
+                throw ConfigException("${rules.at}: rules must be a mapping of rule keys")
+            }
+            for ((key, node) in rules.entries) {
+                val rule = ConfigSchema.ruleByKey(key)
+                    ?: throw ConfigException("${rules.keyAt(key)}: unknown rule '$key'; rules are named by their full key, for example compose.nesting")
+                if (node !is ConfigNode.Mapping) continue
+                val allowed = ConfigSchema.RESERVED.filter { rule.hasSwitch || it.name != "enabled" } + ConfigSchema.settingsOf(rule)
+                for (setting in node.entries.keys) {
+                    if (allowed.none { it.name == setting }) {
+                        throw ConfigException("${node.keyAt(setting)}: unknown key '$setting' under rules.$key; expected one of ${allowed.joinToString { it.name }}")
+                    }
+                }
+            }
+        }
+
+        /** Comma-separated values, trimmed, empties dropped. */
+        fun parseList(value: String): List<String> = value.split(',').map { it.trim() }.filter { it.isNotEmpty() }
+    }
+
+    /** Reads the merged tree into settings, converting and checking every value where it is used. */
+    private class Reader(private val tree: ConfigNode.Mapping) {
+        private val rules = tree["rules"] as? ConfigNode.Mapping
+
+        fun read(): KotrailConfig {
+            val switches = KotrailRule.switchable.associateWith { rule -> boolean(ruleNode(rule), "enabled") ?: true }
+            val severities = KotrailRule.entries.associateWith { rule -> enumValue(rule, "severity", listOf("error", "warning"))?.let { parseSeverity(it) } ?: rule.defaultSeverity }
+            val projectNote = string(tree, "note")
             val notes = KotrailRule.entries.associateWith { rule ->
-                val text = configuration.get(KotrailConfigurationKeys.noteKey(rule))
-                    ?: file.getProperty(rule.noteKey)
-                    ?: projectNote
+                val text = string(ruleNode(rule), "note") ?: projectNote
                 if (text.isNullOrBlank()) "" else " " + text.trim()
             }
-
-            // An empty predicate (a later file or an option that clears one set earlier) parses to
-            // Never and is dropped here, so that "unset" is spelled the same way in every layer.
             val excludes = KotrailExcludes(
-                everywhere = (
-                    configuration.get(KotrailConfigurationKeys.EXCLUDE)
-                        ?: file.getProperty(KEY_EXCLUDE)?.let { parseExclude(KEY_EXCLUDE, it) }
-                    ).unlessNever(),
-                perRule = KotrailRule.entries.mapNotNull { rule ->
-                    val predicate = (
-                        configuration.get(KotrailConfigurationKeys.excludeKey(rule))
-                            ?: file.getProperty(rule.excludeKey)?.let { parseExclude(rule.excludeKey, it) }
-                        ).unlessNever()
-                    predicate?.let { rule to it }
-                }.toMap(),
+                everywhere = predicate(tree, "exclude"),
+                perRule = KotrailRule.entries.mapNotNull { rule -> predicate(ruleNode(rule), "exclude")?.let { rule to it } }.toMap(),
             )
-
-            val maxNesting = configuration.get(KotrailConfigurationKeys.COMPOSE_MAX_NESTING)
-                ?: file.int(KEY_COMPOSE_MAX_NESTING)
-                ?: DEFAULT_COMPOSE_MAX_NESTING
-            val trailingAllowed = configuration.get(KotrailConfigurationKeys.TRAILING_LAMBDA_ALLOWED_PACKAGES)
-                ?: file.getProperty(KEY_TRAILING_LAMBDA_ALLOWED_PACKAGES)?.let { parseList(it) }
-                ?: DEFAULT_TRAILING_LAMBDA_ALLOWED_PACKAGES
-            val previewRequireFor = configuration.get(KotrailConfigurationKeys.PREVIEW_REQUIRE_FOR)
-                ?: file.getProperty(KEY_PREVIEW_REQUIRE_FOR)?.let { parsePreviewScope(KEY_PREVIEW_REQUIRE_FOR, it) }
-                ?: DEFAULT_PREVIEW_REQUIRE_FOR
-            val maxComposablesPerFile = configuration.get(KotrailConfigurationKeys.MAX_COMPOSABLES_PER_FILE)
-                ?: file.int(KEY_MAX_COMPOSABLES_PER_FILE)
-                ?: DEFAULT_MAX_COMPOSABLES_PER_FILE
-            val serializationRequiredFor = configuration.get(KotrailConfigurationKeys.SERIALIZATION_REQUIRED_FOR)
-                ?: file.getProperty(KEY_SERIALIZATION_REQUIRED_FOR)?.let { parseList(it) }
-                ?: DEFAULT_SERIALIZATION_REQUIRED_FOR
-            val maxUnused = configuration.get(KotrailConfigurationKeys.NARROW_MODEL_MAX_UNUSED)
-                ?: file.int(KEY_NARROW_MODEL_MAX_UNUSED)
-                ?: DEFAULT_MAX_UNUSED_MODEL_PROPERTIES
-            val scope = configuration.get(KotrailConfigurationKeys.NARROW_MODEL_SCOPE)
-                ?: file.getProperty(KEY_NARROW_MODEL_SCOPE)?.let { parseScope(KEY_NARROW_MODEL_SCOPE, it) }
-                ?: DEFAULT_NARROW_MODEL_SCOPE
-            val referenceForms = configuration.get(KotrailConfigurationKeys.REFERENCE_FORMS)
-                ?: file.getProperty(KEY_REFERENCE_FORMS)?.let { parseReferenceForms(KEY_REFERENCE_FORMS, it) }
-                ?: DEFAULT_REFERENCE_FORMS
-            val commentMaxLines = configuration.get(KotrailConfigurationKeys.COMMENT_MAX_LINES)
-                ?: file.int(KEY_COMMENT_MAX_LINES)
-                ?: DEFAULT_COMMENT_MAX_LINES
-            val kdocMaxLines = configuration.get(KotrailConfigurationKeys.KDOC_MAX_LINES)
-                ?: file.int(KEY_KDOC_MAX_LINES)
-                ?: DEFAULT_KDOC_MAX_LINES
-            val fqnAllow = configuration.get(KotrailConfigurationKeys.FQN_ALLOW)
-                ?: file.getProperty(KEY_FQN_ALLOW)?.let { parseList(it) }
-                ?: DEFAULT_FQN_ALLOW
-            val forbiddenFunctions = configuration.get(KotrailConfigurationKeys.FORBIDDEN_FUNCTIONS)
-                ?: file.getProperty(KEY_FORBIDDEN_FUNCTIONS)?.let { parseList(it) }
-                ?: DEFAULT_FORBIDDEN_FUNCTIONS
-            val forbiddenEntries = (
-                file.entriesOf(KEY_FAMILY_FORBIDDEN_CALL)
-                    .associate { (name, value) -> name to parseForbiddenCall(name, value) } +
-                    configuration.get(KotrailConfigurationKeys.FORBIDDEN_CALLS).orEmpty()
-                ).values.filterNotNull()
-            val minSameType = configuration.get(KotrailConfigurationKeys.MIN_SAME_TYPE_ARGUMENTS)
-                ?: file.int(KEY_MIN_SAME_TYPE_ARGUMENTS)
-                ?: DEFAULT_MIN_SAME_TYPE_ARGUMENTS
-
-            val functionMaxLines = configuration.get(KotrailConfigurationKeys.FUNCTION_MAX_LINES)
-                ?: file.int(KEY_FUNCTION_MAX_LINES)
-                ?: DEFAULT_FUNCTION_MAX_LINES
-            val composableMaxLines = configuration.get(KotrailConfigurationKeys.COMPOSABLE_MAX_LINES)
-                ?: file.int(KEY_COMPOSABLE_MAX_LINES)
-                ?: DEFAULT_COMPOSABLE_MAX_LINES
-            val noDataClassScope = configuration.get(KotrailConfigurationKeys.NO_DATA_CLASS_SCOPE)
-                ?: file.getProperty(KEY_NO_DATA_CLASS_SCOPE)?.let { parsePublicApiScope(KEY_NO_DATA_CLASS_SCOPE, it) }
-                ?: DEFAULT_NO_DATA_CLASS_SCOPE
-            val visibilityPolicy = KotrailVisibilityPolicy(
-                private = (
-                    configuration.get(KotrailConfigurationKeys.VISIBILITY_PRIVATE)
-                        ?: file.getProperty(KEY_VISIBILITY_PRIVATE)?.let { parseExclude(KEY_VISIBILITY_PRIVATE, it) }
-                    ).unlessNever(),
-                internal = (
-                    configuration.get(KotrailConfigurationKeys.VISIBILITY_INTERNAL)
-                        ?: file.getProperty(KEY_VISIBILITY_INTERNAL)?.let { parseExclude(KEY_VISIBILITY_INTERNAL, it) }
-                    ).unlessNever(),
-            )
-            // Named entries: later files and options override the entry of the same name, and every
-            // other entry stays, so a test source set can add or drop one policy without restating
-            // them all. An empty value is the way to drop one (it parses to null).
-            val requiredAnnotations = (
-                file.entriesOf(KEY_FAMILY_REQUIRED_ANNOTATION)
-                    .associate { (name, value) -> name to parseRequiredAnnotation(name, value) } +
-                    configuration.get(KotrailConfigurationKeys.REQUIRED_ANNOTATIONS).orEmpty()
-                ).values.filterNotNull()
-            val knownInsetsHandlers =
-                file.entriesOf(KEY_FAMILY_KNOWN_INSETS)
-                    .associate { (fqn, value) -> fqn to parseInsetsSpec(entryKey(KEY_FAMILY_KNOWN_INSETS, fqn), value) } +
-                    configuration.get(KotrailConfigurationKeys.KNOWN_INSETS_HANDLERS).orEmpty()
-            val compositionLocals = KotrailCompositionLocals(
-                platform = configuration.get(KotrailConfigurationKeys.LOCALS_PLATFORM)
-                    ?: file.getProperty(KEY_LOCALS_PLATFORM)?.let { parseList(it) }
-                    ?: DEFAULT_LOCALS_PLATFORM,
-                required = configuration.get(KotrailConfigurationKeys.LOCALS_REQUIRED)
-                    ?: file.getProperty(KEY_LOCALS_REQUIRED)?.let { parseList(it) }
-                    ?: DEFAULT_LOCALS_REQUIRED,
-                roots = configuration.get(KotrailConfigurationKeys.LOCALS_ROOTS)
-                    ?: file.getProperty(KEY_LOCALS_ROOTS)?.let { parseList(it) }
-                    ?: DEFAULT_LOCALS_ROOTS,
-                known = file.entriesOf(KEY_FAMILY_KNOWN_LOCALS)
-                    .associate { (fqn, value) -> fqn to parseLocalsSpec(entryKey(KEY_FAMILY_KNOWN_LOCALS, fqn), value) } +
-                    configuration.get(KotrailConfigurationKeys.KNOWN_LOCALS).orEmpty(),
-            )
-            val testAnnotations = configuration.get(KotrailConfigurationKeys.TEST_ANNOTATIONS)
-                ?: file.getProperty(KEY_TEST_ANNOTATIONS)?.let { parseList(it) }
-                ?: DEFAULT_TEST_ANNOTATIONS
-            val testNamingStyle = configuration.get(KotrailConfigurationKeys.TEST_NAMING_STYLE)
-                ?: file.getProperty(KEY_TEST_NAMING_STYLE)?.let { parseTestNamingStyle(KEY_TEST_NAMING_STYLE, it) }
-                ?: DEFAULT_TEST_NAMING_STYLE
-            val testMinNameWords = configuration.get(KotrailConfigurationKeys.TEST_MIN_NAME_WORDS)
-                ?: file.int(KEY_TEST_MIN_NAME_WORDS)
-                ?: DEFAULT_TEST_MIN_NAME_WORDS
-
+            val test = tree["test"] as? ConfigNode.Mapping
             return KotrailConfig(
-                enabled = configuration.get(KotrailConfigurationKeys.ENABLED) ?: file.boolean(KEY_ENABLED) ?: true,
+                enabled = boolean(tree, "enabled") ?: true,
                 switches = switches,
                 severities = severities,
                 notes = notes,
                 excludes = excludes,
                 compose = KotrailComposeSettings(
-                    maxNesting = maxNesting,
-                    trailingLambdaAllowedPackages = trailingAllowed,
-                    previewRequireFor = previewRequireFor,
-                    maxComposablesPerFile = maxComposablesPerFile,
-                    knownInsetsHandlers = knownInsetsHandlers,
-                    compositionLocals = compositionLocals,
+                    maxNesting = int(KotrailRule.COMPOSE_NESTING, "maxDepth") ?: DEFAULT_COMPOSE_MAX_NESTING,
+                    trailingLambdaAllowedPackages = list(KotrailRule.COMPOSE_NO_TRAILING_CALLBACK, "allowedPackages") ?: DEFAULT_TRAILING_LAMBDA_ALLOWED_PACKAGES,
+                    previewRequireFor = enumValue(KotrailRule.COMPOSE_PREVIEW_REQUIRED, "scope", PreviewScope.entries.map { it.key })?.let { PreviewScope.fromKey(it)!! } ?: DEFAULT_PREVIEW_REQUIRE_FOR,
+                    maxComposablesPerFile = int(KotrailRule.COMPOSE_COMPOSABLES_PER_FILE, "max") ?: DEFAULT_MAX_COMPOSABLES_PER_FILE,
+                    knownInsetsHandlers = entries(KotrailRule.COMPOSE_WINDOW_INSETS, "known") { node -> insetsSpec(node) },
+                    compositionLocals = KotrailCompositionLocals(
+                        platform = list(KotrailRule.COMPOSE_COMPOSITION_LOCALS, "platform").orEmpty(),
+                        required = list(KotrailRule.COMPOSE_COMPOSITION_LOCALS, "required").orEmpty(),
+                        roots = list(KotrailRule.COMPOSE_COMPOSITION_LOCALS, "roots") ?: DEFAULT_LOCALS_ROOTS,
+                        known = entries(KotrailRule.COMPOSE_COMPOSITION_LOCALS, "known") { node -> localsSpec(node) },
+                    ),
                 ),
-                narrowModelParameters = KotrailNarrowModelParameters(maxUnusedProperties = maxUnused, scope = scope),
-                preferFunctionReferences = KotrailPreferFunctionReferences(forms = referenceForms),
-                comments = KotrailCommentSettings(maxLines = commentMaxLines, maxKDocLines = kdocMaxLines),
-                noFqnReferences = KotrailNoFqnReferences(allow = fqnAllow),
+                narrowModelParameters = KotrailNarrowModelParameters(
+                    maxUnusedProperties = int(KotrailRule.NARROW_MODEL_PARAMETERS, "maxUnusedProperties") ?: DEFAULT_MAX_UNUSED_MODEL_PROPERTIES,
+                    scope = enumValue(KotrailRule.NARROW_MODEL_PARAMETERS, "scope", NarrowModelParametersScope.entries.map { it.key })?.let { NarrowModelParametersScope.fromKey(it)!! } ?: DEFAULT_NARROW_MODEL_SCOPE,
+                ),
+                preferFunctionReferences = KotrailPreferFunctionReferences(
+                    forms = list(KotrailRule.PREFER_FUNCTION_REFERENCES, "forms")?.let { forms ->
+                        val parsed = forms.map { ReferenceForm.fromKey(it) ?: fail(KotrailRule.PREFER_FUNCTION_REFERENCES, "forms", "accepts a subset of ${ReferenceForm.entries.joinToString { f -> f.key }}, got '$it'") }.toSet()
+                        if (parsed.isEmpty()) fail(KotrailRule.PREFER_FUNCTION_REFERENCES, "forms", "must list at least one form")
+                        parsed
+                    } ?: DEFAULT_REFERENCE_FORMS,
+                ),
+                comments = KotrailCommentSettings(
+                    maxLines = int(KotrailRule.COMMENT_LENGTH, "maxLines") ?: DEFAULT_COMMENT_MAX_LINES,
+                    maxKDocLines = int(KotrailRule.COMMENT_LENGTH, "maxKDocLines") ?: DEFAULT_KDOC_MAX_LINES,
+                ),
+                noFqnReferences = KotrailNoFqnReferences(allow = list(KotrailRule.NO_FQN_REFERENCES, "allow").orEmpty()),
                 forbiddenCall = KotrailForbiddenCall(
-                    entries = forbiddenFunctions.map { KotrailForbiddenCallEntry(it, plainForbiddenName(it)) } + forbiddenEntries,
+                    entries = list(KotrailRule.FORBIDDEN_CALL, "functions").orEmpty().map { KotrailForbiddenCallEntry(it, plainForbiddenName(it)) } +
+                        entries(KotrailRule.FORBIDDEN_CALL, "calls") { node -> callPredicate(node) }.map { (name, predicate) -> KotrailForbiddenCallEntry(name, predicate) },
                 ),
-                namedArguments = KotrailNamedArguments(minSameTypeArguments = minSameType),
-                serialization = KotrailSerialization(requiredFor = serializationRequiredFor),
+                namedArguments = KotrailNamedArguments(minSameTypeArguments = int(KotrailRule.NAMED_ARGUMENTS_FOR_REPEATED_TYPES, "minArguments") ?: DEFAULT_MIN_SAME_TYPE_ARGUMENTS),
+                serialization = KotrailSerialization(requiredFor = list(KotrailRule.MUST_BE_SERIALIZABLE, "requiredFor") ?: DEFAULT_SERIALIZATION_REQUIRED_FOR),
                 test = KotrailTest(
-                    annotations = testAnnotations,
-                    namingStyle = testNamingStyle,
-                    minNameWords = testMinNameWords,
+                    annotations = test?.get("annotations")?.let { list(it, "test.annotations") } ?: DEFAULT_TEST_ANNOTATIONS,
+                    namingStyle = enumValue(KotrailRule.TEST_NAMING, "style", TestNamingStyle.entries.map { it.key })?.let { TestNamingStyle.fromKey(it)!! } ?: DEFAULT_TEST_NAMING_STYLE,
+                    minNameWords = int(KotrailRule.TEST_NAMING, "minWords") ?: DEFAULT_TEST_MIN_NAME_WORDS,
                 ),
                 functionLength = KotrailFunctionLength(
-                    maxLines = functionMaxLines,
-                    maxComposableLines = composableMaxLines,
+                    maxLines = int(KotrailRule.FUNCTION_LENGTH, "maxLines") ?: DEFAULT_FUNCTION_MAX_LINES,
+                    maxComposableLines = int(KotrailRule.FUNCTION_LENGTH, "maxComposableLines") ?: DEFAULT_COMPOSABLE_MAX_LINES,
                 ),
-                noDataClassInPublicApi = KotrailNoDataClassInPublicApi(scope = noDataClassScope),
-                visibilityPolicy = visibilityPolicy,
-                requiredAnnotations = requiredAnnotations,
+                noDataClassInPublicApi = KotrailNoDataClassInPublicApi(
+                    scope = enumValue(KotrailRule.NO_DATA_CLASS_IN_PUBLIC_API, "scope", PublicApiScope.entries.map { it.key })?.let { PublicApiScope.fromKey(it)!! } ?: DEFAULT_NO_DATA_CLASS_SCOPE,
+                ),
+                visibilityPolicy = KotrailVisibilityPolicy(
+                    private = predicate(ruleNode(KotrailRule.VISIBILITY_POLICY), "private"),
+                    internal = predicate(ruleNode(KotrailRule.VISIBILITY_POLICY), "internal"),
+                ),
+                requiredAnnotations = entries(KotrailRule.REQUIRED_ANNOTATION, "policies") { node -> node }
+                    .map { (name, node) -> requiredAnnotation(name, node) },
             )
         }
 
-        /**
-         * A `requiredAnnotation.policy[<name>]` value: a predicate, `->`, and the annotation's fully
-         * qualified name. An empty value drops the policy of that name and gives `null`.
-         */
-        @OptIn(ExperimentalCompilerApi::class)
-        fun parseRequiredAnnotation(name: String, value: String): KotrailRequiredAnnotation? {
-            val key = entryKey(KEY_FAMILY_REQUIRED_ANNOTATION, name)
-            if (!ENTRY_NAME.matches(name)) {
-                throw CliOptionProcessingException(
-                    "Kotrail config key $key: a policy name is a letter followed by letters, digits, '.', '_' or '-', got '$name'",
-                )
+        private fun ruleNode(rule: KotrailRule): ConfigNode.Mapping? = rules?.get(rule.key) as? ConfigNode.Mapping
+
+        private fun fail(node: ConfigNode, message: String): Nothing = throw ConfigException("${node.at}: $message")
+
+        private fun fail(rule: KotrailRule, setting: String, message: String): Nothing {
+            val node = ruleNode(rule)?.get(setting)
+            throw ConfigException("${node?.at ?: "rules.${rule.key}.$setting"}: rules.${rule.key}.$setting $message")
+        }
+
+        private fun scalar(mapping: ConfigNode.Mapping?, key: String): ConfigNode.Scalar? = when (val node = mapping?.get(key)) {
+            null, is ConfigNode.Null -> null
+            is ConfigNode.Scalar -> node
+            else -> fail(node, "'$key' must be a single value")
+        }
+
+        private fun string(mapping: ConfigNode.Mapping?, key: String): String? = scalar(mapping, key)?.value
+
+        private fun boolean(mapping: ConfigNode.Mapping?, key: String): Boolean? = scalar(mapping, key)?.let {
+            when (it.value.lowercase()) {
+                "true" -> true
+                "false" -> false
+                else -> fail(it, "'$key' must be true or false, got '${it.value}'")
             }
-            if (value.isBlank()) return null
-            val arrow = value.lastIndexOf("->")
-            if (arrow < 0) {
-                throw CliOptionProcessingException(
-                    "Kotrail config key $key must be '<predicate> -> <annotation fqn>', got '$value'",
-                )
+        }
+
+        private fun int(rule: KotrailRule, key: String): Int? = scalar(ruleNode(rule), key)?.let {
+            it.value.toIntOrNull() ?: fail(it, "'$key' must be an integer, got '${it.value}'")
+        }
+
+        private fun enumValue(rule: KotrailRule, key: String, values: List<String>): String? = scalar(ruleNode(rule), key)?.let {
+            values.firstOrNull { v -> v.equals(it.value.trim(), ignoreCase = true) }
+                ?: fail(it, "'$key' must be one of ${values.joinToString()}, got '${it.value}'")
+        }
+
+        /** A list setting: a sequence in the file, or a comma-separated scalar, for the same value either way. */
+        private fun list(node: ConfigNode, what: String): List<String> = when (node) {
+            is ConfigNode.Sequence -> node.items.map { item ->
+                (item as? ConfigNode.Scalar)?.value ?: fail(item, "'$what' must list single values")
             }
-            val annotation = value.substring(arrow + 2).trim()
-            if (annotation.isEmpty() || annotation.any { it.isWhitespace() }) {
-                throw CliOptionProcessingException("Kotrail config key $key must end with one fully qualified annotation, got '$value'")
+            is ConfigNode.Scalar -> parseList(node.value)
+            is ConfigNode.Null -> emptyList()
+            is ConfigNode.Mapping -> fail(node, "'$what' must be a list")
+        }
+
+        private fun list(rule: KotrailRule, key: String): List<String>? = ruleNode(rule)?.get(key)?.let { list(it, key) }
+
+        private fun predicate(mapping: ConfigNode.Mapping?, key: String): ExcludePredicate? = scalar(mapping, key)?.let {
+            if (it.value.isBlank()) return null
+            try {
+                ExcludeParser.parse(it.value)
+            } catch (e: ExcludeParser.ExcludeSyntaxException) {
+                fail(it, e.message.orEmpty())
             }
-            return KotrailRequiredAnnotation(
-                name = name.trim(),
-                predicate = parseExclude(key, value.substring(0, arrow)),
-                annotation = annotation.removePrefix("@"),
-            )
+        }
+
+        /** The named entries of a map setting, sorted by name, each converted by [convert]. */
+        private fun <T> entries(rule: KotrailRule, key: String, convert: (ConfigNode) -> T): Map<String, T> {
+            val node = ruleNode(rule)?.get(key) ?: return emptyMap()
+            if (node is ConfigNode.Null) return emptyMap()
+            val mapping = node as? ConfigNode.Mapping ?: fail(node, "'$key' must be a mapping of names to values")
+            return mapping.entries.entries
+                .filter { it.value !is ConfigNode.Null }
+                .sortedBy { it.key }
+                .associate { (name, value) ->
+                    if (!ENTRY_NAME.matches(name)) fail(value, "'$name' is not a valid entry name: a letter, then letters, digits, '.', '_' or '-'")
+                    name to convert(value)
+                }
+        }
+
+        private fun callPredicate(node: ConfigNode): CallPredicate {
+            val scalar = node as? ConfigNode.Scalar ?: fail(node, "a forbidden call is a call predicate, for example fqn(kotlin.io.println)")
+            return try {
+                CallPredicateParser.parse(scalar.value)
+            } catch (e: ExcludeParser.ExcludeSyntaxException) {
+                fail(node, e.message.orEmpty())
+            }
+        }
+
+        /** A policy: `{where: <predicate>, annotation: <fqn>}`, or the one-line `<predicate> -> <fqn>`. */
+        private fun requiredAnnotation(name: String, node: ConfigNode): KotrailRequiredAnnotation {
+            val where: String
+            val annotation: String
+            when (node) {
+                is ConfigNode.Mapping -> {
+                    for ((key, value) in node.entries) if (key != "where" && key != "annotation") fail(value, "unknown key '$key' in a policy; expected where and annotation")
+                    where = string(node, "where") ?: fail(node, "a policy needs 'where', a predicate over declarations")
+                    annotation = string(node, "annotation") ?: fail(node, "a policy needs 'annotation', a fully qualified name")
+                }
+                is ConfigNode.Scalar -> {
+                    val arrow = node.value.lastIndexOf("->")
+                    if (arrow < 0) fail(node, "a policy is a mapping with where and annotation, or '<predicate> -> <annotation fqn>'")
+                    where = node.value.substring(0, arrow)
+                    annotation = node.value.substring(arrow + 2).trim()
+                }
+                else -> fail(node, "a policy is a mapping with where and annotation")
+            }
+            if (annotation.isEmpty() || annotation.any { it.isWhitespace() }) fail(node, "'annotation' must be one fully qualified name, got '$annotation'")
+            val predicate = try {
+                ExcludeParser.parse(where)
+            } catch (e: ExcludeParser.ExcludeSyntaxException) {
+                fail(node, e.message.orEmpty())
+            }
+            return KotrailRequiredAnnotation(name, predicate, annotation.removePrefix("@"))
         }
 
         /**
-         * What a plain `forbiddenCall.functions` name stands for: the function of that name, the
-         * constructors of a class of that name, and, for `Type.name`, an extension `name` called
-         * on a `Type` receiver, since that is how a reader sees `GlobalScope.launch { }`.
+         * An insets entry: one `Type` or `Type:Side+Side` scalar, a sequence of them, a
+         * comma-separated scalar, or `none` for a composable that handles nothing.
          */
-        internal fun plainForbiddenName(fqn: String): CallPredicate {
-            var predicate: CallPredicate = CallPredicate.Or(
-                CallPredicate.FqnIs(Glob(fqn)),
-                CallPredicate.Constructs(Glob(fqn)),
-            )
+        private fun insetsSpec(node: ConfigNode): InsetsSet {
+            val specs = when (node) {
+                is ConfigNode.Scalar -> if (node.value.trim().equals(NONE, ignoreCase = true)) return InsetsSet.EMPTY else parseList(node.value)
+                is ConfigNode.Sequence -> node.items.map { (it as? ConfigNode.Scalar)?.value ?: fail(it, "an insets entry lists Type or Type:Side+Side values") }
+                else -> fail(node, "an insets entry is a value, a list, or none")
+            }
+            var result = InsetsSet.EMPTY
+            for (entry in specs) {
+                val parts = entry.split(':', limit = 2).map { it.trim() }
+                if (parts[0].firstOrNull()?.isUpperCase() != true) fail(node, "'${parts[0]}' is not a WindowInsetsType entry; write it as SystemBars, Ime, ...")
+                val sides = if (parts.size == 2) {
+                    parts[1].split('+').map { it.trim() }.fold(Sides.NONE) { acc, side ->
+                        acc or (Sides.fromName(side) ?: fail(node, "unknown side '$side' in '$entry'; use Top, Bottom, Left, Right, Start, End, Horizontal, Vertical, or All"))
+                    }
+                } else {
+                    Sides.ALL
+                }
+                val insets = InsetsSet.fromTypeName(parts[0], sides) ?: fail(node, "unknown insets type '${parts[0]}' in '$entry'; use a WindowInsetsType name such as SystemBars")
+                result = result.union(insets)
+            }
+            return result
+        }
+
+        /**
+         * A composition-locals entry: `{reads: [...], provides: {param: [...]}}`, `none`, or the
+         * one-line `local, param:local, ...` form.
+         */
+        private fun localsSpec(node: ConfigNode): KotrailCompositionLocalKnowledge {
+            when (node) {
+                is ConfigNode.Mapping -> {
+                    for ((key, value) in node.entries) if (key != "reads" && key != "provides") fail(value, "unknown key '$key' in a locals entry; expected reads and provides")
+                    val reads = node["reads"]?.let { list(it, "reads") }.orEmpty().toSet()
+                    val provides = when (val p = node["provides"]) {
+                        null, is ConfigNode.Null -> emptyMap()
+                        is ConfigNode.Mapping -> p.entries.mapValues { (param, locals) -> list(locals, param).toSet() }
+                        else -> fail(p, "'provides' maps a lambda parameter name to the locals provided to it")
+                    }
+                    return KotrailCompositionLocalKnowledge(reads, provides)
+                }
+                is ConfigNode.Scalar -> {
+                    if (node.value.trim().equals(NONE, ignoreCase = true)) return KotrailCompositionLocalKnowledge(emptySet(), emptyMap())
+                    val reads = LinkedHashSet<String>()
+                    val provides = LinkedHashMap<String, MutableSet<String>>()
+                    for (entry in parseList(node.value)) {
+                        val parts = entry.split(':', limit = 2).map { it.trim() }
+                        if (parts.any { it.isEmpty() || it.any(Char::isWhitespace) }) fail(node, "'$entry' is not a fully qualified local or '<parameter>:<local>'")
+                        if (parts.size == 2) provides.getOrPut(parts[0]) { LinkedHashSet() } += parts[1] else reads += parts[0]
+                    }
+                    return KotrailCompositionLocalKnowledge(reads, provides)
+                }
+                else -> fail(node, "a locals entry is a mapping with reads and provides, or none")
+            }
+        }
+
+        private fun parseSeverity(value: String): Severity = if (value.equals("warning", ignoreCase = true)) Severity.WARNING else Severity.ERROR
+
+        /**
+         * What a plain `functions` name stands for: the function of that name, the constructors
+         * of a class of that name, and, for `Type.name`, an extension `name` called on a `Type`
+         * receiver, since that is how a reader sees `GlobalScope.launch { }`.
+         */
+        private fun plainForbiddenName(fqn: String): CallPredicate {
+            var predicate: CallPredicate = CallPredicate.Or(CallPredicate.FqnIs(Glob(fqn)), CallPredicate.Constructs(Glob(fqn)))
             val dot = fqn.lastIndexOf('.')
             if (dot > 0) {
                 predicate = CallPredicate.Or(
                     predicate,
                     CallPredicate.And(
                         // The extension may be top level in any package, the default one included.
-                        CallPredicate.Or(
-                            CallPredicate.FqnIs(Glob(fqn.substring(dot + 1))),
-                            CallPredicate.FqnIs(Glob("*." + fqn.substring(dot + 1))),
-                        ),
+                        CallPredicate.Or(CallPredicate.FqnIs(Glob(fqn.substring(dot + 1))), CallPredicate.FqnIs(Glob("*." + fqn.substring(dot + 1)))),
                         CallPredicate.ReceiverIs(fqn.substring(0, dot)),
                     ),
                 )
             }
             return predicate
         }
-
-        /** A `forbiddenCall[<name>]` value: a call predicate. An empty value drops the entry and gives `null`. */
-        @OptIn(ExperimentalCompilerApi::class)
-        fun parseForbiddenCall(name: String, value: String): KotrailForbiddenCallEntry? {
-            val key = entryKey(KEY_FAMILY_FORBIDDEN_CALL, name)
-            if (!ENTRY_NAME.matches(name)) {
-                throw CliOptionProcessingException(
-                    "Kotrail config key $key: an entry name is a letter followed by letters, digits, '.', '_' or '-', got '$name'",
-                )
-            }
-            if (value.isBlank()) return null
-            val predicate = try {
-                CallPredicateParser.parse(value)
-            } catch (e: ExcludeParser.ExcludeSyntaxException) {
-                throw CliOptionProcessingException("Kotrail config key $key: ${e.message}")
-            }
-            return KotrailForbiddenCallEntry(name, predicate)
-        }
-
-        /** A `forbiddenCall` option value, `<name>=<call predicate>`; `<name>=` drops the entry. */
-        @OptIn(ExperimentalCompilerApi::class)
-        fun parseForbiddenCallOption(value: String): Pair<String, KotrailForbiddenCallEntry?> {
-            val parts = value.split('=', limit = 2)
-            if (parts.size != 2) {
-                throw CliOptionProcessingException("Kotrail option forbiddenCall must be '<name>=<call predicate>', got '$value'")
-            }
-            val name = parts[0].trim()
-            return name to parseForbiddenCall(name, parts[1])
-        }
-
-        /**
-         * A `requiredAnnotation` option value, `<name>=<predicate> -> <annotation fqn>`, which is
-         * the file entry with its key prefix dropped; `<name>=` drops the policy.
-         */
-        @OptIn(ExperimentalCompilerApi::class)
-        fun parseRequiredAnnotationOption(value: String): Pair<String, KotrailRequiredAnnotation?> {
-            val parts = value.split('=', limit = 2)
-            if (parts.size != 2) {
-                throw CliOptionProcessingException(
-                    "Kotrail option requiredAnnotation must be '<name>=<predicate> -> <annotation fqn>', got '$value'",
-                )
-            }
-            val name = parts[0].trim()
-            return name to parseRequiredAnnotation(name, parts[1])
-        }
-
-        /**
-         * An insets specification: comma-separated `Type` or `Type:Side+Side` entries, with the
-         * entry names of `WindowInsetsType` (`SystemBars`, `Ime`, ...) and of `WindowInsetsSide`
-         * (`Top`, `Horizontal`, ...), or `None` for a composable that handles nothing. An empty
-         * value removes the entry, so that the built-in knowledge applies, and gives `null`.
-         */
-        @OptIn(ExperimentalCompilerApi::class)
-        fun parseInsetsSpec(key: String, value: String): InsetsSet? {
-            if (value.isBlank()) return null
-            if (value.trim() == INSETS_NONE) return InsetsSet.EMPTY
-            var result = InsetsSet.EMPTY
-            for (entry in parseList(value)) {
-                val parts = entry.split(':', limit = 2).map { it.trim() }
-                if (parts[0].firstOrNull()?.isUpperCase() != true) {
-                    throw CliOptionProcessingException(
-                        "Kotrail config key $key: '${parts[0]}' in '$entry' is not a WindowInsetsType entry; write it as SystemBars, Ime, ...",
-                    )
-                }
-                val sides = if (parts.size == 2) {
-                    parts[1].split('+').map { it.trim() }.fold(Sides.NONE) { acc, side ->
-                        acc or (Sides.fromName(side) ?: throw CliOptionProcessingException(
-                            "Kotrail config key $key: unknown side '$side' in '$entry'; " +
-                                "use Top, Bottom, Left, Right, Start, End, Horizontal, Vertical, or All",
-                        ))
-                    }
-                } else {
-                    Sides.ALL
-                }
-                val insets = InsetsSet.fromTypeName(parts[0], sides) ?: throw CliOptionProcessingException(
-                    "Kotrail config key $key: unknown insets type '${parts[0]}' in '$entry'; use a WindowInsetsType name such as SystemBars",
-                )
-                result = result.union(insets)
-            }
-            return result
-        }
-
-        /** The spec of a composable that handles no insets at all, or reads and provides no locals. */
-        const val INSETS_NONE = "None"
-
-        /**
-         * A composition-locals specification: comma-separated entries, each a fully qualified
-         * local the composable reads, or `<parameter>:<local>` for a local it provides to that
-         * lambda parameter; `None` for a composable that does neither. An empty value removes
-         * the entry and gives `null`.
-         */
-        @OptIn(ExperimentalCompilerApi::class)
-        fun parseLocalsSpec(key: String, value: String): KotrailCompositionLocalKnowledge? {
-            if (value.isBlank()) return null
-            if (value.trim() == INSETS_NONE) return KotrailCompositionLocalKnowledge(emptySet(), emptyMap())
-            val reads = LinkedHashSet<String>()
-            val provides = LinkedHashMap<String, MutableSet<String>>()
-            for (entry in parseList(value)) {
-                val parts = entry.split(':', limit = 2).map { it.trim() }
-                if (parts.any { it.isEmpty() || it.any(Char::isWhitespace) }) {
-                    throw CliOptionProcessingException(
-                        "Kotrail config key $key: '$entry' is not a fully qualified local or '<parameter>:<local>'",
-                    )
-                }
-                if (parts.size == 2) provides.getOrPut(parts[0]) { LinkedHashSet() } += parts[1] else reads += parts[0]
-            }
-            return KotrailCompositionLocalKnowledge(reads, provides)
-        }
-
-        /** A `compose.compositionLocals.known` option value, `<composable fqn>=<spec>`; `<fqn>=` removes the entry. */
-        @OptIn(ExperimentalCompilerApi::class)
-        fun parseKnownLocalsOption(value: String): Pair<String, KotrailCompositionLocalKnowledge?> {
-            val parts = value.split('=', limit = 2)
-            if (parts.size != 2 || parts[0].isBlank()) {
-                throw CliOptionProcessingException(
-                    "Kotrail option compose.compositionLocals.known must be '<composable fqn>=<local>, <param>:<local>, ...|None', got '$value'",
-                )
-            }
-            val fqn = parts[0].trim()
-            return fqn to parseLocalsSpec(entryKey(KEY_FAMILY_KNOWN_LOCALS, fqn), parts[1])
-        }
-
-        /** A `compose.windowInsets.known` option value, `<composable fqn>=<spec>`; `<fqn>=` removes the entry. */
-        @OptIn(ExperimentalCompilerApi::class)
-        fun parseKnownInsetsOption(value: String): Pair<String, InsetsSet?> {
-            val parts = value.split('=', limit = 2)
-            if (parts.size != 2 || parts[0].isBlank()) {
-                throw CliOptionProcessingException(
-                    "Kotrail option compose.windowInsets.known must be '<composable fqn>=<Type[:Sides],...>', got '$value'",
-                )
-            }
-            val fqn = parts[0].trim()
-            return fqn to parseInsetsSpec(entryKey(KEY_FAMILY_KNOWN_INSETS, fqn), parts[1])
-        }
-
-        /** A predicate as configured, or `null` when it was cleared with an empty value. */
-        private fun ExcludePredicate?.unlessNever(): ExcludePredicate? = takeUnless { it is ExcludePredicate.Never }
-
-        /** The key of one entry of a family: `family[name]`. */
-        fun entryKey(family: String, name: String): String = "$family[$name]"
-
-        private fun entryPattern(family: String) = Regex("^" + Regex.escape(family) + """\[([^\]]+)]$""")
-
-        /** `(name, value)` for every `family[name]` property, sorted by key. */
-        private fun Properties.entriesOf(family: String): List<Pair<String, String>> {
-            val pattern = entryPattern(family)
-            return stringPropertyNames().mapNotNull { key -> pattern.matchEntire(key)?.let { it.groupValues[1] to getProperty(key) } }
-                .sortedBy { it.first }
-        }
-
-        /** Comma-separated values, trimmed, empties dropped. */
-        fun parseList(value: String): List<String> = value.split(',').map { it.trim() }.filter { it.isNotEmpty() }
-
-        @OptIn(ExperimentalCompilerApi::class)
-        fun parseReferenceForms(key: String, value: String): Set<ReferenceForm> {
-            val forms = parseList(value).map { entry ->
-                ReferenceForm.fromKey(entry) ?: throw CliOptionProcessingException(
-                    "Kotrail config key $key accepts a comma-separated subset of " +
-                        "${ReferenceForm.entries.joinToString { it.key }}, got '$entry'",
-                )
-            }.toSet()
-            if (forms.isEmpty()) throw CliOptionProcessingException("Kotrail config key $key must list at least one form")
-            return forms
-        }
-
-        /** The files merged in order, so that a later file overrides the entries of an earlier one. */
-        @OptIn(ExperimentalCompilerApi::class)
-        private fun loadProperties(paths: List<String>): Properties {
-            val merged = Properties()
-            for (path in paths) {
-                val file = File(path)
-                if (!file.isFile) throw CliOptionProcessingException("Kotrail config file not found: $path")
-                val properties = Properties()
-                file.reader().use(properties::load)
-                val unknown = properties.stringPropertyNames()
-                    .filter { key -> key !in ALL_KEYS && KEY_FAMILIES.none { entryPattern(it).matches(key) } }
-                if (unknown.isNotEmpty()) {
-                    throw CliOptionProcessingException(
-                        "Unknown keys in Kotrail config file $path: ${unknown.sorted().joinToString()}",
-                    )
-                }
-                merged.putAll(properties)
-            }
-            return merged
-        }
-
-        @OptIn(ExperimentalCompilerApi::class)
-        private fun Properties.int(key: String): Int? = getProperty(key)?.trim()?.let { parseInt(key, it) }
-
-        @OptIn(ExperimentalCompilerApi::class)
-        private fun Properties.boolean(key: String): Boolean? = getProperty(key)?.trim()?.let { parseBoolean(key, it) }
-
-        @OptIn(ExperimentalCompilerApi::class)
-        fun parseInt(key: String, value: String): Int =
-            value.trim().toIntOrNull() ?: throw CliOptionProcessingException("Kotrail config key $key must be an integer, got '$value'")
-
-        @OptIn(ExperimentalCompilerApi::class)
-        fun parseBoolean(key: String, value: String): Boolean = when (value.trim().lowercase()) {
-            "true" -> true
-            "false" -> false
-            else -> throw CliOptionProcessingException("Kotrail config key $key must be true or false, got '$value'")
-        }
-
-        @OptIn(ExperimentalCompilerApi::class)
-        fun parseSeverity(key: String, value: String): Severity = when (value.trim().lowercase()) {
-            "error" -> Severity.ERROR
-            "warning" -> Severity.WARNING
-            else -> throw CliOptionProcessingException("Kotrail config key $key must be error or warning, got '$value'")
-        }
-
-        @OptIn(ExperimentalCompilerApi::class)
-        fun parsePreviewScope(key: String, value: String): PreviewScope =
-            PreviewScope.fromKey(value) ?: throw CliOptionProcessingException(
-                "Kotrail config key $key must be one of ${PreviewScope.entries.joinToString { it.key }}, got '$value'",
-            )
-
-        /** An empty value gives [ExcludePredicate.Never], which the loader treats as "unset". */
-        @OptIn(ExperimentalCompilerApi::class)
-        fun parseExclude(key: String, value: String): ExcludePredicate = try {
-            if (value.isBlank()) ExcludePredicate.Never else ExcludeParser.parse(value)
-        } catch (e: ExcludeParser.ExcludeSyntaxException) {
-            throw CliOptionProcessingException("Kotrail config key $key: ${e.message}")
-        }
-
-        @OptIn(ExperimentalCompilerApi::class)
-        fun parsePublicApiScope(key: String, value: String): PublicApiScope =
-            PublicApiScope.fromKey(value) ?: throw CliOptionProcessingException(
-                "Kotrail config key $key must be one of ${PublicApiScope.entries.joinToString { it.key }}, got '$value'",
-            )
-
-        @OptIn(ExperimentalCompilerApi::class)
-        fun parseTestNamingStyle(key: String, value: String): TestNamingStyle =
-            TestNamingStyle.fromKey(value) ?: throw CliOptionProcessingException(
-                "Kotrail config key $key must be one of ${TestNamingStyle.entries.joinToString { it.key }}, got '$value'",
-            )
-
-        @OptIn(ExperimentalCompilerApi::class)
-        fun parseScope(key: String, value: String): NarrowModelParametersScope =
-            NarrowModelParametersScope.fromKey(value) ?: throw CliOptionProcessingException(
-                "Kotrail config key $key must be one of ${NarrowModelParametersScope.entries.joinToString { it.key }}, got '$value'",
-            )
     }
 }

@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.noNotNullAssertion=true, severity.noNotNullAssertion=warning, rules.functionLength=true, functionLength.maxLines=2
+// KOTRAIL_CONFIG: rules.noNotNullAssertion=on, rules.noNotNullAssertion.severity=warning, rules.functionLength=on, rules.functionLength.maxLines=2
 // A @Suppress with the base name keeps working after the project changes the rule's severity:
 // the diagnostic in use is KOTRAIL_NOT_NULL_ASSERTION_WARNING, and the base name still matches.
 

@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.preferExplicitBackingField=true
+// KOTRAIL_CONFIG: rules.preferExplicitBackingField=on
 abstract class Base {
     // Not reported: open property.
     private val _label = "x"

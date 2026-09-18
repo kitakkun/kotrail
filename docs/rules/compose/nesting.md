@@ -1,8 +1,8 @@
 # Nesting limit (Compose)
 
 **Diagnostic:** `KOTRAIL_COMPOSABLE_NESTING_TOO_DEEP` (error, on the callee name of the first call past the limit)
-**Switch:** `rules.compose.nesting` (default `true`)
-**Setting:** `compose.nesting.maxDepth` (default `5`; `0` also disables the rule)
+**Key:** `rules.compose.nesting` (on by default)
+**Setting:** `maxDepth` (default `5`; `0` also disables the rule)
 
 ## What it rejects
 

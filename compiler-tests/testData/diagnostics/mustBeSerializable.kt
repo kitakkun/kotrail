@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.mustBeSerializable=true
+// KOTRAIL_CONFIG: rules.mustBeSerializable=on
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.saveable.rememberSerializable

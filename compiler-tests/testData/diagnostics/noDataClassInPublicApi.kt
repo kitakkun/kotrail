@@ -1,5 +1,5 @@
 // EXPLICIT_API_MODE: STRICT
-// KOTRAIL_CONFIG: rules.noDataClassInPublicApi=true
+// KOTRAIL_CONFIG: rules.noDataClassInPublicApi=on
 
 // This module compiles with explicit API mode, so it is a library and the rule applies.
 

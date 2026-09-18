@@ -3,8 +3,7 @@
 **Diagnostics:**
 `KOTRAIL_OBJC_IDENTITY_COMPARISON` (error, on the comparison),
 `KOTRAIL_OBJC_WEAK_REFERENCE` (error, on the constructor call)
-**Switch:** `rules.native.objcIdentity` (default `true`)
-**Severity key:** `severity.native.objcIdentity`
+**Key:** `rules.native.objcIdentity` (on by default)
 **Settings:** none
 
 ## The problem

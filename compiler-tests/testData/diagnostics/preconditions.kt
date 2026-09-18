@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.preconditions=true
+// KOTRAIL_CONFIG: rules.preconditions=on
 import com.kitakkun.kotrail.preconditions.InferredPreconditions
 
 const val MAX_RETRIES = 5

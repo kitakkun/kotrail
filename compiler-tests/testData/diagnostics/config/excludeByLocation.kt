@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.noNotNullAssertion=true, rules.preferValueClass=true, exclude.noNotNullAssertion=name(*Legacy*) || class(Generated*), exclude.preferValueClass=name(*Id) || file(other.kt)
+// KOTRAIL_CONFIG: rules.noNotNullAssertion=on, rules.preferValueClass=on, rules.noNotNullAssertion.exclude=name(*Legacy*) || class(Generated*), rules.preferValueClass.exclude=name(*Id) || file(other.kt)
 
 // For a diagnostic on a declaration, the declaration itself is the subject: the class name is
 // what name(...) sees, not an enclosing one.

@@ -4,7 +4,7 @@
 `KOTRAIL_WINDOW_INSETS_NOT_HANDLED` (error, on the function name),
 `KOTRAIL_WINDOW_INSETS_HANDLING_UNVERIFIABLE` (warning, on the function name),
 `KOTRAIL_WINDOW_INSETS_HANDLED_TWICE` (warning, on the call)
-**Switches:** `rules.compose.windowInsets`, `rules.compose.windowInsetsHandledTwice` (default `true`)
+**Keys:** `rules.compose.windowInsets`, `rules.compose.windowInsetsHandledTwice` (on by default)
 **Artifact:** `annotations` (`com.kitakkun.kotrail.compose.insets`), needed on the
 compile classpath of every module the plugin is applied to.
 
@@ -115,18 +115,21 @@ composables, are analyzed like any other callee.
 A composable whose body the analysis cannot see through, or cannot see at all, is taught with
 one entry per composable, keyed by its fully qualified name:
 
-```properties
-compose.windowInsets.known[com.acme.ui.AppScaffold]=SystemBars
-compose.windowInsets.known[com.acme.ui.AppTopBar]=StatusBars:Top+Horizontal
-compose.windowInsets.known[com.acme.ui.Sheet]=NavigationBars:Bottom, Ime
-compose.windowInsets.known[androidx.compose.material3.Scaffold]=None
+```yaml
+rules:
+  compose.windowInsets:
+    known:
+      com.acme.ui.AppScaffold: SystemBars
+      com.acme.ui.AppTopBar: StatusBars:Top+Horizontal
+      com.acme.ui.Sheet: [NavigationBars:Bottom, Ime]
+      androidx.compose.material3.Scaffold: none
 ```
 
-A value is a comma-separated list of `Type` or `Type:Side+Side` entries, with the entry names
-of `WindowInsetsType` and `WindowInsetsSide`, or `None` for a composable that handles nothing.
-An entry replaces the built-in one for that composable, so the last line above turns the
-Material `Scaffold` into an ordinary composable. An empty value removes the project's entry
-again, which is how a later configuration file restores the built-in knowledge.
+A value is one `Type` or `Type:Side+Side` entry or a list of them, with the entry names of
+`WindowInsetsType` and `WindowInsetsSide`, or `none` for a composable that handles nothing. An
+entry replaces the built-in one for that composable, so the last line above turns the Material
+`Scaffold` into an ordinary composable. `~` in a later file removes the project's entry again,
+which restores the built-in knowledge.
 
 The entries are consulted after a declared contract and inferred metadata, and before the
 source body, so they also override what the analysis would find in the same module.

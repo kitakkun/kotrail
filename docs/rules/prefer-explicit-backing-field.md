@@ -1,7 +1,7 @@
 # Prefer explicit backing fields
 
 **Diagnostic:** `KOTRAIL_PREFER_EXPLICIT_BACKING_FIELD` (error, on the exposing property's name)
-**Switch:** `rules.preferExplicitBackingField` (default `true`)
+**Key:** `rules.preferExplicitBackingField` (on by default)
 **Requires:** the explicit backing fields language feature, on by default from Kotlin 2.4.0 and behind `-Xexplicit-backing-fields` on 2.3.x. Where it is off, the rule reports nothing.
 
 ## What it rejects

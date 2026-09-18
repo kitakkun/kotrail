@@ -1,5 +1,5 @@
 // LANGUAGE: -ExplicitBackingFields
-// KOTRAIL_CONFIG: rules.preferExplicitBackingField=true
+// KOTRAIL_CONFIG: rules.preferExplicitBackingField=on
 // Not reported anywhere: with the language feature off, the rewrite the rule asks for would not
 // compile, so the rule stays quiet.
 abstract class Base {

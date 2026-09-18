@@ -1,9 +1,8 @@
 # No FQN references
 
 **Diagnostic:** `KOTRAIL_FQN_REFERENCE` (error, on the qualified name)
-**Switch:** `rules.noFqnReferences` (default `true`)
-**Severity key:** `severity.noFqnReferences`
-**Setting:** `noFqnReferences.allow` (comma-separated package prefixes, default empty)
+**Key:** `rules.noFqnReferences` (on by default)
+**Setting:** `allow` (comma-separated package prefixes, default empty)
 
 ## What it rejects
 
@@ -57,7 +56,7 @@ already bound by:
 
 An alias import (`import java.util.Date as UtilDate`) would resolve those cases too; Kotrail
 does not insist on it, so the fully qualified spelling is accepted there. Packages under a
-prefix in `noFqnReferences.allow` are exempt. Class-qualified access such as `Int.MAX_VALUE`
+prefix in `allow` are exempt. Class-qualified access such as `Int.MAX_VALUE`
 or `Map.Entry::class` is not a package qualifier and never reported.
 
 ## Fixtures

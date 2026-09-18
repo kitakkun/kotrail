@@ -74,7 +74,8 @@ Settings, precedence, per-source-set configuration, and suppression are describe
   imports, and aliases do not fool it.
 - **One error per problem.** Nested or cascading occurrences report once, at the first place
   the problem appears.
-- **Switchable and tunable.** Every rule has a `rules.<name>` switch and a `severity.<name>`
-  key; thresholds live under a namespaced key (`compose.*`, `narrowModelParameters.*`).
+- **Switchable and tunable.** Every rule is one entry under `rules:` in `kotrail.yaml`, a
+  shorthand (`off`, `warning`) or a mapping with its switch, severity, note, exclusions, and
+  settings.
 - **Errors by default.** Rules report errors; mark genuine exceptions with `@Suppress`. Demote a
   rule to a warning only to adopt it gradually in a codebase with many existing findings.

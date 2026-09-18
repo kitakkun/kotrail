@@ -1,5 +1,5 @@
 // LANGUAGE: +ExplicitBackingFields
-// KOTRAIL_CONFIG: rules.preferExplicitBackingField=true
+// KOTRAIL_CONFIG: rules.preferExplicitBackingField=on
 // On 2.3.x the feature is behind -Xexplicit-backing-fields; with it on, the rule behaves as on 2.4.
 abstract class Base {
     // Not reported: open property.

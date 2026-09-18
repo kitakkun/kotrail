@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.noNotNullAssertion=true, exclude.noNotNullAssertion=extension(kotlin.String) || annotated(custom.Generated) || (suspend && visibility(private)) || composable || test || override
+// KOTRAIL_CONFIG: rules.noNotNullAssertion=on, rules.noNotNullAssertion.exclude=extension(kotlin.String) || annotated(custom.Generated) || (suspend && visibility(private)) || composable || test || override
 
 package custom
 

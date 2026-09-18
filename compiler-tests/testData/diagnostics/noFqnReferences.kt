@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.noFqnReferences=true
+// KOTRAIL_CONFIG: rules.noFqnReferences=on
 package app
 
 import java.io.File

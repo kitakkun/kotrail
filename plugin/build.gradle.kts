@@ -31,6 +31,17 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+    // The unit tests check that the committed JSON Schema matches the one the schema table
+    // generates, so a rule or setting added without regenerating it fails here.
+    systemProperty("kotrail.schema.file", rootDir.resolve("docs/public/kotrail.schema.json").path)
+}
+
+// Writes the JSON Schema of kotrail.yaml, for editor completion, next to the docs site's assets.
+val generateConfigSchema by tasks.registering(JavaExec::class) {
+    // The compiler is compileOnly for the plugin; the generator needs it at run time for the rule table.
+    classpath = sourceSets.main.get().runtimeClasspath + configurations.compileClasspath.get()
+    mainClass.set("com.kitakkun.kotrail.config.GenerateConfigSchemaKt")
+    args(rootDir.resolve("docs/public/kotrail.schema.json").path)
 }
 
 tasks.named<KotlinCompile>("compileTestKotlin") {

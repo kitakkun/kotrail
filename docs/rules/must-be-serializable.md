@@ -1,9 +1,8 @@
 # Must be serializable
 
 **Diagnostic:** `KOTRAIL_TYPE_NOT_SERIALIZABLE` (error, on the call)
-**Switch:** `rules.mustBeSerializable` (default `true`)
-**Severity key:** `severity.mustBeSerializable`
-**Setting:** `mustBeSerializable.requiredFor` (default `androidx.compose.runtime.saveable.rememberSerializable`)
+**Key:** `rules.mustBeSerializable` (on by default)
+**Setting:** `requiredFor` (default `androidx.compose.runtime.saveable.rememberSerializable`)
 **Artifact:** `annotations` (`com.kitakkun.kotrail.serialization.MustBeSerializable`)
 
 ## What it rejects
@@ -33,7 +32,7 @@ the code runs; this rule moves the failure to the compiler.
 
 Two sources of contracts are checked at every call site:
 
-- **Configured callables** (`mustBeSerializable.requiredFor`): every type argument of the call,
+- **Configured callables** (`requiredFor`): every type argument of the call,
   explicit or inferred, must be serializable. A call that passes an explicit `KSerializer`
   argument is exempt. `rememberSerializable` is listed by default.
 - **`@MustBeSerializable`** on the callee's own declaration: on a type parameter
@@ -63,13 +62,18 @@ inside, and `Map<Draft, String>` fails on the key.
 ## Configuring more callables
 
 Any API that discovers a serializer from its type argument belongs in
-`mustBeSerializable.requiredFor`; the default is only `rememberSerializable`. Common ones:
+`requiredFor`; the default is only `rememberSerializable`. Common ones:
 
-```properties
-mustBeSerializable.requiredFor=androidx.compose.runtime.saveable.rememberSerializable, \
-  kotlinx.serialization.encodeToString, kotlinx.serialization.decodeFromString, \
-  io.ktor.client.call.body, androidx.navigation.NavController.navigate, \
-  androidx.navigation.NavGraphBuilder.composable
+```yaml
+rules:
+  mustBeSerializable:
+    requiredFor:
+      - androidx.compose.runtime.saveable.rememberSerializable
+      - kotlinx.serialization.encodeToString
+      - kotlinx.serialization.decodeFromString
+      - io.ktor.client.call.body
+      - androidx.navigation.NavController.navigate
+      - androidx.navigation.NavGraphBuilder.composable
 ```
 
 Note that `requiredFor` replaces the default list, so `rememberSerializable` has to be

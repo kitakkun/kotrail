@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.compose.compositionLocals=true
+// KOTRAIL_CONFIG: rules.compose.compositionLocals=on
 
 package custom
 

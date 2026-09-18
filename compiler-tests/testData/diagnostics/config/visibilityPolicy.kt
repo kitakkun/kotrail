@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.visibilityPolicy=true, visibilityPolicy.private=composable && name(*Preview), visibilityPolicy.internal=name(*Impl) || annotated(custom.Internal)
+// KOTRAIL_CONFIG: rules.visibilityPolicy=on, rules.visibilityPolicy.private=composable && name(*Preview), rules.visibilityPolicy.internal=name(*Impl) || annotated(custom.Internal)
 
 package custom
 

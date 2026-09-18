@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.native.objcIdentity=true
+// KOTRAIL_CONFIG: rules.native.objcIdentity=on
 
 package custom
 

@@ -1,7 +1,7 @@
 # No pass-through return
 
 **Diagnostic:** `KOTRAIL_PASS_THROUGH_RETURN` (error, on the function name)
-**Switch:** `rules.noPassThroughReturn` (default `true`)
+**Key:** `rules.noPassThroughReturn` (on by default)
 
 ## What it rejects
 

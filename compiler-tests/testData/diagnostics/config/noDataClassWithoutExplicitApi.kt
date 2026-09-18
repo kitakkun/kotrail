@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.noDataClassInPublicApi=true
+// KOTRAIL_CONFIG: rules.noDataClassInPublicApi=on
 
 // Not reported: the module does not compile with explicit API mode, so under the default scope it
 // is an application, where data classes in public declarations are the normal shape of a model.

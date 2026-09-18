@@ -1,8 +1,7 @@
 # No parameter comments
 
 **Diagnostic:** `KOTRAIL_COMMENT_IN_PARAMETER_LIST` (error, on the comment)
-**Switch:** `rules.noParameterComments` (default `true`)
-**Severity key:** `severity.noParameterComments`
+**Key:** `rules.noParameterComments` (on by default)
 **Settings:** none
 
 ## What it rejects

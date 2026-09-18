@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.compose.windowInsets=true, rules.compose.windowInsetsHandledTwice=true
+// KOTRAIL_CONFIG: rules.compose.windowInsets=on, rules.compose.windowInsetsHandledTwice=on
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.WindowInsetsSides

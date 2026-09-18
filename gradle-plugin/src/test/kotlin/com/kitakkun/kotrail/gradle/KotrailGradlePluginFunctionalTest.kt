@@ -39,11 +39,11 @@ class KotrailGradlePluginFunctionalTest {
     @Test
     fun `a rule switched off in the config file stops reporting`() {
         writeSettings()
-        writeFile("kotrail.properties", "rules.noNotNullAssertion=false")
+        writeFile("kotrail.yaml", "rules:\n  noNotNullAssertion: off\n")
         writeBuild(
             """
             kotrail {
-                configFile = file("kotrail.properties")
+                configFile = file("kotrail.yaml")
             }
             """.trimIndent(),
         )
@@ -58,11 +58,11 @@ class KotrailGradlePluginFunctionalTest {
     @Test
     fun `a rule lowered to a warning reports without failing`() {
         writeSettings()
-        writeFile("kotrail.properties", "severity.noNotNullAssertion=warning")
+        writeFile("kotrail.yaml", "rules:\n  noNotNullAssertion: warning\n")
         writeBuild(
             """
             kotrail {
-                configFile = file("kotrail.properties")
+                configFile = file("kotrail.yaml")
             }
             """.trimIndent(),
         )
@@ -77,11 +77,11 @@ class KotrailGradlePluginFunctionalTest {
     @Test
     fun `the project's note is appended to the message`() {
         writeSettings()
-        writeFile("kotrail.properties", "note.noNotNullAssertion=See ADR-014.")
+        writeFile("kotrail.yaml", "rules:\n  noNotNullAssertion:\n    note: See ADR-014.\n")
         writeBuild(
             """
             kotrail {
-                configFile = file("kotrail.properties")
+                configFile = file("kotrail.yaml")
             }
             """.trimIndent(),
         )
@@ -98,13 +98,13 @@ class KotrailGradlePluginFunctionalTest {
     fun `a test compilation layers its own config file on top of the project one`() {
         writeSettings()
         writeFile("src/test/kotlin/CasesTest.kt", NOT_NULL_ASSERTION_VIOLATION)
-        writeFile("kotrail.properties", "severity.noNotNullAssertion=warning")
+        writeFile("kotrail.yaml", "rules:\n  noNotNullAssertion: warning\n")
         writeBuild(
             """
             kotrail {
-                configFile = file("kotrail.properties")
+                configFile = file("kotrail.yaml")
                 test {
-                    configFile = file("kotrail-test.properties")
+                    configFile = file("kotrail-test.yaml")
                 }
             }
             """.trimIndent(),
@@ -113,13 +113,13 @@ class KotrailGradlePluginFunctionalTest {
         // The override names an unrelated rule, so the project file's severity must still apply:
         // were the files replaced rather than layered, the rule would be an error again and the
         // build would fail.
-        writeFile("kotrail-test.properties", "rules.commentLength=false")
+        writeFile("kotrail-test.yaml", "rules:\n  commentLength: off\n")
         val layered = runBuild("compileTestKotlin")
         assertEquals(TaskOutcome.SUCCESS, layered.task(":compileTestKotlin")?.outcome, layered.output)
         assertTrue(layered.output.contains("[Kotrail]"), layered.output)
 
         // What the override does say wins over the project file.
-        writeFile("kotrail-test.properties", "rules.noNotNullAssertion=false")
+        writeFile("kotrail-test.yaml", "rules:\n  noNotNullAssertion: off\n")
         val overridden = runBuild("compileTestKotlin")
         assertEquals(TaskOutcome.SUCCESS, overridden.task(":compileTestKotlin")?.outcome, overridden.output)
         assertFalse(overridden.output.contains("[Kotrail]"), overridden.output)

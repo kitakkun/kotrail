@@ -1,17 +1,18 @@
 # Visibility policy
 
 **Diagnostic:** `KOTRAIL_VISIBILITY_TOO_WIDE` (error, on the declaration name)
-**Switch:** `rules.visibilityPolicy` (default `true`; inert until a policy is set)
-**Severity key:** `severity.visibilityPolicy`
-**Settings:** `visibilityPolicy.private`, `visibilityPolicy.internal` (predicates)
+**Key:** `rules.visibilityPolicy` (on by default; inert until a policy is set)
+**Settings:** `private`, `internal` (predicates)
 
 ## What it rejects
 
 A declaration the policy covers that is wider than the policy allows:
 
-```properties
-visibilityPolicy.private=composable && name(*Preview)
-visibilityPolicy.internal=name(*Impl) || package(com.acme.*.internal.*)
+```yaml
+rules:
+  visibilityPolicy:
+    private: composable && name(*Preview)
+    internal: name(*Impl) || package(com.acme.*.internal.*)
 ```
 
 ```kotlin
@@ -32,7 +33,7 @@ nothing said not to.
 Each setting is a predicate over declarations, in the same language as
 [`exclude`](../configuration.md#excluding-by-pattern): names, packages, files, annotations,
 enclosing classes, extension receivers, context parameters, modifiers. A declaration matching
-`visibilityPolicy.private` must be `private`; one matching `visibilityPolicy.internal` must be
+`private` must be `private`; one matching `internal` must be
 `internal` or `private`.
 
 Effective visibility is what counts. A public member of an internal class satisfies an

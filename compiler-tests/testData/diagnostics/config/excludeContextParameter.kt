@@ -1,5 +1,5 @@
 // LANGUAGE: +ContextParameters
-// KOTRAIL_CONFIG: rules.noNotNullAssertion=true, exclude.noNotNullAssertion=context(custom.Scope)
+// KOTRAIL_CONFIG: rules.noNotNullAssertion=on, rules.noNotNullAssertion.exclude=context(custom.Scope)
 
 package custom
 

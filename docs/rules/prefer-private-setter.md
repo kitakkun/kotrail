@@ -1,8 +1,7 @@
 # Prefer private setter
 
 **Diagnostic:** `KOTRAIL_PREFER_PRIVATE_SETTER` (error, on the exposing property's name)
-**Switch:** `rules.preferPrivateSetter` (default `true`)
-**Severity key:** `severity.preferPrivateSetter`
+**Key:** `rules.preferPrivateSetter` (on by default)
 **Settings:** none
 
 ## What it rejects

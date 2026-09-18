@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.compose.stateDelegation=true
+// KOTRAIL_CONFIG: rules.compose.stateDelegation=on
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Text
