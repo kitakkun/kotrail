@@ -19,7 +19,7 @@ application {
 val compilerPlugin: Configuration by configurations.creating
 
 dependencies {
-    compilerPlugin(project(":plugin"))
+    compilerPlugin(project(":compiler-plugin"))
 }
 
 tasks.withType<KotlinCompile>().configureEach {

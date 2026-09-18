@@ -110,7 +110,7 @@ what the samples in this repository do, since they build the plugin they use:
 
 ```kotlin
 dependencies {
-    kotlinCompilerPluginClasspath(project(":plugin"))
+    kotlinCompilerPluginClasspath(project(":compiler-plugin"))
 }
 
 tasks.withType<KotlinCompile>().configureEach {

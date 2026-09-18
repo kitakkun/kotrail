@@ -16,7 +16,7 @@ val kotlinCompilerVersion: String = gradle.extra["kotlinCompilerVersion"] as Str
 
 /**
  * Maps a Kotlin compiler version to the compat "family" whose sources are compiled into the plugin
- * (`plugin/src/<family>/kotlin`). Every family directory declares the same set of
+ * (`compiler-plugin/src/<family>/kotlin`). Every family directory declares the same set of
  * `com.kitakkun.kotrail.compat` declarations, implemented against that version's compiler API.
  * The family key also selects the per-version test data overlay
  * (`compiler-tests/testData-<family>`).
@@ -94,7 +94,7 @@ allprojects {
     group = "com.kitakkun.kotrail"
     // The Kotrail version, shared by the annotations, the compiler plugin and the Gradle plugin.
     // The compiler plugin's published artifact prefixes it with the Kotlin version it was built
-    // against; see plugin/build.gradle.kts.
+    // against; see compiler-plugin/build.gradle.kts.
     version = providers.gradleProperty("kotrail.version").getOrElse("0.1.0-SNAPSHOT")
 
     repositories {

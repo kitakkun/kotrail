@@ -13,7 +13,7 @@ kotlin {
 dependencies {
     // Register Kotrail through the Kotlin Gradle plugin's own plugin classpath so that it
     // coexists with the Compose compiler plugin, which is registered the same way.
-    kotlinCompilerPluginClasspath(project(":plugin"))
+    kotlinCompilerPluginClasspath(project(":compiler-plugin"))
     implementation(project(":annotations"))
     implementation(project(":samples:compose:lib"))
     implementation(libs.compose.foundation)

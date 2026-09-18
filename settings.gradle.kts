@@ -38,7 +38,7 @@ plugins {
 
 rootProject.name = "kotrail"
 include(
-    "plugin",
+    "compiler-plugin",
     "gradle-plugin",
     "annotations",
     "samples:jvm",

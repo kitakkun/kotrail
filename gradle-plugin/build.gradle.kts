@@ -95,7 +95,7 @@ publishing {
 tasks.test {
     useJUnitPlatform()
     dependsOn(
-        ":plugin:publishMavenPublicationToTestRepository",
+        ":compiler-plugin:publishMavenPublicationToTestRepository",
         ":annotations:publishMavenPublicationToTestRepository",
         tasks.named("publishAllPublicationsToTestRepository"),
     )

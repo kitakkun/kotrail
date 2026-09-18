@@ -15,7 +15,7 @@ dependencies {
     // The test framework links against the un-shaded compiler. The plugin bytecode has no
     // references to IntelliJ platform classes, so the JAR built against the embeddable
     // compiler loads fine here.
-    testFixturesApi(project(":plugin"))
+    testFixturesApi(project(":compiler-plugin"))
     testFixturesApi(libs.kotlin.test.junit5)
     testFixturesApi(libs.kotlin.compiler.internal.test.framework)
     testFixturesApi(libs.kotlin.compiler)
@@ -29,7 +29,7 @@ sourceSets {
     }
     testFixtures {
         // The runner base classes the framework renames between Kotlin versions live under
-        // test-fixtures-<family>/, one directory per family, like plugin/src/<family>.
+        // test-fixtures-<family>/, one directory per family, like compiler-plugin/src/<family>.
         java.setSrcDirs(listOf("test-fixtures", "test-fixtures-$kotlinCompatFamily"))
     }
 }

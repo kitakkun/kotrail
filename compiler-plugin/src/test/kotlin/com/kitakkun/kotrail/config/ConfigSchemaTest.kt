@@ -20,6 +20,6 @@ class ConfigSchemaTest {
     fun `the committed schema is the generated one`() {
         val path = System.getProperty("kotrail.schema.file") ?: return
         val committed = File(path).takeIf { it.isFile }?.readText() ?: ""
-        assertEquals(ConfigSchema.jsonSchema(), committed, "docs/public/kotrail.schema.json is stale; run ./gradlew :plugin:generateConfigSchema")
+        assertEquals(ConfigSchema.jsonSchema(), committed, "docs/public/kotrail.schema.json is stale; run ./gradlew :compiler-plugin:generateConfigSchema")
     }
 }

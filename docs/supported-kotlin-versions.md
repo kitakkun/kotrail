@@ -50,12 +50,12 @@ version means adding it there, to the CI and release matrices, and to the table 
 
 ## Source-set layout
 
-Shared code lives in `plugin/src/main/kotlin` and must only use compiler APIs that every supported
+Shared code lives in `compiler-plugin/src/main/kotlin` and must only use compiler APIs that every supported
 version agrees on. Where the versions differ, the shared code calls into the package
 `com.kitakkun.kotrail.compat`, which is implemented once per family:
 
 ```
-plugin/src/
+compiler-plugin/src/
 ├── main/kotlin/          # shared; never references a version-specific compiler API directly
 ├── k2420/kotlin/         # com.kitakkun.kotrail.compat for Kotlin 2.4.20+
 ├── k240/kotlin/          # com.kitakkun.kotrail.compat for Kotlin 2.4.0 <= v < 2.4.20
@@ -100,7 +100,7 @@ Prefer sharing. Only add an overlay file when the difference is genuinely in the
 
 1. Add a family arm to `kotlinCompatFamily(...)` in the root `build.gradle.kts`, or extend an
    existing arm's range if the new version needs no new shims.
-2. If it needs a new family, create `plugin/src/<family>/kotlin/com/kitakkun/kotrail/compat/` and
+2. If it needs a new family, create `compiler-plugin/src/<family>/kotlin/com/kitakkun/kotrail/compat/` and
    copy every file from the closest existing family, then adjust it for that compiler's API.
    Keep the declaration names and signatures identical across families.
 3. Build with `-Pkotlin.compiler=<version>` and fix the drift. When shared code fails to compile,

@@ -9,14 +9,14 @@ Pull requests for rules come with a fixture under `compiler-tests/testData/` and
 
 ```
 kotrail/
-├── plugin/                        # the compiler plugin
+├── compiler-plugin/               # the compiler plugin
 │   └── src/main/kotlin/com/kitakkun/kotrail/
 │       ├── fir/checkers/          # general rules
 │       ├── fir/compose/checkers/  # Compose rules: nesting limit, state delegation
 │       ├── fir/compose/insets/    # insets analysis service, expression evaluator, checkers
 │       ├── compose/insets/        # insets algebra shared by FIR and IR
 │       └── ir/compose/insets/     # writes @InferredWindowInsetsHandling into metadata
-│   └── src/{k240,k2321}/kotlin/   # com.kitakkun.kotrail.compat, one directory per Kotlin family
+│   └── src/{k2321,k240,k2420}/kotlin/  # com.kitakkun.kotrail.compat, one directory per Kotlin family
 ├── gradle-plugin/                 # the `com.kitakkun.kotrail` Gradle plugin and its DSL
 ├── annotations/           # @HandlesWindowInsets, @MustBeSerializable (ship with your app)
 ├── samples/

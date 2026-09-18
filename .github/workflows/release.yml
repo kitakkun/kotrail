@@ -56,7 +56,7 @@ jobs:
           -Pkotrail.version=${{ needs.version.outputs.version }}
       - name: Publish kotrail-compiler-plugin ${{ matrix.kotlin }}-${{ needs.version.outputs.version }}
         run: >-
-          ./gradlew :plugin:publishAndReleaseToMavenCentral --console=plain --no-configuration-cache
+          ./gradlew :compiler-plugin:publishAndReleaseToMavenCentral --console=plain --no-configuration-cache
           -Dorg.gradle.java.home="$JAVA_HOME"
           -Pkotlin.compiler=${{ matrix.kotlin }}
           -Pkotrail.version=${{ needs.version.outputs.version }}

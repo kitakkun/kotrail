@@ -147,7 +147,7 @@ FIR checker phase: the contract checker calls the analysis for every composable,
 which fills a per-session cache. The IR writer only reads that cache.
 
 In modules that also apply the Compose compiler plugin, register Kotrail through
-`kotlinCompilerPluginClasspath(project(":plugin"))` rather than a hand-written `-Xplugin=` so
+`kotlinCompilerPluginClasspath(project(":compiler-plugin"))` rather than a hand-written `-Xplugin=` so
 both plugins are passed by the Kotlin Gradle plugin the same way.
 
 ## Fixtures
