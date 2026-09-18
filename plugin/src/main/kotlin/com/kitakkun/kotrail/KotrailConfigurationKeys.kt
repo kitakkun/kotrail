@@ -38,6 +38,9 @@ object KotrailConfigurationKeys {
     val TEST_NAMING_STYLE = CompilerConfigurationKey<TestNamingStyle>(KotrailConfig.KEY_TEST_NAMING_STYLE)
     val TEST_MIN_NAME_WORDS = CompilerConfigurationKey<Int>(KotrailConfig.KEY_TEST_MIN_NAME_WORDS)
 
+    /** Entries of the `forbiddenCall` option by name, the last occurrence of a name winning; `null` drops the entry. */
+    val FORBIDDEN_CALLS = CompilerConfigurationKey<Map<String, KotrailForbiddenCallEntry?>>("forbiddenCall")
+
     /** Entries of the `requiredAnnotation` option by name, the last occurrence of a name winning; `null` drops the policy. */
     val REQUIRED_ANNOTATIONS = CompilerConfigurationKey<Map<String, KotrailRequiredAnnotation?>>("requiredAnnotation")
 

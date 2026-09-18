@@ -54,7 +54,7 @@ Full pages, with every condition and fixture, live under [`docs/rules/`](docs/ru
 | [No FQN references](docs/rules/no-fqn-references.md) | `java.util.UUID.randomUUID()`, `val f: java.io.File` | `import java.util.UUID` and a simple name |
 | [No redundant else](docs/rules/no-redundant-else.md) | `else ->` on a `when` that already covers every case | Remove it, so a new case fails to compile |
 | [Prefer value class](docs/rules/prefer-value-class.md) | `data class UserId(val value: String)` | `@JvmInline value class UserId(val value: String)` |
-| [Forbidden call](docs/rules/forbidden-call.md) | Calls to callables listed in `forbiddenCall.functions` | Whatever the project prescribes instead |
+| [Forbidden call](docs/rules/forbidden-call.md) | Calls listed by name, or by a predicate on receiver, overload, extension, or context | Whatever the project prescribes instead |
 | [No not-null assertion](docs/rules/no-not-null-assertion.md) | `x!!` | `?.`, `?:`, `requireNotNull`, smart casts |
 | [No swallowed cancellation](docs/rules/no-swallowed-cancellation.md) | `catch (e: Exception)` in a suspend context that does not rethrow | Rethrow `CancellationException` or catch a narrower type |
 | [No ignored exception](docs/rules/no-ignored-exception.md) | A catch clause that never touches the caught exception | Handle it, rethrow it, or name it `_` deliberately |

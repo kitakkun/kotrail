@@ -39,6 +39,18 @@ class KotrailConfigTest {
     }
 
     @Test
+    fun `forbidden calls come from the plain list and from predicate entries`() {
+        val config = load(
+            """
+            forbiddenCall.functions=kotlin.io.println, java.util.Date
+            forbiddenCall[globalScope]=fqn(kotlinx.coroutines.launch) && receiver(kotlinx.coroutines.GlobalScope)
+            """,
+        )
+        assertEquals(listOf("kotlin.io.println", "java.util.Date", "globalScope"), config.forbiddenCall.entries.map { it.name })
+        assertThrows(CliOptionProcessingException::class.java) { load("forbiddenCall[bad]=name(println)") }
+    }
+
+    @Test
     fun `a later file overrides one entry and an empty value drops it`() {
         val config = load(
             """

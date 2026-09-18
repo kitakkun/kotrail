@@ -2,7 +2,10 @@ package com.kitakkun.kotrail
 
 import com.kitakkun.kotrail.compose.insets.InsetsSet
 import com.kitakkun.kotrail.compose.insets.Sides
+import com.kitakkun.kotrail.exclude.CallPredicate
+import com.kitakkun.kotrail.exclude.CallPredicateParser
 import com.kitakkun.kotrail.exclude.ExcludeParser
+import com.kitakkun.kotrail.exclude.Glob
 import com.kitakkun.kotrail.exclude.ExcludePredicate
 import com.kitakkun.kotrail.exclude.ReportSite
 import org.jetbrains.kotlin.compiler.plugin.CliOptionProcessingException
@@ -117,14 +120,20 @@ data class KotrailNoFqnReferences(
     val allow: List<String>,
 )
 
-/** Tunables for the forbidden-call rule. Keys are `forbiddenCall.<name>`. */
+/** One entry of the forbidden-call rule: calls matching [predicate] are reported under [name]. */
+data class KotrailForbiddenCallEntry(
+    val name: String,
+    val predicate: CallPredicate,
+)
+
+/** Tunables for the forbidden-call rule. Keys are `forbiddenCall.<name>` and `forbiddenCall[<entry>]`. */
 data class KotrailForbiddenCall(
     /**
-     * Fully qualified callables that must not be called, e.g. `kotlin.io.println`,
-     * `kotlinx.coroutines.GlobalScope.launch`, `java.lang.Thread.sleep`. Empty means the rule
-     * has nothing to report.
+     * The entries, from `forbiddenCall[<name>]=<call predicate>` and from the plain
+     * `forbiddenCall.functions` list, whose fully qualified names become `fqn(...)` entries
+     * named after themselves. Empty means the rule has nothing to report.
      */
-    val functions: List<String>,
+    val entries: List<KotrailForbiddenCallEntry>,
 )
 
 /** Tunables for the must-be-serializable rule. Keys are `mustBeSerializable.<name>`. */
@@ -343,6 +352,9 @@ data class KotrailConfig(
          */
         const val KEY_FAMILY_REQUIRED_ANNOTATION = "requiredAnnotation.policy"
 
+        /** Family of `forbiddenCall[<name>]=<call predicate>` entries; `forbiddenCall.functions` stays for plain names. */
+        const val KEY_FAMILY_FORBIDDEN_CALL = "forbiddenCall"
+
         /** Family of `compose.windowInsets.known[<composable fqn>]=<Type[:Sides],...|None>` entries. */
         const val KEY_FAMILY_KNOWN_INSETS = "compose.windowInsets.known"
 
@@ -350,7 +362,7 @@ data class KotrailConfig(
         const val KEY_FAMILY_KNOWN_LOCALS = "compose.compositionLocals.known"
 
         /** Key families whose bracketed key is chosen by the project, accepted by the config file next to [ALL_KEYS]. */
-        val KEY_FAMILIES: List<String> = listOf(KEY_FAMILY_REQUIRED_ANNOTATION, KEY_FAMILY_KNOWN_INSETS, KEY_FAMILY_KNOWN_LOCALS)
+        val KEY_FAMILIES: List<String> = listOf(KEY_FAMILY_REQUIRED_ANNOTATION, KEY_FAMILY_FORBIDDEN_CALL, KEY_FAMILY_KNOWN_INSETS, KEY_FAMILY_KNOWN_LOCALS)
 
         /** What a user-chosen key may look like: letters, digits, dots, `_` and `-`, starting with a letter. */
         val ENTRY_NAME = Regex("[A-Za-z][A-Za-z0-9_.-]*")
@@ -478,6 +490,11 @@ data class KotrailConfig(
             val forbiddenFunctions = configuration.get(KotrailConfigurationKeys.FORBIDDEN_FUNCTIONS)
                 ?: file.getProperty(KEY_FORBIDDEN_FUNCTIONS)?.let { parseList(it) }
                 ?: DEFAULT_FORBIDDEN_FUNCTIONS
+            val forbiddenEntries = (
+                file.entriesOf(KEY_FAMILY_FORBIDDEN_CALL)
+                    .associate { (name, value) -> name to parseForbiddenCall(name, value) } +
+                    configuration.get(KotrailConfigurationKeys.FORBIDDEN_CALLS).orEmpty()
+                ).values.filterNotNull()
             val minSameType = configuration.get(KotrailConfigurationKeys.MIN_SAME_TYPE_ARGUMENTS)
                 ?: file.int(KEY_MIN_SAME_TYPE_ARGUMENTS)
                 ?: DEFAULT_MIN_SAME_TYPE_ARGUMENTS
@@ -555,7 +572,9 @@ data class KotrailConfig(
                 preferFunctionReferences = KotrailPreferFunctionReferences(forms = referenceForms),
                 comments = KotrailCommentSettings(maxLines = commentMaxLines, maxKDocLines = kdocMaxLines),
                 noFqnReferences = KotrailNoFqnReferences(allow = fqnAllow),
-                forbiddenCall = KotrailForbiddenCall(functions = forbiddenFunctions),
+                forbiddenCall = KotrailForbiddenCall(
+                    entries = forbiddenFunctions.map { KotrailForbiddenCallEntry(it, plainForbiddenName(it)) } + forbiddenEntries,
+                ),
                 namedArguments = KotrailNamedArguments(minSameTypeArguments = minSameType),
                 serialization = KotrailSerialization(requiredFor = serializationRequiredFor),
                 test = KotrailTest(
@@ -601,6 +620,62 @@ data class KotrailConfig(
                 predicate = parseExclude(key, value.substring(0, arrow)),
                 annotation = annotation.removePrefix("@"),
             )
+        }
+
+        /**
+         * What a plain `forbiddenCall.functions` name stands for: the function of that name, the
+         * constructors of a class of that name, and, for `Type.name`, an extension `name` called
+         * on a `Type` receiver, since that is how a reader sees `GlobalScope.launch { }`.
+         */
+        internal fun plainForbiddenName(fqn: String): CallPredicate {
+            var predicate: CallPredicate = CallPredicate.Or(
+                CallPredicate.FqnIs(Glob(fqn)),
+                CallPredicate.Constructs(Glob(fqn)),
+            )
+            val dot = fqn.lastIndexOf('.')
+            if (dot > 0) {
+                predicate = CallPredicate.Or(
+                    predicate,
+                    CallPredicate.And(
+                        // The extension may be top level in any package, the default one included.
+                        CallPredicate.Or(
+                            CallPredicate.FqnIs(Glob(fqn.substring(dot + 1))),
+                            CallPredicate.FqnIs(Glob("*." + fqn.substring(dot + 1))),
+                        ),
+                        CallPredicate.ReceiverIs(fqn.substring(0, dot)),
+                    ),
+                )
+            }
+            return predicate
+        }
+
+        /** A `forbiddenCall[<name>]` value: a call predicate. An empty value drops the entry and gives `null`. */
+        @OptIn(ExperimentalCompilerApi::class)
+        fun parseForbiddenCall(name: String, value: String): KotrailForbiddenCallEntry? {
+            val key = entryKey(KEY_FAMILY_FORBIDDEN_CALL, name)
+            if (!ENTRY_NAME.matches(name)) {
+                throw CliOptionProcessingException(
+                    "Kotrail config key $key: an entry name is a letter followed by letters, digits, '.', '_' or '-', got '$name'",
+                )
+            }
+            if (value.isBlank()) return null
+            val predicate = try {
+                CallPredicateParser.parse(value)
+            } catch (e: ExcludeParser.ExcludeSyntaxException) {
+                throw CliOptionProcessingException("Kotrail config key $key: ${e.message}")
+            }
+            return KotrailForbiddenCallEntry(name, predicate)
+        }
+
+        /** A `forbiddenCall` option value, `<name>=<call predicate>`; `<name>=` drops the entry. */
+        @OptIn(ExperimentalCompilerApi::class)
+        fun parseForbiddenCallOption(value: String): Pair<String, KotrailForbiddenCallEntry?> {
+            val parts = value.split('=', limit = 2)
+            if (parts.size != 2) {
+                throw CliOptionProcessingException("Kotrail option forbiddenCall must be '<name>=<call predicate>', got '$value'")
+            }
+            val name = parts[0].trim()
+            return name to parseForbiddenCall(name, parts[1])
         }
 
         /**

@@ -121,6 +121,13 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
         KotrailConfig.KEY_VISIBILITY_INTERNAL, "<predicate>",
         "Declarations that must be internal or private, e.g. name(*Impl)",
     )
+    private val forbiddenCallOption = option(
+        "forbiddenCall", "<name>=<call predicate>",
+        "The forbiddenCall[<name>] entry: calls matching the predicate are reported, e.g. " +
+            "globalScope=fqn(kotlinx.coroutines.launch) && receiver(kotlinx.coroutines.GlobalScope). " +
+            "May be given more than once; '<name>=' drops the entry",
+        allowMultipleOccurrences = true,
+    )
     private val requiredAnnotationOption = option(
         "requiredAnnotation", "<name>=<predicate> -> <annotation fqn>",
         "The requiredAnnotation.policy[<name>] entry: declarations matching the predicate must carry the " +
@@ -213,6 +220,7 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
         noDataClassScopeOption,
         visibilityPrivateOption,
         visibilityInternalOption,
+        forbiddenCallOption,
         requiredAnnotationOption,
         knownInsetsOption,
         localsPlatformOption,
@@ -287,6 +295,13 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
                 configuration.put(KotrailConfigurationKeys.VISIBILITY_PRIVATE, KotrailConfig.parseExclude(name, value))
             visibilityInternalOption.optionName ->
                 configuration.put(KotrailConfigurationKeys.VISIBILITY_INTERNAL, KotrailConfig.parseExclude(name, value))
+            forbiddenCallOption.optionName -> {
+                val (entryName, entry) = KotrailConfig.parseForbiddenCallOption(value)
+                configuration.put(
+                    KotrailConfigurationKeys.FORBIDDEN_CALLS,
+                    configuration.get(KotrailConfigurationKeys.FORBIDDEN_CALLS).orEmpty() + (entryName to entry),
+                )
+            }
             requiredAnnotationOption.optionName -> {
                 val (policyName, policy) = KotrailConfig.parseRequiredAnnotationOption(value)
                 configuration.put(

@@ -40,9 +40,9 @@ fun quiet() {
     // Not reported: a same-named function from another package.
     sleep(10)
 
-    // Not reported: an extension called on an instance rather than a qualifier is `launch`.
+    // Reported: `Scope.launch` names the extension on a Scope receiver, however the call is spelled.
     val scope = Scope
-    scope.launch { }
+    <!KOTRAIL_FORBIDDEN_CALL!>scope.launch { }<!>
 
     // Not reported: callable references are not calls.
     val printer: (Any?) -> Unit = ::println

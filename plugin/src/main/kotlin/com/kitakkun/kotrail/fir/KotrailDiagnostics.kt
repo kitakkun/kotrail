@@ -111,8 +111,8 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: the class name. */
     val PREFER_VALUE_CLASS = tunable1<KtClass, String>("PREFER_VALUE_CLASS", KotrailRule.PREFER_VALUE_CLASS, NAME)
 
-    /** Argument: the fully qualified name of the forbidden callable. */
-    val FORBIDDEN_CALL = tunable1<KtElement, String>("FORBIDDEN_CALL", KotrailRule.FORBIDDEN_CALL, WHOLE)
+    /** Arguments: the callee's fully qualified name, the name of the forbiddenCall entry that matched. */
+    val FORBIDDEN_CALL = tunable2<KtElement, String, String>("FORBIDDEN_CALL", KotrailRule.FORBIDDEN_CALL, WHOLE)
 
     /** Argument: what was found (`TODO()` or `NotImplementedError`). Reported on the call. */
     val UNIMPLEMENTED_CODE = tunable1<KtElement, String>("UNIMPLEMENTED_CODE", KotrailRule.NO_UNIMPLEMENTED, WHOLE)
@@ -291,9 +291,9 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             KotrailDiagnostics.PREFER_VALUE_CLASS,
             "[Kotrail] ''{0}'' wraps a single value. Declare it as ''@JvmInline value class'' instead of a data class.",
         )
-        map.put1(
+        map.put2(
             KotrailDiagnostics.FORBIDDEN_CALL,
-            "[Kotrail] Calling ''{0}'' is forbidden by the project configuration.",
+            "[Kotrail] Calling ''{0}'' is forbidden here (forbiddenCall[{1}]).",
         )
         map.put1(
             KotrailDiagnostics.UNIMPLEMENTED_CODE,

@@ -45,6 +45,7 @@ rule hangs off its key: `severity.<rule>`, `note.<rule>`, `exclude.<rule>`, and 
 | `rules.preferValueClass` | `true` | [Prefer value class](rules/prefer-value-class.md). |
 | `rules.forbiddenCall` | `true` | [Forbidden call](rules/forbidden-call.md). |
 | `forbiddenCall.functions` | (empty) | Fully qualified callables that must not be called. |
+| `forbiddenCall[<name>]` | (empty) | A call predicate (`fqn`, `receiver`, `extension`, `context`, `params`, ...); matching calls are reported under that name. See [Forbidden call](rules/forbidden-call.md). |
 | `rules.noNotNullAssertion` | `true` | [No not-null assertion](rules/no-not-null-assertion.md). |
 | `rules.noSwallowedCancellation` | `true` | [No swallowed cancellation](rules/no-swallowed-cancellation.md). |
 | `rules.noIgnoredException` | `true` | [No ignored exception](rules/no-ignored-exception.md). |
