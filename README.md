@@ -119,3 +119,6 @@ Copyright 2026 kitakkun.
 
 Licensed under the Apache License, Version 2.0. See [LICENSE](LICENSE) for the full text, or
 <https://www.apache.org/licenses/LICENSE-2.0>.
+
+The wordmark is set in Barlow Semi Condensed (Jeremy Tribby, SIL Open Font License 1.1); see
+[docs/public/ATTRIBUTION.md](docs/public/ATTRIBUTION.md).
