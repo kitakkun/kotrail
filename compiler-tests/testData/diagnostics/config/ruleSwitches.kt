@@ -1,3 +1,4 @@
+// LANGUAGE: +ExplicitBackingFields
 // KOTRAIL_CONFIG: rules.preferExplicitBackingField=true, rules.noPassThroughReturn=false
 // A rule that is switched on reports; one that is switched off stays quiet however plainly the
 // file violates it. This is the shape of a test-source-set configuration: hand compileTestKotlin

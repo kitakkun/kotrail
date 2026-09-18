@@ -5,6 +5,7 @@ import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
+import org.jetbrains.kotlin.config.LanguageFeature
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -18,6 +19,7 @@ import org.jetbrains.kotlin.fir.declarations.utils.hasExplicitBackingField
 import org.jetbrains.kotlin.fir.declarations.utils.isExpect
 import org.jetbrains.kotlin.fir.declarations.utils.modality
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
+import org.jetbrains.kotlin.fir.languageVersionSettings
 import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
 import org.jetbrains.kotlin.fir.references.toResolvedPropertySymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
@@ -49,6 +51,10 @@ object PreferExplicitBackingFieldChecker : FirPropertyChecker(MppCheckerKind.Com
     context(context: CheckerContext, reporter: DiagnosticReporter)
     override fun check(declaration: FirProperty) {
         if (!context.session.kotrailConfig.isEnabled(KotrailRule.PREFER_EXPLICIT_BACKING_FIELD)) return
+        // The rewrite the rule asks for only compiles where the language feature is on: by default
+        // from Kotlin 2.4.0, behind -Xexplicit-backing-fields before that. Elsewhere the rule would
+        // demand something the compiler rejects, so it stays quiet.
+        if (!context.session.languageVersionSettings.supportsFeature(LanguageFeature.ExplicitBackingFields)) return
         val source = declaration.source ?: return
         if (source.kind is KtFakeSourceElementKind) return
         if (!declaration.origin.fromSource) return

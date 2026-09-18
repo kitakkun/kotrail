@@ -28,7 +28,7 @@ confusing compile error.
 | 2.4.20 (default) | `k2420` | `FirNamedFunctionChecker` and the `namedFunctionCheckers` bucket, `FirResolvedQualifier.classId` as an extension, `PluginGenerated` as a sealed class, `AbstractJvmBlackBoxCodegenTestBase` in the test framework, IR dumps named `.ir.txt`. |
 | 2.4.10 | `k240` | Same API surface as 2.4.0. |
 | 2.4.0 | `k240` | Explicit backing fields and context parameters are on by default. |
-| 2.3.21 | `k2321` | Also covers 2.3.20. Explicit backing fields need `-Xexplicit-backing-fields`; the plugin module compiles with `-Xcontext-parameters`. |
+| 2.3.21 | `k2321` | Also covers 2.3.20. Explicit backing fields need `-Xexplicit-backing-fields`, and the prefer-explicit-backing-field rule stays quiet without it; the plugin module compiles with `-Xcontext-parameters`. |
 
 Every version is built and tested on every push by `.github/workflows/ci.yml`.
 

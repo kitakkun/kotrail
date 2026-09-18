@@ -2,7 +2,7 @@
 
 **Diagnostic:** `KOTRAIL_PREFER_EXPLICIT_BACKING_FIELD` (error, on the exposing property's name)
 **Switch:** `rules.preferExplicitBackingField` (default `true`)
-**Requires:** Kotlin 2.4, where explicit backing fields are stable.
+**Requires:** the explicit backing fields language feature, on by default from Kotlin 2.4.0 and behind `-Xexplicit-backing-fields` on 2.3.x. Where it is off, the rule reports nothing.
 
 ## What it rejects
 
@@ -33,10 +33,14 @@ named `_foo` declared in the same class with strictly narrower visibility.
 - `foo` does not actually read `_foo`.
 - `foo` already has an explicit backing field.
 - The pair lives at top level (not covered yet).
+- The compilation does not have explicit backing fields enabled: on Kotlin 2.3.x without
+  `-Xexplicit-backing-fields` the rewrite would not compile, so nothing is asked for.
 
 ## Fixtures
 
-`compiler-tests/testData/diagnostics/preferExplicitBackingField.kt`
+`compiler-tests/testData/diagnostics/preferExplicitBackingField.kt`,
+`preferExplicitBackingFieldFeatureOff.kt` (nothing reported with the feature off), and the 2.3.x
+overlay of the first, which turns the feature on with a `LANGUAGE` directive
 
 ## Implementation notes
 

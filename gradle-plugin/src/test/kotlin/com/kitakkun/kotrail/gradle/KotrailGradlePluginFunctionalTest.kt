@@ -28,18 +28,18 @@ class KotrailGradlePluginFunctionalTest {
     fun `a rule violation fails the consumer build`() {
         writeSettings()
         writeBuild(kotrailBlock = "")
-        writeFile("src/main/kotlin/Cases.kt", BACKING_FIELD_VIOLATION)
+        writeFile("src/main/kotlin/Cases.kt", NOT_NULL_ASSERTION_VIOLATION)
 
         val result = runBuild("compileKotlin", expectFailure = true)
 
         assertTrue(result.output.contains("[Kotrail]"), result.output)
-        assertTrue(result.output.contains("backing property"), result.output)
+        assertTrue(result.output.contains("!!"), result.output)
     }
 
     @Test
     fun `a rule switched off in the config file stops reporting`() {
         writeSettings()
-        writeFile("kotrail.properties", "rules.preferExplicitBackingField=false")
+        writeFile("kotrail.properties", "rules.noNotNullAssertion=false")
         writeBuild(
             """
             kotrail {
@@ -47,7 +47,7 @@ class KotrailGradlePluginFunctionalTest {
             }
             """.trimIndent(),
         )
-        writeFile("src/main/kotlin/Cases.kt", BACKING_FIELD_VIOLATION)
+        writeFile("src/main/kotlin/Cases.kt", NOT_NULL_ASSERTION_VIOLATION)
 
         val result = runBuild("compileKotlin")
 
@@ -58,7 +58,7 @@ class KotrailGradlePluginFunctionalTest {
     @Test
     fun `a rule lowered to a warning reports without failing`() {
         writeSettings()
-        writeFile("kotrail.properties", "severity.preferExplicitBackingField=warning")
+        writeFile("kotrail.properties", "severity.noNotNullAssertion=warning")
         writeBuild(
             """
             kotrail {
@@ -66,7 +66,7 @@ class KotrailGradlePluginFunctionalTest {
             }
             """.trimIndent(),
         )
-        writeFile("src/main/kotlin/Cases.kt", BACKING_FIELD_VIOLATION)
+        writeFile("src/main/kotlin/Cases.kt", NOT_NULL_ASSERTION_VIOLATION)
 
         val result = runBuild("compileKotlin")
 
@@ -77,7 +77,7 @@ class KotrailGradlePluginFunctionalTest {
     @Test
     fun `the project's note is appended to the message`() {
         writeSettings()
-        writeFile("kotrail.properties", "note.preferExplicitBackingField=See ADR-014.")
+        writeFile("kotrail.properties", "note.noNotNullAssertion=See ADR-014.")
         writeBuild(
             """
             kotrail {
@@ -85,20 +85,20 @@ class KotrailGradlePluginFunctionalTest {
             }
             """.trimIndent(),
         )
-        writeFile("src/main/kotlin/Cases.kt", BACKING_FIELD_VIOLATION)
+        writeFile("src/main/kotlin/Cases.kt", NOT_NULL_ASSERTION_VIOLATION)
 
         val result = runBuild("compileKotlin", expectFailure = true)
 
         // The note is added to the built-in message, never substituted for it.
-        assertTrue(result.output.contains("backing property"), result.output)
+        assertTrue(result.output.contains("!!"), result.output)
         assertTrue(result.output.contains("See ADR-014."), result.output)
     }
 
     @Test
     fun `a test compilation layers its own config file on top of the project one`() {
         writeSettings()
-        writeFile("src/test/kotlin/CasesTest.kt", BACKING_FIELD_VIOLATION)
-        writeFile("kotrail.properties", "severity.preferExplicitBackingField=warning")
+        writeFile("src/test/kotlin/CasesTest.kt", NOT_NULL_ASSERTION_VIOLATION)
+        writeFile("kotrail.properties", "severity.noNotNullAssertion=warning")
         writeBuild(
             """
             kotrail {
@@ -119,7 +119,7 @@ class KotrailGradlePluginFunctionalTest {
         assertTrue(layered.output.contains("[Kotrail]"), layered.output)
 
         // What the override does say wins over the project file.
-        writeFile("kotrail-test.properties", "rules.preferExplicitBackingField=false")
+        writeFile("kotrail-test.properties", "rules.noNotNullAssertion=false")
         val overridden = runBuild("compileTestKotlin")
         assertEquals(TaskOutcome.SUCCESS, overridden.task(":compileTestKotlin")?.outcome, overridden.output)
         assertFalse(overridden.output.contains("[Kotrail]"), overridden.output)
@@ -184,10 +184,11 @@ class KotrailGradlePluginFunctionalTest {
     }
 
     private companion object {
-        val BACKING_FIELD_VIOLATION = """
-            class Cases {
-                private val _items = mutableListOf<String>()
-                val items: List<String> get() = _items
+        // A violation of a rule that behaves the same on every supported Kotlin version, so that
+        // these tests are about the Gradle wiring rather than about a language feature.
+        val NOT_NULL_ASSERTION_VIOLATION = """
+            class Cases(private val name: String?) {
+                fun length(): Int = name!!.length
             }
         """.trimIndent()
     }

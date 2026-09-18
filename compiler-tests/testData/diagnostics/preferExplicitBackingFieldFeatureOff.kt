@@ -1,6 +1,7 @@
-// LANGUAGE: +ExplicitBackingFields
+// LANGUAGE: -ExplicitBackingFields
 // KOTRAIL_CONFIG: rules.preferExplicitBackingField=true
-// On 2.3.x the feature is behind -Xexplicit-backing-fields; with it on, the rule behaves as on 2.4.
+// Not reported anywhere: with the language feature off, the rewrite the rule asks for would not
+// compile, so the rule stays quiet.
 abstract class Base {
     // Not reported: open property.
     private val _label = "x"
@@ -12,11 +13,11 @@ abstract class Base {
 class Cases {
     // Reported: getter delegation.
     private val _a = mutableListOf<String>()
-    val <!KOTRAIL_PREFER_EXPLICIT_BACKING_FIELD!>a<!>: List<String> get() = _a
+    val a: List<String> get() = _a
 
     // Reported: initializer delegation through a call on the backing property.
     private val _b = mutableMapOf<String, Int>()
-    val <!KOTRAIL_PREFER_EXPLICIT_BACKING_FIELD!>b<!>: Map<String, Int> = _b.toMap()
+    val b: Map<String, Int> = _b.toMap()
 
     // Not reported: the exposing side is a var.
     private val _c = 0
@@ -32,18 +33,14 @@ class Cases {
 
     // Reported: internal is narrower than public.
     internal val _f = 1
-    val <!KOTRAIL_PREFER_EXPLICIT_BACKING_FIELD!>f<!>: Int get() = _f
+    val f: Int get() = _f
 
     // Not reported: extension property.
     private val _g = 1
     val String.g: Int get() = _g
 
-    // Not reported: already an explicit backing field.
-    val h: List<Int>
-        field = mutableListOf()
-
     fun use() { _d; _c }
 }
 
-/* GENERATED_FIR_TAGS: classDeclaration, explicitBackingField, functionDeclaration, getter, integerLiteral,
-propertyDeclaration, propertyWithExtensionReceiver, stringLiteral */
+/* GENERATED_FIR_TAGS: classDeclaration, functionDeclaration, getter, integerLiteral, propertyDeclaration,
+propertyWithExtensionReceiver, stringLiteral */
