@@ -27,6 +27,9 @@ named `_foo` declared in the same class with strictly narrower visibility.
 
 ## When it stays quiet
 
+- `_foo` is a `var` and `foo` is a getter that returns it unchanged, of the same type: that pair
+  needs no backing field, and [prefer private setter](prefer-private-setter.md) reports it instead.
+
 - The exposing property is `var`, `open`, `abstract`, `expect`, or an extension property: an
   explicit backing field is not allowed there.
 - Both sides have the same visibility (for example both `private`).

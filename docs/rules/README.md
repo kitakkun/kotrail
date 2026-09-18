@@ -9,6 +9,7 @@ fixtures that pin its behavior.
 | Rule | Diagnostic | Page |
 |---|---|---|
 | Prefer explicit backing fields | `KOTRAIL_PREFER_EXPLICIT_BACKING_FIELD` | [prefer-explicit-backing-field.md](prefer-explicit-backing-field.md) |
+| Prefer private setter | `KOTRAIL_PREFER_PRIVATE_SETTER` | [prefer-private-setter.md](prefer-private-setter.md) |
 | Narrow model parameters | `KOTRAIL_MODEL_PARAMETER_TOO_WIDE` | [narrow-model-parameters.md](narrow-model-parameters.md) |
 | No pass-through return | `KOTRAIL_PASS_THROUGH_RETURN` | [no-pass-through-return.md](no-pass-through-return.md) |
 | No pass-through function | `KOTRAIL_PASS_THROUGH_FUNCTION` | [no-pass-through-function.md](no-pass-through-function.md) |

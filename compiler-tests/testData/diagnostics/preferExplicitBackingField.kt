@@ -40,7 +40,15 @@ class Cases {
     val h: List<Int>
         field = mutableListOf()
 
-    fun use() { _d; _c }
+    // Not reported here: a var returned as is belongs to the prefer-private-setter rule, which is off.
+    private var _i = 0
+    val i: Int get() = _i
+
+    // Reported: a var exposed through a wider type still wants an explicit backing field.
+    private var _j = mutableListOf<Int>()
+    val <!KOTRAIL_PREFER_EXPLICIT_BACKING_FIELD!>j<!>: List<Int> get() = _j
+
+    fun use() { _d; _c; _i = 1; _j = mutableListOf() }
 }
 
 /* GENERATED_FIR_TAGS: classDeclaration, explicitBackingField, functionDeclaration, getter, integerLiteral,

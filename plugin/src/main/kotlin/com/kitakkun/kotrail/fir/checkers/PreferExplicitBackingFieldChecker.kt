@@ -20,11 +20,16 @@ import org.jetbrains.kotlin.fir.declarations.utils.isExpect
 import org.jetbrains.kotlin.fir.declarations.utils.modality
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.languageVersionSettings
+import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
+import org.jetbrains.kotlin.fir.expressions.FirReturnExpression
 import org.jetbrains.kotlin.fir.references.toResolvedPropertySymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
+import org.jetbrains.kotlin.fir.types.typeContext
+import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
+import org.jetbrains.kotlin.types.AbstractTypeChecker
 
 /**
  * Reports the pre-Kotlin-2.4 "backing property" idiom:
@@ -44,17 +49,27 @@ import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
  * A pair is reported when, inside the same class, a `val` named `foo` references a
  * property named `_foo` whose visibility is strictly narrower than `foo`'s, and `foo`
  * can legally carry an explicit backing field (final, not `expect`, not an extension).
+ *
+ * The same pair with a `var` behind a getter that returns it as is,
+ *
+ * ```kotlin
+ * private var _count = 0
+ * val count: Int get() = _count
+ * ```
+ *
+ * needs no backing field at all: `var count = 0` with `private set` says the same thing on
+ * every Kotlin version. That case is the prefer-private-setter rule's, reported here through
+ * the same pair detection so that one pair gets one diagnostic.
  */
 object PreferExplicitBackingFieldChecker : FirPropertyChecker(MppCheckerKind.Common) {
     private const val BACKING_PREFIX = "_"
 
     context(context: CheckerContext, reporter: DiagnosticReporter)
     override fun check(declaration: FirProperty) {
-        if (!context.session.kotrailConfig.isEnabled(KotrailRule.PREFER_EXPLICIT_BACKING_FIELD)) return
-        // The rewrite the rule asks for only compiles where the language feature is on: by default
-        // from Kotlin 2.4.0, behind -Xexplicit-backing-fields before that. Elsewhere the rule would
-        // demand something the compiler rejects, so it stays quiet.
-        if (!context.session.languageVersionSettings.supportsFeature(LanguageFeature.ExplicitBackingFields)) return
+        val config = context.session.kotrailConfig
+        val backingFieldRule = config.isEnabled(KotrailRule.PREFER_EXPLICIT_BACKING_FIELD)
+        val privateSetterRule = config.isEnabled(KotrailRule.PREFER_PRIVATE_SETTER)
+        if (!backingFieldRule && !privateSetterRule) return
         val source = declaration.source ?: return
         if (source.kind is KtFakeSourceElementKind) return
         if (!declaration.origin.fromSource) return
@@ -74,7 +89,36 @@ object PreferExplicitBackingFieldChecker : FirPropertyChecker(MppCheckerKind.Com
 
         if (!references(declaration, backing)) return
 
+        if (backing.isVar && returnsAsIs(declaration, backing)) {
+            if (privateSetterRule) reportKotrail(source, KotrailDiagnostics.PREFER_PRIVATE_SETTER, backingName)
+            return
+        }
+        if (!backingFieldRule) return
+        // The rewrite the rule asks for only compiles where the language feature is on: by default
+        // from Kotlin 2.4.0, behind -Xexplicit-backing-fields before that. Elsewhere the rule would
+        // demand something the compiler rejects, so it stays quiet.
+        if (!context.session.languageVersionSettings.supportsFeature(LanguageFeature.ExplicitBackingFields)) return
         reportKotrail(source, KotrailDiagnostics.PREFER_EXPLICIT_BACKING_FIELD, backingName)
+    }
+
+    /**
+     * Whether [property] is a getter that returns [backing] unchanged, of the same type: the
+     * shape `private set` replaces. A conversion (`_x.toList()`), a wider exposed type
+     * (`MutableStateFlow` behind `StateFlow`), or an initializer copy is something else.
+     */
+    private fun returnsAsIs(property: FirProperty, backing: FirPropertySymbol): Boolean {
+        if (property.initializer != null || property.delegate != null) return false
+        val getter = property.getter ?: return false
+        val body = getter.body ?: return false
+        val statement = body.statements.singleOrNull() ?: return false
+        val returned = (statement as? FirReturnExpression)?.result ?: statement as? FirExpression ?: return false
+        val access = returned as? FirPropertyAccessExpression ?: return false
+        if (access.calleeReference.toResolvedPropertySymbol() != backing) return false
+        return AbstractTypeChecker.equalTypes(
+            property.moduleData.session.typeContext,
+            property.returnTypeRef.coneType,
+            backing.resolvedReturnType,
+        )
     }
 
     private fun canCarryExplicitBackingField(property: FirProperty): Boolean {

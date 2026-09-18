@@ -69,6 +69,9 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: the name of the backing property (e.g. `_items`). */
     val PREFER_EXPLICIT_BACKING_FIELD = tunable1<KtProperty, String>("PREFER_EXPLICIT_BACKING_FIELD", KotrailRule.PREFER_EXPLICIT_BACKING_FIELD, NAME)
 
+    /** Argument: the name of the backing `var` (e.g. `_count`). */
+    val PREFER_PRIVATE_SETTER = tunable1<KtProperty, String>("PREFER_PRIVATE_SETTER", KotrailRule.PREFER_PRIVATE_SETTER, NAME)
+
     /** Arguments: the parameter name, a description of declared versus read properties. */
     val MODEL_PARAMETER_TOO_WIDE = tunable2<KtParameter, String, String>("MODEL_PARAMETER_TOO_WIDE", KotrailRule.NARROW_MODEL_PARAMETERS, NAME)
 
@@ -245,6 +248,11 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             "[Kotrail] This property is exposed through the backing property ''{0}''. " +
                 "Use an explicit backing field instead: declare only the public property " +
                 "and initialize its ''field'' with the mutable implementation.",
+        )
+        map.put1(
+            KotrailDiagnostics.PREFER_PRIVATE_SETTER,
+            "[Kotrail] This property only reads the backing var ''{0}''. Make it the var itself with a " +
+                "private setter (var x: T = ...; private set), and write to it directly inside the class.",
         )
         map.put2(
             KotrailDiagnostics.MODEL_PARAMETER_TOO_WIDE,

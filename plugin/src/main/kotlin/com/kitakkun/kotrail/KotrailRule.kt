@@ -15,6 +15,7 @@ enum class KotrailRule(
     val hasSwitch: Boolean = true,
 ) {
     PREFER_EXPLICIT_BACKING_FIELD("preferExplicitBackingField", Severity.ERROR),
+    PREFER_PRIVATE_SETTER("preferPrivateSetter", Severity.ERROR),
     NARROW_MODEL_PARAMETERS("narrowModelParameters", Severity.ERROR),
     NO_PASS_THROUGH_RETURN("noPassThroughReturn", Severity.ERROR),
     NO_PASS_THROUGH_FUNCTION("noPassThroughFunction", Severity.ERROR),

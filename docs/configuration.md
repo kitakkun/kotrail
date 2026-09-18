@@ -27,6 +27,7 @@ rule hangs off its key: `severity.<rule>`, `note.<rule>`, `exclude.<rule>`, and 
 | `exclude` | (empty) | A predicate over locations; matching diagnostics of every rule are dropped. See [Excluding by pattern](#excluding-by-pattern). |
 | `exclude.<rule>` | (empty) | The same, for one rule; a diagnostic is dropped when either predicate matches. |
 | `rules.preferExplicitBackingField` | `true` | [Prefer explicit backing fields](rules/prefer-explicit-backing-field.md). |
+| `rules.preferPrivateSetter` | `true` | [Prefer private setter](rules/prefer-private-setter.md). |
 | `rules.narrowModelParameters` | `true` | [Narrow model parameters](rules/narrow-model-parameters.md). |
 | `narrowModelParameters.maxUnusedProperties` | `3` | How many properties of a data-class parameter may stay unread. |
 | `narrowModelParameters.scope` | `composables` | `composables` or `all`. |
@@ -101,6 +102,7 @@ adopt a rule gradually.
 | Key | Default |
 |---|---|
 | `severity.preferExplicitBackingField` | `error` |
+| `severity.preferPrivateSetter` | `error` |
 | `severity.narrowModelParameters` | `error` |
 | `severity.noPassThroughReturn` | `error` |
 | `severity.noPassThroughFunction` | `error` |
