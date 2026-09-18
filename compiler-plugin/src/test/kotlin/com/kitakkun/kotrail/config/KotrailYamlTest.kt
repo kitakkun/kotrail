@@ -91,6 +91,37 @@ class KotrailYamlTest {
     }
 
     @Test
+    fun `block scalars keep or fold their lines and sequences may hold mappings`() {
+        val root = KotrailYaml.parse(
+            "k.yaml",
+            """
+            note: >
+              Conventions live in CONTRIBUTING.md;
+              ask in the channel before disabling a rule.
+            rules:
+              functionLength:
+                note: |-
+                  Line one.
+                  Line two.
+            items:
+              - name: first
+                value: 1
+              - name: second
+                value: 2
+              - plain
+            """.trimIndent(),
+        )
+        assertEquals("Conventions live in CONTRIBUTING.md; ask in the channel before disabling a rule.\n", (root["note"] as ConfigNode.Scalar).value)
+        val functionLength = (root["rules"] as ConfigNode.Mapping)["functionLength"] as ConfigNode.Mapping
+        assertEquals("Line one.\nLine two.", (functionLength["note"] as ConfigNode.Scalar).value)
+        val items = (root["items"] as ConfigNode.Sequence).items
+        assertEquals(3, items.size)
+        assertEquals("first", ((items[0] as ConfigNode.Mapping)["name"] as ConfigNode.Scalar).value)
+        assertEquals("2", ((items[1] as ConfigNode.Mapping)["value"] as ConfigNode.Scalar).value)
+        assertEquals("plain", (items[2] as ConfigNode.Scalar).value)
+    }
+
+    @Test
     fun `layers merge key by key and a null takes a key away`() {
         val base = KotrailYaml.parse("a.yaml", "rules:\n  functionLength:\n    maxLines: 60\n    exclude: name(main)\n  noRedundantElse:\n    enabled: false\n")
         val over = KotrailYaml.parse("b.yaml", "rules:\n  functionLength:\n    maxLines: 120\n  noRedundantElse: ~\n")
