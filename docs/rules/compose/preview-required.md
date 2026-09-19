@@ -41,13 +41,15 @@ calls it directly.
 ## When it stays quiet
 
 - Private composables (helpers), value-returning composables, and preview functions themselves.
-- `override` and `expect` functions, local functions.
+- `override`, `expect`, and `actual` functions, local functions, and members without a body
+  (an abstract composable has nothing to render; its implementations are what previews call).
 - The composable is called from a preview in the same file, at any call depth inside the
   preview's body (a preview wrapped in a theme lambda still counts).
 
 Composables that cannot be previewed (they take a ViewModel, need a navigation controller)
 should be suppressed at the spot with `@Suppress("KOTRAIL_COMPOSABLE_WITHOUT_PREVIEW")`, or better,
-split into a thin stateful wrapper and a previewable stateless component.
+split into a thin stateful wrapper and a previewable stateless component. The suppression works
+on the composable, on a class or object around it, or on the file.
 
 ## Fixtures
 
@@ -59,3 +61,6 @@ split into a thin stateful wrapper and a previewable stateless component.
 requirement is same-file, the check is a single-file frontend pass: it collects the file's
 functions, gathers the resolved callees of every preview body, and reports the composables that
 are not among them. Previews in other source sets or modules are deliberately not considered.
+Because a file checker runs with the file's context, `@Suppress` on a composable or on a class
+around it is read from the declarations themselves (through the compiler's own
+`getDiagnosticsSuppressedForContainer`) rather than from the context.

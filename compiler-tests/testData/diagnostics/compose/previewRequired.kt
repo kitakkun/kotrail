@@ -57,6 +57,28 @@ fun rememberLabel(): String = "label"
 
 fun plain() {}
 
+// Not reported: suppressed on the declaration itself.
+@Suppress("KOTRAIL_COMPOSABLE_WITHOUT_PREVIEW")
+@Composable
+fun SuppressedOrphan(modifier: Modifier = Modifier) {
+    Box(modifier) { Text("suppressed") }
+}
+
+// Not reported: suppressed on the class around it.
+@Suppress("KOTRAIL_COMPOSABLE_WITHOUT_PREVIEW")
+object SuppressedWidgets {
+    @Composable
+    fun Chip(label: String) {
+        Text(label)
+    }
+}
+
+// Not reported: an abstract member has nothing to render.
+interface Slot {
+    @Composable
+    fun Content()
+}
+
 // Not reported: an object member previewed next to it.
 object Widgets {
     @Composable
