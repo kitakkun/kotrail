@@ -103,6 +103,8 @@ own; a rule not listed has none.
 | | `maxComposableLines` | `80` | The same limit for `@Composable` functions. |
 | `nullChainLength` | `maxElvis` | `2` | Maximum `?:` fallbacks in one expression, a trailing `?: return` / `?: throw` not counted; `0` disables. |
 | | `maxSafeCalls` | `0` | Maximum `?.` along one receiver chain; `0` disables. |
+| `implicitReceivers` | `qualifyOuter` | `true` | Whether a bare name resolved on an outer implicit receiver, past a nearer one, is reported. |
+| | `maxDepth` | `0` | Maximum implicit receivers in scope at once; `0` disables. |
 | `noDataClassInPublicApi` | `scope` | `explicitApi` | `explicitApi` applies the rule only to modules compiled with explicit API mode; `all` everywhere. |
 | `visibilityPolicy` | `private` | | A predicate; matching declarations must be `private`. |
 | | `internal` | | A predicate; matching declarations must be `internal` or `private`. |

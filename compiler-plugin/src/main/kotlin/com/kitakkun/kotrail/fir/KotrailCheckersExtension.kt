@@ -27,6 +27,8 @@ import com.kitakkun.kotrail.fir.checkers.PreferValueClassChecker
 import com.kitakkun.kotrail.fir.checkers.RedundantElseChecker
 import com.kitakkun.kotrail.fir.checkers.SwallowedCancellationChecker
 import com.kitakkun.kotrail.fir.checkers.ElvisChainChecker
+import com.kitakkun.kotrail.fir.checkers.ImplicitReceiverDepthChecker
+import com.kitakkun.kotrail.fir.checkers.OuterImplicitReceiverChecker
 import com.kitakkun.kotrail.fir.checkers.SafeCallChainChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposableModifierParameterChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposableNamedCallbackArgumentsChecker
@@ -121,6 +123,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
     )
     override val anonymousFunctionCheckers: Set<FirAnonymousFunctionChecker> = setOf(
         PreferFunctionReferenceChecker,
+        ImplicitReceiverDepthChecker,
     )
 }
 
@@ -145,6 +148,7 @@ object KotrailExpressionCheckers : ExpressionCheckers() {
     )
     override val qualifiedAccessExpressionCheckers: Set<FirQualifiedAccessExpressionChecker> = setOf(
         NoFqnReferences.CallableChecker,
+        OuterImplicitReceiverChecker,
     )
     override val elvisExpressionCheckers: Set<FirElvisExpressionChecker> = setOf(
         ElvisChainChecker,

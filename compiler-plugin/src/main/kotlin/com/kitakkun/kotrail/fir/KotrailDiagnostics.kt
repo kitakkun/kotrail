@@ -99,6 +99,12 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: how often, e.g. `3 times (limit 2)`. Reported on the outermost `?:` expression. */
     val ELVIS_CHAIN_TOO_LONG = tunable1<KtElement, String>("ELVIS_CHAIN_TOO_LONG", KotrailRule.NULL_CHAIN_LENGTH, WHOLE)
 
+    /** Arguments: the name, the outer receiver it resolved on (`this@Screen`); reported on the access. */
+    val IMPLICIT_RECEIVER_FROM_OUTER_SCOPE = tunable2<KtElement, String, String>("IMPLICIT_RECEIVER_FROM_OUTER_SCOPE", KotrailRule.IMPLICIT_RECEIVERS, WHOLE)
+
+    /** Argument: what was counted, e.g. `3 implicit receivers in scope (limit 2)`; reported on the lambda past the limit. */
+    val TOO_MANY_IMPLICIT_RECEIVERS = tunable1<KtElement, String>("TOO_MANY_IMPLICIT_RECEIVERS", KotrailRule.IMPLICIT_RECEIVERS, WHOLE)
+
     /** Argument: how deep, e.g. `4 times (limit 3)`. Reported on the outermost `?.` expression. */
     val SAFE_CALL_CHAIN_TOO_LONG = tunable1<KtElement, String>("SAFE_CALL_CHAIN_TOO_LONG", KotrailRule.NULL_CHAIN_LENGTH, WHOLE)
 
@@ -472,6 +478,15 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             KotrailDiagnostics.SAFE_CALL_CHAIN_TOO_LONG,
             "[Kotrail] This access chains ''?.'' {0}; every link may be null and the result cannot say which one " +
                 "was. Bind an intermediate value to a name, or move the traversal into the model.",
+        )
+        map.put2(
+            KotrailDiagnostics.IMPLICIT_RECEIVER_FROM_OUTER_SCOPE,
+            "[Kotrail] ''{0}'' resolves on {1}, not on the nearest receiver. Qualify it ({1}.{0}) so that the " +
+                "reader sees where it belongs.",
+        )
+        map.put1(
+            KotrailDiagnostics.TOO_MANY_IMPLICIT_RECEIVERS,
+            "[Kotrail] This lambda puts {0}. Bind the outer receiver to a name, or split the block.",
         )
         map.put1(
             KotrailDiagnostics.FUNCTION_TOO_LONG,

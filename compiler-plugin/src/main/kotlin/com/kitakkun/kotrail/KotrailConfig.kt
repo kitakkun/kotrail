@@ -125,6 +125,14 @@ data class KotrailNullChain(
     val maxSafeCalls: Int,
 )
 
+/** Tunables for the implicit-receivers rule. From `rules.implicitReceivers`. */
+data class KotrailImplicitReceivers(
+    /** Whether a bare name resolved on an outer receiver, past a nearer one, is reported. */
+    val qualifyOuter: Boolean,
+    /** Maximum implicit receivers in scope at once; `0` switches the count off. */
+    val maxDepth: Int,
+)
+
 /** Tunables for the comment-length rule. From `rules.commentLength`; `0` means unlimited. */
 data class KotrailCommentSettings(
     /** Maximum lines for a block comment or a run of consecutive `//` lines. */
@@ -290,6 +298,7 @@ data class KotrailConfig(
     val preferFunctionReferences: KotrailPreferFunctionReferences,
     val comments: KotrailCommentSettings,
     val nullChain: KotrailNullChain,
+    val implicitReceivers: KotrailImplicitReceivers,
     val noFqnReferences: KotrailNoFqnReferences,
     val forbiddenCall: KotrailForbiddenCall,
     val namedArguments: KotrailNamedArguments,
@@ -329,6 +338,7 @@ data class KotrailConfig(
         val DEFAULT_REFERENCE_FORMS: Set<ReferenceForm> = ReferenceForm.entries.toSet()
         const val DEFAULT_COMMENT_MAX_LINES = 5
         const val DEFAULT_MAX_ELVIS = 2
+        const val DEFAULT_MAX_RECEIVER_DEPTH = 0
         const val DEFAULT_MAX_SAFE_CALLS = 0
         const val DEFAULT_KDOC_MAX_LINES = 0
         const val DEFAULT_MIN_SAME_TYPE_ARGUMENTS = 3
@@ -594,6 +604,10 @@ data class KotrailConfig(
                 nullChain = KotrailNullChain(
                     maxElvis = int(KotrailRule.NULL_CHAIN_LENGTH, "maxElvis") ?: DEFAULT_MAX_ELVIS,
                     maxSafeCalls = int(KotrailRule.NULL_CHAIN_LENGTH, "maxSafeCalls") ?: DEFAULT_MAX_SAFE_CALLS,
+                ),
+                implicitReceivers = KotrailImplicitReceivers(
+                    qualifyOuter = boolean(ruleNode(KotrailRule.IMPLICIT_RECEIVERS), "qualifyOuter") ?: true,
+                    maxDepth = int(KotrailRule.IMPLICIT_RECEIVERS, "maxDepth") ?: DEFAULT_MAX_RECEIVER_DEPTH,
                 ),
                 comments = KotrailCommentSettings(
                     maxLines = int(KotrailRule.COMMENT_LENGTH, "maxLines") ?: DEFAULT_COMMENT_MAX_LINES,

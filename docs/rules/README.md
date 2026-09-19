@@ -31,6 +31,7 @@ fixtures that pin its behavior.
 | Preconditions | `KOTRAIL_PRECONDITION_VIOLATED` | [preconditions.md](preconditions.md) |
 | Function length | `KOTRAIL_FUNCTION_TOO_LONG` | [function-length.md](function-length.md) |
 | Null chain length | `KOTRAIL_ELVIS_CHAIN_TOO_LONG`, `KOTRAIL_SAFE_CALL_CHAIN_TOO_LONG` | [null-chain-length.md](null-chain-length.md) |
+| Implicit receivers | `KOTRAIL_IMPLICIT_RECEIVER_FROM_OUTER_SCOPE`, `KOTRAIL_TOO_MANY_IMPLICIT_RECEIVERS` | [implicit-receivers.md](implicit-receivers.md) |
 | No data class in public API | `KOTRAIL_DATA_CLASS_IN_PUBLIC_API` | [no-data-class-in-public-api.md](no-data-class-in-public-api.md) |
 | Visibility policy | `KOTRAIL_VISIBILITY_TOO_WIDE` | [visibility-policy.md](visibility-policy.md) |
 | Required annotation | `KOTRAIL_REQUIRED_ANNOTATION_MISSING` | [required-annotation.md](required-annotation.md) |
