@@ -44,19 +44,21 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
 
     override fun applyToCompilation(kotlinCompilation: KotlinCompilation<*>): Provider<List<SubpluginOption>> {
         val compilationName = kotlinCompilation.name
-        registerConfigFilesAsInputs(kotlinCompilation, configFilesFor(compilationName))
+        registerConfigFilesAsInputs(kotlinCompilation, compilationName)
         return project.provider { optionsFor(compilationName) }
     }
 
     /**
      * The option value is the file's absolute path, which says nothing about its contents, so
      * editing a configuration file would otherwise leave the compilation up to date and the new
-     * settings unapplied until something else changed.
+     * settings unapplied until something else changed. The files are resolved through a provider,
+     * as the options are, so that a `configFile` set after this point (from `afterEvaluate`, a
+     * convention plugin, an init script) reaches the task's inputs and the compiler alike;
+     * otherwise a build could be cached under one file's key and compiled with another.
      */
-    private fun registerConfigFilesAsInputs(kotlinCompilation: KotlinCompilation<*>, configFiles: List<File>) {
-        if (configFiles.isEmpty()) return
+    private fun registerConfigFilesAsInputs(kotlinCompilation: KotlinCompilation<*>, compilationName: String) {
         kotlinCompilation.compileTaskProvider.configure { task ->
-            task.inputs.files(configFiles)
+            task.inputs.files(project.provider { configFilesFor(compilationName) })
                 .withPropertyName("kotrailConfigFiles")
                 .withPathSensitivity(PathSensitivity.RELATIVE)
                 .optional()
