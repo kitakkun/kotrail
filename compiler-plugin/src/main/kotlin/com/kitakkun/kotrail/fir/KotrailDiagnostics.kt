@@ -451,25 +451,29 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
     }
 
     /**
-     * The project's note is the last parameter of every factory, so each message ends with its
-     * placeholder. The note is empty, or already prefixed with a space, so a message without one
-     * reads exactly as it did before the parameter existed.
+     * Every message ends with the diagnostic's base name in parentheses, which is what a
+     * `@Suppress` takes and what a rule is looked up by, and then with the project's note. The
+     * note is the last parameter of every factory; it is empty, or already prefixed with a space,
+     * so a message without one reads exactly as it did before the parameter existed.
      */
     private fun KtDiagnosticFactoryToRendererMap.put0(diagnostic: TunableDiagnostic0, message: String) {
         val renderer: DiagnosticParameterRenderer<String> = CommonRenderers.STRING
-        put(diagnostic.error, "$message{0}", renderer)
-        put(diagnostic.warning, "$message{0}", renderer)
+        val template = "$message (${diagnostic.baseName}){0}"
+        put(diagnostic.error, template, renderer)
+        put(diagnostic.warning, template, renderer)
     }
 
     private fun KtDiagnosticFactoryToRendererMap.put1(diagnostic: TunableDiagnostic1<String>, message: String) {
         val renderer: DiagnosticParameterRenderer<String> = CommonRenderers.STRING
-        put(diagnostic.error, "$message{1}", renderer, renderer)
-        put(diagnostic.warning, "$message{1}", renderer, renderer)
+        val template = "$message (${diagnostic.baseName}){1}"
+        put(diagnostic.error, template, renderer, renderer)
+        put(diagnostic.warning, template, renderer, renderer)
     }
 
     private fun KtDiagnosticFactoryToRendererMap.put2(diagnostic: TunableDiagnostic2<String, String>, message: String) {
         val renderer: DiagnosticParameterRenderer<String> = CommonRenderers.STRING
-        put(diagnostic.error, "$message{2}", renderer, renderer, renderer)
-        put(diagnostic.warning, "$message{2}", renderer, renderer, renderer)
+        val template = "$message (${diagnostic.baseName}){2}"
+        put(diagnostic.error, template, renderer, renderer, renderer)
+        put(diagnostic.warning, template, renderer, renderer, renderer)
     }
 }

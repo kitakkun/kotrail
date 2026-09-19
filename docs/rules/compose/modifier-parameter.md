@@ -16,7 +16,7 @@ fun Card(mod: Modifier, title: String = "") {   // wrong name, no default, optio
 ```
 
 ```
-e: Card.kt:8:5 [KOTRAIL_COMPOSABLE_MODIFIER_PARAMETER] [Kotrail] Modifier parameter convention: the Modifier parameter must be named 'modifier'; 'modifier' must default to 'Modifier'; 'modifier' must be the first optional parameter; 'modifier' is passed more than once (apply it to a single root element).
+e: Card.kt:8:5 [KOTRAIL_COMPOSABLE_MODIFIER_PARAMETER] [Kotrail] Modifier parameter convention: the Modifier parameter must be named 'modifier'; 'modifier' must default to 'Modifier'; 'modifier' must be the first optional parameter; 'modifier' is passed more than once (apply it to a single root element). (KOTRAIL_COMPOSABLE_MODIFIER_PARAMETER)
 ```
 
 ## What it asks for

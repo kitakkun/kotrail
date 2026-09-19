@@ -151,7 +151,8 @@ rules:
 
 ```
 e: Cases.kt:3:9 [Kotrail] This property is exposed through the backing property '_items'. Declare
-   it with an explicit backing field instead. ViewModels expose StateFlow directly here; see ADR-014.
+   it with an explicit backing field instead. (KOTRAIL_PREFER_EXPLICIT_BACKING_FIELD) ViewModels
+   expose StateFlow directly here; see ADR-014.
 ```
 
 The note is **appended** to the built-in message, never substituted for it, so the rewrite a rule
@@ -281,7 +282,8 @@ so a list that needs more than one item belongs in the file.
 
 Every Kotrail diagnostic can be suppressed by name, per declaration or per file, exactly like a
 built-in one. The names all start with `KOTRAIL_`, so a suppression says where the rule comes
-from and cannot meet a compiler diagnostic of the same name:
+from and cannot meet a compiler diagnostic of the same name. Every message ends with the name to
+put in the suppression:
 
 ```kotlin
 @Suppress("KOTRAIL_COMPOSABLE_NESTING_TOO_DEEP")

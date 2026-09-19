@@ -9,7 +9,7 @@
 One screen composable that keeps growing into a single deep tree:
 
 ```
-e: Screen.kt:18:17 [KOTRAIL_COMPOSABLE_NESTING_TOO_DEEP] [Kotrail] Composable calls are nested 6 levels deep here; the limit is 5. Extract this subtree into its own composable.
+e: Screen.kt:18:17 [KOTRAIL_COMPOSABLE_NESTING_TOO_DEEP] [Kotrail] Composable calls are nested 6 levels deep here; the limit is 5. Extract this subtree into its own composable. (KOTRAIL_COMPOSABLE_NESTING_TOO_DEEP)
 ```
 
 ## What it asks for

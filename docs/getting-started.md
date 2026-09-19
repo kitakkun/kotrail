@@ -28,7 +28,7 @@ Every rule is on, at error severity. A violation reads like this:
 
 ```
 e: Home.kt:12:5 [Kotrail] This function is 84 lines of code (limit 80). Split it so that each
-   piece does one thing and has a name.
+   piece does one thing and has a name. (KOTRAIL_FUNCTION_TOO_LONG)
 ```
 
 Each message names what was found and what to do instead, which is what an assistant needs

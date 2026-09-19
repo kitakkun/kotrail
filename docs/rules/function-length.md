@@ -16,7 +16,7 @@ fun sync() {
 
 ```
 [Kotrail] This function is 72 lines of code (limit 50). Split it so that each piece does one
-thing and has a name.
+thing and has a name. (KOTRAIL_FUNCTION_TOO_LONG)
 ```
 
 ## What it asks for
