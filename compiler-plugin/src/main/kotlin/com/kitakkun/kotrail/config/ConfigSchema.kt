@@ -101,6 +101,10 @@ object ConfigSchema {
             Setting("known", Kind.ENTRIES, "What a library composable reads and provides, keyed by its fully qualified name.",
                 entryHint = "a mapping with reads (a list of locals) and provides (parameter name to a list of locals), or none"),
         ),
+        KotrailRule.NULL_CHAIN_LENGTH to listOf(
+            Setting("maxElvis", Kind.INT, "Maximum ?: fallbacks in one expression, a trailing ?: return or ?: throw not counted; 0 disables.", default = "2"),
+            Setting("maxSafeCalls", Kind.INT, "Maximum ?. along one receiver chain; 0 disables.", default = "0"),
+        ),
         KotrailRule.COMPOSE_NESTING to listOf(
             Setting("maxDepth", Kind.INT, "Nesting limit for composable calls; 0 disables the rule.", default = "5"),
         ),

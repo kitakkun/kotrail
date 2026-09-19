@@ -96,6 +96,12 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: what was measured, e.g. `72 lines of code (limit 50)`. */
     val FUNCTION_TOO_LONG = tunable1<KtNamedFunction, String>("FUNCTION_TOO_LONG", KotrailRule.FUNCTION_LENGTH, NAME)
 
+    /** Argument: how often, e.g. `3 times (limit 2)`. Reported on the outermost `?:` expression. */
+    val ELVIS_CHAIN_TOO_LONG = tunable1<KtElement, String>("ELVIS_CHAIN_TOO_LONG", KotrailRule.NULL_CHAIN_LENGTH, WHOLE)
+
+    /** Argument: how deep, e.g. `4 times (limit 3)`. Reported on the outermost `?.` expression. */
+    val SAFE_CALL_CHAIN_TOO_LONG = tunable1<KtElement, String>("SAFE_CALL_CHAIN_TOO_LONG", KotrailRule.NULL_CHAIN_LENGTH, WHOLE)
+
     /** Argument: the function the parameter list belongs to. Reported on the comment. */
     val COMMENT_IN_PARAMETER_LIST = tunable1<KtElement, String>("COMMENT_IN_PARAMETER_LIST", KotrailRule.NO_PARAMETER_COMMENTS, WHOLE)
 
@@ -455,6 +461,17 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             "[Kotrail] ''{0}'' is a data class in the public API. Its constructor, copy() and componentN() " +
                 "become part of the binary contract, so adding a property later breaks every consumer. " +
                 "Expose a regular class with an explicit equals/hashCode instead, or make it internal.",
+        )
+        map.put1(
+            KotrailDiagnostics.ELVIS_CHAIN_TOO_LONG,
+            "[Kotrail] This expression falls back with ''?:'' {0}; each fallback is one more case the reader " +
+                "evaluates in order. Extract the candidates into a function, or list them with " +
+                "listOfNotNull(...).firstOrNull().",
+        )
+        map.put1(
+            KotrailDiagnostics.SAFE_CALL_CHAIN_TOO_LONG,
+            "[Kotrail] This access chains ''?.'' {0}; every link may be null and the result cannot say which one " +
+                "was. Bind an intermediate value to a name, or move the traversal into the model.",
         )
         map.put1(
             KotrailDiagnostics.FUNCTION_TOO_LONG,

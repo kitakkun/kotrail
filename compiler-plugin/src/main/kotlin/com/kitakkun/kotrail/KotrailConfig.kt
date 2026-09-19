@@ -117,6 +117,14 @@ data class KotrailPreferFunctionReferences(
     val forms: Set<ReferenceForm>,
 )
 
+/** Tunables for the null-chain-length rule. From `rules.nullChainLength`; `0` switches a count off. */
+data class KotrailNullChain(
+    /** Maximum `?:` fallbacks in one expression, a trailing `?: return` / `?: throw` not counted. */
+    val maxElvis: Int,
+    /** Maximum `?.` along one receiver chain. */
+    val maxSafeCalls: Int,
+)
+
 /** Tunables for the comment-length rule. From `rules.commentLength`; `0` means unlimited. */
 data class KotrailCommentSettings(
     /** Maximum lines for a block comment or a run of consecutive `//` lines. */
@@ -281,6 +289,7 @@ data class KotrailConfig(
     val narrowModelParameters: KotrailNarrowModelParameters,
     val preferFunctionReferences: KotrailPreferFunctionReferences,
     val comments: KotrailCommentSettings,
+    val nullChain: KotrailNullChain,
     val noFqnReferences: KotrailNoFqnReferences,
     val forbiddenCall: KotrailForbiddenCall,
     val namedArguments: KotrailNamedArguments,
@@ -319,6 +328,8 @@ data class KotrailConfig(
         val DEFAULT_NARROW_MODEL_SCOPE = NarrowModelParametersScope.COMPOSABLES
         val DEFAULT_REFERENCE_FORMS: Set<ReferenceForm> = ReferenceForm.entries.toSet()
         const val DEFAULT_COMMENT_MAX_LINES = 5
+        const val DEFAULT_MAX_ELVIS = 2
+        const val DEFAULT_MAX_SAFE_CALLS = 0
         const val DEFAULT_KDOC_MAX_LINES = 0
         const val DEFAULT_MIN_SAME_TYPE_ARGUMENTS = 3
         const val DEFAULT_FUNCTION_MAX_LINES = 50
@@ -579,6 +590,10 @@ data class KotrailConfig(
                         if (parsed.isEmpty()) fail(KotrailRule.PREFER_FUNCTION_REFERENCES, "forms", "must list at least one form")
                         parsed
                     } ?: DEFAULT_REFERENCE_FORMS,
+                ),
+                nullChain = KotrailNullChain(
+                    maxElvis = int(KotrailRule.NULL_CHAIN_LENGTH, "maxElvis") ?: DEFAULT_MAX_ELVIS,
+                    maxSafeCalls = int(KotrailRule.NULL_CHAIN_LENGTH, "maxSafeCalls") ?: DEFAULT_MAX_SAFE_CALLS,
                 ),
                 comments = KotrailCommentSettings(
                     maxLines = int(KotrailRule.COMMENT_LENGTH, "maxLines") ?: DEFAULT_COMMENT_MAX_LINES,

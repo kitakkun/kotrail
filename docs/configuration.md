@@ -101,6 +101,8 @@ own; a rule not listed has none.
 | `mustBeSerializable` | `requiredFor` | `[androidx.compose.runtime.saveable.rememberSerializable]` | Callables whose type arguments must be serializable. Replaces the default list. |
 | `functionLength` | `maxLines` | `50` | Most lines of code a function body may have; `0` for unlimited. |
 | | `maxComposableLines` | `80` | The same limit for `@Composable` functions. |
+| `nullChainLength` | `maxElvis` | `2` | Maximum `?:` fallbacks in one expression, a trailing `?: return` / `?: throw` not counted; `0` disables. |
+| | `maxSafeCalls` | `0` | Maximum `?.` along one receiver chain; `0` disables. |
 | `noDataClassInPublicApi` | `scope` | `explicitApi` | `explicitApi` applies the rule only to modules compiled with explicit API mode; `all` everywhere. |
 | `visibilityPolicy` | `private` | | A predicate; matching declarations must be `private`. |
 | | `internal` | | A predicate; matching declarations must be `internal` or `private`. |

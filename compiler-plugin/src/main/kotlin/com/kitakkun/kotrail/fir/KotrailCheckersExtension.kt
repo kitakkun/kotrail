@@ -26,6 +26,8 @@ import com.kitakkun.kotrail.fir.checkers.PreferFunctionReferenceChecker
 import com.kitakkun.kotrail.fir.checkers.PreferValueClassChecker
 import com.kitakkun.kotrail.fir.checkers.RedundantElseChecker
 import com.kitakkun.kotrail.fir.checkers.SwallowedCancellationChecker
+import com.kitakkun.kotrail.fir.checkers.ElvisChainChecker
+import com.kitakkun.kotrail.fir.checkers.SafeCallChainChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposableModifierParameterChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposableNamedCallbackArgumentsChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposableNamingChecker
@@ -57,7 +59,9 @@ import com.kitakkun.kotrail.compat.CompatDeclarationCheckers
 import com.kitakkun.kotrail.compat.NamedFunctionChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.ExpressionCheckers
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirCheckNotNullCallChecker
+import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirElvisExpressionChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirEqualityOperatorCallChecker
+import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirSafeCallExpressionChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirFunctionCallChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirQualifiedAccessExpressionChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirResolvedQualifierChecker
@@ -141,6 +145,12 @@ object KotrailExpressionCheckers : ExpressionCheckers() {
     )
     override val qualifiedAccessExpressionCheckers: Set<FirQualifiedAccessExpressionChecker> = setOf(
         NoFqnReferences.CallableChecker,
+    )
+    override val elvisExpressionCheckers: Set<FirElvisExpressionChecker> = setOf(
+        ElvisChainChecker,
+    )
+    override val safeCallExpressionCheckers: Set<FirSafeCallExpressionChecker> = setOf(
+        SafeCallChainChecker,
     )
     override val whenExpressionCheckers: Set<FirWhenExpressionChecker> = setOf(
         RedundantElseChecker,
