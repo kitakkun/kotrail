@@ -25,6 +25,7 @@ import org.jetbrains.kotlin.fir.declarations.toAnnotationClassLikeSymbol
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.isUnit
+import org.jetbrains.kotlin.name.Name
 
 /**
  * Caps the number of non-private UI composables declared in one file:
@@ -36,8 +37,9 @@ import org.jetbrains.kotlin.fir.types.isUnit
  * A file that keeps growing new public components is the file-level version of the deep
  * nesting problem: it hides which component is the unit of reuse. Private helpers and
  * `@Preview` functions do not count, so "one component, its private pieces, its previews" is
- * always fine. Composables past the limit are reported in declaration order, one diagnostic
- * each, so moving them out fixes the file.
+ * always fine. Overloads of one name are one component (`Button(text)`, `Button(icon)`) and
+ * count once unless `countOverloadsSeparately` is set. Composables past the limit are reported
+ * in declaration order, one diagnostic each, so moving them out fixes the file.
  */
 object ComposablesPerFileChecker : FirFileChecker(MppCheckerKind.Common) {
     context(context: CheckerContext, reporter: DiagnosticReporter)
@@ -50,17 +52,23 @@ object ComposablesPerFileChecker : FirFileChecker(MppCheckerKind.Common) {
 
         val counted = mutableListOf<FirNamedFunction>()
         collectCounted(declaration.declarations, session, counted)
-        if (counted.size <= limit) return
 
-        for (function in counted.drop(limit)) {
+        // Each function's position among the file's components, in declaration order: its own,
+        // or that of the first overload of its name.
+        val separately = config.compose.countOverloadsSeparately
+        val firstOfName = mutableMapOf<Name, Int>()
+        var total = 0
+        val positions = counted.map { function ->
+            if (separately) total++ else firstOfName.getOrPut(function.name) { total++ }
+        }
+        if (total <= limit) return
+
+        val description = if (separately) "$total non-private composables" else "$total distinct non-private composables"
+        for ((function, position) in counted.zip(positions)) {
+            if (position < limit) continue
             val source = function.source ?: continue
             if (source.kind is KtFakeSourceElementKind) continue
-            reportKotrail(
-                source,
-                KotrailDiagnostics.TOO_MANY_COMPOSABLES_IN_FILE,
-                counted.size.toString(),
-                limit.toString(),
-            )
+            reportKotrail(source, KotrailDiagnostics.TOO_MANY_COMPOSABLES_IN_FILE, description, limit.toString())
         }
     }
 

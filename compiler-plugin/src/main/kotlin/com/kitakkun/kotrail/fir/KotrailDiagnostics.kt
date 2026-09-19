@@ -174,7 +174,7 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: the composable's name; reported on a UI composable with no @Preview in its file. */
     val COMPOSABLE_WITHOUT_PREVIEW = tunable1<KtNamedFunction, String>("COMPOSABLE_WITHOUT_PREVIEW", KotrailRule.COMPOSE_PREVIEW_REQUIRED, NAME)
 
-    /** Arguments: how many composables the file declares, the limit; reported on each composable past the limit. */
+    /** Arguments: what the file declares (`5 distinct non-private composables`), the limit; reported on each composable past the limit. */
     val TOO_MANY_COMPOSABLES_IN_FILE = tunable2<KtNamedFunction, String, String>("TOO_MANY_COMPOSABLES_IN_FILE", KotrailRule.COMPOSE_COMPOSABLES_PER_FILE, NAME)
 
     /** Arguments: the offending type, the callee; reported on a call whose type argument is not serializable. */
@@ -390,7 +390,7 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         )
         map.put2(
             KotrailDiagnostics.TOO_MANY_COMPOSABLES_IN_FILE,
-            "[Kotrail] This file declares {0} non-private composables; the limit is {1}. Move this one to its own file.",
+            "[Kotrail] This file declares {0}; the limit is {1}. Move this one to its own file.",
         )
         map.put2(
             KotrailDiagnostics.TYPE_NOT_SERIALIZABLE,

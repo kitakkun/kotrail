@@ -29,6 +29,8 @@ data class KotrailComposeSettings(
     val previewRequireFor: PreviewScope,
     /** Maximum non-private UI composables (previews excluded) declared in one file; 0 disables the rule. */
     val maxComposablesPerFile: Int,
+    /** Whether overloads of one composable name count one each toward that limit, rather than as one component. */
+    val countOverloadsSeparately: Boolean,
     /**
      * The project's changes to the insets knowledge base, keyed by the composable's fully
      * qualified name, from `rules.compose.windowInsets.known`. A set replaces the built-in entry;
@@ -512,6 +514,7 @@ data class KotrailConfig(
                     trailingLambdaAllowedPackages = list(KotrailRule.COMPOSE_NO_TRAILING_CALLBACK, "allowedPackages") ?: DEFAULT_TRAILING_LAMBDA_ALLOWED_PACKAGES,
                     previewRequireFor = enumValue(KotrailRule.COMPOSE_PREVIEW_REQUIRED, "scope", PreviewScope.entries.map { it.key })?.let { PreviewScope.fromKey(it)!! } ?: DEFAULT_PREVIEW_REQUIRE_FOR,
                     maxComposablesPerFile = int(KotrailRule.COMPOSE_COMPOSABLES_PER_FILE, "max") ?: DEFAULT_MAX_COMPOSABLES_PER_FILE,
+                    countOverloadsSeparately = boolean(ruleNode(KotrailRule.COMPOSE_COMPOSABLES_PER_FILE), "countOverloadsSeparately") ?: false,
                     knownInsetsHandlers = entries(KotrailRule.COMPOSE_WINDOW_INSETS, "known") { node -> insetsSpec(node) },
                     compositionLocals = KotrailCompositionLocals(
                         platform = list(KotrailRule.COMPOSE_COMPOSITION_LOCALS, "platform").orEmpty(),

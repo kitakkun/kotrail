@@ -112,6 +112,7 @@ object ConfigSchema {
         ),
         KotrailRule.COMPOSE_COMPOSABLES_PER_FILE to listOf(
             Setting("max", Kind.INT, "Maximum non-private UI composables in one file, previews excluded; 0 disables.", default = "3"),
+            Setting("countOverloadsSeparately", Kind.BOOLEAN, "Whether overloads of one composable name count one each; by default they count as one component.", default = "false"),
         ),
         KotrailRule.TEST_NAMING to listOf(
             Setting("style", Kind.ENUM, "backticked for a sentence name, identifier for targets that reject spaces.", values = listOf("backticked", "identifier"), default = "backticked"),

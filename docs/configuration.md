@@ -112,6 +112,7 @@ own; a rule not listed has none.
 | `compose.noTrailingCallback` | `allowedPackages` | `[androidx.compose.runtime]` | Packages whose composables may still take a callback as a trailing lambda. |
 | `compose.previewRequired` | `scope` | `internal` | Which UI composables need a `@Preview` in their file: `public`, `internal` (public and internal), or `all`. |
 | `compose.composablesPerFile` | `max` | `3` | Maximum non-private UI composables in one file, previews excluded; `0` disables. |
+| | `countOverloadsSeparately` | `false` | Whether overloads of one composable name count one each; by default they count as one component. |
 | `test.naming` | `style` | `backticked` | `backticked` for a sentence name, `identifier` for targets that reject spaces (Android instrumented tests). |
 | | `minWords` | `3` | Words a backticked test name must have; `2` requires backticks only, `1` accepts any name. |
 

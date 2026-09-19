@@ -6,10 +6,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 
 // Default limit: 3 non-private UI composables per file, previews and private helpers excluded.
+// Overloads of one name are one component and count once.
 
 @Composable
 fun First(modifier: Modifier = Modifier) {
     Box(modifier) { Text("1") }
+}
+
+@Composable
+fun First(label: String, modifier: Modifier = Modifier) {
+    Box(modifier) { Text(label) }
 }
 
 @Composable
@@ -33,6 +39,12 @@ fun <!KOTRAIL_TOO_MANY_COMPOSABLES_IN_FILE!>Fourth<!>(modifier: Modifier = Modif
 @Composable
 fun <!KOTRAIL_TOO_MANY_COMPOSABLES_IN_FILE!>Fifth<!>(modifier: Modifier = Modifier) {
     Box(modifier) { Text("5") }
+}
+
+// Reported: an overload of a component that is itself past the limit.
+@Composable
+fun <!KOTRAIL_TOO_MANY_COMPOSABLES_IN_FILE!>Fourth<!>(label: String, modifier: Modifier = Modifier) {
+    Box(modifier) { Text(label) }
 }
 
 // Not counted: private helpers, previews, value-returning composables.
