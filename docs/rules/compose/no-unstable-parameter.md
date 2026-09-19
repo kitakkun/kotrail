@@ -1,8 +1,19 @@
 # No unstable parameter (Compose)
 
 **Diagnostic:** `KOTRAIL_COMPOSABLE_UNSTABLE_PARAMETER` (error, on the parameter name)
-**Key:** `rules.compose.noUnstableParameter` (on by default)
+**Key:** `rules.compose.noUnstableParameter` (**experimental, off by default**)
 **Setting:** `stableTypes` (default `[]`)
+
+The inference behind this rule is a port of the Compose compiler's and is pinned by fixtures, but
+it has not yet been run against large codebases. Switch it on deliberately, compare its findings
+with the compiler's own metrics (`-P plugin:androidx.compose.compiler.plugins.kotlin:metricsDestination`),
+and report any disagreement:
+
+```yaml
+rules:
+  compose:
+    noUnstableParameter: on
+```
 
 ## What it rejects
 

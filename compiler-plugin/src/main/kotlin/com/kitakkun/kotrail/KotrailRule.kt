@@ -56,7 +56,8 @@ enum class KotrailRule(
     COMPOSE_COMPOSABLES_PER_FILE("compose.composablesPerFile", Severity.ERROR),
     COMPOSE_NO_SIDE_EFFECT_IN_COMPOSITION("compose.noSideEffectInComposition", Severity.ERROR),
     COMPOSE_NO_HARDCODED_STRING("compose.noHardcodedString", Severity.ERROR, defaultEnabled = false),
-    COMPOSE_NO_UNSTABLE_PARAMETER("compose.noUnstableParameter", Severity.ERROR),
+    /** Experimental: the inference is a port of the Compose compiler's, not yet proven on large codebases. */
+    COMPOSE_NO_UNSTABLE_PARAMETER("compose.noUnstableParameter", Severity.ERROR, defaultEnabled = false),
 
     TEST_NAMING("test.naming", Severity.ERROR),
     TEST_NO_SLEEP("test.noSleep", Severity.ERROR),

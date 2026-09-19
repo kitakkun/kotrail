@@ -50,7 +50,7 @@ fixtures that pin its behavior.
 | Composables per file | `KOTRAIL_TOO_MANY_COMPOSABLES_IN_FILE` | [compose/composables-per-file.md](compose/composables-per-file.md) |
 | No side effect in composition | `KOTRAIL_COMPOSABLE_SIDE_EFFECT_IN_COMPOSITION` | [compose/no-side-effect-in-composition.md](compose/no-side-effect-in-composition.md) |
 | No hardcoded string (off by default) | `KOTRAIL_COMPOSABLE_HARDCODED_STRING` | [compose/no-hardcoded-string.md](compose/no-hardcoded-string.md) |
-| No unstable parameter | `KOTRAIL_COMPOSABLE_UNSTABLE_PARAMETER` | [compose/no-unstable-parameter.md](compose/no-unstable-parameter.md) |
+| No unstable parameter (experimental, off by default) | `KOTRAIL_COMPOSABLE_UNSTABLE_PARAMETER` | [compose/no-unstable-parameter.md](compose/no-unstable-parameter.md) |
 
 ## Test
 

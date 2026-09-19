@@ -1,7 +1,8 @@
 # Configuration
 
 Every rule is on, at error severity, with no configuration at all, except the few whose page
-says "off by default" ([no hardcoded string](rules/compose/no-hardcoded-string.md)). Settings live in a
+says "off by default" ([no hardcoded string](rules/compose/no-hardcoded-string.md),
+[no unstable parameter](rules/compose/no-unstable-parameter.md)). Settings live in a
 `kotrail.yaml` that the [Gradle plugin](gradle-plugin.md) points at, and come from three sources;
 later ones win:
 
@@ -116,7 +117,7 @@ own; a rule not listed has none.
 | | `countOverloadsSeparately` | `false` | Whether overloads of one composable name count one each; by default they count as one component. |
 | `compose.noSideEffectInComposition` | `types` | `[kotlinx.coroutines.Job, kotlinx.coroutines.Deferred]` | Declared return types that mark a call as starting work. Replaces the default list. |
 | | `functions` | `[]` | Fully qualified functions reported by name whatever they return. |
-| `compose.noUnstableParameter` | `stableTypes` | `[]` | Types the project declares stable, as fully qualified names with `*` / `**` wildcards and an optional `<*,_>` mask, like a Compose stability configuration file. |
+| `compose.noUnstableParameter` (experimental, off by default) | `stableTypes` | `[]` | Types the project declares stable, as fully qualified names with `*` / `**` wildcards and an optional `<*,_>` mask, like a Compose stability configuration file. |
 | `compose.noHardcodedString` (off by default) | `parameters` | `[text, label, title, placeholder, contentDescription, message]` | Composable parameters that must not receive a string literal. Replaces the default list. |
 | `test.naming` | `style` | `backticked` | `backticked` for a sentence name, `identifier` for targets that reject spaces (Android instrumented tests). |
 | | `minWords` | `3` | Words a backticked test name must have; `2` requires backticks only, `1` accepts any name. |
