@@ -38,6 +38,7 @@ fun connect(host: String) = connect(host, DEFAULT_PORT) // supplies a default
 fun items(): List<Item> = mutableItems()               // narrows the type
 fun user(name: String): User = User(name)              // a factory over a constructor
 fun parse(text: String): Json = JsonParser.parse(text) // public over a non-public callee: a facade
+fun dispatchStart(name: String) = onStart(name)        // public bridge to a protected member: a facade
 ```
 
 Also left alone: overrides, `operator`, `inline`, `actual`, `external` and local functions;
@@ -57,10 +58,11 @@ All of the following hold:
 - each parameter has the same type as the callee's parameter, and the function's return type is
   the call's type;
 - the callee is a function other than the function itself, with the same `suspend`-ness, and
-  no less visible than the function.
+  no less visible than the function: a `public` function over a `private`, `internal`, or
+  `protected` callee is a facade, since its callers could not call the callee themselves.
 
-A public facade over a callee of the *same* visibility is reported, since the two cannot be told
-apart from the outside; that is what `@Suppress("KOTRAIL_PASS_THROUGH_FUNCTION")` is for.
+A facade over a callee of the *same* visibility is reported, since the two cannot be told apart
+from the outside; that is what `@Suppress("KOTRAIL_PASS_THROUGH_FUNCTION")` is for.
 
 ## Relation to no-pass-through-return
 
@@ -78,4 +80,6 @@ that delegates everything.
 `fir/checkers/PassThroughFunctionChecker.kt`. A `FirSimpleFunctionChecker` that takes the body's
 single statement (unwrapping a `return`), checks the call's receiver shape against the function's
 own, and walks `resolvedArgumentMapping` in order, requiring each argument to resolve to the
-function's parameter at that position. Types are compared with `AbstractTypeChecker.equalTypes`.
+function's parameter at that position. Types are compared with `AbstractTypeChecker.equalTypes`,
+and visibilities with `EffectiveVisibility.relation`, so that `protected` (part of the public
+API, but unreachable from outside the hierarchy) counts as less visible than `public`.

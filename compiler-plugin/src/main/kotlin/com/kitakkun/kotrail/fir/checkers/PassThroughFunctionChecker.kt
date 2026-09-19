@@ -6,6 +6,7 @@ import com.kitakkun.kotrail.fir.compose.isPreview
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
+import org.jetbrains.kotlin.descriptors.EffectiveVisibility
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
@@ -63,7 +64,8 @@ import org.jetbrains.kotlin.types.AbstractTypeChecker
  * reordering, a default, a conversion, a narrower type, or leaving some of the callee's parameters
  * to their defaults (a narrower API). Overrides, `operator`, `inline`, `actual`, `external` and
  * local functions, `kotlin.jvm`-annotated adapters, factories over a constructor, previews, and a
- * public function over a narrower callee (a facade) are also left alone.
+ * function over a less visible callee (a facade, such as a public bridge to a `protected` member)
+ * are also left alone.
  */
 object PassThroughFunctionChecker : NamedFunctionChecker(MppCheckerKind.Common) {
     private val KOTLIN_JVM = FqName("kotlin.jvm")
@@ -86,8 +88,9 @@ object PassThroughFunctionChecker : NamedFunctionChecker(MppCheckerKind.Common) 
         if (callee == declaration.symbol) return
         if (callee.isOperator || callee.isSuspend != declaration.isSuspend) return
         if (callee.typeParameterSymbols.isNotEmpty()) return
-        // A public function over a narrower callee is a facade.
-        if (declaration.effectiveVisibility.publicApi && !callee.effectiveVisibility.publicApi) return
+        // A function over a less visible callee is a facade: its callers cannot call the callee themselves.
+        val relation = callee.effectiveVisibility.relation(declaration.effectiveVisibility, session.typeContext)
+        if (relation == EffectiveVisibility.Permissiveness.LESS || relation == EffectiveVisibility.Permissiveness.UNKNOWN) return
 
         val receiver = declaration.receiverParameter?.symbol
         if (!sameReceiverShape(call, receiver)) return

@@ -86,6 +86,21 @@ fun items(): List<String> = mutableItems()
 // Not reported: a public function over a private callee is a facade.
 fun parse(text: String): Int = hidden(text)
 
+// Not reported: a public bridge to a protected override point; callers cannot reach the callee.
+abstract class Plugin {
+    fun dispatchStart(name: String): Boolean = onStart(name)
+    protected abstract fun onStart(name: String): Boolean
+
+    // Reported: same visibility on both sides.
+    protected fun <!KOTRAIL_PASS_THROUGH_FUNCTION!>begin<!>(name: String): Boolean = onStart(name)
+}
+
+// Not reported: an internal function over a private callee is a facade too.
+internal fun parseInternal(text: String): Int = hidden(text)
+
+// Reported: an internal function over a public callee hides nothing.
+internal fun <!KOTRAIL_PASS_THROUGH_FUNCTION!>parsePublic<!>(text: String): Int = parseImpl(text)
+
 // Not reported: a factory over a constructor.
 fun user(name: String, age: Int): User = User(name, age)
 
