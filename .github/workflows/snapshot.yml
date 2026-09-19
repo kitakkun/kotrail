@@ -1,0 +1,69 @@
+name: Snapshot
+
+# Publishes the snapshot version (the default `kotrail.version` in the root build script, e.g.
+# `0.1.0-SNAPSHOT`) to the Central Portal snapshot repository. Started by hand from the Actions
+# tab, on whichever branch is picked there; it does not run the tests, so run it on a commit CI
+# has already passed. Snapshots are not signed and cannot go to the Gradle Plugin Portal, so the
+# Gradle plugin is published to the snapshot repository only. Same shape as release.yml otherwise:
+# the compiler plugin once per supported Kotlin version, the annotations and the Gradle plugin once.
+#
+# Credentials are the Central Portal token from the `release` environment, so a snapshot goes
+# through the same approval gate as a release, if one is configured. See docs/publishing.md.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Snapshots overwrite each other, so publish them in commit order and never two at once.
+concurrency:
+  group: snapshot
+  cancel-in-progress: false
+
+jobs:
+  compiler-plugin:
+    name: Compiler plugin for Kotlin ${{ matrix.kotlin }}
+    runs-on: ubuntu-latest
+    environment: release
+    env:
+      ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+      ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+    strategy:
+      fail-fast: false
+      matrix:
+        # Keep in sync with publishedKotlinVersions in build.gradle.kts.
+        kotlin: [2.3.21, 2.4.0, 2.4.10, 2.4.20]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Publish kotrail-compiler-plugin ${{ matrix.kotlin }} snapshot
+        run: >-
+          ./gradlew :compiler-plugin:publishToMavenCentral --console=plain --no-configuration-cache
+          -Dorg.gradle.java.home="$JAVA_HOME"
+          -Pkotlin.compiler=${{ matrix.kotlin }}
+
+  libraries:
+    name: Annotations and Gradle plugin
+    needs: compiler-plugin
+    runs-on: ubuntu-latest
+    environment: release
+    env:
+      ORG_GRADLE_PROJECT_mavenCentralUsername: ${{ secrets.MAVEN_CENTRAL_USERNAME }}
+      ORG_GRADLE_PROJECT_mavenCentralPassword: ${{ secrets.MAVEN_CENTRAL_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Publish kotrail-annotations and kotrail-gradle-plugin snapshots
+        run: >-
+          ./gradlew :annotations:publishToMavenCentral :gradle-plugin:publishToMavenCentral
+          --console=plain --no-configuration-cache
+          -Dorg.gradle.java.home="$JAVA_HOME"

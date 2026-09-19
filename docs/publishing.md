@@ -37,6 +37,44 @@ The version otherwise defaults to `0.1.0-SNAPSHOT` (`kotrail.version` in the roo
 and a snapshot version is never signed, so local builds and the functional test publish to their
 local test repository without any credentials.
 
+## Snapshots
+
+`.github/workflows/snapshot.yml` publishes that default snapshot version to the
+[Central Portal snapshot repository](https://central.sonatype.org/publish/publish-portal-snapshots/).
+It is started by hand: Actions → Snapshot → Run workflow, picking the branch to publish from. The
+workflow does not run the tests, so pick a commit CI has already passed. It publishes the same
+artifacts as a release, except that the Gradle plugin goes to the snapshot repository only: the
+Plugin Portal refuses snapshot versions. Snapshots are unsigned and overwrite the previous one.
+
+The snapshot version is the default `kotrail.version` in the root build script, so bump it to the
+next version right after cutting a release, or `main` keeps overwriting the snapshot of a version
+that has already shipped.
+
+A consumer opts in by adding the snapshot repository for both plugin and dependency resolution:
+
+```kotlin
+// settings.gradle.kts
+pluginManagement {
+    repositories {
+        maven("https://central.sonatype.com/repository/maven-snapshots/")
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositories {
+        maven("https://central.sonatype.com/repository/maven-snapshots/")
+        mavenCentral()
+    }
+}
+```
+
+```kotlin
+// build.gradle.kts
+plugins {
+    id("com.kitakkun.kotrail") version "0.1.0-SNAPSHOT"
+}
+```
+
 ## One-time setup
 
 These are outside the repository and have to be done by the owner.
@@ -70,11 +108,12 @@ ownership of the `com.kitakkun` namespace as well.
 
 ### The `release` environment and its secrets
 
-The publishing jobs declare `environment: release`, so the credentials are **environment secrets**
-of a GitHub environment named `release` (Settings → Environments → New environment), not
-repository secrets. Environment secrets are only handed to jobs that declare the environment, and
-the environment is also where an approval gate goes: add required reviewers to it and every
-release pauses for approval before anything is uploaded.
+The publishing jobs of both the release and the snapshot workflow declare `environment: release`,
+so the credentials are **environment secrets** of a GitHub environment named `release`
+(Settings → Environments → New environment), not repository secrets. Environment secrets are only
+handed to jobs that declare the environment, and the environment is also where an approval gate
+goes: add required reviewers to it and every release and snapshot pauses for approval before
+anything is uploaded. The snapshot workflow uses only the two `MAVEN_CENTRAL_*` secrets.
 
 | Secret | Value |
 | --- | --- |
@@ -123,5 +162,6 @@ Portal publication are the two steps that can only be proven by the first real r
 
 ## Adding a Kotlin version
 
-See [supported-kotlin-versions.md](supported-kotlin-versions.md). The release workflow's matrix
-lists the same versions as `publishedKotlinVersions` in the root build script; both have to change.
+See [supported-kotlin-versions.md](supported-kotlin-versions.md). The release and snapshot
+workflows' matrices list the same versions as `publishedKotlinVersions` in the root build script;
+all three have to change.
