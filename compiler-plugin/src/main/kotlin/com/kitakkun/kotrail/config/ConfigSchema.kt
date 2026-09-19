@@ -114,9 +114,20 @@ object ConfigSchema {
             Setting("max", Kind.INT, "Maximum non-private UI composables in one file, previews excluded; 0 disables.", default = "3"),
             Setting("countOverloadsSeparately", Kind.BOOLEAN, "Whether overloads of one composable name count one each; by default they count as one component.", default = "false"),
         ),
+        KotrailRule.COMPOSE_NO_SIDE_EFFECT_IN_COMPOSITION to listOf(
+            Setting("types", Kind.LIST, "Fully qualified return types whose producers start work when called in a composable body; replaces the default list.", default = "kotlinx.coroutines.Job, kotlinx.coroutines.Deferred"),
+            Setting("functions", Kind.LIST, "Fully qualified functions that start work when called in a composable body, in addition to those recognized by type."),
+        ),
+        KotrailRule.COMPOSE_NO_HARDCODED_STRING to listOf(
+            Setting("parameters", Kind.LIST, "Names of composable parameters that must not receive a string literal; replaces the default list.", default = "text, label, title, placeholder, contentDescription, message"),
+        ),
         KotrailRule.TEST_NAMING to listOf(
             Setting("style", Kind.ENUM, "backticked for a sentence name, identifier for targets that reject spaces.", values = listOf("backticked", "identifier"), default = "backticked"),
             Setting("minWords", Kind.INT, "Words a backticked test name must have; 1 accepts any name.", default = "3"),
+        ),
+        KotrailRule.TEST_NO_SLEEP to listOf(
+            Setting("functions", Kind.LIST, "Fully qualified functions that wait real time; replaces the default list.", default = "java.lang.Thread.sleep, android.os.SystemClock.sleep, java.util.concurrent.TimeUnit.sleep"),
+            Setting("virtualTime", Kind.LIST, "Fully qualified functions whose lambda runs on virtual time, where delay is free; replaces the default list.", default = "kotlinx.coroutines.test.runTest"),
         ),
     )
 
@@ -141,7 +152,14 @@ object ConfigSchema {
             }
         }
         val rules = KotrailRule.entries.joinToString(",\n") { rule ->
-            val props = (if (rule.hasSwitch) RESERVED else RESERVED.filter { it.name != "enabled" }) + settingsOf(rule)
+            val reserved = RESERVED.mapNotNull {
+                when {
+                    it.name != "enabled" -> it
+                    !rule.hasSwitch -> null
+                    else -> Setting(it.name, it.kind, it.description, default = rule.defaultEnabled.toString())
+                }
+            }
+            val props = reserved + settingsOf(rule)
             val shorthands = if (rule.hasSwitch) RULE_SHORTHANDS else listOf("error", "warning")
             "    ${q(rule.key)}: {\"oneOf\": [{\"type\": \"string\", \"enum\": [${shorthands.joinToString { q(it) }}]}, " +
                 "{\"type\": \"object\", \"additionalProperties\": false, \"properties\": {" +

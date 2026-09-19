@@ -15,7 +15,7 @@ plugins {
 Apply a Kotlin plugin first: Kotrail reads the Kotlin version from it, and fails with an explicit
 message if there is none.
 
-That is the whole setup. Every rule is on, at error severity, and the annotations artifact is on
+That is the whole setup. Every rule not marked off by default is on, at error severity, and the annotations artifact is on
 the compile classpath (as `compileOnly`, so it never reaches a published POM) so
 `@HandlesWindowInsets` and `@MustBeSerializable` can be written.
 

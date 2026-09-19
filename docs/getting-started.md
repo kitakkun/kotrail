@@ -24,7 +24,7 @@ compiler plugin. The [supported Kotlin versions](supported-kotlin-versions.md) a
 ./gradlew build
 ```
 
-Every rule is on, at error severity. A violation reads like this:
+Every rule is on, at error severity, except the few marked off by default. A violation reads like this:
 
 ```
 e: Home.kt:12:5 [Kotrail] This function is 84 lines of code (limit 80). Split it so that each

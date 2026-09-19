@@ -1,6 +1,7 @@
 # Configuration
 
-Every rule is on, at error severity, with no configuration at all. Settings live in a
+Every rule is on, at error severity, with no configuration at all, except the few whose page
+says "off by default" ([no hardcoded string](rules/compose/no-hardcoded-string.md)). Settings live in a
 `kotrail.yaml` that the [Gradle plugin](gradle-plugin.md) points at, and come from three sources;
 later ones win:
 
@@ -113,8 +114,13 @@ own; a rule not listed has none.
 | `compose.previewRequired` | `scope` | `internal` | Which UI composables need a `@Preview` in their file: `public`, `internal` (public and internal), or `all`. |
 | `compose.composablesPerFile` | `max` | `3` | Maximum non-private UI composables in one file, previews excluded; `0` disables. |
 | | `countOverloadsSeparately` | `false` | Whether overloads of one composable name count one each; by default they count as one component. |
+| `compose.noSideEffectInComposition` | `types` | `[kotlinx.coroutines.Job, kotlinx.coroutines.Deferred]` | Declared return types that mark a call as starting work. Replaces the default list. |
+| | `functions` | `[]` | Fully qualified functions reported by name whatever they return. |
+| `compose.noHardcodedString` (off by default) | `parameters` | `[text, label, title, placeholder, contentDescription, message]` | Composable parameters that must not receive a string literal. Replaces the default list. |
 | `test.naming` | `style` | `backticked` | `backticked` for a sentence name, `identifier` for targets that reject spaces (Android instrumented tests). |
 | | `minWords` | `3` | Words a backticked test name must have; `2` requires backticks only, `1` accepts any name. |
+| `test.noSleep` | `functions` | `[java.lang.Thread.sleep, android.os.SystemClock.sleep, java.util.concurrent.TimeUnit.sleep]` | Functions that wait real time; reported anywhere in a test. Replaces the default list. |
+| | `virtualTime` | `[kotlinx.coroutines.test.runTest]` | Functions whose lambda runs on virtual time, where `delay` is free. Replaces the default list. |
 
 The rule keys, for `rules:` and for `@Suppress` names, are on the [rules index](rules/README.md).
 

@@ -32,6 +32,9 @@ import com.kitakkun.kotrail.fir.compose.checkers.ComposableNamingChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposableNestingChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposablePreviewRequiredChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposablesPerFileChecker
+import com.kitakkun.kotrail.fir.compose.checkers.ComposableHardcodedStringChecker
+import com.kitakkun.kotrail.fir.compose.checkers.ComposableSideEffectChecker
+import com.kitakkun.kotrail.fir.test.checkers.TestSleepChecker
 import com.kitakkun.kotrail.fir.checkers.MustBeSerializableChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposableTrailingCallbackChecker
 import com.kitakkun.kotrail.fir.compose.checkers.PreferStateDelegationChecker
@@ -103,7 +106,9 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
         ComposableNamingChecker,
         ComposableModifierParameterChecker,
         TestNamingChecker,
+        TestSleepChecker,
         FunctionLengthChecker,
+        ComposableSideEffectChecker,
     )
     override val callableDeclarationCheckers: Set<FirCallableDeclarationChecker> = setOf(
         MutableCollectionInPublicApiChecker,
@@ -126,6 +131,7 @@ object KotrailExpressionCheckers : ExpressionCheckers() {
         UnimplementedCodeChecker,
         NamedArgumentsChecker,
         ComposableNamedCallbackArgumentsChecker,
+        ComposableHardcodedStringChecker,
         MustBeSerializableChecker,
     )
     override val resolvedQualifierCheckers: Set<FirResolvedQualifierChecker> = setOf(

@@ -31,6 +31,12 @@ data class KotrailComposeSettings(
     val maxComposablesPerFile: Int,
     /** Whether overloads of one composable name count one each toward that limit, rather than as one component. */
     val countOverloadsSeparately: Boolean,
+    /** Return types (fully qualified) whose producers start work when called in a composable body: `Job`, `Deferred`. */
+    val sideEffectTypes: List<String>,
+    /** Functions (fully qualified) that start work when called in a composable body, in addition to those recognized by type. */
+    val sideEffectFunctions: List<String>,
+    /** Names of composable parameters that must not receive a string literal. */
+    val hardcodedStringParameters: List<String>,
     /**
      * The project's changes to the insets knowledge base, keyed by the composable's fully
      * qualified name, from `rules.compose.windowInsets.known`. A set replaces the built-in entry;
@@ -244,6 +250,10 @@ data class KotrailTest(
      */
     val annotations: List<String>,
     val namingStyle: TestNamingStyle,
+    /** Functions (fully qualified) that wait real time; reported anywhere in a test. */
+    val sleepFunctions: List<String>,
+    /** Functions (fully qualified) whose lambda runs on virtual time, where `delay` is free. */
+    val virtualTimeFunctions: List<String>,
     /** A backticked test name must have at least this many words; 1 accepts any name. */
     val minNameWords: Int,
 )
@@ -279,7 +289,7 @@ data class KotrailConfig(
     /** The `rules.requiredAnnotation.policies` entries, by name. */
     val requiredAnnotations: List<KotrailRequiredAnnotation>,
 ) {
-    fun isEnabled(rule: KotrailRule): Boolean = switches[rule] ?: true
+    fun isEnabled(rule: KotrailRule): Boolean = switches[rule] ?: rule.defaultEnabled
 
     fun severity(rule: KotrailRule): Severity = severities[rule] ?: rule.defaultSeverity
 
@@ -297,6 +307,10 @@ data class KotrailConfig(
         val DEFAULT_TRAILING_LAMBDA_ALLOWED_PACKAGES: List<String> = listOf("androidx.compose.runtime")
         val DEFAULT_PREVIEW_REQUIRE_FOR = PreviewScope.INTERNAL
         const val DEFAULT_MAX_COMPOSABLES_PER_FILE = 3
+        val DEFAULT_SIDE_EFFECT_TYPES: List<String> = listOf("kotlinx.coroutines.Job", "kotlinx.coroutines.Deferred")
+        val DEFAULT_HARDCODED_STRING_PARAMETERS: List<String> = listOf("text", "label", "title", "placeholder", "contentDescription", "message")
+        val DEFAULT_TEST_SLEEP_FUNCTIONS: List<String> = listOf("java.lang.Thread.sleep", "android.os.SystemClock.sleep", "java.util.concurrent.TimeUnit.sleep")
+        val DEFAULT_TEST_VIRTUAL_TIME_FUNCTIONS: List<String> = listOf("kotlinx.coroutines.test.runTest")
         val DEFAULT_SERIALIZATION_REQUIRED_FOR: List<String> = listOf("androidx.compose.runtime.saveable.rememberSerializable")
         const val DEFAULT_MAX_UNUSED_MODEL_PROPERTIES = 3
         val DEFAULT_NARROW_MODEL_SCOPE = NarrowModelParametersScope.COMPOSABLES
@@ -491,7 +505,7 @@ data class KotrailConfig(
         private val rules = tree["rules"] as? ConfigNode.Mapping
 
         fun read(): KotrailConfig {
-            val switches = KotrailRule.switchable.associateWith { rule -> boolean(ruleNode(rule), "enabled") ?: true }
+            val switches = KotrailRule.switchable.associateWith { rule -> boolean(ruleNode(rule), "enabled") ?: rule.defaultEnabled }
             val severities = KotrailRule.entries.associateWith { rule -> enumValue(rule, "severity", listOf("error", "warning"))?.let { parseSeverity(it) } ?: rule.defaultSeverity }
             val projectNote = string(tree, "note")
             val notes = KotrailRule.entries.associateWith { rule ->
@@ -515,6 +529,9 @@ data class KotrailConfig(
                     previewRequireFor = enumValue(KotrailRule.COMPOSE_PREVIEW_REQUIRED, "scope", PreviewScope.entries.map { it.key })?.let { PreviewScope.fromKey(it)!! } ?: DEFAULT_PREVIEW_REQUIRE_FOR,
                     maxComposablesPerFile = int(KotrailRule.COMPOSE_COMPOSABLES_PER_FILE, "max") ?: DEFAULT_MAX_COMPOSABLES_PER_FILE,
                     countOverloadsSeparately = boolean(ruleNode(KotrailRule.COMPOSE_COMPOSABLES_PER_FILE), "countOverloadsSeparately") ?: false,
+                    sideEffectTypes = list(KotrailRule.COMPOSE_NO_SIDE_EFFECT_IN_COMPOSITION, "types") ?: DEFAULT_SIDE_EFFECT_TYPES,
+                    sideEffectFunctions = list(KotrailRule.COMPOSE_NO_SIDE_EFFECT_IN_COMPOSITION, "functions").orEmpty(),
+                    hardcodedStringParameters = list(KotrailRule.COMPOSE_NO_HARDCODED_STRING, "parameters") ?: DEFAULT_HARDCODED_STRING_PARAMETERS,
                     knownInsetsHandlers = entries(KotrailRule.COMPOSE_WINDOW_INSETS, "known") { node -> insetsSpec(node) },
                     compositionLocals = KotrailCompositionLocals(
                         platform = list(KotrailRule.COMPOSE_COMPOSITION_LOCALS, "platform").orEmpty(),
@@ -549,6 +566,8 @@ data class KotrailConfig(
                     annotations = test?.get("annotations")?.let { list(it, "test.annotations") } ?: DEFAULT_TEST_ANNOTATIONS,
                     namingStyle = enumValue(KotrailRule.TEST_NAMING, "style", TestNamingStyle.entries.map { it.key })?.let { TestNamingStyle.fromKey(it)!! } ?: DEFAULT_TEST_NAMING_STYLE,
                     minNameWords = int(KotrailRule.TEST_NAMING, "minWords") ?: DEFAULT_TEST_MIN_NAME_WORDS,
+                    sleepFunctions = list(KotrailRule.TEST_NO_SLEEP, "functions") ?: DEFAULT_TEST_SLEEP_FUNCTIONS,
+                    virtualTimeFunctions = list(KotrailRule.TEST_NO_SLEEP, "virtualTime") ?: DEFAULT_TEST_VIRTUAL_TIME_FUNCTIONS,
                 ),
                 functionLength = KotrailFunctionLength(
                     maxLines = int(KotrailRule.FUNCTION_LENGTH, "maxLines") ?: DEFAULT_FUNCTION_MAX_LINES,

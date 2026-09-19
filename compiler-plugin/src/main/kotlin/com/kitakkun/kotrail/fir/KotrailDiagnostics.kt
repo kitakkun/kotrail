@@ -183,6 +183,12 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: what is wrong with the modifier parameter. */
     val COMPOSABLE_MODIFIER_PARAMETER = tunable1<KtNamedFunction, String>("COMPOSABLE_MODIFIER_PARAMETER", KotrailRule.COMPOSE_MODIFIER_PARAMETER, NAME)
 
+    /** Argument: the callee's name; reported on the callee of a call that starts work directly in a composable body. */
+    val COMPOSABLE_SIDE_EFFECT_IN_COMPOSITION = tunable1<KtElement, String>("COMPOSABLE_SIDE_EFFECT_IN_COMPOSITION", KotrailRule.COMPOSE_NO_SIDE_EFFECT_IN_COMPOSITION, WHOLE)
+
+    /** Arguments: the literal (abbreviated), the parameter name; reported on a string literal passed to a composable. */
+    val COMPOSABLE_HARDCODED_STRING = tunable2<KtElement, String, String>("COMPOSABLE_HARDCODED_STRING", KotrailRule.COMPOSE_NO_HARDCODED_STRING, WHOLE)
+
     override fun getRendererFactory(): BaseDiagnosticRendererFactory = KotrailDiagnosticRenderers
 
     // ---- test rules ----
@@ -192,6 +198,9 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
 
     /** Argument: the test function name. */
     val TEST_NAME_NOT_IDENTIFIER = tunable1<KtNamedFunction, String>("TEST_NAME_NOT_IDENTIFIER", KotrailRule.TEST_NAMING, NAME)
+
+    /** Argument: the callee's name; reported on a call that waits real time inside a test. */
+    val TEST_REAL_TIME_WAIT = tunable1<KtElement, String>("TEST_REAL_TIME_WAIT", KotrailRule.TEST_NO_SLEEP, WHOLE)
 
     // ---- Kotlin/Native rules ----
 
@@ -400,6 +409,21 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         map.put1(
             KotrailDiagnostics.COMPOSABLE_MODIFIER_PARAMETER,
             "[Kotrail] Modifier parameter convention: {0}.",
+        )
+        map.put1(
+            KotrailDiagnostics.COMPOSABLE_SIDE_EFFECT_IN_COMPOSITION,
+            "[Kotrail] ''{0}'' starts work during composition, which runs again on every recomposition. " +
+                "Move it into LaunchedEffect (or another effect), or call it from an event handler.",
+        )
+        map.put2(
+            KotrailDiagnostics.COMPOSABLE_HARDCODED_STRING,
+            "[Kotrail] ''{0}'' is a hardcoded string passed as ''{1}''. Load it from string resources so that it " +
+                "can be translated.",
+        )
+        map.put1(
+            KotrailDiagnostics.TEST_REAL_TIME_WAIT,
+            "[Kotrail] ''{0}'' waits real time inside a test, which makes the test slow and flaky. Run the " +
+                "test with runTest and virtual time, or await the condition instead.",
         )
         map.put2(
             KotrailDiagnostics.PASS_THROUGH_FUNCTION,

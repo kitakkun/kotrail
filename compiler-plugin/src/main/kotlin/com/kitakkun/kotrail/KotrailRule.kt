@@ -7,12 +7,14 @@ import org.jetbrains.kotlin.diagnostics.Severity
  *
  * [key] is the suffix used in configuration: `rules.<key>` switches the rule, `severity.<key>`
  * sets its severity. Entries with [hasSwitch] `false` are diagnostics that belong to another
- * rule but carry their own severity (they are switched together with their owner).
+ * rule but carry their own severity (they are switched together with their owner). A rule with
+ * [defaultEnabled] `false` only runs when a project switches it on.
  */
 enum class KotrailRule(
     val key: String,
     val defaultSeverity: Severity,
     val hasSwitch: Boolean = true,
+    val defaultEnabled: Boolean = true,
 ) {
     PREFER_EXPLICIT_BACKING_FIELD("preferExplicitBackingField", Severity.ERROR),
     PREFER_PRIVATE_SETTER("preferPrivateSetter", Severity.ERROR),
@@ -52,8 +54,11 @@ enum class KotrailRule(
     COMPOSE_NAMED_CALLBACK_ARGUMENTS("compose.namedCallbackArguments", Severity.ERROR),
     COMPOSE_PREVIEW_REQUIRED("compose.previewRequired", Severity.ERROR),
     COMPOSE_COMPOSABLES_PER_FILE("compose.composablesPerFile", Severity.ERROR),
+    COMPOSE_NO_SIDE_EFFECT_IN_COMPOSITION("compose.noSideEffectInComposition", Severity.ERROR),
+    COMPOSE_NO_HARDCODED_STRING("compose.noHardcodedString", Severity.ERROR, defaultEnabled = false),
 
     TEST_NAMING("test.naming", Severity.ERROR),
+    TEST_NO_SLEEP("test.noSleep", Severity.ERROR),
 
     NATIVE_OBJC_IDENTITY("native.objcIdentity", Severity.ERROR);
 

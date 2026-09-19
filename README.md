@@ -78,7 +78,10 @@ Full pages, with every condition and fixture, live under [`docs/rules/`](docs/ru
 | [Named callback arguments](docs/rules/compose/named-callback-arguments.md) (Compose) | `IconButton { ... }` passing a callback as a trailing lambda | `IconButton(onClick = { ... })` |
 | [Preview required](docs/rules/compose/preview-required.md) (Compose) | A UI composable whose file has no `@Preview` calling it | A preview composable next to it |
 | [Composables per file](docs/rules/compose/composables-per-file.md) (Compose) | More than 3 non-private UI composables in one file | One component (and its helpers) per file |
+| [No side effect in composition](docs/rules/compose/no-side-effect-in-composition.md) (Compose) | `scope.launch { }` in a composable body | `LaunchedEffect`, or an event handler |
+| [No hardcoded string](docs/rules/compose/no-hardcoded-string.md) (Compose, off by default) | `Text("Submit")` | `Text(stringResource(Res.string.submit))` |
 | [Test naming](docs/rules/test/naming.md) (Test) | `@Test fun returnsEmptyList()` | `` @Test fun `returns an empty list when nothing matches`() `` |
+| [No sleep in tests](docs/rules/test/no-sleep.md) (Test) | `Thread.sleep(500)`, `delay(500)` outside `runTest` | `runTest` and virtual time, or awaiting the condition |
 | [Objective-C identity](docs/rules/native/objc-identity.md) (Kotlin/Native) | `view.window === window`, `WeakReference(window)` | `==` (isEqual:) or `objcPtr()`, a strong reference |
 
 Ideas not started yet: `required-annotation` (predicate-driven), `forbidden-supertype`.
@@ -99,7 +102,8 @@ kotrail {
 }
 ```
 
-Every rule is on at error severity with no configuration at all. Everything else is one
+Every rule is on at error severity with no configuration at all, except the ones marked off by
+default in the table above. Everything else is one
 `kotrail.yaml`, with a JSON Schema for editor completion:
 
 ```yaml

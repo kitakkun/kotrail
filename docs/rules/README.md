@@ -48,12 +48,15 @@ fixtures that pin its behavior.
 | Named callback arguments | `KOTRAIL_COMPOSABLE_CALLBACK_AS_TRAILING_LAMBDA` | [compose/named-callback-arguments.md](compose/named-callback-arguments.md) |
 | Preview required | `KOTRAIL_COMPOSABLE_WITHOUT_PREVIEW` | [compose/preview-required.md](compose/preview-required.md) |
 | Composables per file | `KOTRAIL_TOO_MANY_COMPOSABLES_IN_FILE` | [compose/composables-per-file.md](compose/composables-per-file.md) |
+| No side effect in composition | `KOTRAIL_COMPOSABLE_SIDE_EFFECT_IN_COMPOSITION` | [compose/no-side-effect-in-composition.md](compose/no-side-effect-in-composition.md) |
+| No hardcoded string (off by default) | `KOTRAIL_COMPOSABLE_HARDCODED_STRING` | [compose/no-hardcoded-string.md](compose/no-hardcoded-string.md) |
 
 ## Test
 
 | Rule | Diagnostics | Page |
 |---|---|---|
 | Test naming | `KOTRAIL_TEST_NAME_NOT_DESCRIPTIVE`, `KOTRAIL_TEST_NAME_NOT_IDENTIFIER` | [test/naming.md](test/naming.md) |
+| No sleep in tests | `KOTRAIL_TEST_REAL_TIME_WAIT` | [test/no-sleep.md](test/no-sleep.md) |
 
 ## Kotlin/Native
 
