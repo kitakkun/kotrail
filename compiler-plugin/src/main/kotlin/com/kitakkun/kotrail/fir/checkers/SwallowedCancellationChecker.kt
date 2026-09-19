@@ -51,8 +51,13 @@ object SwallowedCancellationChecker : FirTryExpressionChecker(MppCheckerKind.Com
     private val coroutinesPackage = FqName("kotlinx.coroutines")
     private val ensureActiveName = Name.identifier("ensureActive")
 
+    /**
+     * `CancellationException` in every spelling: the `kotlinx.coroutines` alias, the stdlib class it
+     * aliases (which is the real class on non-JVM targets), and the JVM class both expand to there.
+     */
     private val cancellationClassIds: Set<ClassId> = setOf(
         ClassId(coroutinesPackage, Name.identifier("CancellationException")),
+        ClassId(FqName("kotlin.coroutines.cancellation"), Name.identifier("CancellationException")),
         ClassId(FqName("java.util.concurrent"), Name.identifier("CancellationException")),
     )
 

@@ -147,6 +147,17 @@ suspend fun earlierCancellationClause() {
     }
 }
 
+// Not reported: the stdlib spelling of CancellationException, which is the class itself on non-JVM targets.
+suspend fun earlierStdlibCancellationClause() {
+    try {
+        fetch()
+    } catch (e: kotlin.coroutines.cancellation.CancellationException) {
+        throw e
+    } catch (e: Exception) {
+        println(e)
+    }
+}
+
 // Not reported: catching CancellationException itself is deliberate.
 suspend fun explicitCancellationCatch() {
     try {

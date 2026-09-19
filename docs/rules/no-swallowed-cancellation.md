@@ -54,8 +54,9 @@ clauses never see the exception, so a single `try` yields a single diagnostic.
 
 - The `try` is in an ordinary (non-suspend) function, or in a non-inline lambda with an ordinary
   function type inside a suspend function.
-- The clause catches `CancellationException` itself (`kotlinx.coroutines` or
-  `java.util.concurrent`): catching it explicitly is a deliberate choice.
+- The clause catches `CancellationException` itself (`kotlinx.coroutines`,
+  `kotlin.coroutines.cancellation`, or `java.util.concurrent`): catching it explicitly is a
+  deliberate choice.
 - An earlier clause of the same `try` catches `CancellationException`, so the broad clause never
   receives it.
 - The clause contains any `throw` (`throw e`, `if (e is CancellationException) throw e`,
@@ -77,7 +78,10 @@ function counts when its status is `suspend` or its type `isSuspendOrKSuspendFun
 inline lambda (`InlineStatus.Inline`) is transparent; any other function ends the search with
 its own `isSuspend`. The catch type is fully expanded and compared by `ClassId` against the fixed
 supertype chain of `CancellationException`, which makes the rule independent of whether
-`kotlinx.coroutines` is on the classpath. The rethrow check is a `FirVisitorVoid` over the clause
+`kotlinx.coroutines` is on the classpath. `CancellationException` is matched in all three of its
+spellings: `kotlinx.coroutines.CancellationException` is a typealias for
+`kotlin.coroutines.cancellation.CancellationException`, which is the class itself on non-JVM
+targets and expands to `java.util.concurrent.CancellationException` on the JVM. The rethrow check is a `FirVisitorVoid` over the clause
 body that stops at the first `FirThrowExpression` or a call whose resolved callee is
 `kotlinx.coroutines.ensureActive`. The `ensureActive` path is not covered by the fixture because
 the test classpath has no `kotlinx.coroutines`.
