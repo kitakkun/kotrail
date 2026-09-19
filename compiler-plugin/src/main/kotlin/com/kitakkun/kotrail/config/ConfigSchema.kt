@@ -118,6 +118,9 @@ object ConfigSchema {
             Setting("types", Kind.LIST, "Fully qualified return types whose producers start work when called in a composable body; replaces the default list.", default = "kotlinx.coroutines.Job, kotlinx.coroutines.Deferred"),
             Setting("functions", Kind.LIST, "Fully qualified functions that start work when called in a composable body, in addition to those recognized by type."),
         ),
+        KotrailRule.COMPOSE_NO_UNSTABLE_PARAMETER to listOf(
+            Setting("stableTypes", Kind.LIST, "Types the project declares stable, as fully qualified names with * and ** wildcards and an optional <*,_> mask of the type arguments that count, like a Compose stability configuration file."),
+        ),
         KotrailRule.COMPOSE_NO_HARDCODED_STRING to listOf(
             Setting("parameters", Kind.LIST, "Names of composable parameters that must not receive a string literal; replaces the default list.", default = "text, label, title, placeholder, contentDescription, message"),
         ),

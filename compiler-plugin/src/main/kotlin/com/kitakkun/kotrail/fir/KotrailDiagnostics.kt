@@ -186,6 +186,9 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: the callee's name; reported on the callee of a call that starts work directly in a composable body. */
     val COMPOSABLE_SIDE_EFFECT_IN_COMPOSITION = tunable1<KtElement, String>("COMPOSABLE_SIDE_EFFECT_IN_COMPOSITION", KotrailRule.COMPOSE_NO_SIDE_EFFECT_IN_COMPOSITION, WHOLE)
 
+    /** Arguments: the parameter with its type (`items: List<Item>`), why the type is unstable; reported on the parameter. */
+    val COMPOSABLE_UNSTABLE_PARAMETER = tunable2<KtParameter, String, String>("COMPOSABLE_UNSTABLE_PARAMETER", KotrailRule.COMPOSE_NO_UNSTABLE_PARAMETER, NAME)
+
     /** Arguments: the literal (abbreviated), the parameter name; reported on a string literal passed to a composable. */
     val COMPOSABLE_HARDCODED_STRING = tunable2<KtElement, String, String>("COMPOSABLE_HARDCODED_STRING", KotrailRule.COMPOSE_NO_HARDCODED_STRING, WHOLE)
 
@@ -414,6 +417,12 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             KotrailDiagnostics.COMPOSABLE_SIDE_EFFECT_IN_COMPOSITION,
             "[Kotrail] ''{0}'' starts work during composition, which runs again on every recomposition. " +
                 "Move it into LaunchedEffect (or another effect), or call it from an event handler.",
+        )
+        map.put2(
+            KotrailDiagnostics.COMPOSABLE_UNSTABLE_PARAMETER,
+            "[Kotrail] ''{0}'' has an unstable type: {1}. Compose treats the argument as changed whenever it is " +
+                "not the same instance and does not memoize lambdas that capture it. Pass an immutable collection or " +
+                "a type marked @Immutable or @Stable, or list the type under compose.noUnstableParameter.stableTypes.",
         )
         map.put2(
             KotrailDiagnostics.COMPOSABLE_HARDCODED_STRING,

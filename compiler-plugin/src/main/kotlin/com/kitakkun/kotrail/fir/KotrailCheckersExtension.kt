@@ -34,6 +34,7 @@ import com.kitakkun.kotrail.fir.compose.checkers.ComposablePreviewRequiredChecke
 import com.kitakkun.kotrail.fir.compose.checkers.ComposablesPerFileChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposableHardcodedStringChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposableSideEffectChecker
+import com.kitakkun.kotrail.fir.compose.checkers.ComposableUnstableParameterChecker
 import com.kitakkun.kotrail.fir.test.checkers.TestSleepChecker
 import com.kitakkun.kotrail.fir.checkers.MustBeSerializableChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposableTrailingCallbackChecker
@@ -109,6 +110,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
         TestSleepChecker,
         FunctionLengthChecker,
         ComposableSideEffectChecker,
+        ComposableUnstableParameterChecker,
     )
     override val callableDeclarationCheckers: Set<FirCallableDeclarationChecker> = setOf(
         MutableCollectionInPublicApiChecker,

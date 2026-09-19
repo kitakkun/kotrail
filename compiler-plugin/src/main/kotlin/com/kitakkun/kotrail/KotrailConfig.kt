@@ -11,6 +11,7 @@ import com.kitakkun.kotrail.exclude.ReportSite
 import com.kitakkun.kotrail.config.ConfigException
 import com.kitakkun.kotrail.config.ConfigNode
 import com.kitakkun.kotrail.config.ConfigSchema
+import com.kitakkun.kotrail.fir.compose.stability.StableTypeMatcher
 import com.kitakkun.kotrail.config.ConfigTree
 import com.kitakkun.kotrail.config.KotrailYaml
 import org.jetbrains.kotlin.compiler.plugin.CliOptionProcessingException
@@ -37,6 +38,8 @@ data class KotrailComposeSettings(
     val sideEffectFunctions: List<String>,
     /** Names of composable parameters that must not receive a string literal. */
     val hardcodedStringParameters: List<String>,
+    /** Patterns of types the project declares stable, in the grammar of the Compose stability configuration file. */
+    val stableTypes: List<String>,
     /**
      * The project's changes to the insets knowledge base, keyed by the composable's fully
      * qualified name, from `rules.compose.windowInsets.known`. A set replaces the built-in entry;
@@ -497,7 +500,26 @@ data class KotrailConfig(
         }
 
         /** Comma-separated values, trimmed, empties dropped. */
-        fun parseList(value: String): List<String> = value.split(',').map { it.trim() }.filter { it.isNotEmpty() }
+        /** Splits on commas, except those inside `<...>`, so that `Box<*,_>` stays one entry. */
+        fun parseList(value: String): List<String> {
+            val items = mutableListOf<String>()
+            val current = StringBuilder()
+            var depth = 0
+            for (c in value) {
+                when (c) {
+                    '<' -> depth++
+                    '>' -> depth--
+                    ',' -> if (depth <= 0) {
+                        items += current.toString()
+                        current.clear()
+                        continue
+                    }
+                }
+                current.append(c)
+            }
+            items += current.toString()
+            return items.map { it.trim() }.filter { it.isNotEmpty() }
+        }
     }
 
     /** Reads the merged tree into settings, converting and checking every value where it is used. */
@@ -532,6 +554,13 @@ data class KotrailConfig(
                     sideEffectTypes = list(KotrailRule.COMPOSE_NO_SIDE_EFFECT_IN_COMPOSITION, "types") ?: DEFAULT_SIDE_EFFECT_TYPES,
                     sideEffectFunctions = list(KotrailRule.COMPOSE_NO_SIDE_EFFECT_IN_COMPOSITION, "functions").orEmpty(),
                     hardcodedStringParameters = list(KotrailRule.COMPOSE_NO_HARDCODED_STRING, "parameters") ?: DEFAULT_HARDCODED_STRING_PARAMETERS,
+                    stableTypes = list(KotrailRule.COMPOSE_NO_UNSTABLE_PARAMETER, "stableTypes").orEmpty().also { patterns ->
+                        patterns.forEach { pattern ->
+                            runCatching { StableTypeMatcher(pattern) }.onFailure {
+                                fail(KotrailRule.COMPOSE_NO_UNSTABLE_PARAMETER, "stableTypes", "accepts fully qualified names with * and ** wildcards and an optional <*,_> mask, got '$pattern'")
+                            }
+                        }
+                    },
                     knownInsetsHandlers = entries(KotrailRule.COMPOSE_WINDOW_INSETS, "known") { node -> insetsSpec(node) },
                     compositionLocals = KotrailCompositionLocals(
                         platform = list(KotrailRule.COMPOSE_COMPOSITION_LOCALS, "platform").orEmpty(),

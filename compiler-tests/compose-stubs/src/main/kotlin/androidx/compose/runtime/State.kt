@@ -3,10 +3,12 @@ package androidx.compose.runtime
 
 import kotlin.reflect.KProperty
 
+@Stable
 interface State<out T> {
     val value: T
 }
 
+@Stable
 interface MutableState<T> : State<T> {
     override var value: T
 }
