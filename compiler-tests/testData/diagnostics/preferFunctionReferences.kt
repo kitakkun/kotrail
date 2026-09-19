@@ -1,5 +1,11 @@
 // KOTRAIL_CONFIG: rules.preferFunctionReferences=on
+import java.io.File
+
 data class User(val id: Long, val name: String)
+
+class Account(val label: String) {
+    fun label(): String = label
+}
 
 fun transform(user: User): String = user.name
 fun pair(a: Int, b: Int): Int = a + b
@@ -83,11 +89,30 @@ suspend fun suspending(ids: List<Long>) {
     val loader: suspend (Long) -> String = <!KOTRAIL_PREFER_FUNCTION_REFERENCE!>{ fetch(it) }<!>
     loader(1)
 
+    // Not reported: a property reference cannot stand in for a suspend lambda.
+    val namer: suspend (User) -> String = { it.name }
+    namer(User(1, "a"))
+
     // Reported: inside a suspend function, an ordinary lambda forwarding to an ordinary function.
     ids.map <!KOTRAIL_PREFER_FUNCTION_REFERENCE!>{ fetchLater(it) }<!>
 }
 
 fun fetchLater(id: Long): String = "$id"
+
+class Transactions {
+    private fun User.redacted(): User = User(id, "")
+
+    // Not reported: a member extension cannot be referenced.
+    fun redactAll(users: List<User>) = users.map { it.redacted() }
+}
+
+fun unreferenceable(accounts: List<Account>, files: List<File>) {
+    // Not reported: `Account::label` is ambiguous between the property and the function.
+    accounts.map { it.label }
+
+    // Reported, as `File::getAbsolutePath`: a Java synthetic property is referenced through its getter.
+    files.map <!KOTRAIL_PREFER_FUNCTION_REFERENCE!>{ it.absolutePath }<!>
+}
 
 /* GENERATED_FIR_TAGS: additiveExpression, classDeclaration, data, flexibleType, funWithExtensionReceiver,
 functionDeclaration, functionalType, javaFunction, lambdaLiteral, localProperty, nullableType, objectDeclaration,

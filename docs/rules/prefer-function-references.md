@@ -42,7 +42,8 @@ ints.zip(ints, ::pair)
 
 The message carries the exact reference to use. `{ it.name }` and `User::name` mixed across a
 codebase is a typical drift; the reference form is shorter and cannot silently pick up extra
-work.
+work. A Java getter read as a synthetic property (`{ it.absolutePath }`) is referenced through
+the getter, `File::getAbsolutePath`, since a reference to the synthetic property does not compile.
 
 ## When it fires
 
@@ -66,6 +67,12 @@ resolve to the same callee:
 - The body calls a function-typed value (`{ block() }`): there is no named callee.
 - The receiver is a fresh expression (`{ Repository().save(it) }`) or a `var`.
 - The callee is a constructor (constructor overload sets are not inspected yet).
+- The callee cannot be referenced at all: a member extension (`private fun Item.redacted()`
+  declared inside a class); a property where a suspend function type is expected
+  (`flow.map { it.keys }`), since a property reference is never `suspend`; or a property that
+  shares its name with a function on the receiver or in its package, which is ambiguous
+  (`NSObject::accessibilityViewIsModal` on Kotlin/Native, where an Objective-C property and its
+  getter method arrive side by side).
 - Arguments are reordered, transformed, or partially supplied, or the body has more than one
   statement.
 
@@ -82,4 +89,6 @@ function, both are inlined.
 `fir/checkers/PreferFunctionReferenceChecker.kt`, a `FirAnonymousFunctionChecker`. Overloads
 are detected through `declaredFunctions` of the owning class or
 `symbolProvider.getTopLevelFunctionSymbols`; `suspend` is compared between the lambda's
-resolved function type and the callee's status.
+resolved function type and the callee's status. A property reference is checked against the
+receiver's `unsubstitutedScope` and the top-level functions of its package for a function of the
+same name, and a `FirSyntheticPropertySymbol` is named by its `getterId`.

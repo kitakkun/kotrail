@@ -36,16 +36,20 @@ import org.jetbrains.kotlin.fir.references.toResolvedVariableSymbol
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
 import org.jetbrains.kotlin.fir.resolve.toSymbol
+import org.jetbrains.kotlin.fir.scopes.getFunctions
+import org.jetbrains.kotlin.fir.scopes.unsubstitutedScope
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirSyntheticPropertySymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.customAnnotations
 import org.jetbrains.kotlin.fir.types.isSuspendOrKSuspendFunctionType
 import org.jetbrains.kotlin.fir.types.resolvedType
+import org.jetbrains.kotlin.name.Name
 
 /**
  * Asks for a callable reference where a lambda only forwards its parameters:
@@ -59,8 +63,12 @@ import org.jetbrains.kotlin.fir.types.resolvedType
  * Only reported when the reference is guaranteed to resolve to the same call: parameters are
  * forwarded in order without extras or omissions, the callee has no varargs, type parameters,
  * or same-named overloads, the receiver (if any) is `this`, a `val`, an object, or the first
- * lambda parameter, and neither side is `@Composable` or mismatched on `suspend`. The forms a
- * project wants are selected with `preferFunctionReferences.forms`.
+ * lambda parameter, and neither side is `@Composable` or mismatched on `suspend`. A callee
+ * that cannot be referenced at all is skipped: a member extension, a property where a suspend
+ * function is expected, or a property that shares its name with a function on the same
+ * receiver. A Java synthetic property (`file.absolutePath`) is referenced through its getter
+ * (`File::getAbsolutePath`), the only form the language accepts. The forms a project wants are
+ * selected with `preferFunctionReferences.forms`.
  */
 object PreferFunctionReferenceChecker : FirAnonymousFunctionChecker(MppCheckerKind.Common) {
     private class Suggestion(val form: ReferenceForm, val text: String)
@@ -89,7 +97,7 @@ object PreferFunctionReferenceChecker : FirAnonymousFunctionChecker(MppCheckerKi
 
         val suggestion = when (expression) {
             is FirFunctionCall -> referenceForCall(expression, parameters, lambdaSuspends, session)
-            is FirPropertyAccessExpression -> referenceForProperty(expression, parameters, session)
+            is FirPropertyAccessExpression -> referenceForProperty(expression, parameters, lambdaSuspends, session)
             else -> null
         } ?: return
         if (suggestion.form !in config.preferFunctionReferences.forms) return
@@ -109,6 +117,8 @@ object PreferFunctionReferenceChecker : FirAnonymousFunctionChecker(MppCheckerKi
         if (callee.valueParameterSymbols.any { it.isVararg }) return null
         if (callee.isSuspend != lambdaSuspends) return null
         if (callee.isComposable(session)) return null
+        // A member that is also an extension cannot be referenced: the language prohibits it.
+        if (callee.dispatchReceiverType != null && callee.receiverParameterSymbol != null) return null
         if (hasOverloads(callee, session)) return null
         val arguments = call.arguments.map { it.unwrapArgument().unwrapSmartCast() }
         if (arguments.size != callee.valueParameterSymbols.size) return null
@@ -144,19 +154,37 @@ object PreferFunctionReferenceChecker : FirAnonymousFunctionChecker(MppCheckerKi
         }
     }
 
+    context(context: CheckerContext)
     private fun referenceForProperty(
         access: FirPropertyAccessExpression,
         parameters: List<FirValueParameterSymbol>,
+        lambdaSuspends: Boolean,
         session: FirSession,
     ): Suggestion? {
+        // A property reference is never a suspend function, so it cannot stand in for a suspend lambda.
+        if (lambdaSuspends) return null
         val receiver = access.explicitReceiver?.unwrapSmartCast() ?: return null
         val receiverParameter = receiver.asLambdaParameter() ?: return null
         if (parameters.size != 1 || parameters.single() != receiverParameter) return null
         val property = access.calleeReference.toResolvedPropertySymbol() ?: return null
         if (property.isLocal) return null
-        val typeName = receiver.resolvedType.toRegularClassSymbol(session)?.takeIf { it.typeParameterSymbols.isEmpty() }
+        val owner = receiver.resolvedType.toRegularClassSymbol(session)?.takeIf { it.typeParameterSymbols.isEmpty() }
             ?: return null
-        return Suggestion(ReferenceForm.TYPE_QUALIFIED, "${typeName.name.asString()}::${property.name.asString()}")
+        val scope = owner.unsubstitutedScope(session, context.scopeSession, withForcedTypeCalculator = false, memberRequiredPhase = null)
+        val memberName = if (property is FirSyntheticPropertySymbol) {
+            // A Java getter is only referenceable as a function: `File::getAbsolutePath`, not `File::absolutePath`.
+            val getterName = property.getterId.callableName
+            if (scope.getFunctions(getterName).size > 1) return null
+            getterName
+        } else {
+            // `Type::name` is ambiguous when a function of the same name exists on the receiver or as a
+            // same-package extension, which is how an Objective-C property and its getter method arrive.
+            if (scope.getFunctions(property.name).isNotEmpty()) return null
+            val packages = setOfNotNull(owner.classId.packageFqName, property.callableId?.packageName)
+            if (packages.any { session.symbolProvider.getTopLevelFunctionSymbols(it, property.name).isNotEmpty() }) return null
+            property.name
+        }
+        return Suggestion(ReferenceForm.TYPE_QUALIFIED, "${owner.name.asString()}::${memberName.asString()}")
     }
 
     private fun forwardsInOrder(arguments: List<FirExpression>, parameters: List<FirValueParameterSymbol>): Boolean =
