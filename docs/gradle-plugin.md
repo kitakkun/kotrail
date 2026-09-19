@@ -16,7 +16,8 @@ Apply a Kotlin plugin first: Kotrail reads the Kotlin version from it, and fails
 message if there is none.
 
 That is the whole setup. Every rule is on, at error severity, and the annotations artifact is on
-the compile classpath so `@HandlesWindowInsets` and `@MustBeSerializable` can be written.
+the compile classpath (as `compileOnly`, so it never reaches a published POM) so
+`@HandlesWindowInsets` and `@MustBeSerializable` can be written.
 
 ## The `kotrail { }` block
 
@@ -99,7 +100,7 @@ See [supported-kotlin-versions.md](supported-kotlin-versions.md).
 ## Multiplatform
 
 Rules apply to every compilation of every target. The annotations artifact is added automatically
-only for Kotlin/JVM and Kotlin/Android; a multiplatform build adds
+(as `compileOnly`) only for Kotlin/JVM and Kotlin/Android; a multiplatform build adds
 `com.kitakkun.kotrail:kotrail-annotations` to the source sets that need it, or sets
 `annotations = false` and leaves it out.
 

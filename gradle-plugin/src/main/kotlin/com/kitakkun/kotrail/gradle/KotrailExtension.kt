@@ -24,9 +24,10 @@ import javax.inject.Inject
 abstract class KotrailExtension @Inject constructor(private val objects: ObjectFactory) : KotrailOptions() {
     /**
      * Whether `com.kitakkun.kotrail:kotrail-annotations` is added to the project's
-     * `implementation` dependencies, so that `@HandlesWindowInsets` and `@MustBeSerializable`
-     * can be written in source. Default `true`. Only Kotlin/JVM and Kotlin/Android projects are
-     * wired automatically; a multiplatform build adds the artifact to the source sets that need it.
+     * `compileOnly` dependencies, so that `@HandlesWindowInsets` and `@MustBeSerializable`
+     * can be written in source without the artifact reaching the project's published
+     * dependencies. Default `true`. Only Kotlin/JVM and Kotlin/Android projects are wired
+     * automatically; a multiplatform build adds the artifact to the source sets that need it.
      */
     abstract val annotations: Property<Boolean>
 

@@ -113,15 +113,17 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
 
     /**
      * The annotations the rules recognize are an ordinary library, so a project needs them on its
-     * compile classpath to write `@HandlesWindowInsets` or `@MustBeSerializable`. Multiplatform
-     * projects add the artifact to the source sets that need it themselves.
+     * compile classpath to write `@HandlesWindowInsets` or `@MustBeSerializable`. They have binary
+     * retention and nothing reads them at runtime, so they are `compileOnly`: a library that
+     * applies Kotrail does not put Kotrail into its published dependencies. Multiplatform projects
+     * add the artifact to the source sets that need it themselves.
      */
     private fun addAnnotationsDependency(target: Project) {
         for (pluginId in listOf("org.jetbrains.kotlin.jvm", "org.jetbrains.kotlin.android")) {
             target.pluginManager.withPlugin(pluginId) {
                 target.afterEvaluate {
                     if (extension.annotations.get()) {
-                        target.dependencies.add("implementation", "$GROUP:$ANNOTATIONS_ARTIFACT:$KOTRAIL_VERSION")
+                        target.dependencies.add("compileOnly", "$GROUP:$ANNOTATIONS_ARTIFACT:$KOTRAIL_VERSION")
                     }
                 }
             }
