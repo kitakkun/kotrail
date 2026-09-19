@@ -45,6 +45,8 @@ calls it directly.
   (an abstract composable has nothing to render; its implementations are what previews call).
 - The composable is called from a preview in the same file, at any call depth inside the
   preview's body (a preview wrapped in a theme lambda still counts).
+- Another overload of the same name is called from a preview: overloads are one component, as
+  in [composables per file](composables-per-file.md), so one preview covers them all.
 
 Composables that cannot be previewed (they take a ViewModel, need a navigation controller)
 should be suppressed at the spot with `@Suppress("KOTRAIL_COMPOSABLE_WITHOUT_PREVIEW")`, or better,

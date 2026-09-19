@@ -57,6 +57,23 @@ fun rememberLabel(): String = "label"
 
 fun plain() {}
 
+// Not reported: overloads are one component; a preview calling either covers both.
+@Composable
+fun Chip(label: String, modifier: Modifier = Modifier) {
+    Box(modifier) { Text(label) }
+}
+
+@Composable
+fun Chip(count: Int, modifier: Modifier = Modifier) {
+    Box(modifier) { Text("$count") }
+}
+
+@Preview
+@Composable
+private fun ChipPreview() {
+    Chip(label = "chip")
+}
+
 // Not reported: suppressed on the declaration itself.
 @Suppress("KOTRAIL_COMPOSABLE_WITHOUT_PREVIEW")
 @Composable

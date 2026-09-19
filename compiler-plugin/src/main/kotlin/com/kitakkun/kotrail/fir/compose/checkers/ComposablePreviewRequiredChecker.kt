@@ -37,6 +37,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.isUnit
 import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
+import org.jetbrains.kotlin.name.CallableId
 
 /**
  * Every UI composable must have a `@Preview` in the same file that calls it:
@@ -51,7 +52,8 @@ import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
  *
  * Keeping the preview next to the component is the convention this rule enforces; it is also
  * what lets the check stay a single-file, frontend check. Multipreview annotations (annotations
- * themselves annotated with `@Preview`) count as previews. The composables inspected are the
+ * themselves annotated with `@Preview`) count as previews. Overloads of one name are one
+ * component, so a preview calling any overload covers them all. The composables inspected are the
  * `Unit`-returning ones whose visibility falls under `compose.previewRequired.scope`; preview
  * functions, `override` / `expect` / `actual` functions, functions without a body, and local
  * functions are left alone.
@@ -69,19 +71,21 @@ object ComposablePreviewRequiredChecker : FirFileChecker(MppCheckerKind.Common) 
 
         val functions = mutableListOf<Collected>()
         collectFunctions(declaration.declarations, emptySet(), functions)
-        val previewed = mutableSetOf<FirNamedFunctionSymbol>()
+        // Overloads of one name are one component, as in composablesPerFile: a preview that calls any
+        // of them covers all of them, so callees are remembered by callable id rather than by symbol.
+        val previewed = mutableSetOf<CallableId>()
         for ((function, _) in functions) {
             if (!function.isPreview(session)) continue
             val collector = CalleeCollector()
             function.body?.accept(collector)
-            previewed += collector.callees
+            previewed += collector.callees.mapNotNull { it.callableId }
         }
 
         val diagnostic = KotrailDiagnostics.COMPOSABLE_WITHOUT_PREVIEW
         val severity = config.severity(diagnostic.rule)
         for ((function, suppressed) in functions) {
             if (!function.needsPreview(session, config.compose.previewRequireFor)) continue
-            if (function.symbol in previewed) continue
+            if (function.symbol.callableId in previewed) continue
             if (diagnostic.baseName in suppressed || severity.suppressAllName in suppressed) continue
             val source = function.source ?: continue
             if (source.kind is KtFakeSourceElementKind) continue
