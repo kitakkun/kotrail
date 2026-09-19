@@ -37,9 +37,39 @@ class TickerTest {
         }
     }
 
+    // Reported: the wait moved into a helper of this test class; the call in the test is reported.
+    @Test
+    fun `waits through a member helper`() {
+        <!KOTRAIL_TEST_REAL_TIME_WAIT!>awaitSize<!>(3)
+    }
+
+    // Reported: a private top-level helper counts too, and delay in it is real time here.
+    @Test
+    fun `waits through a private helper`() = runBlocking {
+        <!KOTRAIL_TEST_REAL_TIME_WAIT!>awaitUntil<!> { true }
+    }
+
+    // Not reported: the same helper under runTest runs its delay on virtual time.
+    @Test
+    fun `waits through a private helper on virtual time`() = runTest {
+        awaitUntil { true }
+    }
+
     // Not reported: no test annotation.
     fun warmUp() {
         Thread.sleep(500)
+    }
+
+    fun awaitSize(n: Int) {
+        while (n > 0) {
+            Thread.sleep(10)
+        }
+    }
+}
+
+private suspend fun awaitUntil(condition: () -> Boolean) {
+    while (!condition()) {
+        delay(10)
     }
 }
 

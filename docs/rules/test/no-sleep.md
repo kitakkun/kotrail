@@ -56,11 +56,33 @@ rules:
 
 Which functions are tests is `test.annotations`, shared with [test naming](naming.md).
 
+## Waits hidden in helpers
+
+Moving the loop into a helper does not make it a different test. Calls from a test into its own
+helpers are followed: a `private` function, or any member of the test's class. When the helper
+waits, the call in the test is reported, naming both (`awaitSize, which calls sleep`), and the
+helper's `delay` counts as virtual time only when the call sits inside a `virtualTime` lambda.
+
+```kotlin
+@Test fun `emits after a tick`() {
+    awaitSize(3)                                    // reported: awaitSize, which calls sleep
+}
+private fun awaitSize(n: Int) { while (size < n) Thread.sleep(10) }
+```
+
+## Legitimate real-time waits
+
+Some tests have to wait: production code that reads `TimeSource.Monotonic`, a listener whose only
+observable signal is a real handshake, an assertion that something does *not* happen within a
+window. Suppress those on the test with `@Suppress("KOTRAIL_TEST_REAL_TIME_WAIT")`, and keep the
+wait as the test's only one, since the suppression covers the whole function.
+
 ## When it stays quiet
 
 - The function carries none of the configured test annotations, whatever it calls.
-- `delay` inside a `virtualTime` lambda, at any depth.
-- A wait in production code called from the test: only the test body is inspected.
+- `delay` inside a `virtualTime` lambda, at any depth, including inside a followed helper.
+- A wait in production code called from the test, or in a helper that is neither private nor a
+  member of the test's class: only the test and its own helpers are inspected.
 
 ## Fixtures
 
@@ -71,4 +93,6 @@ Which functions are tests is `test.annotations`, shared with [test naming](namin
 `fir/test/checkers/TestSleepChecker.kt`, a `FirNamedFunctionChecker` over functions that
 `isTestFunction` accepts. A `FirVisitorVoid` walks the body, reports calls whose `callableId` is in
 `functions`, and reports `kotlinx.coroutines.delay` unless a `virtualTime` call is on the visitor's
-stack. The `runTest` stub for the fixture lives in `compiler-tests/compose-stubs`.
+stack. A call to a private function or a member of the test's class is followed with a nested
+walker that inherits the virtual-time state and a stack of helpers already entered, so recursion
+ends. The `runTest` stub for the fixture lives in `compiler-tests/compose-stubs`.

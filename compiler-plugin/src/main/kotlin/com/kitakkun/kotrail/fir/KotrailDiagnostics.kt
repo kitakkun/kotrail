@@ -431,8 +431,9 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         )
         map.put1(
             KotrailDiagnostics.TEST_REAL_TIME_WAIT,
-            "[Kotrail] ''{0}'' waits real time inside a test, which makes the test slow and flaky. Run the " +
-                "test with runTest and virtual time, or await the condition instead.",
+            "[Kotrail] ''{0}'' waits real time inside a test, which makes the test slow and flaky. Await the " +
+                "condition instead (a latch, a channel, a flow collector); for in-memory coroutine code, run " +
+                "the test with runTest so that delay skips virtual time.",
         )
         map.put2(
             KotrailDiagnostics.PASS_THROUGH_FUNCTION,
