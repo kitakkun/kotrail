@@ -60,6 +60,8 @@ enum class KotrailRule(
     COMPOSE_NO_HARDCODED_STRING("compose.noHardcodedString", Severity.ERROR, defaultEnabled = false),
     /** Experimental: the inference is a port of the Compose compiler's, not yet proven on large codebases. */
     COMPOSE_NO_UNSTABLE_PARAMETER("compose.noUnstableParameter", Severity.ERROR, defaultEnabled = false),
+    /** Off by default: enabled in the compilation that carries the previews of a library or a screenshot-test source set. */
+    COMPOSE_PREVIEW_COVERAGE("compose.previewCoverage", Severity.ERROR, defaultEnabled = false),
 
     TEST_NAMING("test.naming", Severity.ERROR),
     TEST_NO_SLEEP("test.noSleep", Severity.ERROR),

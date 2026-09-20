@@ -79,6 +79,7 @@ Full pages, with every condition and fixture, live under [`docs/rules/`](docs/ru
 | [Modifier parameter](docs/rules/compose/modifier-parameter.md) (Compose) | A Modifier parameter that is misnamed, has no `Modifier` default, is out of place, or is applied twice | `modifier: Modifier = Modifier`, first optional parameter, applied once |
 | [Named callback arguments](docs/rules/compose/named-callback-arguments.md) (Compose) | `IconButton { ... }` passing a callback as a trailing lambda | `IconButton(onClick = { ... })` |
 | [Preview required](docs/rules/compose/preview-required.md) (Compose) | A UI composable whose file has no `@Preview` calling it | A preview composable next to it |
+| [Preview coverage](docs/rules/compose/preview-coverage.md) (Compose, off by default) | A public composable of a listed package that no `@Preview` in this compilation calls (libraries, screenshot tests) | A preview in the sample or test source set |
 | [Composables per file](docs/rules/compose/composables-per-file.md) (Compose) | More than 3 non-private UI composables in one file | One component (and its helpers) per file |
 | [No side effect in composition](docs/rules/compose/no-side-effect-in-composition.md) (Compose) | `scope.launch { }` in a composable body | `LaunchedEffect`, or an event handler |
 | [No hardcoded string](docs/rules/compose/no-hardcoded-string.md) (Compose, off by default) | `Text("Submit")` | `Text(stringResource(Res.string.submit))` |

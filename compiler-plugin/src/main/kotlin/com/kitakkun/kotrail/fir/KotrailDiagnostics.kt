@@ -189,6 +189,9 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Arguments: what the file declares (`5 distinct non-private composables`), the limit; reported on each composable past the limit. */
     val TOO_MANY_COMPOSABLES_IN_FILE = tunable2<KtNamedFunction, String, String>("TOO_MANY_COMPOSABLES_IN_FILE", KotrailRule.COMPOSE_COMPOSABLES_PER_FILE, NAME)
 
+    /** Argument: the composable's fully qualified name; reported on the package directive of the compilation's anchor file. */
+    val COMPOSABLE_NOT_COVERED_BY_PREVIEW = tunable1<KtElement, String>("COMPOSABLE_NOT_COVERED_BY_PREVIEW", KotrailRule.COMPOSE_PREVIEW_COVERAGE, WHOLE)
+
     /** Arguments: the offending type, the callee; reported on a call whose type argument is not serializable. */
     val TYPE_NOT_SERIALIZABLE = tunable2<KtElement, String, String>("TYPE_NOT_SERIALIZABLE", KotrailRule.MUST_BE_SERIALIZABLE, WHOLE)
 
@@ -411,6 +414,11 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             KotrailDiagnostics.COMPOSABLE_WITHOUT_PREVIEW,
             "[Kotrail] ''{0}'' has no @Preview in this file. Add a preview composable next to it that calls ''{0}'', " +
                 "or suppress this diagnostic when the composable cannot be previewed.",
+        )
+        map.put1(
+            KotrailDiagnostics.COMPOSABLE_NOT_COVERED_BY_PREVIEW,
+            "[Kotrail] ''{0}'' has no preview in this compilation: no @Preview function here calls it. Add one, " +
+                "or leave it out with compose.previewCoverage.excludeNames.",
         )
         map.put2(
             KotrailDiagnostics.TOO_MANY_COMPOSABLES_IN_FILE,

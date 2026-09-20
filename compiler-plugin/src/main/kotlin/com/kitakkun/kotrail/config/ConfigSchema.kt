@@ -129,6 +129,11 @@ object ConfigSchema {
         KotrailRule.COMPOSE_NO_UNSTABLE_PARAMETER to listOf(
             Setting("stableTypes", Kind.LIST, "Types the project declares stable, as fully qualified names with * and ** wildcards and an optional <*,_> mask of the type arguments that count, like a Compose stability configuration file."),
         ),
+        KotrailRule.COMPOSE_PREVIEW_COVERAGE to listOf(
+            Setting("packages", Kind.LIST, "Exact package names whose top-level UI composables must be called by a @Preview function somewhere in this compilation."),
+            Setting("visibility", Kind.ENUM, "Which composables of those packages count.", values = listOf("public", "internal"), default = "public"),
+            Setting("excludeNames", Kind.LIST, "Globs over fully qualified composable names to leave out."),
+        ),
         KotrailRule.COMPOSE_NO_HARDCODED_STRING to listOf(
             Setting("parameters", Kind.LIST, "Names of composable parameters that must not receive a string literal; replaces the default list.", default = "text, label, title, placeholder, contentDescription, message"),
         ),

@@ -40,6 +40,7 @@ data class KotrailComposeSettings(
     val hardcodedStringParameters: List<String>,
     /** Patterns of types the project declares stable, in the grammar of the Compose stability configuration file. */
     val stableTypes: List<String>,
+    val previewCoverage: KotrailPreviewCoverage,
     /**
      * The project's changes to the insets knowledge base, keyed by the composable's fully
      * qualified name, from `rules.compose.windowInsets.known`. A set replaces the built-in entry;
@@ -65,6 +66,16 @@ data class KotrailCompositionLocals(
     val roots: List<String>,
     /** Library composables described under `known`, keyed by fully qualified name. */
     val known: Map<String, KotrailCompositionLocalKnowledge>,
+)
+
+/** Tunables for the preview-coverage rule. From `rules.compose.previewCoverage`. */
+data class KotrailPreviewCoverage(
+    /** Exact package names whose top-level UI composables must be called by a preview in this compilation. */
+    val packages: List<String>,
+    /** Which of those composables count: public ones, or internal ones too. */
+    val visibility: PreviewScope,
+    /** Globs over fully qualified names of composables left out. */
+    val excludeNames: List<String>,
 )
 
 /** Visibilities the preview-required rule inspects. */
@@ -575,6 +586,11 @@ data class KotrailConfig(
                     sideEffectTypes = list(KotrailRule.COMPOSE_NO_SIDE_EFFECT_IN_COMPOSITION, "types") ?: DEFAULT_SIDE_EFFECT_TYPES,
                     sideEffectFunctions = list(KotrailRule.COMPOSE_NO_SIDE_EFFECT_IN_COMPOSITION, "functions").orEmpty(),
                     hardcodedStringParameters = list(KotrailRule.COMPOSE_NO_HARDCODED_STRING, "parameters") ?: DEFAULT_HARDCODED_STRING_PARAMETERS,
+                    previewCoverage = KotrailPreviewCoverage(
+                        packages = list(KotrailRule.COMPOSE_PREVIEW_COVERAGE, "packages").orEmpty(),
+                        visibility = enumValue(KotrailRule.COMPOSE_PREVIEW_COVERAGE, "visibility", listOf("public", "internal"))?.let { PreviewScope.fromKey(it)!! } ?: PreviewScope.PUBLIC,
+                        excludeNames = list(KotrailRule.COMPOSE_PREVIEW_COVERAGE, "excludeNames").orEmpty(),
+                    ),
                     stableTypes = list(KotrailRule.COMPOSE_NO_UNSTABLE_PARAMETER, "stableTypes").orEmpty().also { patterns ->
                         patterns.forEach { pattern ->
                             runCatching { StableTypeMatcher(pattern) }.onFailure {
