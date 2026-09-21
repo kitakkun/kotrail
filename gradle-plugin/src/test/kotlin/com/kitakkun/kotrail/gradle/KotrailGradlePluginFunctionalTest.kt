@@ -179,7 +179,7 @@ class KotrailGradlePluginFunctionalTest {
         assertTrue(text.contains("move(x = 1, y = 2, z = 3)"), text)
 
         val again = runBuild("kotrailFix")
-        assertTrue(again.output.contains("changed since they were compiled"), again.output)
+        assertTrue(again.output.contains("changed since compiled"), again.output)
         assertEquals(text, File(projectDir, "src/main/kotlin/Cases.kt").readText())
     }
 
