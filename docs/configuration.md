@@ -154,6 +154,14 @@ compiler's own convention for deprecations: demoting `noPassThroughReturn` yield
 `KOTRAIL_WINDOW_INSETS_HANDLED_TWICE_ERROR`. `@Suppress` accepts either the name in effect or the
 base name, so a suppression written before the severity changed keeps working.
 
+A Kotrail warning is not promoted by `-Werror` (`allWarningsAsErrors = true` in Gradle). It is a
+decision the project wrote down, whether as `severity: warning` or as a rule that defaults to
+warning, and a project that treats the compiler's warnings as errors would otherwise lose the
+gradual path entirely. Under the hood the diagnostic is reported at the compiler's fixed-warning
+level, the same one `-Xwarning-level=<name>:warning` produces, and that option still applies to
+Kotrail diagnostics by their name in effect (`-Xwarning-level=KOTRAIL_PASS_THROUGH_RETURN_WARNING:error`
+promotes one back). To have `-Werror` fail on a Kotrail finding, set the rule to `error`.
+
 ## Project notes
 
 A rule's message says what it found and what to write instead. It does not know *why your project

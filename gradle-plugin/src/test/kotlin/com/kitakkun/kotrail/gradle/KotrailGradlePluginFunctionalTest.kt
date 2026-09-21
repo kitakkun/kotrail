@@ -76,6 +76,31 @@ class KotrailGradlePluginFunctionalTest {
     }
 
     @Test
+    fun `a Kotrail warning survives allWarningsAsErrors`() {
+        writeSettings()
+        writeFile("kotrail.yaml", "severity: warning\n")
+        writeBuild(
+            """
+            kotrail {
+                configFile = file("kotrail.yaml")
+            }
+            kotlin {
+                compilerOptions {
+                    allWarningsAsErrors = true
+                }
+            }
+            """.trimIndent(),
+        )
+        writeFile("src/main/kotlin/Cases.kt", NOT_NULL_ASSERTION_VIOLATION)
+
+        val result = runBuild("compileKotlin")
+
+        assertEquals(TaskOutcome.SUCCESS, result.task(":compileKotlin")?.outcome, result.output)
+        assertTrue(result.output.contains("KOTRAIL_NOT_NULL_ASSERTION"), result.output)
+        assertFalse(result.output.contains("-Werror"), result.output)
+    }
+
+    @Test
     fun `the project's note is appended to the message`() {
         writeSettings()
         writeFile("kotrail.yaml", "rules:\n  noNotNullAssertion:\n    note: See ADR-014.\n")
