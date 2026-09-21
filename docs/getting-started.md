@@ -34,7 +34,20 @@ e: Home.kt:12:5 [Kotrail] This function is 84 lines of code (limit 80). Split it
 Each message names what was found and what to do instead, which is what an assistant needs
 to fix it without being told.
 
-## 3. Tune what needs tuning
+## 3. Apply the fixes that need no judgment
+
+Some rules know the exact rewrite (a lambda into `::reference`, `{ return x }` into `= x`, names
+on positional arguments, ...). Every build records those fixes, and
+
+```bash
+./gradlew kotrailFix
+```
+
+applies them to the sources without compiling again. Build and run it again until it reports
+nothing; then run the formatter. The rule pages say **Fix: automatic** where this holds; see
+[Applying fixes](gradle-plugin.md#applying-fixes).
+
+## 4. Tune what needs tuning
 
 Turn a rule off, soften it to a warning, or change a limit in one `kotrail.yaml`:
 
@@ -64,7 +77,7 @@ compiler diagnostic. Everything else about configuration, including the note you
 every message and the predicates that carve out generated code, is in
 [Configuration](configuration.md).
 
-## 4. Write down the project's own rules
+## 5. Write down the project's own rules
 
 Some rules are inert until the project says what it wants, and those are the ones that carry
 what no assistant can guess:

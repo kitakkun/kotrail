@@ -89,6 +89,10 @@ Full pages, with every condition and fixture, live under [`docs/rules/`](docs/ru
 | [No sleep in tests](docs/rules/test/no-sleep.md) (Test) | `Thread.sleep(500)`, `delay(500)` outside `runTest` | `runTest` and virtual time, or awaiting the condition |
 | [Objective-C identity](docs/rules/native/objc-identity.md) (Kotlin/Native) | `view.window === window`, `WeakReference(window)` | `==` (isEqual:) or `objcPtr()`, a strong reference |
 
+Rules that know the exact rewrite record it while compiling, and `./gradlew kotrailFix` applies
+those fixes to the sources without compiling again; the rule pages say **Fix: automatic** where
+that holds. See [Applying fixes](docs/gradle-plugin.md#applying-fixes).
+
 Ideas not started yet: `required-annotation` (predicate-driven), `forbidden-supertype`.
 
 ## Configuration
