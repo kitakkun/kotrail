@@ -105,6 +105,7 @@ own; a rule not listed has none.
 | | `maxSafeCalls` | `0` | Maximum `?.` along one receiver chain; `0` disables. |
 | `implicitReceivers` | `qualifyOuter` | `true` | Whether a bare name resolved on an outer implicit receiver, past a nearer one, is reported. |
 | | `maxDepth` | `0` | Maximum implicit receivers in scope at once; `0` disables. |
+| `sealedWhenBranchStyle` | `style` | `is` | How an object case of a sealed type is written in a `when` branch: `is` (`is Cancel ->`) or `object` (`Cancel ->`). |
 | `noDataClassInPublicApi` | `scope` | `explicitApi` | `explicitApi` applies the rule only to modules compiled with explicit API mode; `all` everywhere. |
 | `visibilityPolicy` | `private` | | A predicate; matching declarations must be `private`. |
 | | `internal` | | A predicate; matching declarations must be `internal` or `private`. |

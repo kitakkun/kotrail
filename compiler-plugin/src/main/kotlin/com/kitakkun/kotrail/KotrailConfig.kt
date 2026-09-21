@@ -136,6 +136,24 @@ data class KotrailNullChain(
     val maxSafeCalls: Int,
 )
 
+/** How an object case of a sealed type is written in a `when` branch. */
+enum class WhenBranchStyle(val key: String) {
+    /** `is Cancel ->`, the same shape as the class cases. */
+    IS("is"),
+
+    /** `Cancel ->`, the shortest form. */
+    OBJECT("object");
+
+    companion object {
+        fun fromKey(key: String): WhenBranchStyle? = entries.firstOrNull { it.key.equals(key.trim(), ignoreCase = true) }
+    }
+}
+
+/** Tunables for the sealed-when-branch-style rule. From `rules.sealedWhenBranchStyle`. */
+data class KotrailSealedWhen(
+    val style: WhenBranchStyle,
+)
+
 /** Tunables for the implicit-receivers rule. From `rules.implicitReceivers`. */
 data class KotrailImplicitReceivers(
     /** Whether a bare name resolved on an outer receiver, past a nearer one, is reported. */
@@ -310,6 +328,7 @@ data class KotrailConfig(
     val comments: KotrailCommentSettings,
     val nullChain: KotrailNullChain,
     val implicitReceivers: KotrailImplicitReceivers,
+    val sealedWhen: KotrailSealedWhen,
     val noFqnReferences: KotrailNoFqnReferences,
     val forbiddenCall: KotrailForbiddenCall,
     val namedArguments: KotrailNamedArguments,
@@ -620,6 +639,9 @@ data class KotrailConfig(
                 nullChain = KotrailNullChain(
                     maxElvis = int(KotrailRule.NULL_CHAIN_LENGTH, "maxElvis") ?: DEFAULT_MAX_ELVIS,
                     maxSafeCalls = int(KotrailRule.NULL_CHAIN_LENGTH, "maxSafeCalls") ?: DEFAULT_MAX_SAFE_CALLS,
+                ),
+                sealedWhen = KotrailSealedWhen(
+                    style = enumValue(KotrailRule.SEALED_WHEN_BRANCH_STYLE, "style", WhenBranchStyle.entries.map { it.key })?.let { WhenBranchStyle.fromKey(it)!! } ?: WhenBranchStyle.IS,
                 ),
                 implicitReceivers = KotrailImplicitReceivers(
                     qualifyOuter = boolean(ruleNode(KotrailRule.IMPLICIT_RECEIVERS), "qualifyOuter") ?: true,

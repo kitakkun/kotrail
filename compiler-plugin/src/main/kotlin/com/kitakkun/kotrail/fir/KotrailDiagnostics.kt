@@ -99,6 +99,9 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: how often, e.g. `3 times (limit 2)`. Reported on the outermost `?:` expression. */
     val ELVIS_CHAIN_TOO_LONG = tunable1<KtElement, String>("ELVIS_CHAIN_TOO_LONG", KotrailRule.NULL_CHAIN_LENGTH, WHOLE)
 
+    /** Arguments: the branch condition as written (`Cancel`), the form to write (`is Cancel`); reported on the condition. */
+    val SEALED_WHEN_BRANCH_STYLE = tunable2<KtElement, String, String>("SEALED_WHEN_BRANCH_STYLE", KotrailRule.SEALED_WHEN_BRANCH_STYLE, WHOLE)
+
     /** Arguments: the name, the outer receiver it resolved on (`this@Screen`); reported on the access. */
     val IMPLICIT_RECEIVER_FROM_OUTER_SCOPE = tunable2<KtElement, String, String>("IMPLICIT_RECEIVER_FROM_OUTER_SCOPE", KotrailRule.IMPLICIT_RECEIVERS, WHOLE)
 
@@ -486,6 +489,11 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             KotrailDiagnostics.SAFE_CALL_CHAIN_TOO_LONG,
             "[Kotrail] This access chains ''?.'' {0}; every link may be null and the result cannot say which one " +
                 "was. Bind an intermediate value to a name, or move the traversal into the model.",
+        )
+        map.put2(
+            KotrailDiagnostics.SEALED_WHEN_BRANCH_STYLE,
+            "[Kotrail] Write ''{1} ->'' instead of ''{0} ->'', so that every branch of this when over a sealed type " +
+                "reads the same way.",
         )
         map.put2(
             KotrailDiagnostics.IMPLICIT_RECEIVER_FROM_OUTER_SCOPE,

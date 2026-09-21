@@ -105,6 +105,9 @@ object ConfigSchema {
             Setting("maxElvis", Kind.INT, "Maximum ?: fallbacks in one expression, a trailing ?: return or ?: throw not counted; 0 disables.", default = "2"),
             Setting("maxSafeCalls", Kind.INT, "Maximum ?. along one receiver chain; 0 disables.", default = "0"),
         ),
+        KotrailRule.SEALED_WHEN_BRANCH_STYLE to listOf(
+            Setting("style", Kind.ENUM, "How an object case of a sealed type is written in a when branch: is (`is Cancel ->`) or object (`Cancel ->`).", values = listOf("is", "object"), default = "is"),
+        ),
         KotrailRule.IMPLICIT_RECEIVERS to listOf(
             Setting("qualifyOuter", Kind.BOOLEAN, "Whether a bare name resolved on an outer implicit receiver, past a nearer one, is reported.", default = "true"),
             Setting("maxDepth", Kind.INT, "Maximum implicit receivers in scope at once; 0 disables.", default = "0"),

@@ -25,6 +25,7 @@ import com.kitakkun.kotrail.fir.checkers.PreferExpressionBodyChecker
 import com.kitakkun.kotrail.fir.checkers.PreferFunctionReferenceChecker
 import com.kitakkun.kotrail.fir.checkers.PreferValueClassChecker
 import com.kitakkun.kotrail.fir.checkers.RedundantElseChecker
+import com.kitakkun.kotrail.fir.checkers.SealedWhenBranchStyleChecker
 import com.kitakkun.kotrail.fir.checkers.SwallowedCancellationChecker
 import com.kitakkun.kotrail.fir.checkers.ElvisChainChecker
 import com.kitakkun.kotrail.fir.checkers.ImplicitReceiverDepthChecker
@@ -160,6 +161,7 @@ object KotrailExpressionCheckers : ExpressionCheckers() {
     )
     override val whenExpressionCheckers: Set<FirWhenExpressionChecker> = setOf(
         RedundantElseChecker,
+        SealedWhenBranchStyleChecker,
     )
     override val checkNotNullCallCheckers: Set<FirCheckNotNullCallChecker> = setOf(
         NotNullAssertionChecker,
