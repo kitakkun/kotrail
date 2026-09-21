@@ -102,8 +102,8 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Arguments: the branch condition as written (`Cancel`), the form to write (`is Cancel`); reported on the condition. */
     val SEALED_WHEN_BRANCH_STYLE = tunable2<KtElement, String, String>("SEALED_WHEN_BRANCH_STYLE", KotrailRule.SEALED_WHEN_BRANCH_STYLE, WHOLE)
 
-    /** Arguments: the name, the outer receiver it resolved on (`this@Screen`); reported on the access. */
-    val IMPLICIT_RECEIVER_FROM_OUTER_SCOPE = tunable2<KtElement, String, String>("IMPLICIT_RECEIVER_FROM_OUTER_SCOPE", KotrailRule.IMPLICIT_RECEIVERS, WHOLE)
+    /** Arguments: the name, the receiver it resolved on with the other one that has the name too; reported on the access. */
+    val IMPLICIT_RECEIVER_AMBIGUOUS = tunable2<KtElement, String, String>("IMPLICIT_RECEIVER_AMBIGUOUS", KotrailRule.IMPLICIT_RECEIVERS, WHOLE)
 
     /** Argument: what was counted, e.g. `3 implicit receivers in scope (limit 2)`; reported on the lambda past the limit. */
     val TOO_MANY_IMPLICIT_RECEIVERS = tunable1<KtElement, String>("TOO_MANY_IMPLICIT_RECEIVERS", KotrailRule.IMPLICIT_RECEIVERS, WHOLE)
@@ -482,8 +482,8 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         map.put1(
             KotrailDiagnostics.ELVIS_CHAIN_TOO_LONG,
             "[Kotrail] This expression falls back with ''?:'' {0}; each fallback is one more case the reader " +
-                "evaluates in order. Extract the candidates into a function, or list them with " +
-                "listOfNotNull(...).firstOrNull().",
+                "evaluates in order. Extract the candidates into a function, or, when they are cheap and " +
+                "side-effect free, list them with listOfNotNull(...).firstOrNull().",
         )
         map.put1(
             KotrailDiagnostics.SAFE_CALL_CHAIN_TOO_LONG,
@@ -496,9 +496,8 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
                 "reads the same way.",
         )
         map.put2(
-            KotrailDiagnostics.IMPLICIT_RECEIVER_FROM_OUTER_SCOPE,
-            "[Kotrail] ''{0}'' resolves on {1}, not on the nearest receiver. Qualify it ({1}.{0}) so that the " +
-                "reader sees where it belongs.",
+            KotrailDiagnostics.IMPLICIT_RECEIVER_AMBIGUOUS,
+            "[Kotrail] ''{0}'' resolves on {1}. Qualify it so that the reader sees which one is meant.",
         )
         map.put1(
             KotrailDiagnostics.TOO_MANY_IMPLICIT_RECEIVERS,

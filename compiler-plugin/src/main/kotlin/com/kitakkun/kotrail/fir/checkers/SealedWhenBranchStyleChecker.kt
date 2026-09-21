@@ -1,3 +1,5 @@
+@file:OptIn(DirectDeclarationsAccess::class)
+
 package com.kitakkun.kotrail.fir.checkers
 
 import com.kitakkun.kotrail.KotrailRule
@@ -16,6 +18,7 @@ import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirWhenExpressionChecker
+import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.utils.modality
 import org.jetbrains.kotlin.fir.expressions.FirBooleanOperatorExpression
 import org.jetbrains.kotlin.fir.expressions.FirEqualityOperatorCall
@@ -28,7 +31,9 @@ import org.jetbrains.kotlin.fir.expressions.arguments
 import org.jetbrains.kotlin.fir.resolve.fullyExpandedType
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
+import org.jetbrains.kotlin.util.OperatorNameConventions
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.name.ClassId
 
@@ -97,9 +102,17 @@ object SealedWhenBranchStyleChecker : FirWhenExpressionChecker(MppCheckerKind.Co
     private fun FirExpression.objectChecked(session: FirSession): FirRegularClassSymbol? {
         if (this !is FirTypeOperatorCall || operation != FirOperation.IS) return null
         val classSymbol = conversionTypeRef.coneType.fullyExpandedType(session).toRegularClassSymbol(session) ?: return null
-        return classSymbol.takeIf { it.classKind == ClassKind.OBJECT }
+        return classSymbol.takeIf { it.classKind == ClassKind.OBJECT && !it.declaresEquals() }
     }
 
     private fun ClassId.toObjectSymbol(session: FirSession): FirRegularClassSymbol? =
-        (session.symbolProvider.getClassLikeSymbolByClassId(this) as? FirRegularClassSymbol)?.takeIf { it.classKind == ClassKind.OBJECT }
+        (session.symbolProvider.getClassLikeSymbolByClassId(this) as? FirRegularClassSymbol)
+            ?.takeIf { it.classKind == ClassKind.OBJECT && !it.declaresEquals() }
+
+    /**
+     * `Obj ->` compares with `equals`, `is Obj ->` checks the type; for an object that writes its
+     * own `equals` the two can differ, so such an object is left as written.
+     */
+    private fun FirRegularClassSymbol.declaresEquals(): Boolean =
+        declarationSymbols.any { it is FirNamedFunctionSymbol && it.name == OperatorNameConventions.EQUALS && it.valueParameterSymbols.size == 1 }
 }

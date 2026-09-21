@@ -156,8 +156,8 @@ data class KotrailSealedWhen(
 
 /** Tunables for the implicit-receivers rule. From `rules.implicitReceivers`. */
 data class KotrailImplicitReceivers(
-    /** Whether a bare name resolved on an outer receiver, past a nearer one, is reported. */
-    val qualifyOuter: Boolean,
+    /** Whether a bare name that two implicit receivers in scope could supply is reported. */
+    val qualifyAmbiguous: Boolean,
     /** Maximum implicit receivers in scope at once; `0` switches the count off. */
     val maxDepth: Int,
 )
@@ -655,7 +655,7 @@ data class KotrailConfig(
                     style = enumValue(KotrailRule.SEALED_WHEN_BRANCH_STYLE, "style", WhenBranchStyle.entries.map { it.key })?.let { WhenBranchStyle.fromKey(it)!! } ?: WhenBranchStyle.IS,
                 ),
                 implicitReceivers = KotrailImplicitReceivers(
-                    qualifyOuter = boolean(ruleNode(KotrailRule.IMPLICIT_RECEIVERS), "qualifyOuter") ?: true,
+                    qualifyAmbiguous = boolean(ruleNode(KotrailRule.IMPLICIT_RECEIVERS), "qualifyAmbiguous") ?: true,
                     maxDepth = int(KotrailRule.IMPLICIT_RECEIVERS, "maxDepth") ?: DEFAULT_MAX_RECEIVER_DEPTH,
                 ),
                 comments = KotrailCommentSettings(

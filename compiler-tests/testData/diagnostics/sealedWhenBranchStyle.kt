@@ -4,6 +4,10 @@ sealed interface Action {
     data object Cancel : Action
     data object Retry : Action
     object Legacy : Action
+    object Custom : Action {
+        override fun equals(other: Any?): Boolean = other is Custom
+        override fun hashCode(): Int = 1
+    }
 }
 
 sealed class State {
@@ -19,6 +23,7 @@ fun handle(action: Action, state: State, mode: Mode, any: Any) {
         is Action.Save -> println("save")
         <!KOTRAIL_SEALED_WHEN_BRANCH_STYLE!>Action.Cancel<!> -> println("cancel")
         <!KOTRAIL_SEALED_WHEN_BRANCH_STYLE!>Action.Retry<!>, <!KOTRAIL_SEALED_WHEN_BRANCH_STYLE!>Action.Legacy<!> -> println("again")
+        is Action.Custom -> println("custom")
     }
 
     // Not reported: every branch is an `is` check.
@@ -26,6 +31,7 @@ fun handle(action: Action, state: State, mode: Mode, any: Any) {
         is Action.Save -> println("save")
         is Action.Cancel -> println("cancel")
         is Action.Retry, is Action.Legacy -> println("again")
+        is Action.Custom -> println("custom")
     }
 
     // Reported: a sealed class subject works the same way.
@@ -37,6 +43,13 @@ fun handle(action: Action, state: State, mode: Mode, any: Any) {
     // Not reported: else and guards are not object comparisons.
     when (action) {
         is Action.Save if action.draft -> println("draft")
+        else -> println("other")
+    }
+
+    // Not reported: an object with its own equals is compared, not type-checked, on purpose.
+    when (action) {
+        is Action.Save -> println("save")
+        Action.Custom -> println("custom")
         else -> println("other")
     }
 

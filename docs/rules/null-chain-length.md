@@ -28,10 +28,12 @@ val name = listOfNotNull(user?.profile?.displayName, user?.profile?.email, cache
 ```
 
 Each `?:` is one more case the reader evaluates in order to learn which value wins; past two,
-the expression is a decision table written on one line. A long `?.` chain says the model has
-several places that may be null between the caller and the value, and when the result is null
-nothing tells the caller which link was missing. Both are shapes an assistant produces readily
-because they compile on the first try.
+the expression is a decision table written on one line. Note that `?:` is lazy and
+`listOfNotNull(...)` evaluates every candidate first: that rewrite suits cheap, side-effect-free
+candidates; for the others, a function with early returns keeps the laziness. A long `?.` chain
+says the model has several places that may be null between the caller and the value, and when
+the result is null nothing tells the caller which link was missing. Both are shapes an assistant
+produces readily because they compile on the first try.
 
 ## How the counts work
 

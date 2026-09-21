@@ -1,20 +1,20 @@
 # Implicit receivers
 
-**Diagnostics:** `KOTRAIL_IMPLICIT_RECEIVER_FROM_OUTER_SCOPE` (error, on the access), `KOTRAIL_TOO_MANY_IMPLICIT_RECEIVERS` (error, on the lambda)
+**Diagnostics:** `KOTRAIL_IMPLICIT_RECEIVER_AMBIGUOUS` (error, on the access), `KOTRAIL_TOO_MANY_IMPLICIT_RECEIVERS` (error, on the lambda)
 **Key:** `rules.implicitReceivers` (on by default)
-**Settings:** `qualifyOuter` (default `true`), `maxDepth` (default `0`, disabled)
+**Settings:** `qualifyAmbiguous` (default `true`), `maxDepth` (default `0`, disabled)
 
 ## What it rejects
 
-A bare name that resolves on an outer implicit receiver while a nearer one is in scope:
+A bare name that two implicit receivers in scope could supply:
 
 ```kotlin
 class Screen(val view: View) {
-    fun title(): String = "t"
+    var text: String = ""
 
     fun bind() {
         view.apply {
-            text = title()        // reported: title() is Screen's; View is the nearest this
+            text = "hello"        // reported: View.text wins, but Screen has a text too
         }
     }
 }
@@ -33,14 +33,20 @@ view.apply {
 
 ```kotlin
 view.apply {
-    text = this@Screen.title()
+    this.text = "hello"          // View's
+    this@Screen.text = "hello"   // Screen's
 }
 ```
 
-With two receivers in scope, a bare `title()` reads as the nearer one's until the reader goes
-and checks which class declares it. The compiler resolves it correctly every time; the reader
-does not. Naming the receiver (`this@Screen.title()`, or a local `val screen = this` before the
-block) says where the name belongs, and is what an IDE inlay hint would have shown.
+The compiler picks the nearest receiver that has the member, every time and without a word. A
+reader who has the other receiver in mind reads the line wrong, and an assignment goes to the
+wrong object with no diagnostic to say so; this is the classic `apply` mistake. Qualifying the
+access settles which one is meant.
+
+A name that only one receiver has is not reported, however far out that receiver is. A class
+member used inside `runBlocking { }`, `launch { }`, `apply { }`, `buildJsonObject { }`, or a
+mocking DSL is the ordinary way to write Kotlin, and `this@Owner.` on each such name would make
+the code worse, not clearer.
 
 ## How receivers are counted
 
@@ -54,12 +60,11 @@ An implicit receiver is put in scope by:
 
 Lambdas without a receiver (`forEach`, `let`, `map`) and local functions add nothing.
 
-`qualifyOuter` looks at every call and property access whose receiver was supplied implicitly,
-and reports it when that receiver is not one of the innermost declaration's: a class member used
-inside `apply`, a member used from an `inner` class, the class's own member used inside a member
-extension. A receiver marked with `@DslMarker` already forbids the outer access at the language
-level, so nothing inside such a block is reported unless it resolved anyway (an outer class
-member is still reachable from a DSL block, and is reported).
+`qualifyAmbiguous` looks at every call and property access whose receiver was supplied
+implicitly and reports it when another receiver in scope declares or inherits a function or
+property of the same name. Extensions in scope are not consulted: only members count. The message
+names the receiver the access resolved on and the other one, as `this@Screen`, `this@show`
+(an extension function's receiver), or `this@apply` (a lambda's implicit label).
 
 `maxDepth` counts the receivers in scope at a lambda, including its own, out to the nearest
 non-inner class, and reports the lambda that exceeds the limit. It is off by default: every
@@ -73,8 +78,8 @@ rules:
 
 ## When it stays quiet
 
-- The access is qualified (`this@Screen.title()`, `this.invalidate()`, `screen.title()`).
-- The name resolves on the innermost receiver.
+- The access is qualified (`this.text`, `this@Screen.text`, `screen.text`).
+- Only one receiver in scope has a member of that name.
 - Only one receiver is in scope: a plain method, a top-level extension, a lambda in a top-level
   function.
 - `maxDepth` is `0`, or the count is within it.
@@ -86,10 +91,11 @@ rules:
 
 ## Implementation notes
 
-`fir/checkers/ImplicitReceiverChecker.kt`: `OuterImplicitReceiverChecker`, a
+`fir/checkers/ImplicitReceiverChecker.kt`: `AmbiguousImplicitReceiverChecker`, a
 `FirQualifiedAccessExpressionChecker`, takes the `dispatchReceiver` and `extensionReceiver` of the
 access that are `FirThisReceiverExpression`s with `isImplicit`, reads the `boundSymbol` of their
-`FirThisReference`, and compares it with the receivers the innermost declaration in
-`CheckerContext.containingDeclarations` introduces (a `FirClassSymbol`, or a callable's
-`receiverParameterSymbol`). `ImplicitReceiverDepthChecker`, a `FirAnonymousFunctionChecker`, sums
-those receivers over the enclosing declarations up to the first non-inner class.
+`FirThisReference`, and asks every other receiver the enclosing declarations introduce (a
+`FirClassSymbol`, or a callable's `receiverParameterSymbol`, resolved to its class) whether its
+`unsubstitutedScope` has a function or property of the callee's name.
+`ImplicitReceiverDepthChecker`, a `FirAnonymousFunctionChecker`, sums those receivers over the
+enclosing declarations up to the first non-inner class.

@@ -1,10 +1,12 @@
-// KOTRAIL_CONFIG: rules.implicitReceivers=on, rules.implicitReceivers.qualifyOuter=false, rules.implicitReceivers.maxDepth=2
+// KOTRAIL_CONFIG: rules.implicitReceivers=on, rules.implicitReceivers.qualifyAmbiguous=false, rules.implicitReceivers.maxDepth=2
 // With maxDepth set, the lambda that brings the count of implicit receivers past the limit is reported.
 class View {
     var text: String = ""
 }
 
 class Screen(val view: View) {
+    var text: String = ""
+
     fun bind() {
         // Not reported: Screen and the apply receiver make two.
         view.apply {
@@ -17,7 +19,7 @@ class Screen(val view: View) {
         listOf(1).forEach { view.text = "c" }
     }
 
-    // Not reported: qualifyOuter is off here.
+    // Not reported: qualifyAmbiguous is off here, although View and Screen both have a text.
     fun View.show() {
         text = bind().toString()
     }

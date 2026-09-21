@@ -2,67 +2,63 @@
 class View {
     var text: String = ""
     fun invalidate() {}
+    fun title(): String = "view"
 }
-
-@DslMarker
-annotation class Html
-
-@Html
-class Tag {
-    fun attr(name: String) {}
-}
-
-fun tag(block: Tag.() -> Unit) {}
 
 class Screen(val view: View) {
-    fun title(): String = "t"
+    var text: String = ""
+    fun title(): String = "screen"
     val subtitle: String = "s"
 
     fun bind() {
         view.apply {
-            // Reported: title() and subtitle belong to Screen, but View is the nearest receiver.
-            text = <!KOTRAIL_IMPLICIT_RECEIVER_FROM_OUTER_SCOPE!>title()<!>
-            text = <!KOTRAIL_IMPLICIT_RECEIVER_FROM_OUTER_SCOPE!>subtitle<!>
-
-            // Not reported: qualified, or resolved on the nearest receiver.
-            text = this@Screen.title()
-            invalidate()
-            this.invalidate()
-        }
-
-        // Not reported: one receiver in scope.
-        text()
-        with(view) {
-            // Reported: `view` itself is Screen's property, read through the outer receiver.
-            <!KOTRAIL_IMPLICIT_RECEIVER_FROM_OUTER_SCOPE!>view<!>.text = <!KOTRAIL_IMPLICIT_RECEIVER_FROM_OUTER_SCOPE!>title()<!>
+            // Reported: both View and Screen have a text and a title; the nearer one wins silently.
+            <!KOTRAIL_IMPLICIT_RECEIVER_AMBIGUOUS!>text<!> = "a"
+            <!KOTRAIL_IMPLICIT_RECEIVER_AMBIGUOUS!>title()<!>
 
             // Not reported: qualified.
-            this@Screen.view.invalidate()
+            this.text = "b"
+            this@Screen.text = "c"
+            this@Screen.title()
+
+            // Not reported: only one receiver has the name, whichever one it is.
+            invalidate()
+            subtitle.length
+            log()
         }
 
-        // Not reported: a lambda without a receiver adds nothing.
-        listOf(1).forEach { text() }
-
-        // Not reported: a DslMarker receiver already forbids the outer access; the call resolves on Tag.
-        tag { attr(<!KOTRAIL_IMPLICIT_RECEIVER_FROM_OUTER_SCOPE!>title()<!>) }
+        // Not reported: a class member used inside a scope lambda is the ordinary way to write Kotlin.
+        with(view) {
+            invalidate()
+            subtitle.length
+            log()
+        }
+        listOf(1).forEach { log() }
     }
 
-    private fun text() {}
+    private fun log() {}
 
-    // Reported: the extension receiver of the function is nearer than the class.
+    // Reported: the extension receiver and the class both have a text.
     fun View.show() {
-        text = <!KOTRAIL_IMPLICIT_RECEIVER_FROM_OUTER_SCOPE!>title()<!>
+        <!KOTRAIL_IMPLICIT_RECEIVER_AMBIGUOUS!>text<!> = subtitle
         invalidate()
     }
 
     // Not reported: a nested class starts over; Screen's members are not in scope.
     class Nested {
-        fun run() = 1
+        var text: String = ""
+        fun run() {
+            text = "n"
+        }
     }
 
     inner class Inner {
-        // Reported: Screen is the outer receiver of an inner class.
-        fun run(): String = <!KOTRAIL_IMPLICIT_RECEIVER_FROM_OUTER_SCOPE!>title()<!>
+        var text: String = ""
+
+        // Reported: Inner and Screen both have a text.
+        fun run() {
+            <!KOTRAIL_IMPLICIT_RECEIVER_AMBIGUOUS!>text<!> = "i"
+        }
     }
 }
 
@@ -72,6 +68,5 @@ fun View.reset() {
     invalidate()
 }
 
-/* GENERATED_FIR_TAGS: annotationDeclaration, assignment, classDeclaration, funWithExtensionReceiver,
-functionDeclaration, functionalType, inner, integerLiteral, lambdaLiteral, nestedClass, primaryConstructor,
-propertyDeclaration, stringLiteral, thisExpression, typeWithExtension */
+/* GENERATED_FIR_TAGS: assignment, classDeclaration, funWithExtensionReceiver, functionDeclaration, inner,
+integerLiteral, lambdaLiteral, nestedClass, primaryConstructor, propertyDeclaration, stringLiteral, thisExpression */

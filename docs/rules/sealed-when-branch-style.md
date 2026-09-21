@@ -54,6 +54,9 @@ rules:
 - The `when` has no subject (`when { action == Cancel -> }`).
 - The branch is `else`, has a guard, or is neither an `is` check nor an object comparison
   (`in`, a constant, a function call).
+- The object writes its own `equals`: then `Obj ->` (an `equals` call) and `is Obj ->` (a type
+  check) can differ, and the form written is taken as meant. For a plain `object` or a
+  `data object` the two select the same branch.
 
 ## Fixtures
 
