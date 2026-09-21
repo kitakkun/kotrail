@@ -1,6 +1,7 @@
 package com.kitakkun.kotrail.fir.checkers
 
 import com.kitakkun.kotrail.KotrailRule
+import com.kitakkun.kotrail.fir.FixEdit
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.reportKotrail
@@ -59,7 +60,9 @@ object RedundantElseChecker : FirWhenExpressionChecker(MppCheckerKind.Common) {
         for (branch in expression.branches) {
             if (branch.condition !is FirElseIfTrueCondition) continue
             val branchSource = branch.source ?: continue
-            reportKotrail(branchSource, KotrailDiagnostics.REDUNDANT_ELSE_IN_EXHAUSTIVE_WHEN)
+            // The fix drops the branch; the formatter takes care of the blank line it leaves.
+            val fix = listOf(FixEdit(branchSource.startOffset, branchSource.endOffset, ""))
+            reportKotrail(branchSource, KotrailDiagnostics.REDUNDANT_ELSE_IN_EXHAUSTIVE_WHEN, fix)
         }
     }
 

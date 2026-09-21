@@ -20,19 +20,36 @@ import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
  * suppressed names. A suppression written for one severity survives a change of the other.
  */
 context(context: CheckerContext, reporter: DiagnosticReporter)
-internal fun reportKotrail(source: KtSourceElement?, diagnostic: TunableDiagnostic0) {
+internal fun reportKotrail(source: KtSourceElement?, diagnostic: TunableDiagnostic0) =
+    reportKotrail(source, diagnostic, emptyList())
+
+context(context: CheckerContext, reporter: DiagnosticReporter)
+internal fun reportKotrail(source: KtSourceElement?, diagnostic: TunableDiagnostic1<String>, a: String) =
+    reportKotrail(source, diagnostic, a, emptyList())
+
+context(context: CheckerContext, reporter: DiagnosticReporter)
+internal fun reportKotrail(source: KtSourceElement?, diagnostic: TunableDiagnostic2<String, String>, a: String, b: String) =
+    reportKotrail(source, diagnostic, a, b, emptyList())
+
+/**
+ * The variants with [fix]: the edits that make the diagnostic go away, applied by `kotrailFix`.
+ * They are recorded only when the diagnostic is reported, and only when the compilation names a
+ * `fixesDir`.
+ */
+context(context: CheckerContext, reporter: DiagnosticReporter)
+internal fun reportKotrail(source: KtSourceElement?, diagnostic: TunableDiagnostic0, fix: List<FixEdit>) {
     val config = context.session.kotrailConfig
-    if (diagnostic.baseName in context.suppressedDiagnostics) return
-    if (isExcluded(diagnostic.rule)) return
+    if (!shouldReport(diagnostic.baseName, diagnostic.rule)) return
     reporter.reportOn(source, diagnostic.at(config.severity(diagnostic.rule)), config.note(diagnostic.rule))
+    writeFix(diagnostic.baseName, fix)
 }
 
 context(context: CheckerContext, reporter: DiagnosticReporter)
-internal fun reportKotrail(source: KtSourceElement?, diagnostic: TunableDiagnostic1<String>, a: String) {
+internal fun reportKotrail(source: KtSourceElement?, diagnostic: TunableDiagnostic1<String>, a: String, fix: List<FixEdit>) {
     val config = context.session.kotrailConfig
-    if (diagnostic.baseName in context.suppressedDiagnostics) return
-    if (isExcluded(diagnostic.rule)) return
+    if (!shouldReport(diagnostic.baseName, diagnostic.rule)) return
     reporter.reportOn(source, diagnostic.at(config.severity(diagnostic.rule)), a, config.note(diagnostic.rule))
+    writeFix(diagnostic.baseName, fix)
 }
 
 context(context: CheckerContext, reporter: DiagnosticReporter)
@@ -41,11 +58,24 @@ internal fun reportKotrail(
     diagnostic: TunableDiagnostic2<String, String>,
     a: String,
     b: String,
+    fix: List<FixEdit>,
 ) {
     val config = context.session.kotrailConfig
-    if (diagnostic.baseName in context.suppressedDiagnostics) return
-    if (isExcluded(diagnostic.rule)) return
+    if (!shouldReport(diagnostic.baseName, diagnostic.rule)) return
     reporter.reportOn(source, diagnostic.at(config.severity(diagnostic.rule)), a, b, config.note(diagnostic.rule))
+    writeFix(diagnostic.baseName, fix)
+}
+
+context(context: CheckerContext)
+private fun shouldReport(baseName: String, rule: KotrailRule): Boolean =
+    baseName !in context.suppressedDiagnostics && !isExcluded(rule)
+
+context(context: CheckerContext)
+private fun writeFix(diagnostic: String, fix: List<FixEdit>) {
+    if (fix.isEmpty()) return
+    val directory = context.session.kotrailConfig.fixesDir ?: return
+    val file = context.containingFileSymbol?.sourceFile?.path ?: return
+    FixRecords.write(directory, file, diagnostic, fix)
 }
 
 /** The site is only described when a predicate is configured for the rule. */

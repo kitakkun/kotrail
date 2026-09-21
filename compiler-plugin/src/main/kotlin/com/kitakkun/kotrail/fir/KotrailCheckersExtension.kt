@@ -87,6 +87,8 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
         RequiredAnnotationChecker,
     )
     override val fileCheckers: Set<FirFileChecker> = setOf(
+        // First, so that a file's fix record is fresh before any rule reports on the file.
+        FixRecordChecker,
         CommentLengthChecker,
         ParameterCommentChecker,
         ComposablePreviewRequiredChecker,

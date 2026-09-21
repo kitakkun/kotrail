@@ -3,6 +3,7 @@
 **Diagnostic:** `KOTRAIL_REDUNDANT_ELSE_IN_EXHAUSTIVE_WHEN` (error, on the `else` branch)
 **Key:** `rules.noRedundantElse` (on by default) (default `error`)
 **Settings:** none
+**Fix:** automatic (`kotrailFix` removes the branch; run the formatter for the blank line it leaves)
 
 ## What it rejects
 

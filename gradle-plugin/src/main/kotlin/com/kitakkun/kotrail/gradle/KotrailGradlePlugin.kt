@@ -1,6 +1,7 @@
 package com.kitakkun.kotrail.gradle
 
 import org.gradle.api.Project
+import org.gradle.api.file.Directory
 import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.PathSensitivity
 import org.jetbrains.kotlin.gradle.plugin.FilesOptionKind
@@ -32,6 +33,11 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
             annotations.convention(true)
         }
         addAnnotationsDependency(target)
+        target.tasks.register(FIX_TASK, KotrailFixTask::class.java) { task ->
+            task.group = "verification"
+            task.description = "Applies the fixes Kotrail recorded during the last compilation of each source file"
+            task.fixesDirectory.set(fixesDirectory())
+        }
     }
 
     override fun getCompilerPluginId(): String = COMPILER_PLUGIN_ID
@@ -45,7 +51,10 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
     override fun applyToCompilation(kotlinCompilation: KotlinCompilation<*>): Provider<List<SubpluginOption>> {
         val compilationName = kotlinCompilation.name
         registerConfigFilesAsInputs(kotlinCompilation, compilationName)
-        return project.provider { optionsFor(compilationName) }
+        wireFixRecords(kotlinCompilation)
+        return project.provider {
+            optionsFor(compilationName) + SubpluginOption("fixesDir", fixesDirectoryFor(kotlinCompilation).get().asFile.path)
+        }
     }
 
     /**
@@ -64,6 +73,24 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
                 .optional()
         }
     }
+
+    /**
+     * Every compilation records the fixes of its findings under `build/kotrail/fixes`, one file per
+     * source file with the source's content hash, so that `kotrailFix` can apply them without
+     * compiling again. The directory is an output of the compile task: it is restored from the
+     * build cache with the classes and removed by `clean`.
+     */
+    private fun wireFixRecords(kotlinCompilation: KotlinCompilation<*>) {
+        val directory = fixesDirectoryFor(kotlinCompilation)
+        kotlinCompilation.compileTaskProvider.configure { task ->
+            task.outputs.dir(directory).withPropertyName("kotrailFixes")
+        }
+    }
+
+    private fun fixesDirectory(): Provider<Directory> = project.layout.buildDirectory.dir("kotrail/fixes")
+
+    private fun fixesDirectoryFor(kotlinCompilation: KotlinCompilation<*>): Provider<Directory> =
+        fixesDirectory().map { it.dir("${kotlinCompilation.target.name}-${kotlinCompilation.name}") }
 
     /**
      * The project's own settings first, then every override whose compilation-name predicate
@@ -134,6 +161,7 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
 
     private companion object {
         const val EXTENSION_NAME = "kotrail"
+        const val FIX_TASK = "kotrailFix"
 
         /** Must match `KotrailNames.PLUGIN_ID` in the compiler plugin. */
         const val COMPILER_PLUGIN_ID = "com.kitakkun.kotrail"

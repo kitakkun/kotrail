@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
 
@@ -125,6 +126,38 @@ class KotrailGradlePluginFunctionalTest {
         assertFalse(overridden.output.contains("[Kotrail]"), overridden.output)
     }
 
+    @Test
+    fun `kotrailFix applies the recorded fixes without compiling again`() {
+        writeSettings()
+        writeFile("kotrail.yaml", "severity: warning\n")
+        writeBuild(
+            """
+            kotrail {
+                configFile = file("kotrail.yaml")
+            }
+            """.trimIndent(),
+        )
+        writeFile("src/main/kotlin/Cases.kt", FIXABLE_CASES)
+
+        val compiled = runBuild("compileKotlin")
+        assertEquals(TaskOutcome.SUCCESS, compiled.task(":compileKotlin")?.outcome, compiled.output)
+        assertTrue(compiled.output.contains("KOTRAIL_PREFER_FUNCTION_REFERENCE"), compiled.output)
+
+        val fixed = runBuild("kotrailFix")
+        assertNull(fixed.task(":compileKotlin"), "kotrailFix must not compile: ${fixed.output}")
+        assertEquals(TaskOutcome.SUCCESS, fixed.task(":kotrailFix")?.outcome, fixed.output)
+        val text = File(projectDir, "src/main/kotlin/Cases.kt").readText()
+        assertTrue(text.contains("names.map(::shout)"), text)
+        assertTrue(text.contains("fun total(items: List<Int>): Int = items.sum()"), text)
+        assertTrue(text.contains("is Action.Cancel -> println(\"cancel\")"), text)
+        assertFalse(text.contains("else -> println(\"never\")"), text)
+        assertTrue(text.contains("move(x = 1, y = 2, z = 3)"), text)
+
+        val again = runBuild("kotrailFix")
+        assertTrue(again.output.contains("changed since they were compiled"), again.output)
+        assertEquals(text, File(projectDir, "src/main/kotlin/Cases.kt").readText())
+    }
+
     private fun writeSettings() {
         writeFile(
             "settings.gradle.kts",
@@ -189,6 +222,33 @@ class KotrailGradlePluginFunctionalTest {
         val NOT_NULL_ASSERTION_VIOLATION = """
             class Cases(private val name: String?) {
                 fun length(): Int = name!!.length
+            }
+        """.trimIndent()
+
+        // One case per rule that offers a fix; every fix is exercised by the kotrailFix test.
+        val FIXABLE_CASES = """
+            sealed interface Action {
+                data class Save(val draft: Boolean) : Action
+                data object Cancel : Action
+            }
+
+            fun shout(name: String): String = name.uppercase()
+
+            fun move(x: Int, y: Int, z: Int) {}
+
+            fun shoutAll(names: List<String>): List<String> = names.map { shout(it) }
+
+            fun total(items: List<Int>): Int {
+                return items.sum()
+            }
+
+            fun handle(action: Action) {
+                when (action) {
+                    is Action.Save -> println("save")
+                    Action.Cancel -> println("cancel")
+                    else -> println("never")
+                }
+                move(1, 2, 3)
             }
         """.trimIndent()
     }

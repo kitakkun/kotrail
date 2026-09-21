@@ -3,12 +3,15 @@ package com.kitakkun.kotrail.fir.checkers
 import com.kitakkun.kotrail.compat.qualifierClassId
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.ReferenceForm
+import com.kitakkun.kotrail.fir.FixEdit
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
+import org.jetbrains.kotlin.text
 import com.kitakkun.kotrail.fir.compose.ComposeNames
 import com.kitakkun.kotrail.fir.compose.isComposable
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
+import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
@@ -101,7 +104,39 @@ object PreferFunctionReferenceChecker : FirAnonymousFunctionChecker(MppCheckerKi
             else -> null
         } ?: return
         if (suggestion.form !in config.preferFunctionReferences.forms) return
-        reportKotrail(source, KotrailDiagnostics.PREFER_FUNCTION_REFERENCE, suggestion.text)
+        reportKotrail(source, KotrailDiagnostics.PREFER_FUNCTION_REFERENCE, suggestion.text, fixFor(source, suggestion.text))
+    }
+
+    /**
+     * The edit that puts the reference where the lambda was. A trailing lambda moves into the
+     * parentheses: `map { f(it) }` becomes `map(::f)`, `zip(b) { a, c -> g(a, c) }` becomes
+     * `zip(b, ::g)`. A lambda already inside parentheses, or one that is not an argument at all
+     * (`val f: (Int) -> Int = { g(it) }`), is replaced in place.
+     */
+    context(context: CheckerContext)
+    private fun fixFor(lambda: KtSourceElement, reference: String): List<FixEdit> {
+        val call = context.containingElements.lastOrNull { it is FirFunctionCall } as? FirFunctionCall
+        val callSource = call?.source
+        if (callSource == null || lambda.startOffset < callSource.startOffset || lambda.endOffset > callSource.endOffset) {
+            return listOf(FixEdit(lambda.startOffset, lambda.endOffset, reference))
+        }
+        val text = callSource.text?.toString() ?: return listOf(FixEdit(lambda.startOffset, lambda.endOffset, reference))
+        val lambdaAt = lambda.startOffset - callSource.startOffset
+        var before = lambdaAt - 1
+        while (before >= 0 && text[before].isWhitespace()) before--
+        val previous = text.getOrNull(before)
+        return when (previous) {
+            '(', ',' -> listOf(FixEdit(lambda.startOffset, lambda.endOffset, reference))
+            ')' -> {
+                var inner = before - 1
+                while (inner >= 0 && text[inner].isWhitespace()) inner--
+                val closing = callSource.startOffset + before
+                if (text.getOrNull(inner) == '(') listOf(FixEdit(closing, lambda.endOffset, "$reference)"))
+                else listOf(FixEdit(closing, lambda.endOffset, ", $reference)"))
+            }
+            // A trailing lambda after the callee: the parentheses take its place, whitespace included.
+            else -> listOf(FixEdit(callSource.startOffset + before + 1, lambda.endOffset, "($reference)"))
+        }
     }
 
     private fun referenceForCall(

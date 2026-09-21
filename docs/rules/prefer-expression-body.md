@@ -3,6 +3,7 @@
 **Diagnostic:** `KOTRAIL_PREFER_EXPRESSION_BODY` (error, on the function name)
 **Key:** `rules.preferExpressionBody` (on by default)
 **Settings:** none
+**Fix:** automatic (`kotrailFix` rewrites the block into `= expr`)
 
 ## What it rejects
 

@@ -3,6 +3,7 @@
 **Diagnostic:** `KOTRAIL_PREFER_FUNCTION_REFERENCE` (error, on the lambda)
 **Key:** `rules.preferFunctionReferences` (on by default)
 **Setting:** `forms` (default `topLevel,bound,typeQualified`)
+**Fix:** automatic (`kotrailFix` replaces the lambda with the reference, moving a trailing lambda into the parentheses)
 
 ## Choosing which forms to ask for
 

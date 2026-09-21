@@ -3,6 +3,7 @@
 **Diagnostic:** `KOTRAIL_SEALED_WHEN_BRANCH_STYLE` (error, on the branch condition)
 **Key:** `rules.sealedWhenBranchStyle` (on by default)
 **Setting:** `style` (`is` (default) or `object`)
+**Fix:** automatic (`kotrailFix` inserts or removes the `is`)
 
 ## What it rejects
 

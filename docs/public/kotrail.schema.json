@@ -6,6 +6,7 @@
   "additionalProperties": false,
   "properties": {
     "enabled": {"type": "boolean", "description": "Turns the whole plugin off when false. Default: true."},
+    "severity": {"type": "string", "enum": ["error", "warning"], "description": "The severity of every rule that does not set its own; error unless set."},
     "note": {"type": "string", "description": "Text appended to every Kotrail message."},
     "exclude": {"type": "string", "description": "Locations every rule skips, as a predicate over where a diagnostic would be reported."},
     "test": {"type": "object", "additionalProperties": false, "properties": {"annotations": {"type": "array", "items": {"type": "string"}, "description": "Fully qualified annotations that mark a function as a test; replaces the default list. Default: kotlin.test.Test, org.junit.Test, org.junit.jupiter.api.Test, ...."}}},

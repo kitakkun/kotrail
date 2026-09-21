@@ -97,6 +97,28 @@ See docs/supported-kotlin-versions.md.
 Setting `kotrail.compilerPluginVersion` overrides the whole artifact version and skips that check.
 See [supported-kotlin-versions.md](supported-kotlin-versions.md).
 
+## Applying fixes
+
+Some rules know the exact rewrite that makes their finding go away: a lambda into a callable
+reference, `{ return x }` into `= x`, `Cancel ->` into `is Cancel ->`, a redundant `else` gone,
+names on positional arguments. Each rule page says so under **Fix**. Every compilation records
+those fixes under `build/kotrail/fixes`, one file per source file together with the source's
+content hash, and
+
+```bash
+./gradlew kotrailFix
+```
+
+applies them to the sources without compiling again. A file that changed since it was compiled
+(edited by hand, or by a previous `kotrailFix`) is left alone until the next compilation refreshes
+its record, so the loop is: compile, `kotrailFix`, compile again, until it reports nothing. Two
+fixes that overlap in one file are applied one per round for the same reason. Run the formatter
+afterwards: a deleted branch leaves its blank line.
+
+The records are an output of the compile task, so they travel with the build cache and go with
+`clean`. Nothing else reads them, but the format is plain JSON lines (the `fixesDir` option of the
+compiler plugin), so an editor or an assistant can apply them too.
+
 ## Multiplatform
 
 Rules apply to every compilation of every target. The annotations artifact is added automatically

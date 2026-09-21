@@ -14,4 +14,7 @@ object KotrailConfigurationKeys {
      * the configuration tree ([KotrailConfig.OPTION_NAMES]); values are read as the file reads them.
      */
     val OPTIONS = CompilerConfigurationKey<List<String>>("options")
+
+    /** Directory of the per-file fix records of this compilation; unset means no fixes are recorded. */
+    val FIXES_DIR = CompilerConfigurationKey<String>("fixesDir")
 }

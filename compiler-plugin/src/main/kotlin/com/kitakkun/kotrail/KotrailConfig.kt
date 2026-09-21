@@ -318,6 +318,8 @@ data class KotrailTest(
  */
 data class KotrailConfig(
     val enabled: Boolean,
+    /** Directory of the per-file fix records, or `null` to record none (the `fixesDir` plugin option). */
+    val fixesDir: String?,
     private val switches: Map<KotrailRule, Boolean>,
     private val severities: Map<KotrailRule, Severity>,
     private val notes: Map<KotrailRule, String>,
@@ -408,7 +410,7 @@ data class KotrailConfig(
                 configuration.get(KotrailConfigurationKeys.CONFIG_FILE).orEmpty(),
                 configuration.get(KotrailConfigurationKeys.OPTIONS).orEmpty(),
             )
-            Reader(tree).read()
+            Reader(tree).read().copy(fixesDir = configuration.get(KotrailConfigurationKeys.FIXES_DIR))
         } catch (e: ConfigException) {
             throw CliOptionProcessingException("Kotrail configuration: ${e.message}")
         }
@@ -579,7 +581,15 @@ data class KotrailConfig(
 
         fun read(): KotrailConfig {
             val switches = KotrailRule.switchable.associateWith { rule -> boolean(ruleNode(rule), "enabled") ?: rule.defaultEnabled }
-            val severities = KotrailRule.entries.associateWith { rule -> enumValue(rule, "severity", listOf("error", "warning"))?.let { parseSeverity(it) } ?: rule.defaultSeverity }
+            // A top-level `severity` is the default for every rule; a rule's own `severity` still wins.
+            val projectSeverity = scalar(tree, "severity")?.let { node ->
+                listOf("error", "warning").firstOrNull { it.equals(node.value.trim(), ignoreCase = true) }
+                    ?.let { parseSeverity(it) }
+                    ?: fail(node, "'severity' must be error or warning, got '${node.value}'")
+            }
+            val severities = KotrailRule.entries.associateWith { rule ->
+                enumValue(rule, "severity", listOf("error", "warning"))?.let { parseSeverity(it) } ?: projectSeverity ?: rule.defaultSeverity
+            }
             val projectNote = string(tree, "note")
             val notes = KotrailRule.entries.associateWith { rule ->
                 val text = string(ruleNode(rule), "note") ?: projectNote
@@ -592,6 +602,7 @@ data class KotrailConfig(
             val test = tree["test"] as? ConfigNode.Mapping
             return KotrailConfig(
                 enabled = boolean(tree, "enabled") ?: true,
+                fixesDir = null,
                 switches = switches,
                 severities = severities,
                 notes = notes,

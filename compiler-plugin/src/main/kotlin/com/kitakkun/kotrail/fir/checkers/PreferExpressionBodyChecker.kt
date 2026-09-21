@@ -1,7 +1,9 @@
 package com.kitakkun.kotrail.fir.checkers
 
 import com.kitakkun.kotrail.KotrailRule
+import com.kitakkun.kotrail.fir.FixEdit
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
+import org.jetbrains.kotlin.text
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
@@ -46,6 +48,10 @@ object PreferExpressionBodyChecker : NamedFunctionChecker(MppCheckerKind.Common)
         // `return` without a value: the result is a synthesized `Unit`, and `= Unit` would not read better.
         if (statement.result.source?.kind is KtFakeSourceElementKind.ImplicitUnit) return
 
-        reportKotrail(source, KotrailDiagnostics.PREFER_EXPRESSION_BODY)
+        // `{ return expr }` becomes `= expr`, braces included; the return type, if written, stays.
+        val fix = listOfNotNull(
+            body.source?.let { block -> statement.result.source?.text?.let { result -> FixEdit(block.startOffset, block.endOffset, "= $result") } },
+        )
+        reportKotrail(source, KotrailDiagnostics.PREFER_EXPRESSION_BODY, fix)
     }
 }

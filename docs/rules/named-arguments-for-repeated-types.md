@@ -3,6 +3,7 @@
 **Diagnostic:** `KOTRAIL_NAMED_ARGUMENTS_REQUIRED` (error, on the whole call)
 **Key:** `rules.namedArgumentsForRepeatedTypes` (on by default)
 **Setting:** `minArguments` (default `3`)
+**Fix:** automatic (`kotrailFix` names every positional argument of the call)
 
 ## What it rejects
 

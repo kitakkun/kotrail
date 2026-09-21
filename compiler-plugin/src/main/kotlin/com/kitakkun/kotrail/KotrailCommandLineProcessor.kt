@@ -26,6 +26,14 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
         allowMultipleOccurrences = true,
     )
 
+    private val fixesDirOption = CliOption(
+        optionName = "fixesDir",
+        valueDescription = "<directory>",
+        description = "Directory to record the fixes of the reported diagnostics in, one JSON-lines file per " +
+            "source file, for the Gradle plugin's kotrailFix task or another tool to apply",
+        required = false,
+    )
+
     private val treeOptions: List<CliOption> = KotrailConfig.OPTION_NAMES.map { (name, kind) ->
         val isRuleShorthand = name.startsWith("rules.") && ConfigSchema.ruleByKey(name.removePrefix("rules.")) != null
         val value = when {
@@ -48,12 +56,13 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
     }
 
     override val pluginId: String = KotrailNames.PLUGIN_ID
-    override val pluginOptions: Collection<CliOption> = listOf(configFileOption) + treeOptions
+    override val pluginOptions: Collection<CliOption> = listOf(configFileOption, fixesDirOption) + treeOptions
 
     override fun processOption(option: AbstractCliOption, value: String, configuration: CompilerConfiguration) {
         val name = option.optionName
         when {
             name == configFileOption.optionName -> configuration.add(KotrailConfigurationKeys.CONFIG_FILE, value)
+            name == fixesDirOption.optionName -> configuration.put(KotrailConfigurationKeys.FIXES_DIR, value)
             KotrailConfig.optionPath(name) != null -> configuration.add(KotrailConfigurationKeys.OPTIONS, "$name=$value")
             else -> throw CliOptionProcessingException("Unknown option: $name")
         }

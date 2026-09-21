@@ -35,6 +35,7 @@ object ConfigSchema {
     /** Keys outside `rules`. */
     val TOP_LEVEL = listOf(
         Setting("enabled", Kind.BOOLEAN, "Turns the whole plugin off when false.", default = "true"),
+        Setting("severity", Kind.ENUM, "The severity of every rule that does not set its own; error unless set.", values = listOf("error", "warning")),
         Setting("note", Kind.STRING, "Text appended to every Kotrail message."),
         Setting("exclude", Kind.PREDICATE, "Locations every rule skips, as a predicate over where a diagnostic would be reported."),
     )

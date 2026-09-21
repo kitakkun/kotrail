@@ -51,6 +51,7 @@ schema is generated from the same table the plugin validates against.
 | Key | Meaning |
 |---|---|
 | `enabled` | `false` turns the whole plugin off. |
+| `severity` | `error` (default) or `warning`: the severity of every rule that does not set its own. `severity: warning` is the one line that turns a first run on an existing codebase into a measurement. |
 | `note` | Text appended to every Kotrail message. See [Project notes](#project-notes). |
 | `exclude` | A predicate over locations; matching diagnostics of every rule are dropped. See [Excluding by pattern](#excluding-by-pattern). |
 | `test.annotations` | Fully qualified annotations that mark a function as a test; shared by the test rules and the `test` predicate. Replaces the default list. |
