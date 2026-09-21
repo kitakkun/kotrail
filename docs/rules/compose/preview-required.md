@@ -2,7 +2,7 @@
 
 **Diagnostic:** `KOTRAIL_COMPOSABLE_WITHOUT_PREVIEW` (error, on the function name)
 **Key:** `rules.compose.previewRequired` (on by default)
-**Setting:** `scope` (`public`, `internal` (default: public and internal), `all`)
+**Settings:** `scope` (`public`, `internal` (default: public and internal), `all`), `nonUiPackages` (default `[androidx.compose.runtime]`)
 
 ## What it rejects
 
@@ -43,6 +43,13 @@ calls it directly.
 - Private composables (helpers), value-returning composables, and preview functions themselves.
 - `override`, `expect`, and `actual` functions, local functions, and members without a body
   (an abstract composable has nothing to render; its implementations are what previews call).
+- Composables that draw nothing: an `*Effect` wrapper around `LaunchedEffect`, a probe that only
+  reads a local, a tracker that only registers state, and any wrapper around those. A composable
+  emits UI when its body, lambdas included, calls a `Unit`-returning composable other than the
+  runtime's own constructs (`nonUiPackages`, `androidx.compose.runtime` by default) or invokes a
+  content slot it was handed; a callee of the same compilation is judged by its own body, a
+  callee from the classpath is taken as drawing. `CompositionLocalProvider(...) { Text("x") }`
+  therefore draws and `LaunchedEffect(key) { }` does not.
 - The composable is called from a preview in the same file, at any call depth inside the
   preview's body (a preview wrapped in a theme lambda still counts).
 - Another overload of the same name is called from a preview: overloads are one component, as

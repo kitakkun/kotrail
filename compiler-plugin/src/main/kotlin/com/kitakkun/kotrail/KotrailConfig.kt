@@ -28,6 +28,8 @@ data class KotrailComposeSettings(
     val trailingLambdaAllowedPackages: List<String>,
     /** Which UI composables must have a `@Preview` in the same file. */
     val previewRequireFor: PreviewScope,
+    /** Packages whose composables emit nothing themselves (effects, providers); calls to them do not make a composable a UI one. */
+    val nonUiPackages: List<String>,
     /** Maximum non-private UI composables (previews excluded) declared in one file; 0 disables the rule. */
     val maxComposablesPerFile: Int,
     /** Whether overloads of one composable name count one each toward that limit, rather than as one component. */
@@ -359,6 +361,7 @@ data class KotrailConfig(
         const val DEFAULT_COMPOSE_MAX_NESTING = 5
         val DEFAULT_TRAILING_LAMBDA_ALLOWED_PACKAGES: List<String> = listOf("androidx.compose.runtime")
         val DEFAULT_PREVIEW_REQUIRE_FOR = PreviewScope.INTERNAL
+        val DEFAULT_NON_UI_PACKAGES: List<String> = listOf("androidx.compose.runtime")
         const val DEFAULT_MAX_COMPOSABLES_PER_FILE = 3
         val DEFAULT_SIDE_EFFECT_TYPES: List<String> = listOf("kotlinx.coroutines.Job", "kotlinx.coroutines.Deferred")
         val DEFAULT_HARDCODED_STRING_PARAMETERS: List<String> = listOf("text", "label", "title", "placeholder", "contentDescription", "message")
@@ -611,6 +614,7 @@ data class KotrailConfig(
                     maxNesting = int(KotrailRule.COMPOSE_NESTING, "maxDepth") ?: DEFAULT_COMPOSE_MAX_NESTING,
                     trailingLambdaAllowedPackages = list(KotrailRule.COMPOSE_NO_TRAILING_CALLBACK, "allowedPackages") ?: DEFAULT_TRAILING_LAMBDA_ALLOWED_PACKAGES,
                     previewRequireFor = enumValue(KotrailRule.COMPOSE_PREVIEW_REQUIRED, "scope", PreviewScope.entries.map { it.key })?.let { PreviewScope.fromKey(it)!! } ?: DEFAULT_PREVIEW_REQUIRE_FOR,
+                    nonUiPackages = list(KotrailRule.COMPOSE_PREVIEW_REQUIRED, "nonUiPackages") ?: DEFAULT_NON_UI_PACKAGES,
                     maxComposablesPerFile = int(KotrailRule.COMPOSE_COMPOSABLES_PER_FILE, "max") ?: DEFAULT_MAX_COMPOSABLES_PER_FILE,
                     countOverloadsSeparately = boolean(ruleNode(KotrailRule.COMPOSE_COMPOSABLES_PER_FILE), "countOverloadsSeparately") ?: false,
                     sideEffectTypes = list(KotrailRule.COMPOSE_NO_SIDE_EFFECT_IN_COMPOSITION, "types") ?: DEFAULT_SIDE_EFFECT_TYPES,

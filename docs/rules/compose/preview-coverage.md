@@ -66,6 +66,10 @@ e: Previews.kt:1:1 [Kotrail] 'com.acme.ui.UserCard' has no preview in this compi
 - The composable is called from a preview anywhere in this compilation.
 - The composable is private, returns a value, is a preview itself, is `expect`, is a class
   member (only top-level composables are enumerated), or matches `excludeNames`.
+- The composable is in this compilation and draws nothing (see the UI test in
+  [preview required](preview-required.md#when-it-stays-quiet), shared through
+  `previewRequired.nonUiPackages`). A composable from the classpath is taken as drawing, since
+  its body cannot be seen.
 - The file is not the anchor: every finding goes to one file.
 
 ## Fixtures

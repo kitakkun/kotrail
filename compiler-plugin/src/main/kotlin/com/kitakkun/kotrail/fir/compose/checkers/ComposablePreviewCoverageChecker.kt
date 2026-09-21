@@ -6,6 +6,7 @@ import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.PreviewScope
 import com.kitakkun.kotrail.exclude.Glob
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
+import com.kitakkun.kotrail.fir.compose.emitsUi
 import com.kitakkun.kotrail.fir.compose.isComposable
 import com.kitakkun.kotrail.fir.compose.isPreview
 import com.kitakkun.kotrail.fir.kotrailConfig
@@ -93,6 +94,7 @@ object ComposablePreviewCoverageChecker : FirFileChecker(MppCheckerKind.Common) 
                 symbol.resolvedReturnType.isUnit &&
                 !symbol.isExpect &&
                 !symbol.isPreview(this) &&
+                symbol.emitsUi(this, kotrailConfig.compose.nonUiPackages) &&
                 when (scope) {
                     PreviewScope.PUBLIC -> symbol.visibility == Visibilities.Public
                     PreviewScope.INTERNAL, PreviewScope.ALL -> symbol.visibility == Visibilities.Public || symbol.visibility == Visibilities.Internal

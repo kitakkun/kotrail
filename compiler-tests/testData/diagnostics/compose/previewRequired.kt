@@ -2,6 +2,10 @@
 import androidx.compose.foundation.layout.Box
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 
@@ -94,6 +98,49 @@ object SuppressedWidgets {
 interface Slot {
     @Composable
     fun Content()
+}
+
+// Not reported: composables that draw nothing: an effect wrapper, a wrapper around it, a tracker.
+@Composable
+fun TrackScreen(name: String) {
+    LaunchedEffect(name) { println(name) }
+}
+
+@Composable
+fun TrackHome() {
+    TrackScreen("home")
+}
+
+@Composable
+fun RememberOnly(count: Int) {
+    val doubled = remember { count * 2 }
+    println(doubled)
+}
+
+// Reported: a provider around a content slot draws whatever the slot draws.
+@Composable
+fun <!KOTRAIL_COMPOSABLE_WITHOUT_PREVIEW!>WithLocals<!>(content: @Composable () -> Unit) {
+    CompositionLocalProvider(LocalCount provides 1) { content() }
+}
+
+val LocalCount = compositionLocalOf { 0 }
+
+// Reported: invoking a content slot draws whatever the slot draws, directly or inside a layout.
+@Composable
+fun <!KOTRAIL_COMPOSABLE_WITHOUT_PREVIEW!>SlotDirect<!>(content: @Composable () -> Unit) {
+    content()
+}
+
+@Composable
+fun <!KOTRAIL_COMPOSABLE_WITHOUT_PREVIEW!>SlotInLambda<!>(content: @Composable () -> Unit) {
+    Box { content() }
+}
+
+// Reported: a wrapper that ends in a drawing composable draws.
+@Composable
+fun <!KOTRAIL_COMPOSABLE_WITHOUT_PREVIEW!>Labelled<!>(label: String) {
+    TrackScreen(label)
+    Text(label)
 }
 
 // Not reported: an object member previewed next to it.

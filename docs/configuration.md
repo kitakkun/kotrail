@@ -119,6 +119,7 @@ own; a rule not listed has none.
 | `compose.nesting` | `maxDepth` | `5` | Nesting limit for composable calls; `0` disables the rule. |
 | `compose.noTrailingCallback` | `allowedPackages` | `[androidx.compose.runtime]` | Packages whose composables may still take a callback as a trailing lambda. |
 | `compose.previewRequired` | `scope` | `internal` | Which UI composables need a `@Preview` in their file: `public`, `internal` (public and internal), or `all`. |
+| | `nonUiPackages` | `[androidx.compose.runtime]` | Packages whose composables emit nothing themselves (effects, providers); calling them does not make a composable a UI one. Shared with `previewCoverage`. Replaces the default list. |
 | `compose.previewCoverage` (off by default) | `packages` | `[]` | Exact package names whose top-level UI composables must be called by a `@Preview` somewhere in this compilation. |
 | | `visibility` | `public` | Which composables of those packages count: `public`, or `internal` (public and internal). |
 | | `excludeNames` | `[]` | Globs over fully qualified composable names to leave out. |

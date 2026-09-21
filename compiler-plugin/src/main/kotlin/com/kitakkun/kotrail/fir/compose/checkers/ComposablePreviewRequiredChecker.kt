@@ -6,6 +6,7 @@ import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.PreviewScope
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.compose.ComposeNames
+import com.kitakkun.kotrail.fir.compose.emitsUi
 import com.kitakkun.kotrail.fir.compose.isComposable
 import com.kitakkun.kotrail.fir.compose.isPreview
 import com.kitakkun.kotrail.fir.kotrailConfig
@@ -54,8 +55,9 @@ import org.jetbrains.kotlin.name.CallableId
  * what lets the check stay a single-file, frontend check. Multipreview annotations (annotations
  * themselves annotated with `@Preview`) count as previews. Overloads of one name are one
  * component, so a preview calling any overload covers them all. The composables inspected are the
- * `Unit`-returning ones whose visibility falls under `compose.previewRequired.scope`; preview
- * functions, `override` / `expect` / `actual` functions, functions without a body, and local
+ * `Unit`-returning ones that emit UI (see [emitsUi]) and whose visibility falls under
+ * `compose.previewRequired.scope`; preview functions, `override` / `expect` / `actual` functions,
+ * functions without a body, effect wrappers and other composables that draw nothing, and local
  * functions are left alone.
  *
  * As a file checker this runs with the file's checker context, so a `@Suppress` on the composable
@@ -85,6 +87,7 @@ object ComposablePreviewRequiredChecker : FirFileChecker(MppCheckerKind.Common) 
         val severity = config.severity(diagnostic.rule)
         for ((function, suppressed) in functions) {
             if (!function.needsPreview(session, config.compose.previewRequireFor)) continue
+            if (!function.symbol.emitsUi(session, config.compose.nonUiPackages)) continue
             if (function.symbol.callableId in previewed) continue
             if (diagnostic.baseName in suppressed || severity.suppressAllName in suppressed) continue
             val source = function.source ?: continue
@@ -117,8 +120,6 @@ object ComposablePreviewRequiredChecker : FirFileChecker(MppCheckerKind.Common) 
         if (!symbol.isComposable(session)) return false
         if (!returnTypeRef.coneType.isUnit) return false
         if (isOverride || isExpect || isActual || isPreview(session)) return false
-        // An abstract member has nothing to render; its implementations are what previews call.
-        if (body == null) return false
         return when (scope) {
             PreviewScope.PUBLIC -> visibility == Visibilities.Public
             PreviewScope.INTERNAL -> visibility == Visibilities.Public || visibility == Visibilities.Internal
