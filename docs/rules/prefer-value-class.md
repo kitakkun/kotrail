@@ -33,7 +33,7 @@ behavior:
 - no other property that needs a backing field or a delegate (computed properties and
   functions in the body are fine);
 - no secondary constructors;
-- supertypes are interfaces only;
+- no supertypes at all;
 - no type parameters;
 - **no annotations at all**.
 
@@ -42,7 +42,11 @@ behavior:
 - The property is `var`, or there is more than one property.
 - The class carries any annotation: `@Serializable`, `@Parcelize`, `@Entity`, and similar
   frameworks typically require a regular data class, so the rule does not guess.
-- The class extends a class (value classes can only implement interfaces).
+- The class has a supertype, an interface included. A value class is only unboxed while it is
+  handled as its own type; held as a supertype it is boxed, and a class that declares a supertype
+  is handled as that type by design: a sealed `Action` leaf is passed to `onAction(action)` and
+  boxed on the way in, an `Identifier` implementation sits in a `List<Identifier>`. The rewrite
+  would save no allocation and cost `copy()` and the freedom to add a property.
 - The class is already a value class, is `inner`, is local, or has type parameters.
 - The body declares a stored property or a secondary constructor.
 

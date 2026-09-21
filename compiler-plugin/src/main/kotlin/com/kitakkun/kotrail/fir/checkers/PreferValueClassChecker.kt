@@ -22,15 +22,12 @@ import org.jetbrains.kotlin.fir.declarations.utils.hasBackingField
 import org.jetbrains.kotlin.fir.declarations.utils.isData
 import org.jetbrains.kotlin.fir.declarations.utils.isExpect
 import org.jetbrains.kotlin.fir.declarations.utils.isInner
-import org.jetbrains.kotlin.fir.declarations.utils.isInterface
 import org.jetbrains.kotlin.fir.declarations.utils.modality
 import org.jetbrains.kotlin.fir.resolve.fullyExpandedType
-import org.jetbrains.kotlin.fir.types.FirErrorTypeRef
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.impl.FirImplicitAnyTypeRef
 import org.jetbrains.kotlin.fir.types.isNothing
 import org.jetbrains.kotlin.fir.types.isUnit
-import org.jetbrains.kotlin.fir.types.toRegularClassSymbol
 
 /**
  * Asks for a `@JvmInline value class` instead of a `data class` that wraps a single value:
@@ -44,11 +41,14 @@ import org.jetbrains.kotlin.fir.types.toRegularClassSymbol
  * class would generate. The rule reports only when the rewrite is legal and behavior
  * preserving: the class is a final, top-level or nested (not `inner`, not local) data class
  * whose primary constructor declares exactly one `val` property, with no other properties that
- * need a backing field, no secondary constructors, no supertypes other than interfaces, no
- * type parameters, and no annotations at all. Annotations such as `@Serializable` or
- * `@Parcelize` usually depend on the class being a data class, so any annotation keeps the
- * rule quiet. `expect` declarations and classes whose property type is `Unit` or `Nothing`
- * (illegal in a value class) are also left alone.
+ * need a backing field, no secondary constructors, no supertypes at all, no type parameters,
+ * and no annotations at all. A supertype, interface included, means the value travels as that
+ * type (a sealed action handed to `onAction(action)`, an `Identifier` in a `List<Identifier>`),
+ * and a value class held as a supertype is boxed, so the rewrite would save nothing and cost
+ * `copy()` and a second property. Annotations such as `@Serializable` or `@Parcelize` usually
+ * depend on the class being a data class, so any annotation keeps the rule quiet. `expect`
+ * declarations and classes whose property type is `Unit` or `Nothing` (illegal in a value
+ * class) are also left alone.
  */
 object PreferValueClassChecker : FirRegularClassChecker(MppCheckerKind.Common) {
     context(context: CheckerContext, reporter: DiagnosticReporter)
@@ -63,11 +63,8 @@ object PreferValueClassChecker : FirRegularClassChecker(MppCheckerKind.Common) {
         if (declaration.typeParameters.isNotEmpty()) return
         if (declaration.contextParameters.isNotEmpty()) return
 
-        for (superTypeRef in declaration.superTypeRefs) {
-            if (superTypeRef is FirImplicitAnyTypeRef) continue
-            if (superTypeRef is FirErrorTypeRef) return
-            if (superTypeRef.toRegularClassSymbol(context.session)?.isInterface != true) return
-        }
+        // A supertype, interface included, means the value is handled as that type and boxed there.
+        if (declaration.superTypeRefs.any { it !is FirImplicitAnyTypeRef }) return
 
         val constructors = declaration.declarations.filterIsInstance<FirConstructor>()
         val primaryConstructor = constructors.singleOrNull() ?: return

@@ -10,8 +10,12 @@ annotation class Model
 // Reported: a single read-only property and nothing else.
 data class <!KOTRAIL_PREFER_VALUE_CLASS!>UserId<!>(val raw: Long)
 
-// Reported: value classes may implement interfaces.
-data class <!KOTRAIL_PREFER_VALUE_CLASS!>OrderId<!>(override val raw: Long) : Identifier
+// Not reported: handled as Identifier, the value would be boxed anyway.
+data class OrderId(override val raw: Long) : Identifier
+
+// Not reported: a sealed action travels as its parent type and is boxed at every use.
+sealed interface Action
+data class SetEnabled(val enabled: Boolean) : Action
 
 // Reported: computed properties and functions do not need a backing field.
 data class <!KOTRAIL_PREFER_VALUE_CLASS!>Email<!>(val address: String) {
