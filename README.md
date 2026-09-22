@@ -71,6 +71,8 @@ Full pages, with every condition and fixture, live under [`docs/rules/`](docs/ru
 | [Null chain length](docs/rules/null-chain-length.md) | `a ?: b ?: c ?: d`; `a?.b?.c?.d` past `maxSafeCalls` | Candidates in a function or `listOfNotNull(...).firstOrNull()`; named intermediates |
 | [Implicit receivers](docs/rules/implicit-receivers.md) | `view.apply { text = "" }` when both `View` and the enclosing class have a `text` | `this.text` / `this@Screen.text`; optionally a cap on receivers in scope |
 | [Sealed when branch style](docs/rules/sealed-when-branch-style.md) | `Cancel ->` next to `is Save ->` in a `when` over a sealed type | `is Cancel ->` (or the reverse, by setting) |
+| [Prefer val](docs/rules/prefer-val.md) | `var sum = …` that nothing reassigns | `val` |
+| [Prefer idiom](docs/rules/prefer-idiom.md) | `list.size == 0`, `!s.isEmpty()`, `x == null \|\| x.isEmpty()`, `filter { }.first()`, `if (x != null) x else y` | `isEmpty()`, `isNotEmpty()`, `isNullOrEmpty()`, `first { }`, `x ?: y` |
 | [Window insets handling](docs/rules/compose/window-insets.md) (Compose) | A `@HandlesWindowInsets` contract that the body does not satisfy; insets applied twice | Contracts verified across modules through inferred metadata |
 | [Composition locals](docs/rules/compose/composition-locals.md) | A `@CompositionLocalRoot`, preview, or `setContent { }` below which a required local (`compositionLocalOf { error(...) }`) is read and never provided | A `CompositionLocalProvider` on the way, or a default |
 | [State delegation](docs/rules/compose/state-delegation.md) (Compose) | `val count = remember { mutableStateOf(0) }` used only through `.value` | `var count by remember { ... }` |

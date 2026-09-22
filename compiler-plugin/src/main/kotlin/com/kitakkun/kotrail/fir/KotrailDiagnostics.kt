@@ -99,6 +99,12 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: how often, e.g. `3 times (limit 2)`. Reported on the outermost `?:` expression. */
     val ELVIS_CHAIN_TOO_LONG = tunable1<KtElement, String>("ELVIS_CHAIN_TOO_LONG", KotrailRule.NULL_CHAIN_LENGTH, WHOLE)
 
+    /** Argument: the property name; reported on a `var` that nothing reassigns. */
+    val PREFER_VAL = tunable1<KtProperty, String>("PREFER_VAL", KotrailRule.PREFER_VAL, NAME)
+
+    /** Arguments: the expression as written, the idiom to write with its key in parentheses; reported on the expression. */
+    val PREFER_IDIOM = tunable2<KtElement, String, String>("PREFER_IDIOM", KotrailRule.PREFER_IDIOM, WHOLE)
+
     /** Arguments: the branch condition as written (`Cancel`), the form to write (`is Cancel`); reported on the condition. */
     val SEALED_WHEN_BRANCH_STYLE = tunable2<KtElement, String, String>("SEALED_WHEN_BRANCH_STYLE", KotrailRule.SEALED_WHEN_BRANCH_STYLE, WHOLE)
 
@@ -489,6 +495,14 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             KotrailDiagnostics.SAFE_CALL_CHAIN_TOO_LONG,
             "[Kotrail] This access chains ''?.'' {0}; every link may be null and the result cannot say which one " +
                 "was. Bind an intermediate value to a name, or move the traversal into the model.",
+        )
+        map.put1(
+            KotrailDiagnostics.PREFER_VAL,
+            "[Kotrail] ''{0}'' is never reassigned. Declare it with ''val'', so that a reader need not watch for it changing.",
+        )
+        map.put2(
+            KotrailDiagnostics.PREFER_IDIOM,
+            "[Kotrail] Write ''{1}'' instead of ''{0}''.",
         )
         map.put2(
             KotrailDiagnostics.SEALED_WHEN_BRANCH_STYLE,

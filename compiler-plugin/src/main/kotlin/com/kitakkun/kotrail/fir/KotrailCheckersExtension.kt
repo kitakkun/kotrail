@@ -26,6 +26,13 @@ import com.kitakkun.kotrail.fir.checkers.PreferFunctionReferenceChecker
 import com.kitakkun.kotrail.fir.checkers.PreferValueClassChecker
 import com.kitakkun.kotrail.fir.checkers.RedundantElseChecker
 import com.kitakkun.kotrail.fir.checkers.SealedWhenBranchStyleChecker
+import com.kitakkun.kotrail.fir.checkers.PreferValChecker
+import com.kitakkun.kotrail.fir.checkers.EmptinessIdiomChecker
+import com.kitakkun.kotrail.fir.checkers.SizeComparisonIdiomChecker
+import com.kitakkun.kotrail.fir.checkers.NegationIdiomChecker
+import com.kitakkun.kotrail.fir.checkers.NullOrEmptyIdiomChecker
+import com.kitakkun.kotrail.fir.checkers.ChainIdiomChecker
+import com.kitakkun.kotrail.fir.checkers.ElvisIdiomChecker
 import com.kitakkun.kotrail.fir.checkers.SwallowedCancellationChecker
 import com.kitakkun.kotrail.fir.checkers.ElvisChainChecker
 import com.kitakkun.kotrail.fir.checkers.ImplicitReceiverDepthChecker
@@ -62,6 +69,8 @@ import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirRegularClassChe
 import com.kitakkun.kotrail.compat.CompatDeclarationCheckers
 import com.kitakkun.kotrail.compat.NamedFunctionChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.ExpressionCheckers
+import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirBasicExpressionChecker
+import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirBooleanOperatorExpressionChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirCheckNotNullCallChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirElvisExpressionChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirEqualityOperatorCallChecker
@@ -101,6 +110,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
         NoDataClassInPublicApiChecker,
     )
     override val propertyCheckers: Set<FirPropertyChecker> = setOf(
+        PreferValChecker,
         PreferExplicitBackingFieldChecker,
         PreferStateDelegationChecker,
         CompositionLocalPropertyWarmup,
@@ -135,6 +145,13 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
 object KotrailExpressionCheckers : ExpressionCheckers() {
     override val equalityOperatorCallCheckers: Set<FirEqualityOperatorCallChecker> = setOf(
         ObjCIdentityChecker,
+        EmptinessIdiomChecker,
+    )
+    override val basicExpressionCheckers: Set<FirBasicExpressionChecker> = setOf(
+        SizeComparisonIdiomChecker,
+    )
+    override val booleanOperatorExpressionCheckers: Set<FirBooleanOperatorExpressionChecker> = setOf(
+        NullOrEmptyIdiomChecker,
     )
     override val functionCallCheckers: Set<FirFunctionCallChecker> = setOf(
         ObjCWeakReferenceChecker,
@@ -147,6 +164,7 @@ object KotrailExpressionCheckers : ExpressionCheckers() {
         ComposableNamedCallbackArgumentsChecker,
         ComposableHardcodedStringChecker,
         MustBeSerializableChecker,
+        NegationIdiomChecker,
     )
     override val resolvedQualifierCheckers: Set<FirResolvedQualifierChecker> = setOf(
         NoFqnReferences.QualifierChecker,
@@ -154,6 +172,7 @@ object KotrailExpressionCheckers : ExpressionCheckers() {
     override val qualifiedAccessExpressionCheckers: Set<FirQualifiedAccessExpressionChecker> = setOf(
         NoFqnReferences.CallableChecker,
         AmbiguousImplicitReceiverChecker,
+        ChainIdiomChecker,
     )
     override val elvisExpressionCheckers: Set<FirElvisExpressionChecker> = setOf(
         ElvisChainChecker,
@@ -164,6 +183,7 @@ object KotrailExpressionCheckers : ExpressionCheckers() {
     override val whenExpressionCheckers: Set<FirWhenExpressionChecker> = setOf(
         RedundantElseChecker,
         SealedWhenBranchStyleChecker,
+        ElvisIdiomChecker,
     )
     override val checkNotNullCallCheckers: Set<FirCheckNotNullCallChecker> = setOf(
         NotNullAssertionChecker,

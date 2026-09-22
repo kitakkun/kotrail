@@ -44,6 +44,8 @@ enum class KotrailRule(
     NULL_CHAIN_LENGTH("nullChainLength", Severity.ERROR),
     IMPLICIT_RECEIVERS("implicitReceivers", Severity.ERROR),
     SEALED_WHEN_BRANCH_STYLE("sealedWhenBranchStyle", Severity.ERROR),
+    PREFER_VAL("preferVal", Severity.ERROR),
+    PREFER_IDIOM("preferIdiom", Severity.ERROR),
 
     COMPOSE_WINDOW_INSETS("compose.windowInsets", Severity.ERROR),
     COMPOSE_WINDOW_INSETS_UNVERIFIABLE("compose.windowInsetsUnverifiable", Severity.WARNING, hasSwitch = false),

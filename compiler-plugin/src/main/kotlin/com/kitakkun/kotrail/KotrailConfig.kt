@@ -151,6 +151,12 @@ enum class WhenBranchStyle(val key: String) {
     }
 }
 
+/** Tunables for the prefer-idiom rule. From `rules.preferIdiom`. */
+data class KotrailPreferIdiom(
+    /** Idiom keys (`emptiness`, `negation`, `nullOrEmpty`, `chain`, `elvis`) the project does not want asked for. */
+    val disabled: List<String>,
+)
+
 /** Tunables for the sealed-when-branch-style rule. From `rules.sealedWhenBranchStyle`. */
 data class KotrailSealedWhen(
     val style: WhenBranchStyle,
@@ -333,6 +339,7 @@ data class KotrailConfig(
     val nullChain: KotrailNullChain,
     val implicitReceivers: KotrailImplicitReceivers,
     val sealedWhen: KotrailSealedWhen,
+    val preferIdiom: KotrailPreferIdiom,
     val noFqnReferences: KotrailNoFqnReferences,
     val forbiddenCall: KotrailForbiddenCall,
     val namedArguments: KotrailNamedArguments,
@@ -373,6 +380,7 @@ data class KotrailConfig(
         val DEFAULT_REFERENCE_FORMS: Set<ReferenceForm> = ReferenceForm.entries.toSet()
         const val DEFAULT_COMMENT_MAX_LINES = 5
         const val DEFAULT_MAX_ELVIS = 2
+        val IDIOM_KEYS: List<String> = listOf("emptiness", "negation", "nullOrEmpty", "chain", "elvis")
         const val DEFAULT_MAX_RECEIVER_DEPTH = 0
         const val DEFAULT_MAX_SAFE_CALLS = 0
         const val DEFAULT_KDOC_MAX_LINES = 0
@@ -654,6 +662,11 @@ data class KotrailConfig(
                 nullChain = KotrailNullChain(
                     maxElvis = int(KotrailRule.NULL_CHAIN_LENGTH, "maxElvis") ?: DEFAULT_MAX_ELVIS,
                     maxSafeCalls = int(KotrailRule.NULL_CHAIN_LENGTH, "maxSafeCalls") ?: DEFAULT_MAX_SAFE_CALLS,
+                ),
+                preferIdiom = KotrailPreferIdiom(
+                    disabled = list(KotrailRule.PREFER_IDIOM, "disabled").orEmpty().onEach { key ->
+                        if (key !in IDIOM_KEYS) fail(KotrailRule.PREFER_IDIOM, "disabled", "accepts ${IDIOM_KEYS.joinToString()}, got '$key'")
+                    },
                 ),
                 sealedWhen = KotrailSealedWhen(
                     style = enumValue(KotrailRule.SEALED_WHEN_BRANCH_STYLE, "style", WhenBranchStyle.entries.map { it.key })?.let { WhenBranchStyle.fromKey(it)!! } ?: WhenBranchStyle.IS,

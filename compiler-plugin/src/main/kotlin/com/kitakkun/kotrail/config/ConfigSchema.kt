@@ -106,6 +106,9 @@ object ConfigSchema {
             Setting("maxElvis", Kind.INT, "Maximum ?: fallbacks in one expression, a trailing ?: return or ?: throw not counted; 0 disables.", default = "2"),
             Setting("maxSafeCalls", Kind.INT, "Maximum ?. along one receiver chain; 0 disables.", default = "0"),
         ),
+        KotrailRule.PREFER_IDIOM to listOf(
+            Setting("disabled", Kind.LIST, "Idioms not asked for: emptiness (size == 0), negation (!isEmpty()), nullOrEmpty (x == null || x.isEmpty()), chain (filter { }.first()), elvis (if (x != null) x else y)."),
+        ),
         KotrailRule.SEALED_WHEN_BRANCH_STYLE to listOf(
             Setting("style", Kind.ENUM, "How an object case of a sealed type is written in a when branch: is (`is Cancel ->`) or object (`Cancel ->`).", values = listOf("is", "object"), default = "is"),
         ),

@@ -107,6 +107,7 @@ own; a rule not listed has none.
 | `implicitReceivers` | `qualifyAmbiguous` | `true` | Whether a bare name that two implicit receivers in scope could supply is reported. |
 | | `maxDepth` | `0` | Maximum implicit receivers in scope at once; `0` disables. |
 | `sealedWhenBranchStyle` | `style` | `is` | How an object case of a sealed type is written in a `when` branch: `is` (`is Cancel ->`) or `object` (`Cancel ->`). |
+| `preferIdiom` | `disabled` | `[]` | Idioms not asked for: `emptiness`, `negation`, `nullOrEmpty`, `chain`, `elvis`. |
 | `noDataClassInPublicApi` | `scope` | `explicitApi` | `explicitApi` applies the rule only to modules compiled with explicit API mode; `all` everywhere. |
 | `visibilityPolicy` | `private` | | A predicate; matching declarations must be `private`. |
 | | `internal` | | A predicate; matching declarations must be `internal` or `private`. |
