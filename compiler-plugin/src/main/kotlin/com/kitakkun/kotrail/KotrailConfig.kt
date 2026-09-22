@@ -151,10 +151,20 @@ enum class WhenBranchStyle(val key: String) {
     }
 }
 
+/** A project's own chain idiom: `inner(arg).outer()` is written as the [replacement] function (fully qualified) with `arg`. */
+data class ChainIdiom(val inner: String, val outer: String, val replacement: String)
+
+/** A project's own call idiom: `fqn(literal)` is written as the [replacement] function (fully qualified) with no argument. */
+data class CallIdiom(val fqn: String, val literal: String, val replacement: String)
+
 /** Tunables for the prefer-idiom rule. From `rules.preferIdiom`. */
 data class KotrailPreferIdiom(
     /** Idiom keys (`emptiness`, `negation`, `nullOrEmpty`, `chain`, `elvis`) the project does not want asked for. */
     val disabled: List<String>,
+    /** From `chains`, each written `<inner fqn> then <outer fqn> -> <name>`. */
+    val chains: List<ChainIdiom>,
+    /** From `calls`, each written `<fqn>(<literal>) -> <name>`. */
+    val calls: List<CallIdiom>,
 )
 
 /** Tunables for the sealed-when-branch-style rule. From `rules.sealedWhenBranchStyle`. */
@@ -381,6 +391,8 @@ data class KotrailConfig(
         const val DEFAULT_COMMENT_MAX_LINES = 5
         const val DEFAULT_MAX_ELVIS = 2
         val IDIOM_KEYS: List<String> = listOf("emptiness", "negation", "nullOrEmpty", "chain", "elvis")
+        private val CHAIN_IDIOM = Regex("([\\w.]+)\\s+then\\s+([\\w.]+)\\s*->\\s*([\\w.]+\\.\\w+)")
+        private val CALL_IDIOM = Regex("([\\w.]+)\\(([^)]*)\\)\\s*->\\s*([\\w.]+\\.\\w+)")
         const val DEFAULT_MAX_RECEIVER_DEPTH = 0
         const val DEFAULT_MAX_SAFE_CALLS = 0
         const val DEFAULT_KDOC_MAX_LINES = 0
@@ -666,6 +678,14 @@ data class KotrailConfig(
                 preferIdiom = KotrailPreferIdiom(
                     disabled = list(KotrailRule.PREFER_IDIOM, "disabled").orEmpty().onEach { key ->
                         if (key !in IDIOM_KEYS) fail(KotrailRule.PREFER_IDIOM, "disabled", "accepts ${IDIOM_KEYS.joinToString()}, got '$key'")
+                    },
+                    chains = list(KotrailRule.PREFER_IDIOM, "chains").orEmpty().map { entry ->
+                        CHAIN_IDIOM.matchEntire(entry.trim())?.let { ChainIdiom(it.groupValues[1], it.groupValues[2], it.groupValues[3]) }
+                            ?: fail(KotrailRule.PREFER_IDIOM, "chains", "entries are '<inner fqn> then <outer fqn> -> <replacement fqn>', got '$entry'")
+                    },
+                    calls = list(KotrailRule.PREFER_IDIOM, "calls").orEmpty().map { entry ->
+                        CALL_IDIOM.matchEntire(entry.trim())?.let { CallIdiom(it.groupValues[1], it.groupValues[2].trim(), it.groupValues[3]) }
+                            ?: fail(KotrailRule.PREFER_IDIOM, "calls", "entries are '<fqn>(<literal>) -> <replacement fqn>', got '$entry'")
                     },
                 ),
                 sealedWhen = KotrailSealedWhen(

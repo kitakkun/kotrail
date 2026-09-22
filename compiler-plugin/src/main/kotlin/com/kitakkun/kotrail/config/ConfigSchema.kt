@@ -108,6 +108,8 @@ object ConfigSchema {
         ),
         KotrailRule.PREFER_IDIOM to listOf(
             Setting("disabled", Kind.LIST, "Idioms not asked for: emptiness (size == 0), negation (!isEmpty()), nullOrEmpty (x == null || x.isEmpty()), chain (filter { }.first()), elvis (if (x != null) x else y)."),
+            Setting("chains", Kind.LIST, "The project's own chain idioms, each '<inner fqn> then <outer fqn> -> <replacement fqn>': inner(arg).outer() is written as the replacement with arg."),
+            Setting("calls", Kind.LIST, "The project's own call idioms, each '<fqn>(<literal>) -> <replacement fqn>': a call with that one literal argument is written as the replacement with none."),
         ),
         KotrailRule.SEALED_WHEN_BRANCH_STYLE to listOf(
             Setting("style", Kind.ENUM, "How an object case of a sealed type is written in a when branch: is (`is Cancel ->`) or object (`Cancel ->`).", values = listOf("is", "object"), default = "is"),

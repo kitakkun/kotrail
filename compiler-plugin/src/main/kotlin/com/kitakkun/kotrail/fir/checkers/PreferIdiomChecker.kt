@@ -38,6 +38,11 @@ import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
 import org.jetbrains.kotlin.fir.references.toResolvedNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.resolve.fullyExpandedType
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
+import org.jetbrains.kotlin.fir.resolve.ScopeSession
+import org.jetbrains.kotlin.fir.scopes.getFunctions
+import org.jetbrains.kotlin.fir.scopes.unsubstitutedScope
+import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.ConeStarProjection
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
@@ -175,6 +180,26 @@ object SizeComparisonIdiomChecker : FirBasicExpressionChecker(MppCheckerKind.Com
     }
 }
 
+private fun FirCallableSymbol<*>.fqn(): String? = callableId?.asSingleFqName()?.asString()
+
+/**
+ * Whether a configured replacement names a function that exists: a top-level function of the
+ * package before the last dot, or a member of the class before it. A replacement that resolves
+ * to nothing is never asked for, so a typo in the configuration stays silent rather than
+ * producing a rewrite that does not compile.
+ */
+private fun FirSession.functionExists(fqn: String): Boolean {
+    val name = Name.identifier(fqn.substringAfterLast('.'))
+    val owner = FqName(fqn.substringBeforeLast('.'))
+    if (symbolProvider.getTopLevelFunctionSymbols(owner, name).isNotEmpty()) return true
+    val classSymbol = symbolProvider.getClassLikeSymbolByClassId(ClassId.topLevel(owner)) as? FirClassSymbol<*>
+        ?: owner.parent().takeUnless { it.isRoot }?.let { parent ->
+            symbolProvider.getClassLikeSymbolByClassId(ClassId(parent, owner.shortName())) as? FirClassSymbol<*>
+        }
+        ?: return false
+    return classSymbol.unsubstitutedScope(this, ScopeSession(), withForcedTypeCalculator = false, memberRequiredPhase = null).getFunctions(name).isNotEmpty()
+}
+
 /** The `receiver.` of a `size` / `length` read or a `count()` call on a sized type, or `null` when the expression is not one. */
 private fun FirExpression.sizePrefix(session: FirSession): String? {
     val (name, receiver) = when (this) {
@@ -260,25 +285,53 @@ object ChainIdiomChecker : FirQualifiedAccessExpressionChecker(MppCheckerKind.Co
 
     context(context: CheckerContext, reporter: DiagnosticReporter)
     override fun check(expression: FirQualifiedAccessExpression) {
-        if (!IdiomSupport.enabled(Idioms.CHAIN)) return
+        if (!context.session.kotrailConfig.isEnabled(KotrailRule.PREFER_IDIOM)) return
         val source = expression.source ?: return
         if (source.kind is KtFakeSourceElementKind) return
-        val outerName = expression.calleeReference.toResolvedCallableSymbol()?.name?.asString() ?: return
+        val outerSymbol = expression.calleeReference.toResolvedCallableSymbol() ?: return
+        val outerName = outerSymbol.name.asString()
         if (expression is FirFunctionCall && expression.arguments.isNotEmpty()) return
         val inner = expression.explicitReceiver?.let { with(IdiomSupport) { it.unwrap() } } as? FirFunctionCall ?: return
-        val innerName = inner.calleeReference.toResolvedNamedFunctionSymbol()?.name?.asString() ?: return
-        val replacementName = when {
-            innerName == "filter" -> afterFilter[outerName] ?: return
-            innerName == "map" && outerName == "filterNotNull" -> "mapNotNull"
-            else -> return
-        }
+        val innerSymbol = inner.calleeReference.toResolvedNamedFunctionSymbol() ?: return
+        val innerName = innerSymbol.name.asString()
         val argument = inner.arguments.singleOrNull()?.unwrapArgument() ?: return
-        val receiverType = inner.explicitReceiver?.resolvedType ?: return
-        if (!with(IdiomSupport) { receiverType.isPipeline(context.session) }) return
+        val configured = context.session.kotrailConfig.preferIdiom.chains.firstOrNull {
+            it.inner == innerSymbol.fqn() && it.outer == outerSymbol.fqn()
+        }
+        if (configured != null && !context.session.functionExists(configured.replacement)) return
+        val replacementName = configured?.replacement?.substringAfterLast('.') ?: run {
+            if (!IdiomSupport.enabled(Idioms.CHAIN)) return
+            val receiverType = inner.explicitReceiver?.resolvedType ?: return
+            if (!with(IdiomSupport) { receiverType.isPipeline(context.session) }) return
+            when {
+                innerName == "filter" -> afterFilter[outerName] ?: return
+                innerName == "map" && outerName == "filterNotNull" -> "mapNotNull"
+                else -> return
+            }
+        }
         val prefix = IdiomSupport.receiverPrefix(inner.explicitReceiver) ?: return
         val argumentText = argument.source?.text?.toString() ?: return
         val call = if (argument is FirAnonymousFunctionExpression) "$replacementName $argumentText" else "$replacementName($argumentText)"
         IdiomSupport.report(source, Idioms.CHAIN, source.text.toString(), "$prefix$call")
+    }
+}
+
+/** The project's own call idioms: `fqn(literal)` → `name()`, from `preferIdiom.calls`. */
+object ConfiguredCallIdiomChecker : FirFunctionCallChecker(MppCheckerKind.Common) {
+    context(context: CheckerContext, reporter: DiagnosticReporter)
+    override fun check(expression: FirFunctionCall) {
+        val config = context.session.kotrailConfig
+        if (!config.isEnabled(KotrailRule.PREFER_IDIOM) || config.preferIdiom.calls.isEmpty()) return
+        val source = expression.source ?: return
+        if (source.kind is KtFakeSourceElementKind) return
+        val callee = expression.calleeReference.toResolvedNamedFunctionSymbol() ?: return
+        val fqn = callee.fqn()
+        val argument = expression.arguments.singleOrNull()?.unwrapArgument() ?: return
+        val written = argument.source?.text?.toString()?.trim() ?: return
+        val idiom = config.preferIdiom.calls.firstOrNull { it.fqn == fqn && it.literal == written } ?: return
+        if (!context.session.functionExists(idiom.replacement)) return
+        val prefix = IdiomSupport.receiverPrefix(expression.explicitReceiver) ?: return
+        IdiomSupport.report(source, "calls", source.text.toString(), "$prefix${idiom.replacement.substringAfterLast('.')}()")
     }
 }
 

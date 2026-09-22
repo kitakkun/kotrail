@@ -32,6 +32,7 @@ import com.kitakkun.kotrail.fir.checkers.SizeComparisonIdiomChecker
 import com.kitakkun.kotrail.fir.checkers.NegationIdiomChecker
 import com.kitakkun.kotrail.fir.checkers.NullOrEmptyIdiomChecker
 import com.kitakkun.kotrail.fir.checkers.ChainIdiomChecker
+import com.kitakkun.kotrail.fir.checkers.ConfiguredCallIdiomChecker
 import com.kitakkun.kotrail.fir.checkers.ElvisIdiomChecker
 import com.kitakkun.kotrail.fir.checkers.SwallowedCancellationChecker
 import com.kitakkun.kotrail.fir.checkers.ElvisChainChecker
@@ -165,6 +166,7 @@ object KotrailExpressionCheckers : ExpressionCheckers() {
         ComposableHardcodedStringChecker,
         MustBeSerializableChecker,
         NegationIdiomChecker,
+        ConfiguredCallIdiomChecker,
     )
     override val resolvedQualifierCheckers: Set<FirResolvedQualifierChecker> = setOf(
         NoFqnReferences.QualifierChecker,

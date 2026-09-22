@@ -2,7 +2,7 @@
 
 **Diagnostic:** `KOTRAIL_PREFER_IDIOM` (error, on the expression)
 **Key:** `rules.preferIdiom` (on by default)
-**Setting:** `disabled` (default `[]`)
+**Settings:** `disabled` (default `[]`), `chains` (default `[]`), `calls` (default `[]`)
 **Fix:** automatic (`kotrailFix` rewrites the expression)
 
 ## What it rejects
@@ -38,13 +38,31 @@ pipeline. That is what makes the rule a compiler check rather than a text search
 
 ## Settings
 
-`disabled` lists the keys a project does not want asked for:
+`disabled` lists the keys a project does not want asked for; `chains` and `calls` add the
+project's own idioms, matched by fully qualified name rather than by type:
 
 ```yaml
 rules:
   preferIdiom:
     disabled: [chain, elvis]
+    chains:
+      - kotlinx.coroutines.flow.filter then kotlinx.coroutines.flow.first -> kotlinx.coroutines.flow.first
+      - com.acme.Query.where then com.acme.Query.single -> com.acme.Query.singleWhere
+    calls:
+      - kotlin.collections.getOrNull(0) -> kotlin.collections.firstOrNull
 ```
+
+A chain entry says: a call to the first function, with one argument, whose result is the
+receiver of a call to the second function with none, is written as the replacement with the
+first call's argument (`query.where { p }.single()` becomes `query.singleWhere { p }`). A call
+entry says: a call to the function with exactly that literal argument is written as the
+replacement with none (`items.getOrNull(0)` becomes `items.firstOrNull()`). Every name is fully
+qualified, the replacement included, so that it is clear which `firstOrNull` is meant: the rule
+checks that the replacement exists, as a top-level function of that package or a member of that
+class, and asks for nothing when it does not. The rewrite itself uses the short name, so the
+function has to be importable where the idiom is applied. Both come with a fix and are reported
+under the key `chains` or `calls`. Write them as a YAML sequence: the shorthand list form splits
+on commas.
 
 ## When it stays quiet
 

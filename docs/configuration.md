@@ -108,6 +108,8 @@ own; a rule not listed has none.
 | | `maxDepth` | `0` | Maximum implicit receivers in scope at once; `0` disables. |
 | `sealedWhenBranchStyle` | `style` | `is` | How an object case of a sealed type is written in a `when` branch: `is` (`is Cancel ->`) or `object` (`Cancel ->`). |
 | `preferIdiom` | `disabled` | `[]` | Idioms not asked for: `emptiness`, `negation`, `nullOrEmpty`, `chain`, `elvis`. |
+| | `chains` | `[]` | The project's own chain idioms, each `<inner fqn> then <outer fqn> -> <replacement fqn>`. |
+| | `calls` | `[]` | The project's own call idioms, each `<fqn>(<literal>) -> <replacement fqn>`. |
 | `noDataClassInPublicApi` | `scope` | `explicitApi` | `explicitApi` applies the rule only to modules compiled with explicit API mode; `all` everywhere. |
 | `visibilityPolicy` | `private` | | A predicate; matching declarations must be `private`. |
 | | `internal` | | A predicate; matching declarations must be `internal` or `private`. |
