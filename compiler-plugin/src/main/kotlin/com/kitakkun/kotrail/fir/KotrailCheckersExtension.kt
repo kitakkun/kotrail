@@ -27,6 +27,7 @@ import com.kitakkun.kotrail.fir.checkers.PreferValueClassChecker
 import com.kitakkun.kotrail.fir.checkers.RedundantElseChecker
 import com.kitakkun.kotrail.fir.checkers.SealedWhenBranchStyleChecker
 import com.kitakkun.kotrail.fir.checkers.PreferValChecker
+import com.kitakkun.kotrail.fir.checkers.NarrowLocalScopeChecker
 import com.kitakkun.kotrail.fir.checkers.EmptinessIdiomChecker
 import com.kitakkun.kotrail.fir.checkers.SizeComparisonIdiomChecker
 import com.kitakkun.kotrail.fir.checkers.NegationIdiomChecker
@@ -112,6 +113,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
     )
     override val propertyCheckers: Set<FirPropertyChecker> = setOf(
         PreferValChecker,
+        NarrowLocalScopeChecker,
         PreferExplicitBackingFieldChecker,
         PreferStateDelegationChecker,
         CompositionLocalPropertyWarmup,

@@ -46,6 +46,7 @@ enum class KotrailRule(
     SEALED_WHEN_BRANCH_STYLE("sealedWhenBranchStyle", Severity.ERROR),
     PREFER_VAL("preferVal", Severity.ERROR),
     PREFER_IDIOM("preferIdiom", Severity.ERROR),
+    NARROW_LOCAL_SCOPE("narrowLocalScope", Severity.ERROR),
 
     COMPOSE_WINDOW_INSETS("compose.windowInsets", Severity.ERROR),
     COMPOSE_WINDOW_INSETS_UNVERIFIABLE("compose.windowInsetsUnverifiable", Severity.WARNING, hasSwitch = false),

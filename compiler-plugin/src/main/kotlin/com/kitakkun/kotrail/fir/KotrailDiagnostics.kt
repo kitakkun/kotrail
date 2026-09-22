@@ -102,6 +102,9 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: the property name; reported on a `var` that nothing reassigns. */
     val PREFER_VAL = tunable1<KtProperty, String>("PREFER_VAL", KotrailRule.PREFER_VAL, NAME)
 
+    /** Argument: the local's name; reported on a local val that only one branch below it uses. */
+    val NARROW_LOCAL_SCOPE = tunable1<KtProperty, String>("NARROW_LOCAL_SCOPE", KotrailRule.NARROW_LOCAL_SCOPE, NAME)
+
     /** Arguments: the expression as written, the idiom to write with its key in parentheses; reported on the expression. */
     val PREFER_IDIOM = tunable2<KtElement, String, String>("PREFER_IDIOM", KotrailRule.PREFER_IDIOM, WHOLE)
 
@@ -499,6 +502,11 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         map.put1(
             KotrailDiagnostics.PREFER_VAL,
             "[Kotrail] ''{0}'' is never reassigned. Declare it with ''val'', so that a reader need not watch for it changing.",
+        )
+        map.put1(
+            KotrailDiagnostics.NARROW_LOCAL_SCOPE,
+            "[Kotrail] ''{0}'' is only used inside one branch below. Declare it there, so that a reader carries it " +
+                "no further than it matters.",
         )
         map.put2(
             KotrailDiagnostics.PREFER_IDIOM,

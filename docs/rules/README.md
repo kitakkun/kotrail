@@ -35,6 +35,7 @@ fixtures that pin its behavior.
 | Sealed when branch style | `KOTRAIL_SEALED_WHEN_BRANCH_STYLE` | [sealed-when-branch-style.md](sealed-when-branch-style.md) |
 | Prefer val | `KOTRAIL_PREFER_VAL` | [prefer-val.md](prefer-val.md) |
 | Prefer idiom | `KOTRAIL_PREFER_IDIOM` | [prefer-idiom.md](prefer-idiom.md) |
+| Narrow local scope | `KOTRAIL_NARROW_LOCAL_SCOPE` | [narrow-local-scope.md](narrow-local-scope.md) |
 | No data class in public API | `KOTRAIL_DATA_CLASS_IN_PUBLIC_API` | [no-data-class-in-public-api.md](no-data-class-in-public-api.md) |
 | Visibility policy | `KOTRAIL_VISIBILITY_TOO_WIDE` | [visibility-policy.md](visibility-policy.md) |
 | Required annotation | `KOTRAIL_REQUIRED_ANNOTATION_MISSING` | [required-annotation.md](required-annotation.md) |
