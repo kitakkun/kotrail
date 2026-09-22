@@ -102,6 +102,12 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: the property name; reported on a `var` that nothing reassigns. */
     val PREFER_VAL = tunable1<KtProperty, String>("PREFER_VAL", KotrailRule.PREFER_VAL, NAME)
 
+    /** Arguments: the declaration name, the annotation to add (`@JvmSynthetic`, `@get:JvmSynthetic @set:JvmSynthetic`); reported on an internal function or property of a JVM module. */
+    val INTERNAL_VISIBLE_TO_JAVA = tunable2<KtElement, String, String>("INTERNAL_VISIBLE_TO_JAVA", KotrailRule.JVM_SYNTHETIC_FOR_INTERNAL, NAME)
+
+    /** Argument: the class name; reported on an internal class of a JVM module, which stays public in bytecode. */
+    val INTERNAL_CLASS_VISIBLE_TO_JAVA = tunable1<KtClass, String>("INTERNAL_CLASS_VISIBLE_TO_JAVA", KotrailRule.JVM_SYNTHETIC_FOR_INTERNAL_CLASS, NAME)
+
     /** Argument: the local's name; reported on a local val that only one branch below it uses. */
     val NARROW_LOCAL_SCOPE = tunable1<KtProperty, String>("NARROW_LOCAL_SCOPE", KotrailRule.NARROW_LOCAL_SCOPE, NAME)
 
@@ -502,6 +508,16 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         map.put1(
             KotrailDiagnostics.PREFER_VAL,
             "[Kotrail] ''{0}'' is never reassigned. Declare it with ''val'', so that a reader need not watch for it changing.",
+        )
+        map.put2(
+            KotrailDiagnostics.INTERNAL_VISIBLE_TO_JAVA,
+            "[Kotrail] ''{0}'' is internal to Kotlin but public to Java: the JVM has no internal. Add {1} so that " +
+                "the Java compiler cannot see it.",
+        )
+        map.put1(
+            KotrailDiagnostics.INTERNAL_CLASS_VISIBLE_TO_JAVA,
+            "[Kotrail] ''{0}'' is an internal class, which the JVM publishes as a public one; nothing hides a class " +
+                "from Java. Keep that in mind, or nest it privately or move it out of the published module.",
         )
         map.put1(
             KotrailDiagnostics.NARROW_LOCAL_SCOPE,

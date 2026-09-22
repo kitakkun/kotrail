@@ -47,6 +47,10 @@ enum class KotrailRule(
     PREFER_VAL("preferVal", Severity.ERROR),
     PREFER_IDIOM("preferIdiom", Severity.ERROR),
     NARROW_LOCAL_SCOPE("narrowLocalScope", Severity.ERROR),
+    /** Off by default: for a JVM module whose consumers include Java. */
+    JVM_SYNTHETIC_FOR_INTERNAL("jvmSyntheticForInternal", Severity.ERROR, defaultEnabled = false),
+    /** The class-shaped finding of the same rule, a warning: nothing can hide an internal class from Java. */
+    JVM_SYNTHETIC_FOR_INTERNAL_CLASS("jvmSyntheticForInternalClass", Severity.WARNING, hasSwitch = false),
 
     COMPOSE_WINDOW_INSETS("compose.windowInsets", Severity.ERROR),
     COMPOSE_WINDOW_INSETS_UNVERIFIABLE("compose.windowInsetsUnverifiable", Severity.WARNING, hasSwitch = false),

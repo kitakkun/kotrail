@@ -2,7 +2,8 @@
 
 Every rule is on, at error severity, with no configuration at all, except the few whose page
 says "off by default" ([no hardcoded string](rules/compose/no-hardcoded-string.md),
-[no unstable parameter](rules/compose/no-unstable-parameter.md)). Settings live in a
+[no unstable parameter](rules/compose/no-unstable-parameter.md),
+[JvmSynthetic for internal](rules/jvm-synthetic-for-internal.md)). Settings live in a
 `kotrail.yaml` that the [Gradle plugin](gradle-plugin.md) points at, and come from three sources;
 later ones win:
 

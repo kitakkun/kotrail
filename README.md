@@ -74,6 +74,7 @@ Full pages, with every condition and fixture, live under [`docs/rules/`](docs/ru
 | [Prefer val](docs/rules/prefer-val.md) | `var sum = …` that nothing reassigns | `val` |
 | [Prefer idiom](docs/rules/prefer-idiom.md) | `list.size == 0`, `!s.isEmpty()`, `x == null \|\| x.isEmpty()`, `filter { }.first()`, `if (x != null) x else y` | `isEmpty()`, `isNotEmpty()`, `isNullOrEmpty()`, `first { }`, `x ?: y` |
 | [Narrow local scope](docs/rules/narrow-local-scope.md) | A local `val` read by one branch of the `if` / `when` / `try` below it | The declaration inside that branch |
+| [JvmSynthetic for internal](docs/rules/jvm-synthetic-for-internal.md) (off by default) | `internal fun reset()` in a JVM module, public to Java | `@JvmSynthetic internal fun reset()`; a warning for `internal class` |
 | [Window insets handling](docs/rules/compose/window-insets.md) (Compose) | A `@HandlesWindowInsets` contract that the body does not satisfy; insets applied twice | Contracts verified across modules through inferred metadata |
 | [Composition locals](docs/rules/compose/composition-locals.md) | A `@CompositionLocalRoot`, preview, or `setContent { }` below which a required local (`compositionLocalOf { error(...) }`) is read and never provided | A `CompositionLocalProvider` on the way, or a default |
 | [State delegation](docs/rules/compose/state-delegation.md) (Compose) | `val count = remember { mutableStateOf(0) }` used only through `.value` | `var count by remember { ... }` |
