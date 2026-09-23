@@ -190,6 +190,33 @@ fun lambdaFirst(user: User, flag: Boolean) {
     }
 }
 
+
+class Holder(var loader: String)
+
+fun withLoader(holder: Holder, replacement: String, block: () -> Int): Int {
+    // Not reported: the initializer reads a property that is assigned before the branch, so it
+    // would read the new value there.
+    val previous = holder.loader
+    holder.loader = replacement
+    try {
+        return block()
+    } finally {
+        holder.loader = previous
+    }
+}
+
+fun withClassLoader(replacement: ClassLoader, block: () -> Int): Int {
+    // Not reported: the same, through a Java getter and setter pair.
+    val thread = Thread.currentThread()
+    val previous = thread.contextClassLoader
+    thread.contextClassLoader = replacement
+    try {
+        return block()
+    } finally {
+        thread.contextClassLoader = previous
+    }
+}
+
 /* GENERATED_FIR_TAGS: additiveExpression, classDeclaration, comparisonExpression, elvisExpression, forLoop,
 functionDeclaration, ifExpression, integerLiteral, lambdaLiteral, localProperty, multiplicativeExpression, nullableType,
 primaryConstructor, propertyDeclaration, stringLiteral, tryExpression, whenExpression */

@@ -6,6 +6,7 @@ import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
+import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.KtSourceElementKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.fir.FirElement
@@ -43,9 +44,10 @@ import org.jetbrains.kotlin.text
  *
  * A variable is live at a statement when it was declared before it and is still read at or
  * after it; inside a loop, everything the loop reads is live throughout. Function length and
- * complexity are stand-ins for this number; the number is what the reader pays. The first
- * statement past the limit is reported, with the names that are live there, so that extracting
- * a few of them into a function, or narrowing their scope, is a concrete next step.
+ * complexity are stand-ins for this number; the number is what the reader pays. The statement
+ * where the most variables are live (the first such, on a tie) is reported, with the names that
+ * are live there, so that extracting a few of them into a function, or narrowing their scope, is
+ * a concrete next step, and one that settles the function.
  * Parameters count, since they are carried too; `this` does not. A variable is not live inside
  * its own initializer, and not past the block, lambda, or catch clause that declares it.
  */
@@ -67,16 +69,21 @@ object LiveVariableBudgetChecker : NamedFunctionChecker(MppCheckerKind.Common) {
         }
         body.accept(index)
 
+        var worstSource: KtSourceElement? = null
+        var worst: List<String> = emptyList()
         for (statement in index.statements) {
             val statementSource = statement.source ?: continue
             if (statementSource.kind.isSynthetic()) continue
             // The loop variable of a `for` is a statement of the desugared loop; its source is the parameter, not a line.
             if (statement is FirProperty && !statementSource.text.startsWithKeyword()) continue
             val live = index.liveAt(statementSource.startOffset, statementSource.endOffset)
-            if (live.size <= limit) continue
-            reportKotrail(statementSource, KotrailDiagnostics.TOO_MANY_LIVE_VARIABLES, live.joinToString(), "${live.size} (limit $limit)")
-            return
+            if (live.size <= limit || live.size <= worst.size) continue
+            worstSource = statementSource
+            worst = live
         }
+        // The statement where the most is live, so that one extraction settles the function rather than the first of several.
+        val reportAt = worstSource ?: return
+        reportKotrail(reportAt, KotrailDiagnostics.TOO_MANY_LIVE_VARIABLES, worst.joinToString(), "${worst.size} (limit $limit)")
     }
 
     /** A fake source that is not one of the assignments written as `x += 1` or `x++`, which are statements of their own. */

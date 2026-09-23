@@ -66,7 +66,7 @@ kotrail {
 
 Seen from `preview`, `main` is class files, which the compiler cannot enumerate by package. So
 every compilation the Gradle plugin configures records the UI composables it declares under
-`build/kotrail/composables/<target>-<compilation>`, one JSON-lines file per source file, and a
+`build/kotrail/composables/<target>-<compilation>` (`jvm-main` in a plain Kotlin/JVM project), one JSON-lines file per source file, and a
 compilation reads the records of the compilations it is associated with. `previewCoverage` in
 `preview` then checks `main`'s composables from `main`'s own record, which knows which of them
 draw, since `main` had the bodies. The records are an output of `main`'s compile task and an input

@@ -1,6 +1,6 @@
 # Live variable budget
 
-**Diagnostic:** `KOTRAIL_TOO_MANY_LIVE_VARIABLES` (error, on the first statement past the budget)
+**Diagnostic:** `KOTRAIL_TOO_MANY_LIVE_VARIABLES` (error, on the statement with the most live variables)
 **Key:** `rules.liveVariableBudget` (on by default)
 **Setting:** `max` (default `7`; `0` disables)
 
@@ -38,8 +38,18 @@ not live inside its own initializer, nor past the block, lambda, or `catch` clau
 it: a lambda parameter ends with the lambda even inside a loop, and the `e` of two `catch`
 clauses are never live together. One that is declared but never read is never live. A loop
 variable counts like any local. `x += 1` and `x++` are statements of their own. `this` is not
-counted. Only the first statement past the budget is reported, once per function, with the live
-names in declaration order.
+counted. One statement is reported per function: the one where the most variables are live (the
+first of them, on a tie), with the live names in declaration order, so that one extraction
+settles the function rather than the first of several.
+
+Compose UI code that is not `@Composable`, a `LazyListScope` section builder for one, carries
+its inputs the same way; leave it out with a predicate on the receiver:
+
+```yaml
+rules:
+  liveVariableBudget:
+    exclude: composable || extension(androidx.compose.foundation.lazy.LazyListScope)
+```
 
 ## When it stays quiet
 

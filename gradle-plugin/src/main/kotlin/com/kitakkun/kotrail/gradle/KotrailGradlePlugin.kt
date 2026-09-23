@@ -54,12 +54,15 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
         wireFixRecords(kotlinCompilation)
         wireComposableRecords(kotlinCompilation)
         return project.provider {
-            optionsFor(compilationName) +
+            val options = optionsFor(compilationName) +
                 SubpluginOption("fixesDir", fixesDirectoryFor(kotlinCompilation).get().asFile.path) +
                 SubpluginOption("composablesDir", composablesDirectoryFor(kotlinCompilation).get().asFile.path) +
                 kotlinCompilation.allAssociatedCompilations.map {
                     SubpluginOption("associatedComposablesDir", composablesDirectoryFor(it).get().asFile.path)
                 }
+            // `--info` shows what each compilation was handed, for a consumer to check its wiring.
+            project.logger.info("Kotrail: options for ${kotlinCompilation.compileKotlinTaskName}: ${options.joinToString { "${it.key}=${it.value}" }}")
+            options
         }
     }
 
@@ -112,12 +115,15 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
     }
 
     private fun composablesDirectoryFor(kotlinCompilation: KotlinCompilation<*>): Provider<Directory> =
-        project.layout.buildDirectory.dir("kotrail/composables/${kotlinCompilation.target.name}-${kotlinCompilation.name}")
+        project.layout.buildDirectory.dir("kotrail/composables/${kotlinCompilation.directoryName()}")
 
     private fun fixesDirectory(): Provider<Directory> = project.layout.buildDirectory.dir("kotrail/fixes")
 
     private fun fixesDirectoryFor(kotlinCompilation: KotlinCompilation<*>): Provider<Directory> =
-        fixesDirectory().map { it.dir("${kotlinCompilation.target.name}-${kotlinCompilation.name}") }
+        fixesDirectory().map { it.dir(kotlinCompilation.directoryName()) }
+
+    /** `jvm-main`, `iosArm64-test`; the target of a plain Kotlin/JVM project has no name and is called `jvm`. */
+    private fun KotlinCompilation<*>.directoryName(): String = "${target.name.ifEmpty { "jvm" }}-$name"
 
     /**
      * The project's own settings first, then every override whose compilation-name predicate

@@ -38,6 +38,7 @@ import org.jetbrains.kotlin.fir.expressions.FirWhileLoop
 import org.jetbrains.kotlin.fir.expressions.arguments
 import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
 import org.jetbrains.kotlin.fir.references.toResolvedNamedFunctionSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirVariableSymbol
 import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
@@ -224,17 +225,28 @@ object NarrowLocalScopeChecker : FirPropertyChecker(MppCheckerKind.Common) {
         else -> false
     }
 
-    /** The `var`s the initializer reads: the values that a statement moved past could change. */
-    private fun FirExpression.varDependencies(): Set<FirVariableSymbol<*>> {
-        val found = mutableSetOf<FirVariableSymbol<*>>()
+    /**
+     * The `var`s the initializer reads: the values that a statement moved past could change. A
+     * local is its symbol; a member or a field (`thread.contextClassLoader`) is its callable id,
+     * so that an assignment through any receiver counts, and so that a synthetic Java property
+     * matches whichever symbol instance its assignment resolved to.
+     */
+    private fun FirExpression.varDependencies(): Set<Any> {
+        val found = mutableSetOf<Any>()
         accept(object : FirVisitorVoid() {
             override fun visitElement(element: FirElement) = element.acceptChildren(this)
             override fun visitPropertyAccessExpression(propertyAccessExpression: FirPropertyAccessExpression) {
-                (propertyAccessExpression.calleeReference.toResolvedCallableSymbol() as? FirVariableSymbol<*>)?.takeIf { it.isVar }?.let { found += it }
+                propertyAccessExpression.calleeReference.toResolvedCallableSymbol()?.dependencyKey()?.let { found += it }
                 propertyAccessExpression.acceptChildren(this)
             }
         })
         return found
+    }
+
+    private fun FirCallableSymbol<*>.dependencyKey(): Any? {
+        val variable = this as? FirVariableSymbol<*> ?: return null
+        if (!variable.isVar) return null
+        return if (variable is FirPropertySymbol && variable.isLocal) variable else variable.callableId
     }
 
     /**
@@ -242,7 +254,7 @@ object NarrowLocalScopeChecker : FirPropertyChecker(MppCheckerKind.Common) {
      * declaration moves into) left out. An assignment inside a lambda counts wherever the lambda
      * is: it can run from any statement in between.
      */
-    private fun FirElement.assignsAnyOf(targets: Set<FirVariableSymbol<*>>, except: FirBlock?): Boolean {
+    private fun FirElement.assignsAnyOf(targets: Set<Any>, except: FirBlock?): Boolean {
         if (targets.isEmpty()) return false
         var found = false
         accept(object : FirVisitorVoid() {
@@ -255,7 +267,7 @@ object NarrowLocalScopeChecker : FirPropertyChecker(MppCheckerKind.Common) {
                     is FirDesugaredAssignmentValueReferenceExpression -> value.expressionRef.value
                     else -> value
                 }
-                if ((lValue as? FirQualifiedAccessExpression)?.calleeReference?.toResolvedCallableSymbol() in targets) found = true
+                if ((lValue as? FirQualifiedAccessExpression)?.calleeReference?.toResolvedCallableSymbol()?.dependencyKey() in targets) found = true
                 else variableAssignment.acceptChildren(this)
             }
         })
@@ -263,7 +275,7 @@ object NarrowLocalScopeChecker : FirPropertyChecker(MppCheckerKind.Common) {
     }
 
     /** Whether a lambda or local function in [this] assigns one of [targets]: such a var can change through any call. */
-    private fun FirElement.capturesAssignmentOf(targets: Set<FirVariableSymbol<*>>): Boolean {
+    private fun FirElement.capturesAssignmentOf(targets: Set<Any>): Boolean {
         var found = false
         accept(object : FirVisitorVoid() {
             override fun visitElement(element: FirElement) {
