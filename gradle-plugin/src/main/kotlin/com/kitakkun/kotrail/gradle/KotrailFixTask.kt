@@ -18,12 +18,10 @@ import java.security.MessageDigest
  * run fixed it) and is left for the next compilation to refresh.
  *
  * A multiplatform source file has one record per target compilation; records that agree (same
- * hash, same edits) are one set of edits, applied once. Edits are applied per file from the end
- * backwards, so that earlier offsets stay valid, and an edit that overlaps one already applied is
- * skipped: it was computed against text that has just changed. Compiling and running
- * `kotrailFix` again picks those up. Insertions at one and the same offset (two declarations
- * moved to the top of one branch) are applied in reverse order of recording, which is reverse
- * source order, so that the text they leave keeps the source order.
+ * hash, same edits) are one set of fixes, applied once. Each fix is applied whole or not at all,
+ * and a fix that conflicts with one already taken is left for the next round: it was computed
+ * against text that this round changes (see [selectEdits]). Compiling and running `kotrailFix`
+ * again picks those up.
  */
 @UntrackedTask(because = "It edits the project's sources in place and must run every time it is asked to")
 abstract class KotrailFixTask : DefaultTask() {
@@ -43,15 +41,17 @@ abstract class KotrailFixTask : DefaultTask() {
             val lines = recordFile.readLines().filter { it.isNotBlank() }
             if (lines.size < 2) continue
             val header = JsonSlurper().parseText(lines.first()) as Map<*, *>
-            val edits = lines.drop(1).flatMap { line ->
+            val recorded = lines.drop(1).map { line ->
                 val fix = JsonSlurper().parseText(line) as Map<*, *>
-                (fix["edits"] as List<*>).map { edit ->
-                    edit as Map<*, *>
-                    Edit((edit["start"] as Number).toInt(), (edit["end"] as Number).toInt(), edit["replacement"] as String)
-                }
+                Fix(
+                    (fix["edits"] as List<*>).map { edit ->
+                        edit as Map<*, *>
+                        Edit((edit["start"] as Number).toInt(), (edit["end"] as Number).toInt(), edit["replacement"] as String)
+                    },
+                )
             }
-            fixes += lines.size - 1
-            recordsByFile.getOrPut(header["file"] as String) { mutableListOf() } += Record(header["hash"] as String, edits)
+            fixes += recorded.size
+            recordsByFile.getOrPut(header["file"] as String) { mutableListOf() } += Record(header["hash"] as String, recorded)
         }
 
         var applied = 0
@@ -66,19 +66,15 @@ abstract class KotrailFixTask : DefaultTask() {
                 stale++
                 continue
             }
-            val edits = current.flatMap { it.edits }.distinctBy { Triple(it.start, it.end, it.replacement) }.withIndex()
+            val distinct = current.flatMap { it.fixes }.distinctBy { fix -> fix.edits.map { Triple(it.start, it.end, it.replacement) } }
+            val selection = selectEdits(distinct)
+            skipped += selection.skippedFixes
 
             var text = file.readText()
-            var lastStart = text.length + 1
             var changed = false
-            val ordered = edits.sortedWith(compareByDescending<IndexedValue<Edit>> { it.value.start }.thenByDescending { it.value.end }.thenByDescending { it.index })
-            for ((_, edit) in ordered) {
-                if (edit.end > lastStart || edit.end > text.length) {
-                    skipped++
-                    continue
-                }
+            for (edit in selection.edits) {
+                if (edit.end > text.length) continue
                 text = text.substring(0, edit.start) + edit.replacement + text.substring(edit.end)
-                lastStart = edit.start
                 applied++
                 changed = true
             }
@@ -89,7 +85,7 @@ abstract class KotrailFixTask : DefaultTask() {
         }
 
         val notes = buildList {
-            if (skipped > 0) add("$skipped overlapping ${plural(skipped, "edit")} left for the next round")
+            if (skipped > 0) add("$skipped conflicting ${plural(skipped, "fix", "fixes")} left for the next round")
             if (stale > 0) add("$stale ${plural(stale, "file")} changed since compiled")
         }
         val summary = "Kotrail: applied $applied ${plural(applied, "edit")} in $changedFiles ${plural(changedFiles, "file")}"
@@ -100,12 +96,10 @@ abstract class KotrailFixTask : DefaultTask() {
         }
     }
 
-    private fun plural(count: Int, noun: String): String = if (count == 1) noun else "${noun}s"
+    private fun plural(count: Int, noun: String, plural: String = "${noun}s"): String = if (count == 1) noun else plural
 
     private fun sha256(bytes: ByteArray): String =
         MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
 
-    private class Record(val hash: String, val edits: List<Edit>)
-
-    private class Edit(val start: Int, val end: Int, val replacement: String)
+    private class Record(val hash: String, val fixes: List<Fix>)
 }

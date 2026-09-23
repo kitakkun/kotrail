@@ -171,6 +171,25 @@ fun destructure(first: Pair<String, Int>, last: Pair<String, Int>): String {
     return if (count > 0) name else "none"
 }
 
+
+fun runLater(block: () -> Unit) = block()
+
+// Not reported: a read inside a lambda two lines down is the first use, however far the next
+// direct use is; moving the declaration below the lambda would break it.
+fun lambdaFirst(user: User, flag: Boolean) {
+    val steps = user.tags.size
+    runLater { println(steps) }
+    println(1)
+    println(2)
+    println(3)
+    println(4)
+    println(5)
+    println(6)
+    if (flag) {
+        println(steps)
+    }
+}
+
 /* GENERATED_FIR_TAGS: additiveExpression, classDeclaration, comparisonExpression, elvisExpression, forLoop,
 functionDeclaration, ifExpression, integerLiteral, lambdaLiteral, localProperty, multiplicativeExpression, nullableType,
 primaryConstructor, propertyDeclaration, stringLiteral, tryExpression, whenExpression */

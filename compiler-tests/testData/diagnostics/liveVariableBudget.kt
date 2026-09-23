@@ -43,6 +43,41 @@ fun looping(orders: List<Order>, rate: Int, label: String, limit: Int): Int {
     return acc
 }
 
+
+fun fetch(id: Int): Int = id
+
+// Not reported: a variable is not live inside its own initializer, so the branches of `call`
+// carry orders, rate, label, limit but not call itself.
+fun ownInitializer(orders: List<Order>, rate: Int, label: String, limit: Int): Int {
+    val call = if (rate > limit) {
+        val first = fetch(rate)
+        first + orders.size
+    } else {
+        val second = fetch(limit)
+        second + label.length
+    }
+    return call
+}
+
+// Not reported: the parameters of a lambda end with the lambda, even inside a loop (rate, total,
+// order, amounts are live at the `+=`, not `it` and `amount`); the two `e` of two catch clauses
+// are never live together.
+fun scoped(orders: List<Order>, rate: Int): Int {
+    var total = 0
+    for (order in orders) {
+        val amounts = listOf(order).mapNotNull { it.amount.takeIf { amount -> amount > rate } }
+        total += amounts.size
+    }
+    try {
+        total += fetch(total)
+    } catch (e: IllegalStateException) {
+        throw e
+    } catch (e: Throwable) {
+        println(e)
+    }
+    return total
+}
+
 /* GENERATED_FIR_TAGS: additiveExpression, assignment, classDeclaration, comparisonExpression, forLoop,
 functionDeclaration, ifExpression, integerLiteral, lambdaLiteral, localProperty, multiplicativeExpression,
 primaryConstructor, propertyDeclaration, stringLiteral */

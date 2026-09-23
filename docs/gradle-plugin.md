@@ -112,7 +112,8 @@ content hash, and
 applies them to the sources without compiling again. A file that changed since it was compiled
 (edited by hand, or by a previous `kotrailFix`) is left alone until the next compilation refreshes
 its record, so the loop is: compile, `kotrailFix`, compile again, until it reports nothing. Two
-fixes that overlap in one file are applied one per round for the same reason. Run the formatter
+fixes that conflict in one file (one would insert inside text the other removes) are applied one
+per round for the same reason, each fix whole or not at all. Run the formatter
 afterwards: a deleted branch leaves its blank line.
 
 The records are an output of the compile task, so they travel with the build cache and go with

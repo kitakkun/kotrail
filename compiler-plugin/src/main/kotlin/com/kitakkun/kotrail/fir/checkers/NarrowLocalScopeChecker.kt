@@ -104,7 +104,7 @@ object NarrowLocalScopeChecker : FirPropertyChecker(MppCheckerKind.Common) {
 
         val maxDistance = context.session.kotrailConfig.narrowLocalScope.maxDistance
         if (maxDistance <= 0) return
-        val firstUse = later.firstOrNull { statement -> UseFinder(declaration.symbol).also { statement.accept(it) }.uses > 0 } ?: return
+        val firstUse = later.firstOrNull { statement -> UseFinder(declaration.symbol).also { statement.accept(it) }.let { it.uses > 0 || it.pinned } } ?: return
         if (later.takeWhile { it !== firstUse }.any { it.assignsAnyOf(dependencies, except = null) }) return
         val firstUseSource = firstUse.source ?: return
         val blockSource = block.source ?: return

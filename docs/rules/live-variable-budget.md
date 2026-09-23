@@ -30,12 +30,16 @@ lists the live names, so that the extraction to make is concrete.
 
 ## How liveness is counted
 
-A variable (a local, a parameter of the function, or a parameter of a lambda inside it) is live at
-a statement when it was declared before the statement and is read at or after it, by source
-position. Inside a loop, every variable the loop reads is live throughout the loop, since the
-next iteration reads it again. A variable declared inside a branch is dead once the branch ends;
-one that is declared but never read is never live. A loop variable counts like any local. `x += 1` and `x++` are statements of their own. `this` is not counted. Only the first statement
-past the budget is reported, once per function.
+A variable (a local, a parameter of the function, a parameter of a lambda inside it, or the
+parameter of a `catch` clause) is live at a statement when its declaration ends before the
+statement and it is read at or after it, by source position. Inside a loop, every variable the
+loop reads is live throughout the loop, since the next iteration reads it again. A variable is
+not live inside its own initializer, nor past the block, lambda, or `catch` clause that declares
+it: a lambda parameter ends with the lambda even inside a loop, and the `e` of two `catch`
+clauses are never live together. One that is declared but never read is never live. A loop
+variable counts like any local. `x += 1` and `x++` are statements of their own. `this` is not
+counted. Only the first statement past the budget is reported, once per function, with the live
+names in declaration order.
 
 ## When it stays quiet
 

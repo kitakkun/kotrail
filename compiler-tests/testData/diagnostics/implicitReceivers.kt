@@ -103,5 +103,26 @@ class Client {
     }
 }
 
+
+interface Scope {
+    fun draw()
+    val center: Int
+}
+
+interface ContentScope : Scope {
+    fun drawContent()
+}
+
+fun Scope.rotate(block: Scope.() -> Unit) = block()
+
+// Not reported: the outer receiver's type is a supertype of the nearer one; the nearest one is meant.
+fun ContentScope.decorate() {
+    rotate {
+        draw()
+        center.toString()
+    }
+    drawContent()
+}
+
 /* GENERATED_FIR_TAGS: assignment, classDeclaration, funWithExtensionReceiver, functionDeclaration, inner,
 integerLiteral, lambdaLiteral, nestedClass, primaryConstructor, propertyDeclaration, stringLiteral, thisExpression */

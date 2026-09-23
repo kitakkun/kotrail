@@ -16,6 +16,7 @@ import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
 import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.expressions.FirBlock
+import org.jetbrains.kotlin.fir.expressions.FirCatch
 import org.jetbrains.kotlin.fir.expressions.FirDoWhileLoop
 import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirStatement
@@ -45,7 +46,8 @@ import org.jetbrains.kotlin.text
  * complexity are stand-ins for this number; the number is what the reader pays. The first
  * statement past the limit is reported, with the names that are live there, so that extracting
  * a few of them into a function, or narrowing their scope, is a concrete next step.
- * Parameters count, since they are carried too; `this` does not.
+ * Parameters count, since they are carried too; `this` does not. A variable is not live inside
+ * its own initializer, and not past the block, lambda, or catch clause that declares it.
  */
 object LiveVariableBudgetChecker : NamedFunctionChecker(MppCheckerKind.Common) {
     context(context: CheckerContext, reporter: DiagnosticReporter)
@@ -59,7 +61,10 @@ object LiveVariableBudgetChecker : NamedFunctionChecker(MppCheckerKind.Common) {
         val body = declaration.body ?: return
 
         val index = Index()
-        declaration.valueParameters.forEach { index.declare(it.symbol, it.name.asString(), it.source?.startOffset ?: source.startOffset) }
+        declaration.valueParameters.forEach { parameter ->
+            val parameterSource = parameter.source
+            index.declare(parameter.symbol, parameter.name.asString(), parameterSource?.startOffset ?: source.startOffset, parameterSource?.endOffset ?: source.startOffset, source.endOffset)
+        }
         body.accept(index)
 
         for (statement in index.statements) {
@@ -84,9 +89,12 @@ object LiveVariableBudgetChecker : NamedFunctionChecker(MppCheckerKind.Common) {
 
     private fun CharSequence?.startsWithKeyword(): Boolean = this != null && declarationKeyword.containsMatchIn(this)
 
-    /** Every variable of the function with its declaration offset and its last read, every statement, and the loops. */
+    /**
+     * Every variable of the function with where it is declared, where its scope ends, and its
+     * last read; every statement; and the loops.
+     */
     private class Index : FirVisitorVoid() {
-        private class Variable(val name: String, val declaredAt: Int) {
+        private class Variable(val name: String, val declaredAt: Int, val declarationEnd: Int, val scopeEnd: Int) {
             var lastReadAt: Int = -1
             val readsInLoops = mutableSetOf<IntRange>()
         }
@@ -95,17 +103,24 @@ object LiveVariableBudgetChecker : NamedFunctionChecker(MppCheckerKind.Common) {
         val statements = mutableListOf<FirStatement>()
         private val loops = mutableListOf<IntRange>()
         private var loopDepth = 0
+        private val scopes = mutableListOf<Int>()
 
-        fun declare(symbol: FirBasedSymbol<*>, name: String, at: Int) {
-            variables[symbol] = Variable(name, at)
+        /**
+         * Records a variable: declared over [at] to [declarationEnd] (its own initializer is not a
+         * place where it is live yet), and gone after [scopeEnd] (the block, lambda, or catch clause
+         * that holds it).
+         */
+        fun declare(symbol: FirBasedSymbol<*>, name: String, at: Int, declarationEnd: Int, scopeEnd: Int) {
+            variables[symbol] = Variable(name, at, declarationEnd, scopeEnd)
         }
 
         /** Names live at a statement spanning [start] to [end], in declaration order. */
         fun liveAt(start: Int, end: Int): List<String> = variables.values
             .filter { variable ->
-                variable.declaredAt < start &&
+                variable.declarationEnd <= start && start < variable.scopeEnd &&
                     (variable.lastReadAt >= start || variable.readsInLoops.any { loop -> start in loop })
             }
+            .sortedBy { it.declaredAt }
             .map { it.name }
 
         override fun visitElement(element: FirElement) {
@@ -113,24 +128,39 @@ object LiveVariableBudgetChecker : NamedFunctionChecker(MppCheckerKind.Common) {
         }
 
         override fun visitBlock(block: FirBlock) {
+            val end = block.source?.endOffset
+            if (end != null) scopes += end
             for (statement in block.statements) {
                 // A nested block (the body of a `for` loop) is checked through its own statements.
                 if (statement !is FirBlock) statements += statement
                 statement.accept(this)
             }
+            if (end != null) scopes.removeAt(scopes.lastIndex)
         }
 
         override fun visitProperty(property: FirProperty) {
             // `<iterator>` of a `for`, `<destruct>` of a destructuring: names a reader never sees.
-            if (property.isLocal && !property.name.isSpecial) declare(property.symbol, property.name.asString(), property.source?.startOffset ?: 0)
+            if (property.isLocal && !property.name.isSpecial) {
+                val source = property.source
+                declare(property.symbol, property.name.asString(), source?.startOffset ?: 0, source?.endOffset ?: 0, scopes.lastOrNull() ?: Int.MAX_VALUE)
+            }
             property.acceptChildren(this)
         }
 
         override fun visitAnonymousFunction(anonymousFunction: FirAnonymousFunction) {
+            val lambdaSource = anonymousFunction.source
             anonymousFunction.valueParameters.forEach { parameter ->
-                declare(parameter.symbol, parameter.name.asString(), parameter.source?.startOffset ?: anonymousFunction.source?.startOffset ?: 0)
+                val source = parameter.source ?: lambdaSource
+                declare(parameter.symbol, parameter.name.asString(), source?.startOffset ?: 0, source?.endOffset ?: 0, lambdaSource?.endOffset ?: Int.MAX_VALUE)
             }
             anonymousFunction.acceptChildren(this)
+        }
+
+        override fun visitCatch(catch: FirCatch) {
+            val parameter = catch.parameter
+            val source = parameter.source
+            declare(parameter.symbol, parameter.name.asString(), source?.startOffset ?: 0, source?.endOffset ?: 0, catch.block.source?.endOffset ?: Int.MAX_VALUE)
+            catch.block.accept(this)
         }
 
         override fun visitValueParameter(valueParameter: FirValueParameter) {

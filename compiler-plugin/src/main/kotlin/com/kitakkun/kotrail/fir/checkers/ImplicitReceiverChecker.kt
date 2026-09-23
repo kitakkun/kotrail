@@ -19,6 +19,7 @@ import org.jetbrains.kotlin.fir.references.FirThisReference
 import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
 import org.jetbrains.kotlin.fir.resolve.ScopeSession
 import org.jetbrains.kotlin.fir.resolve.fullyExpandedType
+import org.jetbrains.kotlin.fir.resolve.isSubclassOf
 import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
 import org.jetbrains.kotlin.fir.scopes.getFunctions
 import org.jetbrains.kotlin.fir.scopes.getProperties
@@ -57,8 +58,9 @@ import org.jetbrains.kotlin.name.Name
  * `runBlocking { }`, `apply { }`, or a builder is the ordinary way to write Kotlin. Receivers are
  * the dispatch receiver of an enclosing class or object, the extension receiver of an enclosing
  * function or property, and the receiver of an enclosing lambda; a non-inner nested class starts
- * over. Left alone: two receivers of one type (`Row { Row { } }`, a builder inside itself), where
- * the nearest one is what everybody means; a member extension, which takes both receivers as one
+ * over. Left alone: two receivers of one type, or of a type and its subtype (`Row { Row { } }`, a
+ * builder inside itself, `ContentDrawScope` inside `DrawScope`), where the nearest one is what
+ * everybody means; a member extension, which takes both receivers as one
  * declaration; and `toString`, `hashCode`, `equals`, which every receiver has.
  */
 object AmbiguousImplicitReceiverChecker : FirQualifiedAccessExpressionChecker(MppCheckerKind.Common) {
@@ -88,8 +90,9 @@ object AmbiguousImplicitReceiverChecker : FirQualifiedAccessExpressionChecker(Mp
             val boundClass = bound.classSymbol(session)
             val other = inScope.firstOrNull { candidate ->
                 candidate != bound &&
-                    // Nesting a scope in another of the same type (`Row { Row { } }`, a builder in a builder) means the nearest one.
-                    candidate.classSymbol(session) != boundClass &&
+                    // Nesting a scope in another of the same type (`Row { Row { } }`, a builder in a builder), or of a
+                    // supertype or subtype of it (`ContentDrawScope` in `DrawScope`), means the nearest one.
+                    !candidate.classSymbol(session).isRelatedTo(boundClass, session) &&
                     candidate.hasMemberNamed(callee.name, session, context.scopeSession)
             } ?: continue
             reportKotrail(
@@ -110,6 +113,14 @@ object AmbiguousImplicitReceiverChecker : FirQualifiedAccessExpressionChecker(Mp
             if (symbol is FirRegularClassSymbol && !symbol.isInner) break
         }
         return receivers
+    }
+
+    /** Whether the two receiver types are one class, or one extends the other. */
+    private fun FirClassSymbol<*>?.isRelatedTo(other: FirClassSymbol<*>?, session: FirSession): Boolean {
+        if (this == null || other == null) return false
+        if (this == other) return true
+        return isSubclassOf(other.toLookupTag(), session, isStrict = true, lookupInterfaces = true) ||
+            other.isSubclassOf(toLookupTag(), session, isStrict = true, lookupInterfaces = true)
     }
 
     private val ANY_MEMBERS = setOf(Name.identifier("toString"), Name.identifier("hashCode"), Name.identifier("equals"))
