@@ -177,6 +177,8 @@ class KotrailGradlePluginFunctionalTest {
         assertTrue(text.contains("is Action.Cancel -> println(\"cancel\")"), text)
         assertFalse(text.contains("else -> println(\"never\")"), text)
         assertTrue(text.contains("move(x = 1, y = 2, z = 3)"), text)
+        // Two declarations moved into one branch keep their order, so the second may still read the first.
+        assertTrue(text.contains("} else {\n        val base = count\n        val next = count + 1\n        println(base + next)"), text)
 
         val again = runBuild("kotrailFix")
         assertTrue(again.output.contains("changed since compiled"), again.output)
@@ -274,6 +276,16 @@ class KotrailGradlePluginFunctionalTest {
                     else -> println("never")
                 }
                 move(1, 2, 3)
+            }
+
+            fun branch(count: Int, flag: Boolean) {
+                val base = count
+                val next = count + 1
+                if (flag) {
+                    println("flag")
+                } else {
+                    println(base + next)
+                }
             }
         """.trimIndent()
     }

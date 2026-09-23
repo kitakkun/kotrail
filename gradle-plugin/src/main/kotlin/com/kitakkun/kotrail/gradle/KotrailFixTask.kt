@@ -21,7 +21,9 @@ import java.security.MessageDigest
  * hash, same edits) are one set of edits, applied once. Edits are applied per file from the end
  * backwards, so that earlier offsets stay valid, and an edit that overlaps one already applied is
  * skipped: it was computed against text that has just changed. Compiling and running
- * `kotrailFix` again picks those up.
+ * `kotrailFix` again picks those up. Insertions at one and the same offset (two declarations
+ * moved to the top of one branch) are applied in reverse order of recording, which is reverse
+ * source order, so that the text they leave keeps the source order.
  */
 @UntrackedTask(because = "It edits the project's sources in place and must run every time it is asked to")
 abstract class KotrailFixTask : DefaultTask() {
@@ -64,12 +66,13 @@ abstract class KotrailFixTask : DefaultTask() {
                 stale++
                 continue
             }
-            val edits = current.flatMap { it.edits }.distinctBy { Triple(it.start, it.end, it.replacement) }
+            val edits = current.flatMap { it.edits }.distinctBy { Triple(it.start, it.end, it.replacement) }.withIndex()
 
             var text = file.readText()
             var lastStart = text.length + 1
             var changed = false
-            for (edit in edits.sortedWith(compareByDescending<Edit> { it.start }.thenByDescending { it.end })) {
+            val ordered = edits.sortedWith(compareByDescending<IndexedValue<Edit>> { it.value.start }.thenByDescending { it.value.end }.thenByDescending { it.index })
+            for ((_, edit) in ordered) {
                 if (edit.end > lastStart || edit.end > text.length) {
                     skipped++
                     continue
