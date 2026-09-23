@@ -108,6 +108,12 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: the class name; reported on an internal class of a JVM module, which stays public in bytecode. */
     val INTERNAL_CLASS_VISIBLE_TO_JAVA = tunable1<KtClass, String>("INTERNAL_CLASS_VISIBLE_TO_JAVA", KotrailRule.JVM_SYNTHETIC_FOR_INTERNAL_CLASS, NAME)
 
+    /** Arguments: the live names, the count with the limit; reported on the first statement past the budget. */
+    val TOO_MANY_LIVE_VARIABLES = tunable2<KtElement, String, String>("TOO_MANY_LIVE_VARIABLES", KotrailRule.LIVE_VARIABLE_BUDGET, WHOLE)
+
+    /** Arguments: the helper's name, the first declaration that uses it; reported on a private function declared before its first user. */
+    val HELPER_BEFORE_FIRST_USE = tunable2<KtNamedFunction, String, String>("HELPER_BEFORE_FIRST_USE", KotrailRule.NARRATIVE_ORDER, NAME)
+
     /** Argument: the local's name; reported on a local val that only one branch below it uses. */
     val NARROW_LOCAL_SCOPE = tunable1<KtProperty, String>("NARROW_LOCAL_SCOPE", KotrailRule.NARROW_LOCAL_SCOPE, NAME)
 
@@ -521,6 +527,16 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             KotrailDiagnostics.INTERNAL_CLASS_VISIBLE_TO_JAVA,
             "[Kotrail] ''{0}'' is an internal class, which the JVM publishes as a public one; nothing hides a class " +
                 "from Java. Keep that in mind, or nest it privately or move it out of the published module.",
+        )
+        map.put2(
+            KotrailDiagnostics.TOO_MANY_LIVE_VARIABLES,
+            "[Kotrail] {1} variables are live here: {0}. That is more than a reader holds at once; extract a step " +
+                "into a function, or narrow what is declared before this point.",
+        )
+        map.put2(
+            KotrailDiagnostics.HELPER_BEFORE_FIRST_USE,
+            "[Kotrail] ''{0}'' is declared before ''{1}'', which is the first to use it. Declare it after, so that " +
+                "the file reads from the top down: the story first, the details after.",
         )
         map.put1(
             KotrailDiagnostics.NARROW_LOCAL_SCOPE,

@@ -112,6 +112,7 @@ own; a rule not listed has none.
 | | `chains` | `[]` | The project's own chain idioms, each `<inner fqn> then <outer fqn> -> <replacement fqn>`. |
 | | `calls` | `[]` | The project's own call idioms, each `<fqn>(<literal>) -> <replacement fqn>`. |
 | `narrowLocalScope` | `maxDistance` | `5` | Lines allowed between a local's declaration and the statement that first uses it; `0` switches the distance check off. |
+| `liveVariableBudget` | `max` | `7` | Variables (locals and parameters) that may be live at one statement of a function; `0` disables. |
 | `noDataClassInPublicApi` | `scope` | `explicitApi` | `explicitApi` applies the rule only to modules compiled with explicit API mode; `all` everywhere. |
 | `visibilityPolicy` | `private` | | A predicate; matching declarations must be `private`. |
 | | `internal` | | A predicate; matching declarations must be `internal` or `private`. |

@@ -29,6 +29,8 @@ import com.kitakkun.kotrail.fir.checkers.SealedWhenBranchStyleChecker
 import com.kitakkun.kotrail.fir.checkers.PreferValChecker
 import com.kitakkun.kotrail.fir.checkers.NarrowLocalScopeChecker
 import com.kitakkun.kotrail.fir.checkers.JvmSyntheticForInternalChecker
+import com.kitakkun.kotrail.fir.checkers.LiveVariableBudgetChecker
+import com.kitakkun.kotrail.fir.checkers.NarrativeOrderChecker
 import com.kitakkun.kotrail.fir.checkers.EmptinessIdiomChecker
 import com.kitakkun.kotrail.fir.checkers.SizeComparisonIdiomChecker
 import com.kitakkun.kotrail.fir.checkers.NegationIdiomChecker
@@ -103,6 +105,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
         // First, so that a file's fix record is fresh before any rule reports on the file.
         FixRecordChecker,
         CommentLengthChecker,
+        NarrativeOrderChecker.FileChecker,
         ParameterCommentChecker,
         ComposablePreviewRequiredChecker,
         ComposablePreviewCoverageChecker,
@@ -110,6 +113,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
     )
     override val regularClassCheckers: Set<FirRegularClassChecker> = setOf(
         PreconditionWarmup.ClassChecker,
+        NarrativeOrderChecker.ClassChecker,
         PreferValueClassChecker,
         NoDataClassInPublicApiChecker,
     )
@@ -135,6 +139,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
         TestNamingChecker,
         TestSleepChecker,
         FunctionLengthChecker,
+        LiveVariableBudgetChecker,
         ComposableSideEffectChecker,
         ComposableUnstableParameterChecker,
     )

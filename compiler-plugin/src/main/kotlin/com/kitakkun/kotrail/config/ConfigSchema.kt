@@ -106,6 +106,9 @@ object ConfigSchema {
             Setting("maxElvis", Kind.INT, "Maximum ?: fallbacks in one expression, a trailing ?: return or ?: throw not counted; 0 disables.", default = "2"),
             Setting("maxSafeCalls", Kind.INT, "Maximum ?. along one receiver chain; 0 disables.", default = "0"),
         ),
+        KotrailRule.LIVE_VARIABLE_BUDGET to listOf(
+            Setting("max", Kind.INT, "Variables (locals and parameters) that may be live at one statement of a function; 0 disables.", default = "7"),
+        ),
         KotrailRule.NARROW_LOCAL_SCOPE to listOf(
             Setting("maxDistance", Kind.INT, "Lines allowed between a local's declaration and the statement that first uses it; 0 switches the distance check off.", default = "5"),
         ),

@@ -37,6 +37,8 @@ fixtures that pin its behavior.
 | Prefer idiom | `KOTRAIL_PREFER_IDIOM` | [prefer-idiom.md](prefer-idiom.md) |
 | Narrow local scope | `KOTRAIL_NARROW_LOCAL_SCOPE` | [narrow-local-scope.md](narrow-local-scope.md) |
 | JvmSynthetic for internal (off by default) | `KOTRAIL_INTERNAL_VISIBLE_TO_JAVA`, `KOTRAIL_INTERNAL_CLASS_VISIBLE_TO_JAVA` | [jvm-synthetic-for-internal.md](jvm-synthetic-for-internal.md) |
+| Live variable budget | `KOTRAIL_TOO_MANY_LIVE_VARIABLES` | [live-variable-budget.md](live-variable-budget.md) |
+| Narrative order | `KOTRAIL_HELPER_BEFORE_FIRST_USE` | [narrative-order.md](narrative-order.md) |
 | No data class in public API | `KOTRAIL_DATA_CLASS_IN_PUBLIC_API` | [no-data-class-in-public-api.md](no-data-class-in-public-api.md) |
 | Visibility policy | `KOTRAIL_VISIBILITY_TOO_WIDE` | [visibility-policy.md](visibility-policy.md) |
 | Required annotation | `KOTRAIL_REQUIRED_ANNOTATION_MISSING` | [required-annotation.md](required-annotation.md) |

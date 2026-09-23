@@ -163,6 +163,12 @@ data class KotrailNarrowLocalScope(
     val maxDistance: Int,
 )
 
+/** Tunables for the live-variable-budget rule. From `rules.liveVariableBudget`. */
+data class KotrailLiveVariables(
+    /** Variables (locals and parameters) that may be live at one statement; `0` disables the rule. */
+    val max: Int,
+)
+
 /** Tunables for the prefer-idiom rule. From `rules.preferIdiom`. */
 data class KotrailPreferIdiom(
     /** Idiom keys (`emptiness`, `negation`, `nullOrEmpty`, `chain`, `elvis`) the project does not want asked for. */
@@ -357,6 +363,7 @@ data class KotrailConfig(
     val sealedWhen: KotrailSealedWhen,
     val preferIdiom: KotrailPreferIdiom,
     val narrowLocalScope: KotrailNarrowLocalScope,
+    val liveVariables: KotrailLiveVariables,
     val noFqnReferences: KotrailNoFqnReferences,
     val forbiddenCall: KotrailForbiddenCall,
     val namedArguments: KotrailNamedArguments,
@@ -399,6 +406,7 @@ data class KotrailConfig(
         const val DEFAULT_MAX_ELVIS = 2
         val IDIOM_KEYS: List<String> = listOf("emptiness", "negation", "nullOrEmpty", "chain", "elvis")
         const val DEFAULT_LOCAL_MAX_DISTANCE = 5
+        const val DEFAULT_MAX_LIVE_VARIABLES = 7
         private val CHAIN_IDIOM = Regex("([\\w.]+)\\s+then\\s+([\\w.]+)\\s*->\\s*([\\w.]+\\.\\w+)")
         private val CALL_IDIOM = Regex("([\\w.]+)\\(([^)]*)\\)\\s*->\\s*([\\w.]+\\.\\w+)")
         const val DEFAULT_MAX_RECEIVER_DEPTH = 0
@@ -682,6 +690,9 @@ data class KotrailConfig(
                 nullChain = KotrailNullChain(
                     maxElvis = int(KotrailRule.NULL_CHAIN_LENGTH, "maxElvis") ?: DEFAULT_MAX_ELVIS,
                     maxSafeCalls = int(KotrailRule.NULL_CHAIN_LENGTH, "maxSafeCalls") ?: DEFAULT_MAX_SAFE_CALLS,
+                ),
+                liveVariables = KotrailLiveVariables(
+                    max = int(KotrailRule.LIVE_VARIABLE_BUDGET, "max") ?: DEFAULT_MAX_LIVE_VARIABLES,
                 ),
                 narrowLocalScope = KotrailNarrowLocalScope(
                     maxDistance = int(KotrailRule.NARROW_LOCAL_SCOPE, "maxDistance") ?: DEFAULT_LOCAL_MAX_DISTANCE,
