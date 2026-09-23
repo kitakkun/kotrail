@@ -157,6 +157,12 @@ data class ChainIdiom(val inner: String, val outer: String, val replacement: Str
 /** A project's own call idiom: `fqn(literal)` is written as the [replacement] function (fully qualified) with no argument. */
 data class CallIdiom(val fqn: String, val literal: String, val replacement: String)
 
+/** Tunables for the narrow-local-scope rule. From `rules.narrowLocalScope`. */
+data class KotrailNarrowLocalScope(
+    /** A local whose first use is more than this many lines below its declaration is reported; `0` switches the distance check off. */
+    val maxDistance: Int,
+)
+
 /** Tunables for the prefer-idiom rule. From `rules.preferIdiom`. */
 data class KotrailPreferIdiom(
     /** Idiom keys (`emptiness`, `negation`, `nullOrEmpty`, `chain`, `elvis`) the project does not want asked for. */
@@ -350,6 +356,7 @@ data class KotrailConfig(
     val implicitReceivers: KotrailImplicitReceivers,
     val sealedWhen: KotrailSealedWhen,
     val preferIdiom: KotrailPreferIdiom,
+    val narrowLocalScope: KotrailNarrowLocalScope,
     val noFqnReferences: KotrailNoFqnReferences,
     val forbiddenCall: KotrailForbiddenCall,
     val namedArguments: KotrailNamedArguments,
@@ -391,6 +398,7 @@ data class KotrailConfig(
         const val DEFAULT_COMMENT_MAX_LINES = 5
         const val DEFAULT_MAX_ELVIS = 2
         val IDIOM_KEYS: List<String> = listOf("emptiness", "negation", "nullOrEmpty", "chain", "elvis")
+        const val DEFAULT_LOCAL_MAX_DISTANCE = 5
         private val CHAIN_IDIOM = Regex("([\\w.]+)\\s+then\\s+([\\w.]+)\\s*->\\s*([\\w.]+\\.\\w+)")
         private val CALL_IDIOM = Regex("([\\w.]+)\\(([^)]*)\\)\\s*->\\s*([\\w.]+\\.\\w+)")
         const val DEFAULT_MAX_RECEIVER_DEPTH = 0
@@ -674,6 +682,9 @@ data class KotrailConfig(
                 nullChain = KotrailNullChain(
                     maxElvis = int(KotrailRule.NULL_CHAIN_LENGTH, "maxElvis") ?: DEFAULT_MAX_ELVIS,
                     maxSafeCalls = int(KotrailRule.NULL_CHAIN_LENGTH, "maxSafeCalls") ?: DEFAULT_MAX_SAFE_CALLS,
+                ),
+                narrowLocalScope = KotrailNarrowLocalScope(
+                    maxDistance = int(KotrailRule.NARROW_LOCAL_SCOPE, "maxDistance") ?: DEFAULT_LOCAL_MAX_DISTANCE,
                 ),
                 preferIdiom = KotrailPreferIdiom(
                     disabled = list(KotrailRule.PREFER_IDIOM, "disabled").orEmpty().onEach { key ->

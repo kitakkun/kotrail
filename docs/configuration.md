@@ -111,6 +111,7 @@ own; a rule not listed has none.
 | `preferIdiom` | `disabled` | `[]` | Idioms not asked for: `emptiness`, `negation`, `nullOrEmpty`, `chain`, `elvis`. |
 | | `chains` | `[]` | The project's own chain idioms, each `<inner fqn> then <outer fqn> -> <replacement fqn>`. |
 | | `calls` | `[]` | The project's own call idioms, each `<fqn>(<literal>) -> <replacement fqn>`. |
+| `narrowLocalScope` | `maxDistance` | `5` | Lines allowed between a local's declaration and the statement that first uses it; `0` switches the distance check off. |
 | `noDataClassInPublicApi` | `scope` | `explicitApi` | `explicitApi` applies the rule only to modules compiled with explicit API mode; `all` everywhere. |
 | `visibilityPolicy` | `private` | | A predicate; matching declarations must be `private`. |
 | | `internal` | | A predicate; matching declarations must be `internal` or `private`. |

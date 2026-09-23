@@ -77,6 +77,72 @@ fun greet(user: User, count: Int, fallback: String?): String {
     return "done"
 }
 
+fun far(user: User, count: Int): String {
+    // Reported: first used seven lines below, with unrelated work in between.
+    val <!KOTRAIL_LOCAL_DECLARED_TOO_EARLY!>greeting<!> = "Hello, ${user.name}"
+    println("one")
+    println("two")
+    println("three")
+    println("four")
+    println("five")
+    println("six")
+    println(greeting)
+
+    // Not reported: used within the limit.
+    val near = user.name
+    println("a")
+    println("b")
+    println(near)
+
+    // Not reported: the initializer reads a var that a statement in between assigns.
+    var mutable = count
+    val snapshot = mutable + 1
+    println("x")
+    println("y")
+    println("z")
+    println("w")
+    println("v")
+    println("u")
+    mutable = 0
+    println(snapshot + mutable)
+
+    // Reported: the var it reads is left alone until the first use, so the value is the same either way.
+    var stable = count
+    val <!KOTRAIL_LOCAL_DECLARED_TOO_EARLY!>copy<!> = stable + 1
+    println("x")
+    println("y")
+    println("z")
+    println("w")
+    println("v")
+    println("u")
+    println(copy)
+    stable = 0
+
+    // Not reported: the var is assigned inside a lambda, which any call in between could run.
+    var captured = count
+    val fromCaptured = captured + 1
+    val bump = { captured += 1 }
+    println("x")
+    println("y")
+    println("z")
+    println("w")
+    println("v")
+    println(fromCaptured)
+    bump()
+
+    // Not reported: the initializer calls a function.
+    val computed = format(user)
+    println("p")
+    println("q")
+    println("r")
+    println("s")
+    println("t")
+    println("o")
+    println(computed)
+
+    return greeting
+}
+
 /* GENERATED_FIR_TAGS: additiveExpression, classDeclaration, comparisonExpression, elvisExpression, forLoop,
 functionDeclaration, ifExpression, integerLiteral, lambdaLiteral, localProperty, multiplicativeExpression, nullableType,
 primaryConstructor, propertyDeclaration, stringLiteral, tryExpression, whenExpression */

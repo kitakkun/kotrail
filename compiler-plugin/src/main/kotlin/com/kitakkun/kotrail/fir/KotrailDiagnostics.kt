@@ -111,6 +111,9 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: the local's name; reported on a local val that only one branch below it uses. */
     val NARROW_LOCAL_SCOPE = tunable1<KtProperty, String>("NARROW_LOCAL_SCOPE", KotrailRule.NARROW_LOCAL_SCOPE, NAME)
 
+    /** Arguments: the local's name, the distance (`9 lines (limit 5)`); reported on a local val declared long before its first use. */
+    val LOCAL_DECLARED_TOO_EARLY = tunable2<KtProperty, String, String>("LOCAL_DECLARED_TOO_EARLY", KotrailRule.NARROW_LOCAL_SCOPE, NAME)
+
     /** Arguments: the expression as written, the idiom to write with its key in parentheses; reported on the expression. */
     val PREFER_IDIOM = tunable2<KtElement, String, String>("PREFER_IDIOM", KotrailRule.PREFER_IDIOM, WHOLE)
 
@@ -523,6 +526,11 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             KotrailDiagnostics.NARROW_LOCAL_SCOPE,
             "[Kotrail] ''{0}'' is only used inside one branch below. Declare it there, so that a reader carries it " +
                 "no further than it matters.",
+        )
+        map.put2(
+            KotrailDiagnostics.LOCAL_DECLARED_TOO_EARLY,
+            "[Kotrail] ''{0}'' is first used {1} below its declaration. Declare it next to that use, so that a " +
+                "reader carries it no further than it matters.",
         )
         map.put2(
             KotrailDiagnostics.PREFER_IDIOM,

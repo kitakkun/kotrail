@@ -18,6 +18,7 @@ import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
 import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.FirRegularClass
 import org.jetbrains.kotlin.fir.expressions.FirBlock
+import org.jetbrains.kotlin.fir.expressions.FirDesugaredAssignmentValueReferenceExpression
 import org.jetbrains.kotlin.fir.expressions.FirDoWhileLoop
 import org.jetbrains.kotlin.fir.expressions.FirElvisExpression
 import org.jetbrains.kotlin.fir.expressions.FirExpression
@@ -30,6 +31,7 @@ import org.jetbrains.kotlin.fir.expressions.FirSmartCastExpression
 import org.jetbrains.kotlin.fir.expressions.FirStringConcatenationCall
 import org.jetbrains.kotlin.fir.expressions.FirThisReceiverExpression
 import org.jetbrains.kotlin.fir.expressions.FirTryExpression
+import org.jetbrains.kotlin.fir.expressions.FirVariableAssignment
 import org.jetbrains.kotlin.fir.expressions.FirWhenBranch
 import org.jetbrains.kotlin.fir.expressions.FirWhenExpression
 import org.jetbrains.kotlin.fir.expressions.FirWhileLoop
@@ -37,6 +39,7 @@ import org.jetbrains.kotlin.fir.expressions.arguments
 import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
 import org.jetbrains.kotlin.fir.references.toResolvedNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirVariableSymbol
 import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
 import org.jetbrains.kotlin.name.StandardClassIds
 import org.jetbrains.kotlin.text
@@ -58,9 +61,14 @@ import org.jetbrains.kotlin.text
  * used in the declaring block itself and every use sits inside one branch block of an `if`,
  * `when`, or `try` directly below, and only when moving the declaration changes nothing: the
  * initializer is a literal, a read of a variable or property, a string template, or built-in
- * operators over those (a call could run at a different time, or not at all). A use inside a
- * loop body or a lambda is left alone, since the initializer would run more than once or later.
+ * operators over those (a call could run at a different time, or not at all), and no statement
+ * the declaration would move past assigns a `var` the initializer reads. A use inside a loop
+ * body or a lambda is left alone, since the initializer would run more than once or later.
  * The fix moves the declaration to the top of the branch, when the branch has braces.
+ *
+ * The second shape is distance: a local whose first use is more than `maxDistance` lines below
+ * its declaration, with unrelated statements in between. The same purity condition applies, and
+ * the fix moves the declaration to just before the statement that first uses it.
  */
 object NarrowLocalScopeChecker : FirPropertyChecker(MppCheckerKind.Common) {
     context(context: CheckerContext, reporter: DiagnosticReporter)
@@ -80,10 +88,29 @@ object NarrowLocalScopeChecker : FirPropertyChecker(MppCheckerKind.Common) {
 
         val finder = UseFinder(declaration.symbol)
         for (statement in later) statement.accept(finder)
-        val target = finder.singleBranch() ?: return
+        val dependencies = initializer.varDependencies()
+        // A var the function captures in a lambda can change through any call in between.
+        if (dependencies.isNotEmpty() && later.any { it.capturesAssignmentOf(dependencies) }) return
 
-        val fix = moveFix(source, block, target)
-        reportKotrail(source, KotrailDiagnostics.NARROW_LOCAL_SCOPE, declaration.name.asString(), fix)
+        val target = finder.singleBranch()
+        if (target != null) {
+            if (later.any { it.assignsAnyOf(dependencies, except = target) }) return
+            val fix = moveFix(source, block, target)
+            reportKotrail(source, KotrailDiagnostics.NARROW_LOCAL_SCOPE, declaration.name.asString(), fix)
+            return
+        }
+
+        val maxDistance = context.session.kotrailConfig.narrowLocalScope.maxDistance
+        if (maxDistance <= 0) return
+        val firstUse = later.firstOrNull { statement -> UseFinder(declaration.symbol).also { statement.accept(it) }.uses > 0 } ?: return
+        if (later.takeWhile { it !== firstUse }.any { it.assignsAnyOf(dependencies, except = null) }) return
+        val firstUseSource = firstUse.source ?: return
+        val blockSource = block.source ?: return
+        val blockText = blockSource.text?.toString() ?: return
+        val lines = blockText.substring(source.endOffset - blockSource.startOffset, firstUseSource.startOffset - blockSource.startOffset).count { it == '\n' }
+        if (lines <= maxDistance) return
+        val fix = moveBeforeFix(source, block, firstUseSource)
+        reportKotrail(source, KotrailDiagnostics.LOCAL_DECLARED_TOO_EARLY, declaration.name.asString(), "$lines lines (limit $maxDistance)", fix)
     }
 
     /**
@@ -96,7 +123,8 @@ object NarrowLocalScopeChecker : FirPropertyChecker(MppCheckerKind.Common) {
         private var branch: FirBlock? = null
         private val branches = mutableSetOf<FirBlock>()
         private var pinned = false
-        private var uses = 0
+        var uses = 0
+            private set
 
         fun singleBranch(): FirBlock? = if (!pinned && uses > 0) branches.singleOrNull() else null
 
@@ -186,8 +214,82 @@ object NarrowLocalScopeChecker : FirPropertyChecker(MppCheckerKind.Common) {
             callee != null && callee.callableId?.classId?.let { it in StandardClassIds.primitiveTypes || it == StandardClassIds.String } == true &&
                 (explicitReceiver?.isPure() ?: true) && arguments.all { it.isPure() }
         }
+        // A read is movable; whether it still reads the same value is checked against the statements moved past.
         is FirQualifiedAccessExpression -> explicitReceiver?.isPure() ?: true
         else -> false
+    }
+
+    /** The `var`s the initializer reads: the values that a statement moved past could change. */
+    private fun FirExpression.varDependencies(): Set<FirVariableSymbol<*>> {
+        val found = mutableSetOf<FirVariableSymbol<*>>()
+        accept(object : FirVisitorVoid() {
+            override fun visitElement(element: FirElement) = element.acceptChildren(this)
+            override fun visitPropertyAccessExpression(propertyAccessExpression: FirPropertyAccessExpression) {
+                (propertyAccessExpression.calleeReference.toResolvedCallableSymbol() as? FirVariableSymbol<*>)?.takeIf { it.isVar }?.let { found += it }
+                propertyAccessExpression.acceptChildren(this)
+            }
+        })
+        return found
+    }
+
+    /**
+     * Whether any of [targets] is assigned inside [element], with [except] (the block the
+     * declaration moves into) left out. An assignment inside a lambda counts wherever the lambda
+     * is: it can run from any statement in between.
+     */
+    private fun FirElement.assignsAnyOf(targets: Set<FirVariableSymbol<*>>, except: FirBlock?): Boolean {
+        if (targets.isEmpty()) return false
+        var found = false
+        accept(object : FirVisitorVoid() {
+            override fun visitElement(element: FirElement) {
+                if (found || element === except) return
+                element.acceptChildren(this)
+            }
+            override fun visitVariableAssignment(variableAssignment: FirVariableAssignment) {
+                val lValue = when (val value = variableAssignment.lValue) {
+                    is FirDesugaredAssignmentValueReferenceExpression -> value.expressionRef.value
+                    else -> value
+                }
+                if ((lValue as? FirQualifiedAccessExpression)?.calleeReference?.toResolvedCallableSymbol() in targets) found = true
+                else variableAssignment.acceptChildren(this)
+            }
+        })
+        return found
+    }
+
+    /** Whether a lambda or local function in [this] assigns one of [targets]: such a var can change through any call. */
+    private fun FirElement.capturesAssignmentOf(targets: Set<FirVariableSymbol<*>>): Boolean {
+        var found = false
+        accept(object : FirVisitorVoid() {
+            override fun visitElement(element: FirElement) {
+                if (found) return
+                element.acceptChildren(this)
+            }
+            override fun visitAnonymousFunction(anonymousFunction: FirAnonymousFunction) {
+                if (anonymousFunction.assignsAnyOf(targets, except = null)) found = true
+            }
+            override fun visitNamedFunction(namedFunction: FirNamedFunction) {
+                if (namedFunction.assignsAnyOf(targets, except = null)) found = true
+            }
+        })
+        return found
+    }
+
+    /** Deletes the declaration's line and inserts the declaration, with the same indentation, before [statement] of the same block. */
+    private fun moveBeforeFix(declaration: KtSourceElement, block: FirBlock, statement: KtSourceElement): List<FixEdit> {
+        val blockSource = block.source ?: return emptyList()
+        val blockText = blockSource.text?.toString() ?: return emptyList()
+        val declarationText = declaration.text?.toString() ?: return emptyList()
+        var lineStart = declaration.startOffset - blockSource.startOffset
+        while (lineStart > 0 && blockText[lineStart - 1] != '\n' && blockText[lineStart - 1].isWhitespace()) lineStart--
+        var lineEnd = declaration.endOffset - blockSource.startOffset
+        if (blockText.getOrNull(lineEnd) == '\n') lineEnd++
+        val deletion = FixEdit(blockSource.startOffset + lineStart, blockSource.startOffset + lineEnd, "")
+        var indentStart = statement.startOffset - blockSource.startOffset
+        while (indentStart > 0 && blockText[indentStart - 1] != '\n' && blockText[indentStart - 1].isWhitespace()) indentStart--
+        val indent = blockText.substring(indentStart, statement.startOffset - blockSource.startOffset)
+        val insertion = FixEdit(statement.startOffset, statement.startOffset, "$declarationText\n$indent")
+        return listOf(deletion, insertion)
     }
 
     /** Deletes the declaration's line and inserts the declaration before the branch's first statement, when the branch has braces. */

@@ -1,13 +1,14 @@
 # Narrow local scope
 
-**Diagnostic:** `KOTRAIL_NARROW_LOCAL_SCOPE` (error, on the local's name)
+**Diagnostics:** `KOTRAIL_NARROW_LOCAL_SCOPE`, `KOTRAIL_LOCAL_DECLARED_TOO_EARLY` (error, on the local's name)
 **Key:** `rules.narrowLocalScope` (on by default)
-**Settings:** none
-**Fix:** automatic when the branch has braces (`kotrailFix` moves the declaration to the top of the branch)
+**Setting:** `maxDistance` (default `5`; `0` switches the distance check off)
+**Fix:** automatic (`kotrailFix` moves the declaration to the top of the branch, when it has braces, or to just before the first use)
 
 ## What it rejects
 
-A local `val` that only one branch below it reads:
+A local `val` that only one branch below it reads, or one that is first read long after it is
+declared:
 
 ```kotlin
 val name = user.name              // reported: only the else branch reads it
@@ -16,6 +17,14 @@ if (user.isGuest) {
 } else {
     Text(name)
 }
+```
+
+```kotlin
+val greeting = "Hello, ${user.name}"   // reported: first used 7 lines below
+println("one")
+...
+println("six")
+println(greeting)
 ```
 
 ## What it asks for
@@ -27,6 +36,10 @@ if (user.isGuest) {
     val name = user.name
     Text(name)
 }
+
+println("six")
+val greeting = "Hello, ${user.name}"
+println(greeting)
 ```
 
 Every declaration a reader passes is one more thing to carry until it is used, and the further
@@ -36,7 +49,7 @@ that do not need it are shorter to think about.
 
 ## When it fires
 
-All of the following hold:
+The branch shape, `KOTRAIL_NARROW_LOCAL_SCOPE`, when all of the following hold:
 
 - The local is a `val` with an initializer that can move without changing anything: a literal,
   a read of a variable or property, `this`, an object, a string template, an elvis, or built-in
@@ -47,6 +60,18 @@ All of the following hold:
 - Every read sits inside the same branch block of one `if`, `when`, or `try` (its `try`,
   `catch`, or `finally` block) that follows in the declaring block, at any depth inside that
   branch.
+
+The distance shape, `KOTRAIL_LOCAL_DECLARED_TOO_EARLY`, when the branch shape does not apply,
+the initializer is pure in the same sense, and more than `maxDistance` lines separate the end of
+the declaration from the start of the statement that first reads the local. The lines in between
+are, by construction, statements that do not use it; the fix moves the declaration to just before
+that statement.
+
+For both shapes, the `var`s the initializer reads are its dependencies: the declaration moves
+only if no statement it would move past (and, for the branch shape, nothing in the branch
+statement outside the target block) assigns one of them, and none of them is assigned inside a
+lambda or local function, which any call in between could run. A `val` read cannot change and is
+no obstacle.
 
 ## When it stays quiet
 

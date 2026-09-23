@@ -106,6 +106,9 @@ object ConfigSchema {
             Setting("maxElvis", Kind.INT, "Maximum ?: fallbacks in one expression, a trailing ?: return or ?: throw not counted; 0 disables.", default = "2"),
             Setting("maxSafeCalls", Kind.INT, "Maximum ?. along one receiver chain; 0 disables.", default = "0"),
         ),
+        KotrailRule.NARROW_LOCAL_SCOPE to listOf(
+            Setting("maxDistance", Kind.INT, "Lines allowed between a local's declaration and the statement that first uses it; 0 switches the distance check off.", default = "5"),
+        ),
         KotrailRule.PREFER_IDIOM to listOf(
             Setting("disabled", Kind.LIST, "Idioms not asked for: emptiness (size == 0), negation (!isEmpty()), nullOrEmpty (x == null || x.isEmpty()), chain (filter { }.first()), elvis (if (x != null) x else y)."),
             Setting("chains", Kind.LIST, "The project's own chain idioms, each '<inner fqn> then <outer fqn> -> <replacement fqn>': inner(arg).outer() is written as the replacement with arg."),
