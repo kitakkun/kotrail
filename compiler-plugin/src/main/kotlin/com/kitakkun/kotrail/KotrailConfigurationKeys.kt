@@ -17,4 +17,10 @@ object KotrailConfigurationKeys {
 
     /** Directory of the per-file fix records of this compilation; unset means no fixes are recorded. */
     val FIXES_DIR = CompilerConfigurationKey<String>("fixesDir")
+
+    /** Directory where this compilation records the UI composables it declares; unset means none are recorded. */
+    val COMPOSABLES_DIR = CompilerConfigurationKey<String>("composablesDir")
+
+    /** Directories of the composable records of the compilations this one is associated with, for preview coverage. */
+    val ASSOCIATED_COMPOSABLES_DIRS = CompilerConfigurationKey<List<String>>("associatedComposablesDir")
 }

@@ -6,6 +6,7 @@ import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.PreviewScope
 import com.kitakkun.kotrail.exclude.Glob
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
+import com.kitakkun.kotrail.fir.compose.ComposableManifest
 import com.kitakkun.kotrail.fir.compose.emitsUi
 import com.kitakkun.kotrail.fir.compose.isComposable
 import com.kitakkun.kotrail.fir.compose.isPreview
@@ -48,11 +49,12 @@ import java.util.WeakHashMap
  *     packages: [com.acme.ui, com.acme.ui.cards]
  * ```
  *
- * The composables live on the classpath (a library the sample module depends on, `main` seen from
- * a screenshot-test source set) or among this compilation's own files; either way they are
- * enumerated by package through the symbol providers, so a package is named exactly rather than
- * by pattern; a package in which nothing is found is reported as such rather than counted as
- * covered. Previews from every file of the compilation count. What is missing is reported
+ * The composables are among this compilation's own files, in a module compiled from source in
+ * the same build, or recorded by an associated compilation (`main` seen from a `preview` or
+ * screenshot-test compilation reaches it as class files only, which no symbol provider
+ * enumerates, so `main` writes what it declares; see [ComposableManifest]). Either way they are
+ * found by package, so a package is named exactly rather than by pattern; a package in which
+ * nothing is found is reported as such rather than counted as covered. Previews from every file of the compilation count. What is missing is reported
  * on the package directive of one file, the first by name among those that contain previews, so
  * that a compilation without any preview still fails at a definite place.
  *
@@ -75,21 +77,28 @@ object ComposablePreviewCoverageChecker : FirFileChecker(MppCheckerKind.Common) 
         val source = declaration.packageDirective.source ?: declaration.source ?: return
         if (source.kind is KtFakeSourceElementKind) return
         val excluded = settings.excludeNames.map(::Glob)
+        val previewed = index.previewed.mapTo(HashSet()) { it.asSingleFqName().asString() }
         for (packageName in settings.packages) {
-            val composables = session.composablesIn(FqName(packageName), settings.visibility)
+            val composables = session.composablesIn(FqName(packageName), settings.visibility).map { it.callableId.asSingleFqName().asString() } +
+                index.recorded.filter { it.packageName == packageName && it.counts(settings.visibility) }.map { it.name }
             // A package with nothing to cover is a typo, or one this compilation cannot see; silence would read as full coverage.
             if (composables.isEmpty()) {
                 reportKotrail(source, KotrailDiagnostics.PREVIEW_COVERAGE_PACKAGE_EMPTY, packageName)
                 continue
             }
-            val missing = composables
-                .filter { it.callableId !in index.previewed }
-                .filter { symbol -> excluded.none { it.matches(symbol.callableId.asSingleFqName().asString()) } }
-                .sortedBy { it.callableId.asSingleFqName().asString() }
-            for (symbol in missing) {
-                reportKotrail(source, KotrailDiagnostics.COMPOSABLE_NOT_COVERED_BY_PREVIEW, symbol.callableId.asSingleFqName().asString())
+            val missing = composables.distinct()
+                .filter { it !in previewed }
+                .filter { name -> excluded.none { it.matches(name) } }
+                .sorted()
+            for (name in missing) {
+                reportKotrail(source, KotrailDiagnostics.COMPOSABLE_NOT_COVERED_BY_PREVIEW, name)
             }
         }
+    }
+
+    private fun ComposableManifest.Entry.counts(scope: PreviewScope): Boolean = when (scope) {
+        PreviewScope.PUBLIC -> visibility == "public"
+        PreviewScope.INTERNAL, PreviewScope.ALL -> visibility == "public" || visibility == "internal"
     }
 
     /**
@@ -114,10 +123,14 @@ object ComposablePreviewCoverageChecker : FirFileChecker(MppCheckerKind.Common) 
         }
     }
 
-    /** What the compilation's previews call, and which file carries the report; computed once per session. */
+    /**
+     * What the compilation's previews call, which file carries the report, and the composables the
+     * associated compilations recorded (see [ComposableManifest]); computed once per session.
+     */
     private class Index(session: FirSession) {
         val previewed: Set<CallableId>
         val anchorName: String?
+        val recorded: List<ComposableManifest.Entry> = ComposableManifest.read(session.kotrailConfig.associatedComposablesDirs)
 
         init {
             val provider = session.firProvider

@@ -120,6 +120,12 @@ The records are an output of the compile task, so they travel with the build cac
 `clean`. Nothing else reads them, but the format is plain JSON lines (the `fixesDir` option of the
 compiler plugin), so an editor or an assistant can apply them too.
 
+Next to the fixes, every compilation records the UI composables it declares under
+`build/kotrail/composables`, and a compilation reads the records of the compilations it is
+associated with (`main`, for `test` or for a `preview` compilation): that is how
+[preview coverage](rules/compose/preview-coverage.md#a-preview-compilation-next-to-main) sees
+`main` from a compilation that only has its class files.
+
 ## Multiplatform
 
 Rules apply to every compilation of every target. The annotations artifact is added automatically

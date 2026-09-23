@@ -45,6 +45,34 @@ all still fails at a definite place:
 e: Previews.kt:1:1 [Kotrail] 'com.acme.ui.UserCard' has no preview in this compilation: no @Preview function here calls it. …
 ```
 
+## A preview compilation next to main
+
+A JVM library that keeps its previews out of the published JAR can give them a compilation of
+their own, associated with `main`:
+
+```kotlin
+kotlin {
+    target.compilations.create("preview") {
+        associateWith(target.compilations.getByName("main"))
+    }
+}
+
+kotrail {
+    compilation("preview") {
+        configFile = file("kotrail-preview.yaml")
+    }
+}
+```
+
+Seen from `preview`, `main` is class files, which the compiler cannot enumerate by package. So
+every compilation the Gradle plugin configures records the UI composables it declares under
+`build/kotrail/composables/<target>-<compilation>`, one JSON-lines file per source file, and a
+compilation reads the records of the compilations it is associated with. `previewCoverage` in
+`preview` then checks `main`'s composables from `main`'s own record, which knows which of them
+draw, since `main` had the bodies. The records are an output of `main`'s compile task and an input
+of `preview`'s, so they are always current; nothing has to be switched on in `main`. Outside
+Gradle, the compiler plugin's `composablesDir` and `associatedComposablesDir` options do the same.
+
 ## Settings
 
 - `packages`: the exact package names to cover. Empty means the rule does nothing.
@@ -59,7 +87,7 @@ e: Previews.kt:1:1 [Kotrail] 'com.acme.ui.UserCard' has no preview in this compi
 |---|---|
 | Next to the composable (an app) | `previewRequired` (default) |
 | Another source set of the same compilation (`androidMain` for `commonMain`) | `previewRequired` off in `main`; `previewCoverage` in the platform compilation, `visibility: internal` if wanted |
-| A test or screenshot-test source set | `previewRequired` off in `main`; `previewCoverage` in the test compilation via `test { }` / `compilation(name) { }` |
+| A test or screenshot-test source set, or a `preview` compilation associated with `main` | `previewRequired` off in `main`; `previewCoverage` in that compilation via `test { }` / `compilation(name) { }`; `main`'s composables reach it through its record (above) |
 | A sample module | `previewRequired` off in the library; `previewCoverage` in the sample |
 
 ## When it stays quiet
@@ -67,7 +95,8 @@ e: Previews.kt:1:1 [Kotrail] 'com.acme.ui.UserCard' has no preview in this compi
 - `packages` is empty, or the composable is in a package that is not listed.
 - The composable is called from a preview anywhere in this compilation.
 - The composable is private, returns a value, is a preview itself, is `expect`, is a class
-  member (only top-level composables are enumerated), or matches `excludeNames`.
+  member of a module seen from source (only top-level composables are enumerated there; a
+  record lists members too), or matches `excludeNames`.
 - The composable is in this compilation and draws nothing (see the UI test in
   [preview required](preview-required.md#when-it-stays-quiet), shared through
   `previewRequired.nonUiPackages`). A composable from the classpath is taken as drawing, since

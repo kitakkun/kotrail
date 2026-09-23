@@ -52,8 +52,14 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
         val compilationName = kotlinCompilation.name
         registerConfigFilesAsInputs(kotlinCompilation, compilationName)
         wireFixRecords(kotlinCompilation)
+        wireComposableRecords(kotlinCompilation)
         return project.provider {
-            optionsFor(compilationName) + SubpluginOption("fixesDir", fixesDirectoryFor(kotlinCompilation).get().asFile.path)
+            optionsFor(compilationName) +
+                SubpluginOption("fixesDir", fixesDirectoryFor(kotlinCompilation).get().asFile.path) +
+                SubpluginOption("composablesDir", composablesDirectoryFor(kotlinCompilation).get().asFile.path) +
+                kotlinCompilation.allAssociatedCompilations.map {
+                    SubpluginOption("associatedComposablesDir", composablesDirectoryFor(it).get().asFile.path)
+                }
         }
     }
 
@@ -86,6 +92,27 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
             task.outputs.dir(directory).withPropertyName("kotrailFixes")
         }
     }
+
+    /**
+     * Every compilation records the UI composables it declares under `build/kotrail/composables`,
+     * and reads the records of the compilations it is associated with (`main`, for a `test` or a
+     * `preview` compilation), so that `compose.previewCoverage` in the compilation that carries
+     * the previews can check `main`, which it otherwise sees as class files only. The records are
+     * an output of the compile task and an input of the associated compilations' compile tasks.
+     */
+    private fun wireComposableRecords(kotlinCompilation: KotlinCompilation<*>) {
+        val directory = composablesDirectoryFor(kotlinCompilation)
+        kotlinCompilation.compileTaskProvider.configure { task ->
+            task.outputs.dir(directory).withPropertyName("kotrailComposables")
+            task.inputs.files(project.provider { kotlinCompilation.allAssociatedCompilations.map { composablesDirectoryFor(it).get() } })
+                .withPropertyName("kotrailAssociatedComposables")
+                .withPathSensitivity(PathSensitivity.RELATIVE)
+                .optional()
+        }
+    }
+
+    private fun composablesDirectoryFor(kotlinCompilation: KotlinCompilation<*>): Provider<Directory> =
+        project.layout.buildDirectory.dir("kotrail/composables/${kotlinCompilation.target.name}-${kotlinCompilation.name}")
 
     private fun fixesDirectory(): Provider<Directory> = project.layout.buildDirectory.dir("kotrail/fixes")
 

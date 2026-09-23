@@ -185,6 +185,55 @@ class KotrailGradlePluginFunctionalTest {
         assertEquals(text, File(projectDir, "src/main/kotlin/Cases.kt").readText())
     }
 
+    @Test
+    fun `a preview compilation checks the coverage of the main it is associated with`() {
+        writeSettings()
+        writeFile("kotrail.yaml", "severity: warning\nrules:\n  compose.previewRequired: off\n")
+        writeFile("kotrail-preview.yaml", "rules:\n  compose.previewCoverage:\n    enabled: true\n    severity: error\n    packages: [com.acme.ui]\n")
+        writeBuild(
+            """
+            kotlin {
+                target.compilations.create("preview") {
+                    associateWith(target.compilations.getByName("main"))
+                }
+            }
+
+            kotrail {
+                configFile = file("kotrail.yaml")
+                compilation("preview") {
+                    configFile = file("kotrail-preview.yaml")
+                }
+            }
+            """.trimIndent(),
+        )
+        writeFile("src/main/kotlin/androidx/compose/runtime/Composable.kt", COMPOSABLE_STUB)
+        writeFile("src/main/kotlin/androidx/compose/ui/tooling/preview/Preview.kt", PREVIEW_STUB)
+        writeFile("src/main/kotlin/com/acme/ui/Cards.kt", UI_COMPOSABLES)
+        writeFile(
+            "src/preview/kotlin/com/acme/ui/Previews.kt",
+            """
+            package com.acme.ui
+
+            import androidx.compose.runtime.Composable
+            import androidx.compose.ui.tooling.preview.Preview
+
+            @Preview
+            @Composable
+            private fun CoveredPreview() {
+                Covered("preview")
+            }
+            """.trimIndent(),
+        )
+
+        // main reaches the preview compilation as class files; what it declares comes from its record.
+        val result = runBuild("compilePreviewKotlin", expectFailure = true)
+        assertEquals(TaskOutcome.SUCCESS, result.task(":compileKotlin")?.outcome, result.output)
+        assertEquals(TaskOutcome.FAILED, result.task(":compilePreviewKotlin")?.outcome, result.output)
+        assertTrue(result.output.contains("'com.acme.ui.Missing' has no preview in this compilation"), result.output)
+        assertFalse(result.output.contains("'com.acme.ui.Covered' has no preview"), result.output)
+        assertFalse(result.output.contains("KOTRAIL_PREVIEW_COVERAGE_PACKAGE_EMPTY"), result.output)
+    }
+
     private fun writeSettings() {
         writeFile(
             "settings.gradle.kts",
@@ -249,6 +298,43 @@ class KotrailGradlePluginFunctionalTest {
         val NOT_NULL_ASSERTION_VIOLATION = """
             class Cases(private val name: String?) {
                 fun length(): Int = name!!.length
+            }
+        """.trimIndent()
+
+        // The annotations the Compose rules look for, by their real names, and a Text that draws: a
+        // stub in this compilation is judged by its body, and invoking a composable slot counts.
+        val COMPOSABLE_STUB = """
+            package androidx.compose.runtime
+
+            @Target(AnnotationTarget.FUNCTION, AnnotationTarget.TYPE)
+            annotation class Composable
+        """.trimIndent()
+
+        val PREVIEW_STUB = """
+            package androidx.compose.ui.tooling.preview
+
+            @Target(AnnotationTarget.FUNCTION, AnnotationTarget.ANNOTATION_CLASS)
+            annotation class Preview
+        """.trimIndent()
+
+        val UI_COMPOSABLES = """
+            package com.acme.ui
+
+            import androidx.compose.runtime.Composable
+
+            @Composable
+            fun Text(text: String, content: @Composable () -> Unit = {}) {
+                content()
+            }
+
+            @Composable
+            fun Covered(title: String) {
+                Text(title)
+            }
+
+            @Composable
+            fun Missing() {
+                Text("missing")
             }
         """.trimIndent()
 

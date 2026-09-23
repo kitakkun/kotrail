@@ -47,6 +47,7 @@ import com.kitakkun.kotrail.fir.compose.checkers.ComposableModifierParameterChec
 import com.kitakkun.kotrail.fir.compose.checkers.ComposableNamedCallbackArgumentsChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposableNamingChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposableNestingChecker
+import com.kitakkun.kotrail.fir.compose.checkers.ComposableManifestChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposablePreviewCoverageChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposablePreviewRequiredChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposablesPerFileChecker
@@ -104,6 +105,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
     override val fileCheckers: Set<FirFileChecker> = setOf(
         // First, so that a file's fix record is fresh before any rule reports on the file.
         FixRecordChecker,
+        ComposableManifestChecker,
         CommentLengthChecker,
         NarrativeOrderChecker.FileChecker,
         ParameterCommentChecker,

@@ -350,6 +350,10 @@ data class KotrailConfig(
     val enabled: Boolean,
     /** Directory of the per-file fix records, or `null` to record none (the `fixesDir` plugin option). */
     val fixesDir: String?,
+    /** Directory of the per-file composable records, or `null` to record none (the `composablesDir` plugin option). */
+    val composablesDir: String?,
+    /** Composable records of associated compilations, for preview coverage (the `associatedComposablesDir` plugin option). */
+    val associatedComposablesDirs: List<String>,
     private val switches: Map<KotrailRule, Boolean>,
     private val severities: Map<KotrailRule, Severity>,
     private val notes: Map<KotrailRule, String>,
@@ -449,7 +453,11 @@ data class KotrailConfig(
                 configuration.get(KotrailConfigurationKeys.CONFIG_FILE).orEmpty(),
                 configuration.get(KotrailConfigurationKeys.OPTIONS).orEmpty(),
             )
-            Reader(tree).read().copy(fixesDir = configuration.get(KotrailConfigurationKeys.FIXES_DIR))
+            Reader(tree).read().copy(
+                fixesDir = configuration.get(KotrailConfigurationKeys.FIXES_DIR),
+                composablesDir = configuration.get(KotrailConfigurationKeys.COMPOSABLES_DIR),
+                associatedComposablesDirs = configuration.get(KotrailConfigurationKeys.ASSOCIATED_COMPOSABLES_DIRS).orEmpty(),
+            )
         } catch (e: ConfigException) {
             throw CliOptionProcessingException("Kotrail configuration: ${e.message}")
         }
@@ -642,6 +650,8 @@ data class KotrailConfig(
             return KotrailConfig(
                 enabled = boolean(tree, "enabled") ?: true,
                 fixesDir = null,
+                composablesDir = null,
+                associatedComposablesDirs = emptyList(),
                 switches = switches,
                 severities = severities,
                 notes = notes,
