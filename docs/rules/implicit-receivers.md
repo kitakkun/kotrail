@@ -80,6 +80,10 @@ rules:
 
 - The access is qualified (`this.text`, `this@Screen.text`, `screen.text`).
 - Only one receiver in scope has a member of that name.
+- The other receiver has the same type as the one that wins (`Row { Row { } }`, a JSON builder
+  nested in a JSON builder): the nearest one is what everybody means.
+- The callee is a member extension, which takes both receivers as one declaration.
+- The name is `toString`, `hashCode`, or `equals`: every receiver has these.
 - Only one receiver is in scope: a plain method, a top-level extension, a lambda in a top-level
   function.
 - `maxDepth` is `0`, or the count is within it.

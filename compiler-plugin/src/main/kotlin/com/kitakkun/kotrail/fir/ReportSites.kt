@@ -69,6 +69,24 @@ internal fun reportSite(): ReportSite {
     )
 }
 
+/**
+ * Runs [block] with [declarations] (outermost first) counted as the declarations enclosing every
+ * report made inside it. A file checker reports on declarations that its context does not list,
+ * so predicates such as `name(...)` would otherwise see only the file.
+ */
+internal inline fun <T> reportingAt(declarations: List<FirDeclaration>, block: () -> T): T {
+    val previous = siteDeclarations.get()
+    siteDeclarations.set(declarations)
+    try {
+        return block()
+    } finally {
+        siteDeclarations.set(previous)
+    }
+}
+
+@PublishedApi
+internal val siteDeclarations: ThreadLocal<List<FirDeclaration>?> = ThreadLocal()
+
 /** Enclosing declarations outermost first, ending with the declaration under check when there is one. */
 context(context: CheckerContext)
 private fun declarationChain(): List<FirBasedSymbol<*>> {
@@ -77,6 +95,9 @@ private fun declarationChain(): List<FirBasedSymbol<*>> {
     }.toMutableList()
     val current = context.containingElements.lastOrNull { it is FirNamedFunction || it is FirProperty || it is FirRegularClass } as? FirDeclaration
     if (current != null && chain.lastOrNull() != current.symbol) chain += current.symbol
+    for (declaration in siteDeclarations.get().orEmpty()) {
+        if (chain.lastOrNull() != declaration.symbol) chain += declaration.symbol
+    }
     return chain
 }
 

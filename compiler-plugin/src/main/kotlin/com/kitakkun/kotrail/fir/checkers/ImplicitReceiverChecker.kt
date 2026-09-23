@@ -57,7 +57,9 @@ import org.jetbrains.kotlin.name.Name
  * `runBlocking { }`, `apply { }`, or a builder is the ordinary way to write Kotlin. Receivers are
  * the dispatch receiver of an enclosing class or object, the extension receiver of an enclosing
  * function or property, and the receiver of an enclosing lambda; a non-inner nested class starts
- * over.
+ * over. Left alone: two receivers of one type (`Row { Row { } }`, a builder inside itself), where
+ * the nearest one is what everybody means; a member extension, which takes both receivers as one
+ * declaration; and `toString`, `hashCode`, `equals`, which every receiver has.
  */
 object AmbiguousImplicitReceiverChecker : FirQualifiedAccessExpressionChecker(MppCheckerKind.Common) {
     context(context: CheckerContext, reporter: DiagnosticReporter)
@@ -74,12 +76,22 @@ object AmbiguousImplicitReceiverChecker : FirQualifiedAccessExpressionChecker(Mp
             .filter { it.isImplicit }
         if (implicit.isEmpty()) return
         val callee = expression.calleeReference.toResolvedCallableSymbol() ?: return
+        // A member extension takes both receivers at once: one declaration, nothing to choose between.
+        if (callee.receiverParameterSymbol != null && callee.dispatchReceiverType != null) return
+        // Every receiver has these; that another one has them too says nothing.
+        if (callee.name in ANY_MEMBERS) return
         val inScope = context.receiversInScope()
         if (inScope.size < 2) return
         val session = context.session
         for (receiver in implicit) {
             val bound = (receiver.calleeReference as? FirThisReference)?.boundSymbol ?: continue
-            val other = inScope.firstOrNull { it != bound && it.hasMemberNamed(callee.name, session, context.scopeSession) } ?: continue
+            val boundClass = bound.classSymbol(session)
+            val other = inScope.firstOrNull { candidate ->
+                candidate != bound &&
+                    // Nesting a scope in another of the same type (`Row { Row { } }`, a builder in a builder) means the nearest one.
+                    candidate.classSymbol(session) != boundClass &&
+                    candidate.hasMemberNamed(callee.name, session, context.scopeSession)
+            } ?: continue
             reportKotrail(
                 source,
                 KotrailDiagnostics.IMPLICIT_RECEIVER_AMBIGUOUS,
@@ -100,13 +112,17 @@ object AmbiguousImplicitReceiverChecker : FirQualifiedAccessExpressionChecker(Mp
         return receivers
     }
 
+    private val ANY_MEMBERS = setOf(Name.identifier("toString"), Name.identifier("hashCode"), Name.identifier("equals"))
+
+    private fun FirThisOwnerSymbol<*>.classSymbol(session: FirSession): FirClassSymbol<*>? = when (this) {
+        is FirClassSymbol<*> -> this
+        is FirReceiverParameterSymbol -> resolvedType.fullyExpandedType(session).toRegularClassSymbol(session)
+        else -> null
+    }
+
     /** Whether the receiver's type declares or inherits a function or property called [name]. */
     private fun FirThisOwnerSymbol<*>.hasMemberNamed(name: Name, session: FirSession, scopeSession: ScopeSession): Boolean {
-        val classSymbol = when (this) {
-            is FirClassSymbol<*> -> this
-            is FirReceiverParameterSymbol -> resolvedType.fullyExpandedType(session).toRegularClassSymbol(session)
-            else -> null
-        } ?: return false
+        val classSymbol = classSymbol(session) ?: return false
         val scope = classSymbol.unsubstitutedScope(session, scopeSession, withForcedTypeCalculator = false, memberRequiredPhase = null)
         return scope.getFunctions(name).isNotEmpty() || scope.getProperties(name).isNotEmpty()
     }

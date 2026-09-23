@@ -1,6 +1,6 @@
 # Preview coverage (Compose)
 
-**Diagnostic:** `KOTRAIL_COMPOSABLE_NOT_COVERED_BY_PREVIEW` (error, on the package directive of the compilation's anchor file)
+**Diagnostics:** `KOTRAIL_COMPOSABLE_NOT_COVERED_BY_PREVIEW`, `KOTRAIL_PREVIEW_COVERAGE_PACKAGE_EMPTY` (error, on the package directive of the compilation's anchor file)
 **Key:** `rules.compose.previewCoverage` (**off by default**)
 **Settings:** `packages` (default `[]`), `visibility` (default `public`), `excludeNames` (default `[]`)
 
@@ -20,16 +20,18 @@ question from there: is every public UI composable of the listed packages called
 ```yaml
 # kotrail-screenshotTest.yaml, or the sample module's kotrail.yaml
 rules:
-  compose:
-    previewRequired: off
-    previewCoverage:
-      packages: [com.acme.ui, com.acme.ui.cards]
+  compose.previewRequired: off
+  compose.previewCoverage:
+    packages: [com.acme.ui, com.acme.ui.cards]
 ```
 
-The composables are enumerated by package through the compiler's symbol provider, from the
+The composables are enumerated by package through the compiler's symbol providers, from the
 classpath or from this compilation's own files alike, which is why a package is named exactly
 rather than by pattern: the classpath cannot be searched by glob. Sub-packages are listed one by
-one.
+one. A listed package in which this compilation sees no UI composable is reported
+(`KOTRAIL_PREVIEW_COVERAGE_PACKAGE_EMPTY`, on the same package directive) rather than counted as
+covered, so that a misspelled package, or one whose composables are not visible from here, does
+not pass in silence.
 
 ## What it rejects
 

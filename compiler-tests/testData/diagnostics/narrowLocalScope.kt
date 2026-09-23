@@ -143,6 +143,34 @@ fun far(user: User, count: Int): String {
     return greeting
 }
 
+
+class Colors(val border: String, val selection: String)
+
+fun row(modifier: String, content: () -> Unit) { content() }
+
+// Not reported: the else branch reads it, and so does a lambda nested in a lambda further down.
+fun segmented(enabled: Boolean, options: List<String>, theme: Colors) {
+    val colors = theme
+    row(modifier = if (enabled) "plain" else colors.border) {
+        options.forEach { option ->
+            val background = when {
+                option.isEmpty() -> colors.selection
+                else -> "none"
+            }
+            println(background)
+        }
+    }
+}
+
+// Not reported, and no crash: the entries of a destructuring follow it as statements inside its own range.
+fun destructure(first: Pair<String, Int>, last: Pair<String, Int>): String {
+    val (name, count) = first
+    val (again, more) = last
+    println(again)
+    println(more)
+    return if (count > 0) name else "none"
+}
+
 /* GENERATED_FIR_TAGS: additiveExpression, classDeclaration, comparisonExpression, elvisExpression, forLoop,
 functionDeclaration, ifExpression, integerLiteral, lambdaLiteral, localProperty, multiplicativeExpression, nullableType,
 primaryConstructor, propertyDeclaration, stringLiteral, tryExpression, whenExpression */

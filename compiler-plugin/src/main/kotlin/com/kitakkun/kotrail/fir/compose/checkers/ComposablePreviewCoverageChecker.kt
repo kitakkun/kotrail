@@ -29,6 +29,7 @@ import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.references.toResolvedNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.resolve.providers.firProvider
+import org.jetbrains.kotlin.fir.resolve.providers.impl.FirCompositeSymbolProvider
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.types.isUnit
@@ -43,15 +44,15 @@ import java.util.WeakHashMap
  *
  * ```yaml
  * rules:
- *   compose:
- *     previewCoverage:
- *       packages: [com.acme.ui, com.acme.ui.cards]
+ *   compose.previewCoverage:
+ *     packages: [com.acme.ui, com.acme.ui.cards]
  * ```
  *
  * The composables live on the classpath (a library the sample module depends on, `main` seen from
  * a screenshot-test source set) or among this compilation's own files; either way they are
- * enumerated by package through the symbol provider, so a package is named exactly rather than
- * by pattern. Previews from every file of the compilation count. What is missing is reported
+ * enumerated by package through the symbol providers, so a package is named exactly rather than
+ * by pattern; a package in which nothing is found is reported as such rather than counted as
+ * covered. Previews from every file of the compilation count. What is missing is reported
  * on the package directive of one file, the first by name among those that contain previews, so
  * that a compilation without any preview still fails at a definite place.
  *
@@ -71,25 +72,36 @@ object ComposablePreviewCoverageChecker : FirFileChecker(MppCheckerKind.Common) 
         val index = synchronized(indexes) { indexes.getOrPut(session) { Index(session) } }
         if (index.anchorName != declaration.name) return
 
-        val excluded = settings.excludeNames.map(::Glob)
-        val missing = settings.packages
-            .flatMap { session.composablesIn(FqName(it), settings.visibility) }
-            .filter { it.callableId !in index.previewed }
-            .filter { symbol -> excluded.none { it.matches(symbol.callableId.asSingleFqName().asString()) } }
-            .sortedBy { it.callableId.asSingleFqName().asString() }
-        if (missing.isEmpty()) return
-
         val source = declaration.packageDirective.source ?: declaration.source ?: return
         if (source.kind is KtFakeSourceElementKind) return
-        for (symbol in missing) {
-            reportKotrail(source, KotrailDiagnostics.COMPOSABLE_NOT_COVERED_BY_PREVIEW, symbol.callableId.asSingleFqName().asString())
+        val excluded = settings.excludeNames.map(::Glob)
+        for (packageName in settings.packages) {
+            val composables = session.composablesIn(FqName(packageName), settings.visibility)
+            // A package with nothing to cover is a typo, or one this compilation cannot see; silence would read as full coverage.
+            if (composables.isEmpty()) {
+                reportKotrail(source, KotrailDiagnostics.PREVIEW_COVERAGE_PACKAGE_EMPTY, packageName)
+                continue
+            }
+            val missing = composables
+                .filter { it.callableId !in index.previewed }
+                .filter { symbol -> excluded.none { it.matches(symbol.callableId.asSingleFqName().asString()) } }
+                .sortedBy { it.callableId.asSingleFqName().asString() }
+            for (symbol in missing) {
+                reportKotrail(source, KotrailDiagnostics.COMPOSABLE_NOT_COVERED_BY_PREVIEW, symbol.callableId.asSingleFqName().asString())
+            }
         }
     }
 
-    /** The public (or also internal) top-level UI composables declared in [packageName], from source or classpath. */
+    /**
+     * The public (or also internal) top-level UI composables declared in [packageName], from
+     * source or classpath. The names are asked of each symbol provider separately: the composite
+     * provider answers null as soon as one of its parts cannot enumerate (class files cannot), which
+     * on the JVM is always.
+     */
     private fun FirSession.composablesIn(packageName: FqName, scope: PreviewScope): List<FirNamedFunctionSymbol> {
-        val names = symbolProvider.symbolNamesProvider.getTopLevelCallableNamesInPackage(packageName) ?: return emptyList()
-        return names.flatMap { name -> symbolProvider.getTopLevelFunctionSymbols(packageName, name) }.filter { symbol ->
+        val providers = (symbolProvider as? FirCompositeSymbolProvider)?.providers ?: listOf(symbolProvider)
+        val names = providers.flatMapTo(linkedSetOf()) { it.symbolNamesProvider.getTopLevelCallableNamesInPackage(packageName).orEmpty() }
+        return names.flatMap { name -> symbolProvider.getTopLevelFunctionSymbols(packageName, name) }.distinct().filter { symbol ->
             symbol.isComposable(this) &&
                 symbol.resolvedReturnType.isUnit &&
                 !symbol.isExpect &&

@@ -121,7 +121,8 @@ object LiveVariableBudgetChecker : NamedFunctionChecker(MppCheckerKind.Common) {
         }
 
         override fun visitProperty(property: FirProperty) {
-            if (property.isLocal) declare(property.symbol, property.name.asString(), property.source?.startOffset ?: 0)
+            // `<iterator>` of a `for`, `<destruct>` of a destructuring: names a reader never sees.
+            if (property.isLocal && !property.name.isSpecial) declare(property.symbol, property.name.asString(), property.source?.startOffset ?: 0)
             property.acceptChildren(this)
         }
 

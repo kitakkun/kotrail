@@ -11,6 +11,7 @@ import com.kitakkun.kotrail.fir.compose.isComposable
 import com.kitakkun.kotrail.fir.compose.isPreview
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.reportKotrail
+import com.kitakkun.kotrail.fir.reportingAt
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -72,7 +73,7 @@ object ComposablePreviewRequiredChecker : FirFileChecker(MppCheckerKind.Common) 
         val session = context.session
 
         val functions = mutableListOf<Collected>()
-        collectFunctions(declaration.declarations, emptySet(), functions)
+        collectFunctions(declaration.declarations, emptyList(), emptySet(), functions)
         // Overloads of one name are one component, as in composablesPerFile: a preview that calls any
         // of them covers all of them, so callees are remembered by callable id rather than by symbol.
         val previewed = mutableSetOf<CallableId>()
@@ -85,26 +86,26 @@ object ComposablePreviewRequiredChecker : FirFileChecker(MppCheckerKind.Common) 
 
         val diagnostic = KotrailDiagnostics.COMPOSABLE_WITHOUT_PREVIEW
         val severity = config.severity(diagnostic.rule)
-        for ((function, suppressed) in functions) {
+        for ((function, enclosing, suppressed) in functions) {
             if (!function.needsPreview(session, config.compose.previewRequireFor)) continue
             if (!function.symbol.emitsUi(session, config.compose.nonUiPackages)) continue
             if (function.symbol.callableId in previewed) continue
             if (diagnostic.baseName in suppressed || severity.suppressAllName in suppressed) continue
             val source = function.source ?: continue
             if (source.kind is KtFakeSourceElementKind) continue
-            reportKotrail(source, diagnostic, function.name.asString())
+            reportingAt(enclosing + function) { reportKotrail(source, diagnostic, function.name.asString()) }
         }
     }
 
-    /** A function together with the diagnostic names suppressed on it or on any class around it. */
-    private data class Collected(val function: FirNamedFunction, val suppressed: Set<String>)
+    /** A function with the classes around it (outermost first) and the diagnostic names suppressed on it or on any of them. */
+    private data class Collected(val function: FirNamedFunction, val enclosing: List<FirDeclaration>, val suppressed: Set<String>)
 
     /** Top-level functions and members of classes and objects, at any nesting depth. */
-    private fun collectFunctions(declarations: List<FirDeclaration>, suppressed: Set<String>, into: MutableList<Collected>) {
+    private fun collectFunctions(declarations: List<FirDeclaration>, enclosing: List<FirDeclaration>, suppressed: Set<String>, into: MutableList<Collected>) {
         for (declaration in declarations) {
             when (declaration) {
-                is FirNamedFunction -> into += Collected(declaration, suppressed + declaration.suppressedNames())
-                is FirRegularClass -> collectFunctions(declaration.declarations, suppressed + declaration.suppressedNames(), into)
+                is FirNamedFunction -> into += Collected(declaration, enclosing, suppressed + declaration.suppressedNames())
+                is FirRegularClass -> collectFunctions(declaration.declarations, enclosing + declaration, suppressed + declaration.suppressedNames(), into)
                 else -> {}
             }
         }

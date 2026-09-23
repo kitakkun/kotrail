@@ -68,5 +68,40 @@ fun View.reset() {
     invalidate()
 }
 
+
+class Builder {
+    fun put(key: String) {}
+    fun nested(block: Builder.() -> Unit) = Builder().block()
+}
+
+class Session {
+    fun start() {}
+}
+
+class Client {
+    fun run(block: Session.() -> Unit) = Session().block()
+
+    // Not reported: a member extension takes both receivers as one declaration.
+    private fun Session.configure() {}
+
+    fun connect() {
+        run {
+            configure()
+            start()
+        }
+    }
+
+    // Not reported: every receiver has a toString; that another one has it too says nothing.
+    fun describe(view: View): String = view.run { toString() }
+
+    // Not reported: a builder nested in a builder of the same type means the nearest one.
+    fun build(builder: Builder) {
+        builder.nested {
+            put("a")
+            nested { put("b") }
+        }
+    }
+}
+
 /* GENERATED_FIR_TAGS: assignment, classDeclaration, funWithExtensionReceiver, functionDeclaration, inner,
 integerLiteral, lambdaLiteral, nestedClass, primaryConstructor, propertyDeclaration, stringLiteral, thisExpression */

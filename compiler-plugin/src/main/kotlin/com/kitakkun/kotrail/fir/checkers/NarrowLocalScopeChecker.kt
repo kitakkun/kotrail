@@ -75,6 +75,8 @@ object NarrowLocalScopeChecker : FirPropertyChecker(MppCheckerKind.Common) {
     override fun check(declaration: FirProperty) {
         if (!context.session.kotrailConfig.isEnabled(KotrailRule.NARROW_LOCAL_SCOPE)) return
         if (!declaration.isLocal || declaration.isVar || declaration.delegate != null) return
+        // `<destruct>` of `val (a, b) = pair`: its entries follow as statements of their own, inside its source range.
+        if (declaration.name.isSpecial) return
         val source = declaration.source ?: return
         if (source.kind is KtFakeSourceElementKind) return
         val initializer = declaration.initializer ?: return
@@ -107,6 +109,7 @@ object NarrowLocalScopeChecker : FirPropertyChecker(MppCheckerKind.Common) {
         val firstUseSource = firstUse.source ?: return
         val blockSource = block.source ?: return
         val blockText = blockSource.text?.toString() ?: return
+        if (firstUseSource.startOffset < source.endOffset) return
         val lines = blockText.substring(source.endOffset - blockSource.startOffset, firstUseSource.startOffset - blockSource.startOffset).count { it == '\n' }
         if (lines <= maxDistance) return
         val fix = moveBeforeFix(source, block, firstUseSource)
@@ -122,7 +125,8 @@ object NarrowLocalScopeChecker : FirPropertyChecker(MppCheckerKind.Common) {
     private class UseFinder(private val target: FirPropertySymbol) : FirVisitorVoid() {
         private var branch: FirBlock? = null
         private val branches = mutableSetOf<FirBlock>()
-        private var pinned = false
+        var pinned = false
+            private set
         var uses = 0
             private set
 
@@ -199,7 +203,8 @@ object NarrowLocalScopeChecker : FirPropertyChecker(MppCheckerKind.Common) {
             }
             val probe = UseFinder(target)
             element.acceptChildren(probe)
-            if (probe.uses > 0) pinned = true
+            // A use anywhere inside, including a lambda nested in this one, which pins the probe without counting.
+            if (probe.uses > 0 || probe.pinned) pinned = true
         }
     }
 

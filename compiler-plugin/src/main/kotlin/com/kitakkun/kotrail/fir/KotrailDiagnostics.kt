@@ -219,6 +219,9 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: the composable's fully qualified name; reported on the package directive of the compilation's anchor file. */
     val COMPOSABLE_NOT_COVERED_BY_PREVIEW = tunable1<KtElement, String>("COMPOSABLE_NOT_COVERED_BY_PREVIEW", KotrailRule.COMPOSE_PREVIEW_COVERAGE, WHOLE)
 
+    /** Argument: the package; reported on the anchor file's package directive when a listed package has no UI composable to cover. */
+    val PREVIEW_COVERAGE_PACKAGE_EMPTY = tunable1<KtElement, String>("PREVIEW_COVERAGE_PACKAGE_EMPTY", KotrailRule.COMPOSE_PREVIEW_COVERAGE, WHOLE)
+
     /** Arguments: the offending type, the callee; reported on a call whose type argument is not serializable. */
     val TYPE_NOT_SERIALIZABLE = tunable2<KtElement, String, String>("TYPE_NOT_SERIALIZABLE", KotrailRule.MUST_BE_SERIALIZABLE, WHOLE)
 
@@ -441,6 +444,11 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             KotrailDiagnostics.COMPOSABLE_WITHOUT_PREVIEW,
             "[Kotrail] ''{0}'' has no @Preview in this file. Add a preview composable next to it that calls ''{0}'', " +
                 "or suppress this diagnostic when the composable cannot be previewed.",
+        )
+        map.put1(
+            KotrailDiagnostics.PREVIEW_COVERAGE_PACKAGE_EMPTY,
+            "[Kotrail] compose.previewCoverage.packages names ''{0}'', but this compilation sees no UI composable in it: " +
+                "check the package name, or that the composables are on this compilation''s classpath or among its sources.",
         )
         map.put1(
             KotrailDiagnostics.COMPOSABLE_NOT_COVERED_BY_PREVIEW,

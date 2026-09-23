@@ -48,11 +48,10 @@ By what the callee declares it returns, or by name:
 
 ```yaml
 rules:
-  compose:
-    noSideEffectInComposition:
-      functions:
-        - com.acme.ScreenViewModel.load
-        - com.acme.Analytics.track
+  compose.noSideEffectInComposition:
+    functions:
+      - com.acme.ScreenViewModel.load
+      - com.acme.Analytics.track
 ```
 
 ## Where it looks

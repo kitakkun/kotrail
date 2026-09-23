@@ -27,8 +27,7 @@ has no use for it; switch it on where every user-facing string goes through reso
 
 ```yaml
 rules:
-  compose:
-    noHardcodedString: on
+  compose.noHardcodedString: on
 ```
 
 ## Which parameters count
@@ -38,9 +37,8 @@ composables alike. Setting the key replaces the list:
 
 ```yaml
 rules:
-  compose:
-    noHardcodedString:
-      parameters: [text, label, title, placeholder, contentDescription, message, hint]
+  compose.noHardcodedString:
+    parameters: [text, label, title, placeholder, contentDescription, message, hint]
 ```
 
 A parameter that carries an identifier rather than copy (`tag`, `key`, `route`, `testTag`) is

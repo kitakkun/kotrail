@@ -50,15 +50,16 @@ fun Elsewhere() {
 }
 
 // MODULE: main(lib)
-// KOTRAIL_CONFIG: rules.compose.previewCoverage=on, rules.compose.previewCoverage.packages=lib.ui, rules.compose.previewCoverage.excludeNames=lib.ui.Excl*
+// KOTRAIL_CONFIG: rules.compose.previewCoverage=on, rules.compose.previewCoverage.packages=lib.ui,lib.nowhere, rules.compose.previewCoverage.excludeNames=lib.ui.Excl*
 // FILE: Previews.kt
-<!KOTRAIL_COMPOSABLE_NOT_COVERED_BY_PREVIEW!>package sample<!>
+<!KOTRAIL_COMPOSABLE_NOT_COVERED_BY_PREVIEW, KOTRAIL_PREVIEW_COVERAGE_PACKAGE_EMPTY!>package sample<!>
 
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 import lib.ui.Covered
 
-// Reported once above, on the package directive: lib.ui.Missing has no preview here. Covered is
+// Reported above, on the package directive: lib.ui.Missing has no preview here, and lib.nowhere
+// holds nothing to cover, which is reported rather than passed as covered. Covered is
 // called from a preview, Excluded is listed under excludeNames, InternalOne is internal and the
 // visibility is public, Hidden is private, rememberLabel returns a value, and Elsewhere is in a
 // package that is not listed.

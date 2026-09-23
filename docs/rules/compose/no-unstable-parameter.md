@@ -11,8 +11,7 @@ and report any disagreement:
 
 ```yaml
 rules:
-  compose:
-    noUnstableParameter: on
+  compose.noUnstableParameter: on
 ```
 
 ## What it rejects
@@ -81,13 +80,12 @@ which type arguments take part in the stability (`*`) and which do not (`_`):
 
 ```yaml
 rules:
-  compose:
-    noUnstableParameter:
-      stableTypes:
-        - com.acme.model.User
-        - com.acme.model.*
-        - kotlinx.datetime.**
-        - com.acme.Box<*,_>
+  compose.noUnstableParameter:
+    stableTypes:
+      - com.acme.model.User
+      - com.acme.model.*
+      - kotlinx.datetime.**
+      - com.acme.Box<*,_>
 ```
 
 Keep the list in step with the compiler's own configuration file: the rule reads the project's

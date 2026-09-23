@@ -35,9 +35,8 @@ the limit is reported. Set `countOverloadsSeparately: true` to count each declar
 
 ```yaml
 rules:
-  compose:
-    composablesPerFile:
-      countOverloadsSeparately: true
+  compose.composablesPerFile:
+    countOverloadsSeparately: true
 ```
 
 ## Fixtures

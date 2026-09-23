@@ -47,11 +47,10 @@ deterministically.
 
 ```yaml
 rules:
-  test:
-    noSleep:
-      virtualTime:
-        - kotlinx.coroutines.test.runTest
-        - com.acme.test.runAppTest
+  test.noSleep:
+    virtualTime:
+      - kotlinx.coroutines.test.runTest
+      - com.acme.test.runAppTest
 ```
 
 Which functions are tests is `test.annotations`, shared with [test naming](naming.md).
