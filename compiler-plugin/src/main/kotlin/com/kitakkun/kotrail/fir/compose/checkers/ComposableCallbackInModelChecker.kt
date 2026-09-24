@@ -58,8 +58,8 @@ import org.jetbrains.kotlin.fir.types.renderReadable
  * or through type arguments (`List<UserRow>`, `Map<Id, UserRow>`), and every project class
  * reachable from it through its properties, including inherited ones. A function-typed property
  * anywhere in that graph is reported on the composable's parameter, naming the property. A
- * `@Composable` slot in a model (`trailing: @Composable () -> Unit`) is a callback like any
- * other unless `allowComposableSlots` says otherwise.
+ * `@Composable` slot in a model (`cell: @Composable (Row) -> Unit` of a table column) is what such
+ * a model is for and is allowed by default; `allowComposableSlots: false` reports it too.
  */
 object ComposableCallbackInModelChecker : NamedFunctionChecker(MppCheckerKind.Common) {
     context(context: CheckerContext, reporter: DiagnosticReporter)
@@ -88,17 +88,21 @@ object ComposableCallbackInModelChecker : NamedFunctionChecker(MppCheckerKind.Co
     private class CallbackSearch(private val session: FirSession, private val allowComposableSlots: Boolean) {
         private val visited = mutableSetOf<FirRegularClassSymbol>()
 
-        /** `Class.property` of the first callback reachable from [type], or null. */
-        fun callbackIn(type: ConeKotlinType, path: List<String>): String? {
+        /**
+         * `Class.property` of the first callback reachable from [type], or, for one that sits in a type
+         * argument with no property on the way (`Pair<() -> Unit, String>`), the type that carries it.
+         */
+        fun callbackIn(type: ConeKotlinType, path: List<String>, holder: String? = null): String? {
             val expanded = type.fullyExpandedType(session)
             if (expanded.isSomeFunctionType(session)) {
                 val isSlot = expanded.customAnnotations.any { it.toAnnotationClassId(session) == ComposeNames.COMPOSABLE }
-                return if (isSlot && allowComposableSlots) null else path.joinToString(".")
+                if (isSlot && allowComposableSlots) return null
+                return if (path.isNotEmpty()) path.joinToString(".") else "a type argument of ${holder ?: expanded.renderReadable()}"
             }
             if (expanded !is ConeClassLikeType) return null
             for (argument in expanded.typeArguments) {
                 val argumentType = (argument as? ConeKotlinTypeProjection)?.type ?: continue
-                callbackIn(argumentType, path)?.let { return it }
+                callbackIn(argumentType, path, holder ?: expanded.renderReadable())?.let { return it }
             }
             val classSymbol = expanded.toRegularClassSymbol(session) ?: return null
             return callbackIn(classSymbol)

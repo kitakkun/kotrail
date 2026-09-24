@@ -16,6 +16,10 @@ import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.utils.isActual
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
+import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.resolve.fullyExpandedType
+import org.jetbrains.kotlin.fir.types.ConeKotlinType
+import org.jetbrains.kotlin.fir.types.ConeKotlinTypeProjection
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.isSomeFunctionType
 
@@ -61,7 +65,15 @@ object ParameterOrderChecker : FirBasicDeclarationChecker(MppCheckerKind.Common)
         }
     }
 
-    /** A function type, suspend or not, nullable or not, composable or not, or a type alias of one. */
-    private fun FirValueParameter.isFunctionTyped(session: org.jetbrains.kotlin.fir.FirSession): Boolean =
-        returnTypeRef.coneType.isSomeFunctionType(session)
+    /**
+     * A function type, suspend or not, nullable or not, composable or not, a type alias of one, or
+     * a type that carries one in a type argument (`Pair<() -> Unit, String>?`).
+     */
+    private fun FirValueParameter.isFunctionTyped(session: FirSession): Boolean = returnTypeRef.coneType.carriesFunctionType(session)
+
+    private fun ConeKotlinType.carriesFunctionType(session: FirSession): Boolean {
+        val expanded = fullyExpandedType(session)
+        if (expanded.isSomeFunctionType(session)) return true
+        return expanded.typeArguments.any { argument -> (argument as? ConeKotlinTypeProjection)?.type?.carriesFunctionType(session) == true }
+    }
 }

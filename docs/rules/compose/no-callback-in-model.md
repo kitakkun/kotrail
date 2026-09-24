@@ -2,7 +2,7 @@
 
 **Diagnostic:** `KOTRAIL_CALLBACK_IN_UI_MODEL` (error, on the composable's parameter name)
 **Key:** `rules.compose.noCallbackInModel` (on by default)
-**Settings:** `allowComposableSlots` (default `false`)
+**Settings:** `allowComposableSlots` (default `true`)
 
 ## What it rejects
 
@@ -51,16 +51,20 @@ are, of course, fine.
 
 ## Settings
 
-- `allowComposableSlots`: `true` lets a model carry a `@Composable` function-typed property
-  (`trailing: @Composable () -> Unit`). Off by default: a slot belongs to the composable's
-  parameters as much as a callback does.
+- `allowComposableSlots`: `true` (the default) lets a model carry a `@Composable` function-typed
+  property: a table column's `cell` renderer, a data boundary's fallback content. Such a slot is
+  what the model is for, and a preview can hand it `{}` without inventing behavior. `false`
+  reports slots like any other callback, since a capturing composable lambda breaks equality
+  the same way.
 
 ## When it stays quiet
 
 - The composable draws nothing (an effect wrapper), returns a value, is a preview, or is an
   `override` / `expect`.
 - No project class reachable from the parameter's type has a function-typed property.
-- The property is a `@Composable` slot and `allowComposableSlots` is on.
+- The property is a `@Composable` slot and `allowComposableSlots` is on (the default).
+- A function type sits in a type argument of a classpath type (`dismiss: Pair<() -> Unit, String>`)
+  is still reported, named as "a type argument of Pair<...>".
 
 ## Fixtures
 

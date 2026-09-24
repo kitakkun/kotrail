@@ -46,6 +46,11 @@ that is **not** annotated `@Composable`.
 - The function is not `@Composable`.
 - The last parameter is a `@Composable` function type, nullable or not.
 - The last parameter is not a function type at all (`enabled: Boolean`).
+- The callback is the only function-typed parameter and no parameter has a default
+  (`Row(label: String, onClick: () -> Unit)`): there is no optional block to place it before and
+  nothing content-shaped to confuse it with, and [parameter order](../parameter-order.md) wants
+  the callback after the data. Adding a `modifier = Modifier` that nothing passes, only to have
+  somewhere to put the callback, would be the wrong outcome.
 - The function has no value parameters.
 - `override` and `expect` functions, whose signature is fixed elsewhere; the declaration they
   implement is reported instead.

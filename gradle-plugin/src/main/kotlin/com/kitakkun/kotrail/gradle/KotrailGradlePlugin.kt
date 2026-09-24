@@ -1,6 +1,7 @@
 package com.kitakkun.kotrail.gradle
 
 import org.gradle.api.Project
+import org.gradle.api.artifacts.component.ProjectComponentIdentifier
 import org.gradle.api.file.Directory
 import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.PathSensitivity
@@ -53,12 +54,17 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
         registerConfigFilesAsInputs(kotlinCompilation, compilationName)
         wireFixRecords(kotlinCompilation)
         wireComposableRecords(kotlinCompilation)
+        wireUnloadableRecords(kotlinCompilation)
         return project.provider {
             val options = optionsFor(compilationName) +
                 SubpluginOption("fixesDir", fixesDirectoryFor(kotlinCompilation).get().asFile.path) +
                 SubpluginOption("composablesDir", composablesDirectoryFor(kotlinCompilation).get().asFile.path) +
                 kotlinCompilation.allAssociatedCompilations.map {
                     SubpluginOption("associatedComposablesDir", composablesDirectoryFor(it).get().asFile.path)
+                } +
+                SubpluginOption("unloadableDir", unloadableDirectoryFor(kotlinCompilation).get().asFile.path) +
+                bundledProjects(kotlinCompilation).map {
+                    SubpluginOption("bundledUnloadableDir", it.layout.buildDirectory.dir("kotrail/unloadable").get().asFile.path)
                 }
             // `--info` shows what each compilation was handed, for a consumer to check its wiring.
             project.logger.info("Kotrail: options for ${kotlinCompilation.compileKotlinTaskName}: ${options.joinToString { "${it.key}=${it.value}" }}")
@@ -113,6 +119,38 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
                 .optional()
         }
     }
+
+    /**
+     * Every compilation records the outbound references the unloadableCode rule looks for under
+     * `build/kotrail/unloadable`, and a compilation with the rule on reads the records of the
+     * projects on its runtime class path: a plugin that is unloaded with its class loader bundles
+     * them, so one switch on the plugin module covers whatever it bundles.
+     */
+    private fun wireUnloadableRecords(kotlinCompilation: KotlinCompilation<*>) {
+        val directory = unloadableDirectoryFor(kotlinCompilation)
+        kotlinCompilation.compileTaskProvider.configure { task ->
+            task.outputs.dir(directory).withPropertyName("kotrailUnloadable")
+            task.inputs.files(project.provider { bundledProjects(kotlinCompilation).map { it.layout.buildDirectory.dir("kotrail/unloadable").get() } })
+                .withPropertyName("kotrailBundledUnloadable")
+                .withPathSensitivity(PathSensitivity.RELATIVE)
+                .optional()
+        }
+    }
+
+    /** The projects on the compilation's runtime class path, transitively; those whose classes the compilation's artifact bundles. */
+    private fun bundledProjects(kotlinCompilation: KotlinCompilation<*>): List<Project> {
+        val name = kotlinCompilation.runtimeDependencyConfigurationName ?: return emptyList()
+        val configuration = project.configurations.findByName(name) ?: return emptyList()
+        return configuration.incoming.resolutionResult.allComponents
+            .mapNotNull { (it.id as? ProjectComponentIdentifier)?.projectPath }
+            .filter { it != project.path }
+            .distinct()
+            .sorted()
+            .map { project.project(it) }
+    }
+
+    private fun unloadableDirectoryFor(kotlinCompilation: KotlinCompilation<*>): Provider<Directory> =
+        project.layout.buildDirectory.dir("kotrail/unloadable/${kotlinCompilation.directoryName()}")
 
     private fun composablesDirectoryFor(kotlinCompilation: KotlinCompilation<*>): Provider<Directory> =
         project.layout.buildDirectory.dir("kotrail/composables/${kotlinCompilation.directoryName()}")

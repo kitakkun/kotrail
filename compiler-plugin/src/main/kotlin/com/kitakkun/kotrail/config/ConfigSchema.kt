@@ -141,7 +141,7 @@ object ConfigSchema {
             Setting("nonUiPackages", Kind.LIST, "Packages whose composables emit nothing themselves (effects, providers), so that calling them does not make a composable a UI one; shared with previewCoverage. Replaces the default list.", default = "androidx.compose.runtime"),
         ),
         KotrailRule.COMPOSE_NO_CALLBACK_IN_MODEL to listOf(
-            Setting("allowComposableSlots", Kind.BOOLEAN, "Whether a @Composable function-typed property (a content slot) in a model handed to a UI composable is allowed; other function types are always reported.", default = "false"),
+            Setting("allowComposableSlots", Kind.BOOLEAN, "Whether a @Composable function-typed property (a content slot such as a table column's cell renderer) in a model handed to a UI composable is allowed; other function types are always reported.", default = "true"),
         ),
         KotrailRule.COMPOSE_COMPOSABLES_PER_FILE to listOf(
             Setting("max", Kind.INT, "Maximum non-private UI composables in one file, previews excluded; 0 disables.", default = "3"),

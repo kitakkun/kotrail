@@ -234,7 +234,70 @@ class KotrailGradlePluginFunctionalTest {
         assertFalse(result.output.contains("KOTRAIL_PREVIEW_COVERAGE_PACKAGE_EMPTY"), result.output)
     }
 
-    private fun writeSettings() {
+    @Test
+    fun `an unloadable module reports what the modules it bundles recorded`() {
+        writeSettings(include = listOf("lib"))
+        writeFile("kotrail.yaml", "severity: warning\nrules:\n  unloadableCode: on\n")
+        writeBuild(
+            """
+            dependencies {
+                implementation(project(":lib"))
+            }
+
+            kotrail {
+                configFile = file("kotrail.yaml")
+            }
+            """.trimIndent(),
+        )
+        writeFile(
+            "lib/build.gradle.kts",
+            """
+            plugins {
+                kotlin("jvm")
+                id("com.kitakkun.kotrail")
+            }
+
+            repositories {
+                maven { url = uri("$repository") }
+                mavenCentral()
+            }
+
+            kotlin {
+                jvmToolchain(21)
+            }
+            """.trimIndent(),
+        )
+        writeFile(
+            "lib/src/main/kotlin/Buffers.kt",
+            """
+            object Buffers {
+                val current: ThreadLocal<StringBuilder> = ThreadLocal()
+            }
+            """.trimIndent(),
+        )
+        writeFile(
+            "src/main/kotlin/Plugin.kt",
+            """
+            class Plugin {
+                fun start() {
+                    Runtime.getRuntime().addShutdownHook(Thread())
+                }
+            }
+            """.trimIndent(),
+        )
+
+        val result = runBuild("compileKotlin")
+        assertEquals(TaskOutcome.SUCCESS, result.task(":lib:compileKotlin")?.outcome, result.output)
+        assertEquals(TaskOutcome.SUCCESS, result.task(":compileKotlin")?.outcome, result.output)
+        // The rule is off in lib: its ThreadLocal is reported from the plugin module, with the file and line.
+        assertFalse(result.output.contains("lib/src/main/kotlin/Buffers.kt:2:5"), result.output)
+        assertTrue(result.output.contains("KOTRAIL_OUTBOUND_REFERENCE_IN_BUNDLED_CODE"), result.output)
+        assertTrue(result.output.contains("a ThreadLocal, 'current'"), result.output)
+        assertTrue(result.output.contains("Buffers.kt:2"), result.output)
+        assertTrue(result.output.contains("KOTRAIL_UNSCOPED_REGISTRATION_IN_UNLOADABLE_CODE"), result.output)
+    }
+
+    private fun writeSettings(include: List<String> = emptyList()) {
         writeFile(
             "settings.gradle.kts",
             """
@@ -249,7 +312,7 @@ class KotrailGradlePluginFunctionalTest {
                 }
             }
             rootProject.name = "consumer"
-            """.trimIndent(),
+            """.trimIndent() + include.joinToString("") { "\ninclude(\":$it\")" },
         )
     }
 

@@ -51,6 +51,11 @@ class DefaultListener : Listener {
 // Not reported: lambdas are out of scope.
 val callback: ((Int) -> Unit, Int) -> Unit = { handler, id -> handler(id) }
 
+// Reported: a function type inside a type argument makes the parameter a callback too.
+fun banner(<!KOTRAIL_CALLBACK_BEFORE_DATA_PARAMETER!>dismiss: Pair<() -> Unit, String>?<!>, title: String) {
+    println(title + dismiss?.second)
+}
+
 /* GENERATED_FIR_TAGS: additiveExpression, classDeclaration, functionDeclaration, functionalType, integerLiteral,
 interfaceDeclaration, lambdaLiteral, nullableType, override, primaryConstructor, propertyDeclaration, stringLiteral,
 suspend, typeAliasDeclaration */

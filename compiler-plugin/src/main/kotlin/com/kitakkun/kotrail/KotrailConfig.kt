@@ -364,6 +364,10 @@ data class KotrailConfig(
     val composablesDir: String?,
     /** Composable records of associated compilations, for preview coverage (the `associatedComposablesDir` plugin option). */
     val associatedComposablesDirs: List<String>,
+    /** Directory of the per-file unloadable-code records, or `null` to record none (the `unloadableDir` plugin option). */
+    val unloadableDir: String?,
+    /** Record roots of the modules on the runtime class path, for the unloadable-code rule (the `bundledUnloadableDir` plugin option). */
+    val bundledUnloadableDirs: List<String>,
     private val switches: Map<KotrailRule, Boolean>,
     private val severities: Map<KotrailRule, Severity>,
     private val notes: Map<KotrailRule, String>,
@@ -489,6 +493,8 @@ data class KotrailConfig(
                 fixesDir = configuration.get(KotrailConfigurationKeys.FIXES_DIR),
                 composablesDir = configuration.get(KotrailConfigurationKeys.COMPOSABLES_DIR),
                 associatedComposablesDirs = configuration.get(KotrailConfigurationKeys.ASSOCIATED_COMPOSABLES_DIRS).orEmpty(),
+                unloadableDir = configuration.get(KotrailConfigurationKeys.UNLOADABLE_DIR),
+                bundledUnloadableDirs = configuration.get(KotrailConfigurationKeys.BUNDLED_UNLOADABLE_DIRS).orEmpty(),
             )
         } catch (e: ConfigException) {
             throw CliOptionProcessingException("Kotrail configuration: ${e.message}")
@@ -686,6 +692,8 @@ data class KotrailConfig(
                 fixesDir = null,
                 composablesDir = null,
                 associatedComposablesDirs = emptyList(),
+                unloadableDir = null,
+                bundledUnloadableDirs = emptyList(),
                 switches = switches,
                 severities = severities,
                 notes = notes,
@@ -698,7 +706,7 @@ data class KotrailConfig(
                     nonUiPackages = list(KotrailRule.COMPOSE_PREVIEW_REQUIRED, "nonUiPackages") ?: DEFAULT_NON_UI_PACKAGES,
                     maxComposablesPerFile = int(KotrailRule.COMPOSE_COMPOSABLES_PER_FILE, "max") ?: DEFAULT_MAX_COMPOSABLES_PER_FILE,
                     countOverloadsSeparately = boolean(ruleNode(KotrailRule.COMPOSE_COMPOSABLES_PER_FILE), "countOverloadsSeparately") ?: false,
-                    allowComposableSlots = boolean(ruleNode(KotrailRule.COMPOSE_NO_CALLBACK_IN_MODEL), "allowComposableSlots") ?: false,
+                    allowComposableSlots = boolean(ruleNode(KotrailRule.COMPOSE_NO_CALLBACK_IN_MODEL), "allowComposableSlots") ?: true,
                     sideEffectTypes = list(KotrailRule.COMPOSE_NO_SIDE_EFFECT_IN_COMPOSITION, "types") ?: DEFAULT_SIDE_EFFECT_TYPES,
                     sideEffectFunctions = list(KotrailRule.COMPOSE_NO_SIDE_EFFECT_IN_COMPOSITION, "functions").orEmpty(),
                     hardcodedStringParameters = list(KotrailRule.COMPOSE_NO_HARDCODED_STRING, "parameters") ?: DEFAULT_HARDCODED_STRING_PARAMETERS,

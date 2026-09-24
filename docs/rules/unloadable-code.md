@@ -1,6 +1,6 @@
 # Unloadable code
 
-**Diagnostics:** `KOTRAIL_THREAD_LOCAL_IN_UNLOADABLE_CODE` (error, on the property or the construction), `KOTRAIL_UNSCOPED_REGISTRATION_IN_UNLOADABLE_CODE` (error, on the call)
+**Diagnostics:** `KOTRAIL_THREAD_LOCAL_IN_UNLOADABLE_CODE` (error, on the property or the construction), `KOTRAIL_UNSCOPED_REGISTRATION_IN_UNLOADABLE_CODE` (error, on the call), `KOTRAIL_OUTBOUND_REFERENCE_IN_BUNDLED_CODE` (error, on the package directive of the first file, for a finding in a bundled module)
 **Key:** `rules.unloadableCode` (**off by default**)
 **Settings:** `registrations` (default: the JVM, AWT and IntelliJ hooks below), `disposableTypes` (default `[com.intellij.openapi.Disposable]`)
 
@@ -36,10 +36,15 @@ kotrail {
 }
 ```
 
-Everything bundled into the same class loader is subject to the same hazard, so switch the rule
-on for every module the unloadable artifact bundles, not only the module that declares the
-plugin. Reporting across modules from the records of a compilation's classpath, the way
-[preview coverage](compose/preview-coverage.md) does, is a possible extension.
+Everything bundled into the same class loader is subject to the same hazard, and the plugin
+module's artifact bundles the projects on its runtime class path. So every compilation the
+Gradle plugin configures records the findings the rule looks for under
+`build/kotrail/unloadable/<target>-<compilation>` (whether or not the rule is on there), and a
+compilation with the rule on reads the `*-main` records of every project on its runtime class
+path, transitively, and reports them on the package directive of its first file by name as
+`KOTRAIL_OUTBOUND_REFERENCE_IN_BUNDLED_CODE`, with the file and line. One switch on the plugin
+module covers whatever it bundles, and the set follows the dependency graph. Outside Gradle,
+the compiler plugin's `unloadableDir` and `bundledUnloadableDir` options do the same.
 
 ## When it fires
 
@@ -62,7 +67,8 @@ plugin. Reporting across modules from the records of a compilation's classpath, 
 - State that stays inside the loader: `object` and `companion object` properties, top-level
   values, caches of the plugin's own objects.
 - A registration that passes a disposable, or one that is not in `registrations`.
-- The rule is off, which it is unless the compilation says otherwise.
+- The rule is off, which it is unless the compilation says otherwise. A module with the rule
+  off still records its findings for the modules that bundle it.
 
 The IntelliJ platform's own list of what a dynamic plugin must avoid is longer (components,
 service overrides, PSI references kept across unload, `FileType` and `Language` objects as map
@@ -75,5 +81,8 @@ keys); see [Dynamic Plugins](https://plugins.jetbrains.com/docs/intellij/dynamic
 ## Implementation notes
 
 `fir/checkers/UnloadableCodeChecker.kt`: `ThreadLocalChecker`, a `FirPropertyChecker`, and
-`RegistrationChecker`, a `FirFunctionCallChecker` that also catches a bare `ThreadLocal()`. The
-registration's arguments are tested by subtype against `disposableTypes`.
+`RegistrationChecker`, a `FirFunctionCallChecker` that also catches a bare `ThreadLocal()`; both
+report when the rule is on and record when the compilation names an `unloadableDir`.
+`BundledChecker`, a `FirFileChecker`, reads the bundled records (`fir/UnloadableRecords.kt`)
+once per session and reports them from the anchor file. The registration's arguments are tested
+by subtype against `disposableTypes`.

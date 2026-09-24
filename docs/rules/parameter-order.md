@@ -32,8 +32,9 @@ the argument list.
 ## When it fires
 
 Some parameter without a default has a function type (`() -> Unit`, `suspend (T) -> R`,
-`@Composable () -> Unit`, a nullable one, a type alias of one) and a later parameter without a
-default has a type that is not a function type. The first such pair is reported.
+`@Composable () -> Unit`, a nullable one, a type alias of one, or a type carrying one in a type
+argument such as `Pair<() -> Unit, String>`) and a later parameter without a default has a type
+that carries no function type. The first such pair is reported.
 
 ## When it stays quiet
 

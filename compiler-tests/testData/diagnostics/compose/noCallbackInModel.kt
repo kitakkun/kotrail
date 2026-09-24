@@ -33,10 +33,16 @@ fun InheritedView(<!KOTRAIL_CALLBACK_IN_UI_MODEL!>model<!>: Inherited) {
     Text(model.label)
 }
 
-// Reported: a composable slot in a model is a callback like any other by default.
+// Not reported: a composable slot in a model is what such a model is for (allowComposableSlots is on by default).
 @Composable
-fun SlottedView(<!KOTRAIL_CALLBACK_IN_UI_MODEL!>model<!>: Slotted) {
+fun SlottedView(model: Slotted) {
     Text(model.title)
+}
+
+// Reported: a function type in a type argument of a classpath type, named by the type that carries it.
+@Composable
+fun BannerStrip(<!KOTRAIL_CALLBACK_IN_UI_MODEL!>dismiss<!>: Pair<() -> Unit, String>?) {
+    Text(dismiss?.second ?: "")
 }
 
 // Not reported: a value model, with the callback on the composable.

@@ -117,6 +117,9 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: the property, or `ThreadLocal()`; reported on a property of a ThreadLocal type, or a bare construction, in a compilation that is unloaded. */
     val THREAD_LOCAL_IN_UNLOADABLE_CODE = tunable1<KtElement, String>("THREAD_LOCAL_IN_UNLOADABLE_CODE", KotrailRule.UNLOADABLE_CODE, WHOLE)
 
+    /** Arguments: what was found (a ThreadLocal, an unscoped registration), `file:line`; reported on the anchor file of the compilation that bundles the module. */
+    val OUTBOUND_REFERENCE_IN_BUNDLED_CODE = tunable2<KtElement, String, String>("OUTBOUND_REFERENCE_IN_BUNDLED_CODE", KotrailRule.UNLOADABLE_CODE, WHOLE)
+
     /** Argument: the registration function; reported on a call from `registrations` with no disposable argument. */
     val UNSCOPED_REGISTRATION_IN_UNLOADABLE_CODE = tunable1<KtElement, String>("UNSCOPED_REGISTRATION_IN_UNLOADABLE_CODE", KotrailRule.UNLOADABLE_CODE, WHOLE)
 
@@ -571,6 +574,11 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             KotrailDiagnostics.THREAD_LOCAL_IN_UNLOADABLE_CODE,
             "[Kotrail] ''{0}'' is a ThreadLocal in a compilation that is unloaded with its class loader: a value set on a " +
                 "thread that outlives the plugin keeps the class loader alive. Pass the value along instead.",
+        )
+        map.put2(
+            KotrailDiagnostics.OUTBOUND_REFERENCE_IN_BUNDLED_CODE,
+            "[Kotrail] A module bundled into this class loader has {0} at {1}: it outlives the plugin and keeps the " +
+                "class loader alive. Fix it there, or scope it to a disposable that goes with the plugin.",
         )
         map.put1(
             KotrailDiagnostics.UNSCOPED_REGISTRATION_IN_UNLOADABLE_CODE,

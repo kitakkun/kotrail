@@ -127,7 +127,9 @@ Next to the fixes, every compilation records the UI composables it declares unde
 `build/kotrail/composables`, and a compilation reads the records of the compilations it is
 associated with (`main`, for `test` or for a `preview` compilation): that is how
 [preview coverage](rules/compose/preview-coverage.md#a-preview-compilation-next-to-main) sees
-`main` from a compilation that only has its class files.
+`main` from a compilation that only has its class files. Likewise every compilation records
+what [unloadable code](rules/unloadable-code.md) looks for under `build/kotrail/unloadable`, and
+a compilation with that rule on reads the records of the projects on its runtime class path.
 
 ## Multiplatform
 

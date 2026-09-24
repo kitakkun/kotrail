@@ -51,6 +51,23 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
         allowMultipleOccurrences = true,
     )
 
+    private val unloadableDirOption = CliOption(
+        optionName = "unloadableDir",
+        valueDescription = "<directory>",
+        description = "Directory to record the outbound references the unloadableCode rule looks for (ThreadLocals, unscoped " +
+            "registrations), one JSON-lines file per source file, for a compilation that bundles this one to report",
+        required = false,
+    )
+
+    private val bundledUnloadableDirOption = CliOption(
+        optionName = "bundledUnloadableDir",
+        valueDescription = "<directory>",
+        description = "The kotrail/unloadable record root of a module on this compilation's runtime class path; with " +
+            "unloadableCode on, what its main compilation recorded is reported here. May be given more than once",
+        required = false,
+        allowMultipleOccurrences = true,
+    )
+
     private val treeOptions: List<CliOption> = KotrailConfig.OPTION_NAMES.map { (name, kind) ->
         val isRuleShorthand = name.startsWith("rules.") && ConfigSchema.ruleByKey(name.removePrefix("rules.")) != null
         val value = when {
@@ -73,7 +90,7 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
     }
 
     override val pluginId: String = KotrailNames.PLUGIN_ID
-    override val pluginOptions: Collection<CliOption> = listOf(configFileOption, fixesDirOption, composablesDirOption, associatedComposablesDirOption) + treeOptions
+    override val pluginOptions: Collection<CliOption> = listOf(configFileOption, fixesDirOption, composablesDirOption, associatedComposablesDirOption, unloadableDirOption, bundledUnloadableDirOption) + treeOptions
 
     override fun processOption(option: AbstractCliOption, value: String, configuration: CompilerConfiguration) {
         val name = option.optionName
@@ -82,6 +99,8 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
             name == fixesDirOption.optionName -> configuration.put(KotrailConfigurationKeys.FIXES_DIR, value)
             name == composablesDirOption.optionName -> configuration.put(KotrailConfigurationKeys.COMPOSABLES_DIR, value)
             name == associatedComposablesDirOption.optionName -> configuration.add(KotrailConfigurationKeys.ASSOCIATED_COMPOSABLES_DIRS, value)
+            name == unloadableDirOption.optionName -> configuration.put(KotrailConfigurationKeys.UNLOADABLE_DIR, value)
+            name == bundledUnloadableDirOption.optionName -> configuration.add(KotrailConfigurationKeys.BUNDLED_UNLOADABLE_DIRS, value)
             KotrailConfig.optionPath(name) != null -> configuration.add(KotrailConfigurationKeys.OPTIONS, "$name=$value")
             else -> throw CliOptionProcessingException("Unknown option: $name")
         }

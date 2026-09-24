@@ -13,31 +13,31 @@ fun ActionCard(title: String, modifier: Modifier = Modifier, <!KOTRAIL_COMPOSABL
 
 // Reported: nullable, parameterized, and suspend function types are callbacks too.
 @Composable
-fun Dialog(title: String, <!KOTRAIL_COMPOSABLE_TRAILING_CALLBACK!>onDismiss<!>: (() -> Unit)?) {
+fun Dialog(title: String, modifier: Modifier = Modifier, <!KOTRAIL_COMPOSABLE_TRAILING_CALLBACK!>onDismiss<!>: (() -> Unit)?) {
     Text(title)
     onDismiss?.invoke()
 }
 
 @Composable
-fun Field(value: String, <!KOTRAIL_COMPOSABLE_TRAILING_CALLBACK!>onValueChange<!>: (String) -> Unit) {
+fun Field(value: String, modifier: Modifier = Modifier, <!KOTRAIL_COMPOSABLE_TRAILING_CALLBACK!>onValueChange<!>: (String) -> Unit) {
     Text(value)
     onValueChange(value)
 }
 
 @Composable
-fun Loader(<!KOTRAIL_COMPOSABLE_TRAILING_CALLBACK!>onLoad<!>: suspend () -> Unit) {
+fun Loader(modifier: Modifier = Modifier, <!KOTRAIL_COMPOSABLE_TRAILING_CALLBACK!>onLoad<!>: suspend () -> Unit) {
     Text("loading")
 }
 
 // Reported on the interface declaration only; the override below has no say in its signature.
 interface Slot {
     @Composable
-    fun Render(<!KOTRAIL_COMPOSABLE_TRAILING_CALLBACK!>onClick<!>: () -> Unit)
+    fun Render(modifier: Modifier = Modifier, <!KOTRAIL_COMPOSABLE_TRAILING_CALLBACK!>onClick<!>: () -> Unit)
 }
 
 class ButtonSlot : Slot {
     @Composable
-    override fun Render(onClick: () -> Unit) {
+    override fun Render(modifier: Modifier, onClick: () -> Unit) {
         Text("button")
     }
 }
@@ -84,6 +84,14 @@ fun Empty() {
 @Composable
 fun ErrorEffect(key: Any?, saver: String = "", block: suspend (Throwable) -> Unit) {
     LaunchedEffect(key) { block(IllegalStateException(saver)) }
+}
+
+// Not reported: the only function-typed parameter, with no optional block to put it before;
+// parameterOrder wants it after the data, and `Row("x") { }` is what the caller writes.
+@Composable
+fun Row(label: String, onClick: () -> Unit) {
+    Text(label)
+    onClick()
 }
 
 /* GENERATED_FIR_TAGS: classDeclaration, functionDeclaration, functionalType, integerLiteral, interfaceDeclaration,
