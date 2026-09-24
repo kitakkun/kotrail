@@ -39,9 +39,9 @@ import org.jetbrains.kotlin.fir.types.isUnit
  * judged as [ComposablePreviewRequiredChecker] judges it, through [emitsUi]), for non-composable
  * functions, when the last parameter is a `@Composable` function type (nullable or not), when it
  * is not a function type at all, and for `override` / `expect` functions whose signature is
- * fixed elsewhere. Also quiet when the callback is the only function-typed parameter and no
- * parameter has a default: there is no optional block to place it before and no content-shaped
- * parameter to confuse it with, and `parameterOrder` wants the callback after the data.
+ * fixed elsewhere. Also quiet when no parameter has a default, however many callbacks there are:
+ * there is no optional block to place them before and no content-shaped parameter to confuse
+ * them with, and `parameterOrder` wants the callbacks after the data.
  */
 object ComposableTrailingCallbackChecker : NamedFunctionChecker(MppCheckerKind.Common) {
     context(context: CheckerContext, reporter: DiagnosticReporter)
@@ -64,10 +64,9 @@ object ComposableTrailingCallbackChecker : NamedFunctionChecker(MppCheckerKind.C
         // `isSomeFunctionType` looks at the class behind the type, so `(() -> Unit)?` qualifies too.
         if (!type.isSomeFunctionType(session)) return
         if (type.customAnnotations.any { it.toAnnotationClassId(session) == ComposeNames.COMPOSABLE }) return
-        // The only function-typed parameter, with no optional block to move it before: nothing content-shaped for it
-        // to be mistaken for, and parameterOrder wants it after the data. `Card(title) { }` is what the caller writes.
-        val onlyCallback = parameters.count { it.returnTypeRef.coneType.isSomeFunctionType(session) } == 1
-        if (onlyCallback && parameters.none { it.defaultValue != null }) return
+        // No optional block to move the callback before: nothing content-shaped for it to be mistaken for, and
+        // parameterOrder wants the callbacks after the data. `Card(title) { }` is what the caller writes.
+        if (parameters.none { it.defaultValue != null }) return
 
         val target = last.source ?: return
         reportKotrail(target, KotrailDiagnostics.COMPOSABLE_TRAILING_CALLBACK, last.name.asString())

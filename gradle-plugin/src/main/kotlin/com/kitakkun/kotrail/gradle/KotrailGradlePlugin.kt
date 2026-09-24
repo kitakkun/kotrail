@@ -11,6 +11,7 @@ import org.jetbrains.kotlin.gradle.plugin.FilesSubpluginOption
 import org.jetbrains.kotlin.gradle.plugin.KotlinBasePlugin
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilation
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilerPluginSupportPlugin
+import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
 import org.jetbrains.kotlin.gradle.plugin.SubpluginArtifact
 import org.jetbrains.kotlin.gradle.plugin.SubpluginOption
 import java.io.File
@@ -127,8 +128,13 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
      */
     private fun wireUnloadableRecords(kotlinCompilation: KotlinCompilation<*>) {
         val directory = unloadableDirectoryFor(kotlinCompilation)
+        val platform = platformKey(kotlinCompilation)
         kotlinCompilation.compileTaskProvider.configure { task ->
             task.outputs.dir(directory).withPropertyName("kotrailUnloadable")
+            // The marker a consumer matches against its own platform, so that a JVM consumer of a multiplatform
+            // library reads the library's jvm records and not those of the targets it does not depend on. Written
+            // after the compilation: the Kotlin compile task clears its declared outputs before it runs.
+            task.doLast { directory.get().asFile.apply { mkdirs() }.resolve(PLATFORM_MARKER).writeText(platform) }
             // The artifacts of the bundled configurations: their project dependencies' compile tasks then run first,
             // so that their records exist when this task reads them.
             task.inputs.files(project.provider { bundledConfigurations(kotlinCompilation) })
@@ -153,18 +159,34 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
             }
 
     /**
-     * The `*-main` record directories of the bundled projects, and only those: the compile task
-     * of a consumer depends on the main compilation of a dependency through its classes, so those
-     * records exist by the time the inputs are read, while a `test` or `preview` compilation of
-     * the dependency is not a task the consumer depends on, and its records must not be an input.
+     * The `*-main` record directories of the bundled projects whose platform is the consumer's,
+     * and only those: the compile task of a consumer depends on the main compilation of a
+     * dependency for its own platform through its classes, so those records exist by the time
+     * the inputs are read, while a `test` or `preview` compilation, or the main compilation of
+     * another target of a multiplatform dependency, is not a task the consumer depends on, and
+     * its records must not be an input. An Android consumer of a library with no Android target
+     * gets the library's JVM variant, and its JVM records. A common (metadata) compilation
+     * bundles nothing.
      */
-    private fun bundledRecordDirectories(kotlinCompilation: KotlinCompilation<*>): List<File> =
-        bundledProjects(kotlinCompilation).flatMap { bundled ->
-            bundled.layout.buildDirectory.dir("kotrail/unloadable").get().asFile
+    private fun bundledRecordDirectories(kotlinCompilation: KotlinCompilation<*>): List<File> {
+        if (kotlinCompilation.platformType == KotlinPlatformType.common) return emptyList()
+        val wanted = platformKey(kotlinCompilation)
+        val fallback = if (kotlinCompilation.platformType == KotlinPlatformType.androidJvm) KotlinPlatformType.jvm.name else null
+        return bundledProjects(kotlinCompilation).flatMap { bundled ->
+            val candidates = bundled.layout.buildDirectory.dir("kotrail/unloadable").get().asFile
                 .listFiles { file -> file.isDirectory && file.name.endsWith("-main") }
                 .orEmpty()
                 .sortedBy { it.name }
+            val byPlatform = candidates.groupBy { runCatching { it.resolve(PLATFORM_MARKER).readText().trim() }.getOrDefault("") }
+            byPlatform[wanted] ?: fallback?.let { byPlatform[it] } ?: emptyList()
         }
+    }
+
+    /** What a record directory's platform marker says: the platform type, and the target for the types that have several. */
+    private fun platformKey(kotlinCompilation: KotlinCompilation<*>): String = when (val type = kotlinCompilation.platformType) {
+        KotlinPlatformType.native, KotlinPlatformType.wasm -> "${type.name}:${kotlinCompilation.target.name}"
+        else -> type.name
+    }
 
     /**
      * The projects whose classes the compilation's artifact bundles: those on its runtime class
@@ -181,6 +203,8 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
             .sorted()
             .map { project.project(it) }
     }
+
+    private val PLATFORM_MARKER = "platform"
 
     private fun unloadableDirectoryFor(kotlinCompilation: KotlinCompilation<*>): Provider<Directory> =
         project.layout.buildDirectory.dir("kotrail/unloadable/${kotlinCompilation.directoryName()}")

@@ -86,12 +86,19 @@ fun ErrorEffect(key: Any?, saver: String = "", block: suspend (Throwable) -> Uni
     LaunchedEffect(key) { block(IllegalStateException(saver)) }
 }
 
-// Not reported: the only function-typed parameter, with no optional block to put it before;
-// parameterOrder wants it after the data, and `Row("x") { }` is what the caller writes.
+// Not reported: no optional block to put the callbacks before, however many there are;
+// parameterOrder wants them after the data, and `Row("x") { }` is what the caller writes.
 @Composable
 fun Row(label: String, onClick: () -> Unit) {
     Text(label)
     onClick()
+}
+
+@Composable
+fun Pane(rows: List<String>, onQuery: (String) -> Unit, onSelect: (String) -> Unit, modifier: Modifier) {
+    Text("${rows.size}", modifier)
+    onQuery("")
+    onSelect("")
 }
 
 /* GENERATED_FIR_TAGS: classDeclaration, functionDeclaration, functionalType, integerLiteral, interfaceDeclaration,
