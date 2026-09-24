@@ -51,11 +51,14 @@ object UnloadableRecords {
         }
     }
 
-    /** `path:line` of an entry, the line counted in the file as it is now. */
-    fun location(entry: Entry): String {
-        val text = runCatching { File(entry.file).readText() }.getOrNull() ?: return entry.file
+    /** `path:line` of an entry, the path relative to [rootDir] when it lies under it, the line counted in the file as it is now. */
+    fun location(entry: Entry, rootDir: String?): String {
+        val file = File(entry.file)
+        val root = rootDir?.let(::File)
+        val path = if (root != null && file.startsWith(root)) file.relativeTo(root).path else entry.file
+        val text = runCatching { file.readText() }.getOrNull() ?: return path
         val line = text.take(entry.offset.coerceIn(0, text.length)).count { it == '\n' } + 1
-        return "${entry.file}:$line"
+        return "$path:$line"
     }
 
     private fun recordFor(directory: String, file: String): File = File(directory, "${sha1(file.toByteArray())}.jsonl")

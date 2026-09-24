@@ -68,6 +68,13 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
         allowMultipleOccurrences = true,
     )
 
+    private val rootDirOption = CliOption(
+        optionName = "rootDir",
+        valueDescription = "<directory>",
+        description = "The build's root directory; a message that names a file of another module gives its path relative to it",
+        required = false,
+    )
+
     private val treeOptions: List<CliOption> = KotrailConfig.OPTION_NAMES.map { (name, kind) ->
         val isRuleShorthand = name.startsWith("rules.") && ConfigSchema.ruleByKey(name.removePrefix("rules.")) != null
         val value = when {
@@ -90,7 +97,7 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
     }
 
     override val pluginId: String = KotrailNames.PLUGIN_ID
-    override val pluginOptions: Collection<CliOption> = listOf(configFileOption, fixesDirOption, composablesDirOption, associatedComposablesDirOption, unloadableDirOption, bundledUnloadableDirOption) + treeOptions
+    override val pluginOptions: Collection<CliOption> = listOf(configFileOption, fixesDirOption, composablesDirOption, associatedComposablesDirOption, unloadableDirOption, bundledUnloadableDirOption, rootDirOption) + treeOptions
 
     override fun processOption(option: AbstractCliOption, value: String, configuration: CompilerConfiguration) {
         val name = option.optionName
@@ -101,6 +108,7 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
             name == associatedComposablesDirOption.optionName -> configuration.add(KotrailConfigurationKeys.ASSOCIATED_COMPOSABLES_DIRS, value)
             name == unloadableDirOption.optionName -> configuration.put(KotrailConfigurationKeys.UNLOADABLE_DIR, value)
             name == bundledUnloadableDirOption.optionName -> configuration.add(KotrailConfigurationKeys.BUNDLED_UNLOADABLE_DIRS, value)
+            name == rootDirOption.optionName -> configuration.put(KotrailConfigurationKeys.ROOT_DIR, value)
             KotrailConfig.optionPath(name) != null -> configuration.add(KotrailConfigurationKeys.OPTIONS, "$name=$value")
             else -> throw CliOptionProcessingException("Unknown option: $name")
         }

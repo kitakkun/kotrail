@@ -370,6 +370,8 @@ data class KotrailConfig(
     val unloadableDir: String?,
     /** Record roots of the modules on the runtime class path, for the unloadable-code rule (the `bundledUnloadableDir` plugin option). */
     val bundledUnloadableDirs: List<String>,
+    /** The build's root directory, for paths in messages that name a file of another module (the `rootDir` plugin option). */
+    val rootDir: String?,
     private val switches: Map<KotrailRule, Boolean>,
     private val severities: Map<KotrailRule, Severity>,
     private val notes: Map<KotrailRule, String>,
@@ -497,6 +499,7 @@ data class KotrailConfig(
                 associatedComposablesDirs = configuration.get(KotrailConfigurationKeys.ASSOCIATED_COMPOSABLES_DIRS).orEmpty(),
                 unloadableDir = configuration.get(KotrailConfigurationKeys.UNLOADABLE_DIR),
                 bundledUnloadableDirs = configuration.get(KotrailConfigurationKeys.BUNDLED_UNLOADABLE_DIRS).orEmpty(),
+                rootDir = configuration.get(KotrailConfigurationKeys.ROOT_DIR),
             )
         } catch (e: ConfigException) {
             throw CliOptionProcessingException("Kotrail configuration: ${e.message}")
@@ -696,6 +699,7 @@ data class KotrailConfig(
                 associatedComposablesDirs = emptyList(),
                 unloadableDir = null,
                 bundledUnloadableDirs = emptyList(),
+                rootDir = null,
                 switches = switches,
                 severities = severities,
                 notes = notes,

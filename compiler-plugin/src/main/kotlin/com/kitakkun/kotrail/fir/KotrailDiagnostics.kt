@@ -577,8 +577,9 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         )
         map.put2(
             KotrailDiagnostics.OUTBOUND_REFERENCE_IN_BUNDLED_CODE,
-            "[Kotrail] A module bundled into this class loader has {0} at {1}: it outlives the plugin and keeps the " +
-                "class loader alive. Fix it there, or scope it to a disposable that goes with the plugin.",
+            "[Kotrail] {0} at {1}, in a module bundled into this class loader: it outlives the plugin and keeps the " +
+                "class loader alive. Fix it there, scope it to a disposable that goes with the plugin, or suppress it " +
+                "there with the reason.",
         )
         map.put1(
             KotrailDiagnostics.UNSCOPED_REGISTRATION_IN_UNLOADABLE_CODE,

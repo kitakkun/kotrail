@@ -20,6 +20,7 @@ class UnloadableRecordsTest {
 
         val read = UnloadableRecords.read(listOf(records, File(directory, "missing").path))
         assertEquals(listOf("threadLocal" to "current"), read.map { it.kind to it.name })
-        assertEquals("${source.path}:2", UnloadableRecords.location(read.single()))
+        assertEquals("${source.path}:2", UnloadableRecords.location(read.single(), rootDir = null))
+        assertEquals("Buffers.kt:2", UnloadableRecords.location(read.single(), rootDir = directory.path))
     }
 }

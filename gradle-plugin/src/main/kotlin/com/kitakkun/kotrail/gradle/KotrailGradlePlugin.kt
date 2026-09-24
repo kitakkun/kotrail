@@ -64,6 +64,7 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
                 kotlinCompilation.allAssociatedCompilations.map {
                     SubpluginOption("associatedComposablesDir", composablesDirectoryFor(it).get().asFile.path)
                 } +
+                SubpluginOption("rootDir", project.rootDir.path) +
                 SubpluginOption("unloadableDir", unloadableDirectoryFor(kotlinCompilation).get().asFile.path) +
                 bundledRecordDirectories(kotlinCompilation).map { SubpluginOption("bundledUnloadableDir", it.path) }
             // `--info` shows what each compilation was handed, for a consumer to check its wiring.

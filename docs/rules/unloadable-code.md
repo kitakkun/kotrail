@@ -43,7 +43,8 @@ Gradle plugin configures records the findings the rule looks for under
 compilation with the rule on reads the `*-main` records of every project on its runtime class
 path, transitively (those directories alone are its inputs, since a dependency's `test` or
 `preview` compilation is not a task the consumer depends on), and reports them on the package directive of its first file by name as
-`KOTRAIL_OUTBOUND_REFERENCE_IN_BUNDLED_CODE`, with the file and line. One switch on the plugin
+`KOTRAIL_OUTBOUND_REFERENCE_IN_BUNDLED_CODE`, with the file (relative to the build's root
+directory) and line. One switch on the plugin
 module covers whatever it bundles, and the set follows the dependency graph. A plugin that
 bundles code through a configuration of its own rather than the runtime class path (an IDE
 plugin that copies a `hostRuntime` configuration into its directory and loads it through its
@@ -75,6 +76,14 @@ the same.
     `com.intellij.openapi.project.ProjectManager.addProjectManagerListener`
 
   `registrations` replaces the list; a member function is named by its declaring class.
+
+## Opting a site out
+
+A registration that is right where it is (a shutdown hook for a headless entry point the plugin
+never runs) is opted out at the site, with its reason: `@Suppress` of any of the rule's
+diagnostic names on the declaration, or `unloadableCode.exclude` in the configuration of the
+module that declares it. Such a site is neither reported there nor recorded for the modules that
+bundle it, whether or not the rule is on in the declaring module.
 
 ## When it stays quiet
 

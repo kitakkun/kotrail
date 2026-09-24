@@ -5,6 +5,7 @@ import com.kitakkun.kotrail.exclude.Glob
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.UnloadableRecords
 import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.isSuppressedOrExcluded
 import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
@@ -68,10 +69,22 @@ object UnloadableCodeChecker {
         return config.isEnabled(KotrailRule.UNLOADABLE_CODE) || config.unloadableDir != null
     }
 
-    /** Reports a finding when the rule is on here, and records it for the compilations that bundle this one. */
+    private val SITE_NAMES = listOf(
+        KotrailDiagnostics.THREAD_LOCAL_IN_UNLOADABLE_CODE.baseName,
+        KotrailDiagnostics.UNSCOPED_REGISTRATION_IN_UNLOADABLE_CODE.baseName,
+        KotrailDiagnostics.OUTBOUND_REFERENCE_IN_BUNDLED_CODE.baseName,
+    )
+
+    /**
+     * Reports a finding when the rule is on here, and records it for the compilations that bundle
+     * this one. A site that opts out, with `@Suppress` of any of the rule's diagnostic names or
+     * through `unloadableCode.exclude` in this compilation's configuration, is neither reported
+     * nor recorded: the reason for the opt-out lives at the site, and holds wherever it is read.
+     */
     context(context: CheckerContext, reporter: DiagnosticReporter)
     private fun found(source: KtSourceElement, kind: String, name: String, report: () -> Unit) {
         val config = context.session.kotrailConfig
+        if (isSuppressedOrExcluded(SITE_NAMES, KotrailRule.UNLOADABLE_CODE)) return
         if (config.isEnabled(KotrailRule.UNLOADABLE_CODE)) report()
         val directory = config.unloadableDir ?: return
         val path = context.containingFileSymbol?.sourceFile?.path ?: return
@@ -125,10 +138,10 @@ object UnloadableCodeChecker {
             if (source.kind is KtFakeSourceElementKind) return
             for (entry in UnloadableRecords.read(config.bundledUnloadableDirs)) {
                 val what = when (entry.kind) {
-                    KIND_THREAD_LOCAL -> "a ThreadLocal, '${entry.name}'"
-                    else -> "an unscoped registration, '${entry.name}'"
+                    KIND_THREAD_LOCAL -> "'${entry.name}' (a ThreadLocal)"
+                    else -> "'${entry.name}' (a registration with no disposable)"
                 }
-                reportKotrail(source, KotrailDiagnostics.OUTBOUND_REFERENCE_IN_BUNDLED_CODE, what, UnloadableRecords.location(entry))
+                reportKotrail(source, KotrailDiagnostics.OUTBOUND_REFERENCE_IN_BUNDLED_CODE, what, UnloadableRecords.location(entry, config.rootDir))
             }
         }
     }

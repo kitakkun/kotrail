@@ -139,6 +139,15 @@ private fun writeFix(rule: KotrailRule, diagnostic: String, fix: List<FixEdit>) 
     FixRecords.write(directory, file, diagnostic, fix)
 }
 
+/**
+ * Whether a finding at the current site would be dropped: one of [baseNames] is suppressed here,
+ * or the rule's exclusion predicate matches. For a checker that records a finding for another
+ * compilation to report, so that an opt-out written at the site holds there too.
+ */
+context(context: CheckerContext)
+internal fun isSuppressedOrExcluded(baseNames: List<String>, rule: KotrailRule): Boolean =
+    baseNames.any { it in context.suppressedDiagnostics } || isExcluded(rule)
+
 /** The site is only described when a predicate is configured for the rule. */
 context(context: CheckerContext)
 private fun isExcluded(rule: KotrailRule): Boolean {

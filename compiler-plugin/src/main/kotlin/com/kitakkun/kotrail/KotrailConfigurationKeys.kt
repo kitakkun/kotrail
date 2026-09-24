@@ -27,6 +27,9 @@ object KotrailConfigurationKeys {
     /** Directory where this compilation records the outbound references the unloadable-code rule looks for. */
     val UNLOADABLE_DIR = CompilerConfigurationKey<String>("unloadableDir")
 
+    /** The build's root directory, for paths in messages that name a file of another module. */
+    val ROOT_DIR = CompilerConfigurationKey<String>("rootDir")
+
     /** Main-compilation record directories of the modules on this compilation's runtime class path. */
     val BUNDLED_UNLOADABLE_DIRS = CompilerConfigurationKey<List<String>>("bundledUnloadableDir")
 }
