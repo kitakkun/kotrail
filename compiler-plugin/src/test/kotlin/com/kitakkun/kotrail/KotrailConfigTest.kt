@@ -27,6 +27,8 @@ class KotrailConfigTest {
             note: Conventions live in CONTRIBUTING.md.
             exclude: package(com.acme.generated.*)
             fix: false
+            generated:
+              paths: ["*/gen/*", "*/build/generated/*"]
             rules:
               preferValueClass: off
               commentLength: warning
@@ -69,6 +71,10 @@ class KotrailConfigTest {
         assertTrue(config.excludes.isConfiguredFor(KotrailRule.FUNCTION_LENGTH))
         assertTrue(config.fixEnabled(KotrailRule.FUNCTION_LENGTH))
         assertFalse(config.fixEnabled(KotrailRule.PREFER_VALUE_CLASS))
+        assertTrue(config.generated.matchesPath("/repo/app/gen/Foo.kt"))
+        assertTrue(config.generated.matchesPath("C:\\repo\\app\\build\\generated\\ksp\\Foo.kt"))
+        assertFalse(config.generated.matchesPath("/repo/app/src/main/Foo.kt"))
+        assertTrue(config.generated.matchesAnnotations(setOf("javax.annotation.processing.Generated")))
         assertEquals(listOf("kotlin.io.println", "java.util.Date", "globalScope"), config.forbiddenCall.entries.map { it.name })
         assertEquals(listOf("entities", "screens"), config.requiredAnnotations.map { it.name })
         assertEquals("com.acme.Persisted", config.requiredAnnotations.single { it.name == "entities" }.annotation)

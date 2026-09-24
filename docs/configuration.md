@@ -56,6 +56,8 @@ schema is generated from the same table the plugin validates against.
 | `note` | Text appended to every Kotrail message. See [Project notes](#project-notes). |
 | `exclude` | A predicate over locations; matching diagnostics of every rule are dropped. See [Excluding by pattern](#excluding-by-pattern). |
 | `fix` | `false` stops every rule from recording fixes for `kotrailFix`; the diagnostics are still reported. A rule's own `fix` wins. |
+| `generated.paths` | Globs over source file paths (`/` separated) of generated code, which every rule skips. Default `[*/build/generated/*]`; replaces the default. See [Generated code](#generated-code). |
+| `generated.annotations` | Fully qualified annotations that mark a file (`@file:Generated`) or a declaration as generated, which every rule skips. Default: `javax.annotation.processing.Generated`, `javax.annotation.Generated`, `jakarta.annotation.Generated`; replaces the default list. |
 | `test.annotations` | Fully qualified annotations that mark a function as a test; shared by the test rules and the `test` predicate. Replaces the default list. |
 | `rules.<rule>` | One entry per rule, named by the rule's full key (`functionLength`, `compose.nesting`, `test.naming`), as a shorthand or a mapping. |
 
@@ -198,6 +200,21 @@ The note is **appended** to the built-in message, never substituted for it, so t
 asks for cannot be lost by configuring one. A rule's own `note` replaces the top-level `note` for
 that rule; leading and trailing whitespace is trimmed and a separating space is added.
 
+## Generated code
+
+Code that a tool wrote (KSP and kapt output, Compose resources, SQLDelight, protobuf) is not
+anyone's to fix, so every rule skips it. A file is generated when its path matches one of
+`generated.paths` (`*/build/generated/*` by default, which is where Gradle plugins put their
+output) or when it, or a declaration enclosing the location, carries one of
+`generated.annotations`. Generated code is skipped entirely: nothing is reported in it, no fix is
+recorded for it, and a rule that records findings for another compilation (unloadable code)
+records nothing from it. A generator that writes somewhere else is covered by adding its path:
+
+```yaml
+generated:
+  paths: ["*/build/generated/*", "*/src/*/generatedKotlin/*"]   # quoted: a bare * starts a YAML alias
+```
+
 ## Excluding by pattern
 
 `@Suppress` handles one occurrence. For a structural carve-out — a generated package, every
@@ -225,6 +242,7 @@ position. A predicate that starts with `!` has to be quoted, since YAML would re
 |---|---|
 | `package(glob)`, `file(glob)` | the file's package or file name matches |
 | `name(glob)` | the innermost enclosing declaration (function, property, class) has that name |
+| `path(glob)` | the file's full path, with `/` separators, matches (`*/src/commonMain/*`) |
 | `class(glob)` | any enclosing class, or the declaration itself if it is a class, has that name |
 | `function`, `property`, `class` | the innermost declaration is a function, a property, or a class |
 | `annotated(fqn)` | the innermost declaration or any enclosing one carries that annotation |
@@ -308,7 +326,7 @@ tasks.withType<KotlinCompile>().configureEach {
 
 | Option | Value |
 |---|---|
-| `enabled`, `note`, `exclude`, `test.annotations` | as in the file; a list is comma separated |
+| `enabled`, `note`, `exclude`, `test.annotations`, `generated.paths`, `generated.annotations` | as in the file; a list is comma separated |
 | `rules.<rule>` | `off`, `on`, `error`, or `warning` |
 | `rules.<rule>.enabled` / `.severity` / `.note` / `.exclude` | as in the file |
 | `rules.<rule>.<setting>` | as in the file; a list is comma separated |

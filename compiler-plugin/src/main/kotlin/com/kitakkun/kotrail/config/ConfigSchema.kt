@@ -42,6 +42,13 @@ object ConfigSchema {
         Setting("fix", Kind.BOOLEAN, "Whether fixes are recorded for kotrailFix at all; false turns the task into a no-op until a rule says fix: true.", default = "true"),
     )
 
+    /** What counts as generated code, which every rule skips; under a `generated` mapping. */
+    val GENERATED = listOf(
+        Setting("paths", Kind.LIST, "Globs over source file paths (with / separators) of generated code, which every rule skips; replaces the default.", default = "*/build/generated/*"),
+        Setting("annotations", Kind.LIST, "Fully qualified annotations that mark a file or declaration as generated, which every rule skips; replaces the default list.",
+            default = "javax.annotation.processing.Generated, javax.annotation.Generated, jakarta.annotation.Generated"),
+    )
+
     /** `test.annotations`, shared by the test rules and the `test` predicate, lives under a `test` mapping. */
     val TEST = listOf(
         Setting("annotations", Kind.LIST, "Fully qualified annotations that mark a function as a test; replaces the default list.",
@@ -215,7 +222,9 @@ object ConfigSchema {
         sb.append("  \"title\": \"Kotrail configuration\",\n")
         sb.append("  \"type\": \"object\",\n  \"additionalProperties\": false,\n  \"properties\": {\n")
         sb.append(TOP_LEVEL.joinToString(",\n") { "    ${q(it.name)}: ${setting(it)}" })
-        sb.append(",\n    \"test\": {\"type\": \"object\", \"additionalProperties\": false, \"properties\": {")
+        sb.append(",\n    \"generated\": {\"type\": \"object\", \"additionalProperties\": false, \"properties\": {")
+        sb.append(GENERATED.joinToString(", ") { "${q(it.name)}: ${setting(it)}" })
+        sb.append("}},\n    \"test\": {\"type\": \"object\", \"additionalProperties\": false, \"properties\": {")
         sb.append(TEST.joinToString(", ") { "${q(it.name)}: ${setting(it)}" })
         sb.append("}},\n    \"rules\": {\"type\": \"object\", \"additionalProperties\": false, \"properties\": {\n")
         sb.append(rules.prependIndent("  "))

@@ -13,6 +13,8 @@ class ReportSite(
     val kind: DeclarationKind?,
     val packageName: String,
     val fileName: String,
+    /** The file's path with `/` separators, for `path(glob)` and the generated-code paths. */
+    val filePath: String,
     /** The innermost enclosing named declaration: a function, property, or class. */
     val declarationName: String?,
     /** Enclosing class names, innermost first; includes the declaration itself when it is a class. */

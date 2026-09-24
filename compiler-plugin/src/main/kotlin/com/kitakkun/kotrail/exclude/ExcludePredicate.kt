@@ -9,6 +9,7 @@ package com.kitakkun.kotrail.exclude
  * | Atom | True when |
  * |---|---|
  * | `package(glob)`, `file(glob)` | the file's package / file name matches |
+ * | `path(glob)` | the file's full path, with `/` separators, matches; `*` spans directories |
  * | `name(glob)` | the innermost declaration's name matches |
  * | `class(glob)` | any enclosing class (or the declaration itself, if a class) matches |
  * | `function`, `property`, `class` | the innermost declaration is one |
@@ -30,6 +31,10 @@ sealed class ExcludePredicate {
 
     data class FileIs(val glob: Glob) : ExcludePredicate() {
         override fun matches(site: ReportSite): Boolean = glob.matches(site.fileName)
+    }
+
+    data class PathIs(val glob: Glob) : ExcludePredicate() {
+        override fun matches(site: ReportSite): Boolean = glob.matches(site.filePath)
     }
 
     data class NameIs(val glob: Glob) : ExcludePredicate() {

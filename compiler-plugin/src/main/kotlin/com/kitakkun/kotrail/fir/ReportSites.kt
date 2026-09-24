@@ -51,13 +51,15 @@ internal fun reportSite(): ReportSite {
         },
         packageName = file?.packageDirective?.packageFqName?.asString().orEmpty(),
         fileName = file?.name.orEmpty(),
+        filePath = file?.sourceFile?.path?.replace('\\', '/').orEmpty(),
         declarationName = when (innermost) {
             is FirCallableSymbol<*> -> innermost.name.asString()
             is FirClassSymbol<*> -> innermost.classId.shortClassName.asString()
             else -> null
         },
         classNames = chain.filterIsInstance<FirClassSymbol<*>>().asReversed().map { it.classId.shortClassName.asString() },
-        annotations = chain.flatMapTo(HashSet()) { symbol -> symbol.annotationNames(session) },
+        annotations = chain.flatMapTo(HashSet()) { symbol -> symbol.annotationNames(session) } +
+            file?.annotations.orEmpty().mapNotNull { it.toAnnotationClassId(session)?.asSingleFqName()?.asString() },
         extensionReceiver = callable?.resolvedReceiverType?.fqName(),
         contextParameters = callable?.contextParameterSymbols?.mapNotNull { it.resolvedReturnType.fqName() }.orEmpty(),
         visibility = callable?.visibility?.name ?: (innermost as? FirClassSymbol<*>)?.visibility?.name,

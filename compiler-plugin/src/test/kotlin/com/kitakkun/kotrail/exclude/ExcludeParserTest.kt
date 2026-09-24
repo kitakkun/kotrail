@@ -68,6 +68,7 @@ class ExcludeParserTest {
         kind = kind,
         packageName = "custom",
         fileName = "File.kt",
+        filePath = "/repo/src/main/kotlin/custom/File.kt",
         declarationName = name,
         classNames = classes,
         annotations = emptySet(),

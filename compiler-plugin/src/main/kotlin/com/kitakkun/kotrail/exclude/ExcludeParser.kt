@@ -41,6 +41,7 @@ object ExcludeParser {
         return when (name) {
             "package" -> ExcludePredicate.PackageIs(Glob(required()))
             "file" -> ExcludePredicate.FileIs(Glob(required()))
+            "path" -> ExcludePredicate.PathIs(Glob(required()))
             "name" -> ExcludePredicate.NameIs(Glob(required()))
             "class" -> if (argument == null) ExcludePredicate.KindIs(DeclarationKind.CLASS) else ExcludePredicate.ClassIs(Glob(required()))
             "function" -> { none(); ExcludePredicate.KindIs(DeclarationKind.FUNCTION) }

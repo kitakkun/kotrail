@@ -127,7 +127,20 @@ private fun AbstractKtDiagnosticFactory.effectiveSeverity(): Severity? =
 
 context(context: CheckerContext)
 private fun shouldReport(baseName: String, rule: KotrailRule): Boolean =
-    baseName !in context.suppressedDiagnostics && !isExcluded(rule)
+    baseName !in context.suppressedDiagnostics && !isGenerated() && !isExcluded(rule)
+
+/**
+ * Whether the current site is generated code, by the file's path (`generated.paths`) or by an
+ * annotation on the file or an enclosing declaration (`generated.annotations`); every rule
+ * skips it.
+ */
+context(context: CheckerContext)
+internal fun isGenerated(): Boolean {
+    val generated = context.session.kotrailConfig.generated
+    val path = context.containingFileSymbol?.sourceFile?.path
+    if (path != null && generated.matchesPath(path)) return true
+    return generated.annotations.isNotEmpty() && generated.matchesAnnotations(reportSite().annotations)
+}
 
 context(context: CheckerContext)
 private fun writeFix(rule: KotrailRule, diagnostic: String, fix: List<FixEdit>) {
@@ -146,7 +159,7 @@ private fun writeFix(rule: KotrailRule, diagnostic: String, fix: List<FixEdit>) 
  */
 context(context: CheckerContext)
 internal fun isSuppressedOrExcluded(baseNames: List<String>, rule: KotrailRule): Boolean =
-    baseNames.any { it in context.suppressedDiagnostics } || isExcluded(rule)
+    baseNames.any { it in context.suppressedDiagnostics } || isGenerated() || isExcluded(rule)
 
 /** The site is only described when a predicate is configured for the rule. */
 context(context: CheckerContext)
