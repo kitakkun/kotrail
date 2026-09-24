@@ -44,6 +44,8 @@ data class KotrailComposeSettings(
     val stableTypes: List<String>,
     /** Whether a `@Composable` function-typed property of a model handed to a UI composable is allowed. */
     val allowComposableSlots: Boolean,
+    /** How many previews of one file must build the same model inline before they are reported. */
+    val previewParameterMinPreviews: Int,
     val previewCoverage: KotrailPreviewCoverage,
     /**
      * The project's changes to the insets knowledge base, keyed by the composable's fully
@@ -707,6 +709,7 @@ data class KotrailConfig(
                     maxComposablesPerFile = int(KotrailRule.COMPOSE_COMPOSABLES_PER_FILE, "max") ?: DEFAULT_MAX_COMPOSABLES_PER_FILE,
                     countOverloadsSeparately = boolean(ruleNode(KotrailRule.COMPOSE_COMPOSABLES_PER_FILE), "countOverloadsSeparately") ?: false,
                     allowComposableSlots = boolean(ruleNode(KotrailRule.COMPOSE_NO_CALLBACK_IN_MODEL), "allowComposableSlots") ?: true,
+                    previewParameterMinPreviews = int(KotrailRule.COMPOSE_PREVIEW_PARAMETER, "minPreviews") ?: 2,
                     sideEffectTypes = list(KotrailRule.COMPOSE_NO_SIDE_EFFECT_IN_COMPOSITION, "types") ?: DEFAULT_SIDE_EFFECT_TYPES,
                     sideEffectFunctions = list(KotrailRule.COMPOSE_NO_SIDE_EFFECT_IN_COMPOSITION, "functions").orEmpty(),
                     hardcodedStringParameters = list(KotrailRule.COMPOSE_NO_HARDCODED_STRING, "parameters") ?: DEFAULT_HARDCODED_STRING_PARAMETERS,

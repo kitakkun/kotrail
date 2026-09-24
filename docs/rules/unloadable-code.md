@@ -44,8 +44,21 @@ compilation with the rule on reads the `*-main` records of every project on its 
 path, transitively (those directories alone are its inputs, since a dependency's `test` or
 `preview` compilation is not a task the consumer depends on), and reports them on the package directive of its first file by name as
 `KOTRAIL_OUTBOUND_REFERENCE_IN_BUNDLED_CODE`, with the file and line. One switch on the plugin
-module covers whatever it bundles, and the set follows the dependency graph. Outside Gradle,
-the compiler plugin's `unloadableDir` and `bundledUnloadableDir` options do the same.
+module covers whatever it bundles, and the set follows the dependency graph. A plugin that
+bundles code through a configuration of its own rather than the runtime class path (an IDE
+plugin that copies a `hostRuntime` configuration into its directory and loads it through its
+own class loader) names it in the Gradle plugin:
+
+```kotlin
+kotrail {
+    compilation("main") {
+        bundledConfigurations.add("hostRuntime")
+    }
+}
+```
+
+Outside Gradle, the compiler plugin's `unloadableDir` and `bundledUnloadableDir` options do
+the same.
 
 ## When it fires
 

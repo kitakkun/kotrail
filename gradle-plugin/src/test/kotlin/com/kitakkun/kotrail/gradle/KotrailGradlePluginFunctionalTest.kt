@@ -240,12 +240,21 @@ class KotrailGradlePluginFunctionalTest {
         writeFile("kotrail.yaml", "severity: warning\nrules:\n  unloadableCode: on\n")
         writeBuild(
             """
+            // The plugin bundles lib through a configuration of its own, not the runtime class path.
+            val hostRuntime: Configuration by configurations.creating {
+                isCanBeConsumed = false
+                isCanBeResolved = true
+            }
+
             dependencies {
-                implementation(project(":lib"))
+                hostRuntime(project(":lib"))
             }
 
             kotrail {
                 configFile = file("kotrail.yaml")
+                compilation("main") {
+                    bundledConfigurations.add("hostRuntime")
+                }
             }
             """.trimIndent(),
         )

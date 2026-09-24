@@ -10,6 +10,8 @@ enum class Plan { Free, Pro }
 data class User(val name: String, val plan: Plan)
 data class Order(val id: Int, val paid: Boolean)
 data class UiState(val users: List<User>)
+interface DataModel
+class PreviewDataModel(val label: String) : DataModel
 
 @Composable
 fun UserCard(user: User, modifier: Modifier = Modifier) {
@@ -27,18 +29,30 @@ fun Screen(state: UiState, content: @Composable () -> Unit) {
     content()
 }
 
-// Reported: the model is built by hand in the preview.
+@Composable
+fun Boundary(model: DataModel) {
+    Text("boundary")
+}
+
+// Reported: two previews of this file build a User by hand, one state each.
 @Preview
 @Composable
 private fun UserCardPreview() {
     UserCard(user = <!KOTRAIL_PREVIEW_MODEL_BUILT_INLINE!>User("Ada", Plan.Pro)<!>)
 }
 
-// Reported: a model inside a collection, and inside another model, count too; one finding per preview.
+@Preview
+@Composable
+private fun UserCardFreePreview() {
+    UserCard(user = <!KOTRAIL_PREVIEW_MODEL_BUILT_INLINE!>User("Grace", Plan.Free)<!>)
+}
+
+// Not reported: a single preview building a single state (minPreviews is 2); a model inside a
+// collection would count, but there is nothing to gather.
 @Preview
 @Composable
 private fun OrderListPreview() {
-    OrderList(orders = <!KOTRAIL_PREVIEW_MODEL_BUILT_INLINE!>listOf(Order(1, paid = true), Order(2, paid = false))<!>)
+    OrderList(orders = listOf(Order(1, paid = true), Order(2, paid = false)))
     Screen(state = UiState(users = listOf(User("Grace", Plan.Free)))) { Text("nested") }
 }
 
@@ -63,6 +77,19 @@ private fun ScreenPreview(@PreviewParameter(UserProvider::class) user: User) {
     }
 }
 
+// Not reported: a stand-in made for previews is not the model the composable shows.
+@Preview
+@Composable
+private fun BoundaryPreview() {
+    Boundary(PreviewDataModel("one"))
+}
+
+@Preview
+@Composable
+private fun BoundaryEmptyPreview() {
+    Boundary(PreviewDataModel("two"))
+}
+
 @Preview
 @Composable
 private fun TextPreview() {
@@ -76,4 +103,5 @@ fun NotAPreview() {
 }
 
 /* GENERATED_FIR_TAGS: classDeclaration, classReference, data, enumDeclaration, enumEntry, functionDeclaration,
-functionalType, integerLiteral, lambdaLiteral, override, primaryConstructor, propertyDeclaration, stringLiteral */
+functionalType, integerLiteral, interfaceDeclaration, lambdaLiteral, override, primaryConstructor, propertyDeclaration,
+stringLiteral */

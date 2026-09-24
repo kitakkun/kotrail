@@ -1,6 +1,7 @@
 package com.kitakkun.kotrail.gradle
 
 import org.gradle.api.file.RegularFileProperty
+import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 
 /**
@@ -25,4 +26,13 @@ abstract class KotrailOptions {
      * changes.
      */
     abstract val configFile: RegularFileProperty
+
+    /**
+     * Names of resolvable configurations of this project whose project dependencies this
+     * compilation's artifact bundles into its class loader, besides the runtime class path: an
+     * IDE plugin that copies a `hostRuntime` configuration into its own directory and loads it
+     * through a class loader of its own. With `unloadableCode` on, what those projects' main
+     * compilations recorded is reported here.
+     */
+    abstract val bundledConfigurations: ListProperty<String>
 }

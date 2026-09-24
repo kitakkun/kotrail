@@ -2,7 +2,7 @@
 
 **Diagnostic:** `KOTRAIL_PREVIEW_MODEL_BUILT_INLINE` (error, on the argument)
 **Key:** `rules.compose.previewParameter` (**off by default**)
-**Settings:** none
+**Settings:** `minPreviews` (default `2`)
 
 ## What it rejects
 
@@ -52,6 +52,9 @@ and screenshot tests iterate the same list.
 - Some argument of a composable call in its body, at any depth outside lambdas, contains a
   constructor call of a class declared in the project (`User(...)`, `listOf(User(...))`,
   `UiState(items = ...)`). One finding per preview, on the first such argument.
+- At least `minPreviews` previews of the same file build that same model class. A single preview
+  building a single state is left alone: a provider there is indirection with nothing to
+  gather. `minPreviews: 1` reports every one.
 
 ## When it stays quiet
 
@@ -62,6 +65,9 @@ and screenshot tests iterate the same list.
 - The model is built inside a lambda passed to the composable (`content = { ... }`), which is
   a slot, not the composable's input.
 - The function is not a preview.
+- The class is a stand-in made for previews, by the name `Preview*` (`PreviewDataModel`): it is
+  not the model the composable shows.
+- Fewer than `minPreviews` previews in the file build the model.
 
 ## Fixtures
 
@@ -69,6 +75,7 @@ and screenshot tests iterate the same list.
 
 ## Implementation notes
 
-`fir/compose/checkers/ComposablePreviewParameterChecker.kt`, a `FirNamedFunctionChecker`. A
-visitor over the preview's body stops at the first composable call with an argument in which a
-constructor call of a source-declared class (of kind `CLASS`) occurs outside a lambda.
+`fir/compose/checkers/ComposablePreviewParameterChecker.kt`, a `FirFileChecker`, so that the
+previews of a file can be counted per model. For each preview, a visitor over its body stops at
+the first composable call with an argument in which a constructor call of a source-declared
+class (of kind `CLASS`, not named `Preview*`) occurs outside a lambda.

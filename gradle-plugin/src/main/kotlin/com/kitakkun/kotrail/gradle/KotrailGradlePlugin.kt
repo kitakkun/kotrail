@@ -1,6 +1,7 @@
 package com.kitakkun.kotrail.gradle
 
 import org.gradle.api.Project
+import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.component.ProjectComponentIdentifier
 import org.gradle.api.file.Directory
 import org.gradle.api.provider.Provider
@@ -128,12 +129,28 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
         val directory = unloadableDirectoryFor(kotlinCompilation)
         kotlinCompilation.compileTaskProvider.configure { task ->
             task.outputs.dir(directory).withPropertyName("kotrailUnloadable")
+            // The artifacts of the bundled configurations: their project dependencies' compile tasks then run first,
+            // so that their records exist when this task reads them.
+            task.inputs.files(project.provider { bundledConfigurations(kotlinCompilation) })
+                .withPropertyName("kotrailBundledConfigurations")
+                .withPathSensitivity(PathSensitivity.RELATIVE)
+                .optional()
             task.inputs.files(project.provider { bundledRecordDirectories(kotlinCompilation) })
                 .withPropertyName("kotrailBundledUnloadable")
                 .withPathSensitivity(PathSensitivity.RELATIVE)
                 .optional()
         }
     }
+
+    /** The configurations named under `bundledConfigurations` for this compilation, across the project's settings and its overrides. */
+    private fun bundledConfigurations(kotlinCompilation: KotlinCompilation<*>): List<Configuration> =
+        specsFor(kotlinCompilation.name)
+            .flatMap { it.bundledConfigurations.getOrElse(emptyList()) }
+            .distinct()
+            .map { name ->
+                project.configurations.findByName(name)
+                    ?: error("Kotrail: bundledConfigurations names '$name', which is not a configuration of ${project.path}.")
+            }
 
     /**
      * The `*-main` record directories of the bundled projects, and only those: the compile task
@@ -149,11 +166,15 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
                 .sortedBy { it.name }
         }
 
-    /** The projects on the compilation's runtime class path, transitively; those whose classes the compilation's artifact bundles. */
+    /**
+     * The projects whose classes the compilation's artifact bundles: those on its runtime class
+     * path, and those of the configurations named under `bundledConfigurations`, transitively.
+     */
     private fun bundledProjects(kotlinCompilation: KotlinCompilation<*>): List<Project> {
-        val name = kotlinCompilation.runtimeDependencyConfigurationName ?: return emptyList()
-        val configuration = project.configurations.findByName(name) ?: return emptyList()
-        return configuration.incoming.resolutionResult.allComponents
+        val runtime = kotlinCompilation.runtimeDependencyConfigurationName?.let { project.configurations.findByName(it) }
+        val configurations = listOfNotNull(runtime) + bundledConfigurations(kotlinCompilation)
+        return configurations
+            .flatMap { it.incoming.resolutionResult.allComponents }
             .mapNotNull { (it.id as? ProjectComponentIdentifier)?.projectPath }
             .filter { it != project.path }
             .distinct()

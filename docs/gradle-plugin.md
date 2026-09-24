@@ -33,6 +33,11 @@ kotrail {
         configFile = layout.projectDirectory.file("kotrail-androidTest.yaml")
     }
 
+    compilation("main") {
+        // An IDE plugin that bundles these projects into its own class loader; see unloadable code.
+        bundledConfigurations.add("hostRuntime")
+    }
+
     // enabled = false      // do not run the plugin here at all
     // annotations = false  // do not add the annotations artifact
 }
@@ -129,7 +134,8 @@ associated with (`main`, for `test` or for a `preview` compilation): that is how
 [preview coverage](rules/compose/preview-coverage.md#a-preview-compilation-next-to-main) sees
 `main` from a compilation that only has its class files. Likewise every compilation records
 what [unloadable code](rules/unloadable-code.md) looks for under `build/kotrail/unloadable`, and
-a compilation with that rule on reads the records of the projects on its runtime class path.
+a compilation with that rule on reads the records of the projects on its runtime class path and
+of the configurations named under `bundledConfigurations`.
 
 ## Multiplatform
 

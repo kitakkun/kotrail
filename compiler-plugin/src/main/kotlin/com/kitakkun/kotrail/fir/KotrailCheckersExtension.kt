@@ -118,6 +118,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
         ParameterCommentChecker,
         ComposablePreviewRequiredChecker,
         ComposablePreviewCoverageChecker,
+        ComposablePreviewParameterChecker,
         ComposablesPerFileChecker,
     )
     override val regularClassCheckers: Set<FirRegularClassChecker> = setOf(
@@ -144,7 +145,6 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
         PassThroughFunctionChecker,
         PreferExpressionBodyChecker,
         ComposableTrailingCallbackChecker,
-        ComposablePreviewParameterChecker,
         ComposableCallbackInModelChecker,
         ComposableNamingChecker,
         ComposableModifierParameterChecker,
