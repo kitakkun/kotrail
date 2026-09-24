@@ -160,6 +160,14 @@ data class ChainIdiom(val inner: String, val outer: String, val replacement: Str
 data class CallIdiom(val fqn: String, val literal: String, val replacement: String)
 
 /** Tunables for the narrow-local-scope rule. From `rules.narrowLocalScope`. */
+/** Tunables for the unloadable-code rule. From `rules.unloadableCode`. */
+data class KotrailUnloadableCode(
+    /** Globs over fully qualified functions that register something with the platform for the rest of its life. */
+    val registrations: List<String>,
+    /** Fully qualified types an argument of which scopes a registration to a lifetime. */
+    val disposableTypes: List<String>,
+)
+
 data class KotrailNarrowLocalScope(
     /** A local whose first use is more than this many lines below its declaration is reported; `0` switches the distance check off. */
     val maxDistance: Int,
@@ -369,6 +377,7 @@ data class KotrailConfig(
     val sealedWhen: KotrailSealedWhen,
     val preferIdiom: KotrailPreferIdiom,
     val narrowLocalScope: KotrailNarrowLocalScope,
+    val unloadableCode: KotrailUnloadableCode,
     val liveVariables: KotrailLiveVariables,
     val noFqnReferences: KotrailNoFqnReferences,
     val forbiddenCall: KotrailForbiddenCall,
@@ -398,6 +407,23 @@ data class KotrailConfig(
         const val DEFAULT_COMPOSE_MAX_NESTING = 5
         val DEFAULT_TRAILING_LAMBDA_ALLOWED_PACKAGES: List<String> = listOf("androidx.compose.runtime")
         val DEFAULT_PREVIEW_REQUIRE_FOR = PreviewScope.INTERNAL
+        val DEFAULT_DISPOSABLE_TYPES = listOf("com.intellij.openapi.Disposable")
+
+        /** JVM and AWT hooks that live as long as the process, and IntelliJ registrations that take an optional parent disposable. */
+        val DEFAULT_REGISTRATIONS = listOf(
+            "java.lang.Runtime.addShutdownHook",
+            "java.lang.Thread.setDefaultUncaughtExceptionHandler",
+            "java.awt.Toolkit.addAWTEventListener",
+            "java.awt.KeyboardFocusManager.addPropertyChangeListener",
+            "java.awt.KeyboardFocusManager.addKeyEventDispatcher",
+            "com.intellij.util.messages.MessageBus.connect",
+            "com.intellij.openapi.application.Application.addApplicationListener",
+            "com.intellij.openapi.extensions.ExtensionPointName.addExtensionPointListener",
+            "com.intellij.openapi.extensions.ExtensionPointName.addChangeListener",
+            "com.intellij.openapi.editor.EditorFactory.addEditorFactoryListener",
+            "com.intellij.openapi.vfs.VirtualFileManager.addVirtualFileListener",
+            "com.intellij.openapi.project.ProjectManager.addProjectManagerListener",
+        )
         val DEFAULT_NON_UI_PACKAGES: List<String> = listOf("androidx.compose.runtime")
         const val DEFAULT_MAX_COMPOSABLES_PER_FILE = 3
         val DEFAULT_SIDE_EFFECT_TYPES: List<String> = listOf("kotlinx.coroutines.Job", "kotlinx.coroutines.Deferred")
@@ -709,6 +735,10 @@ data class KotrailConfig(
                 ),
                 narrowLocalScope = KotrailNarrowLocalScope(
                     maxDistance = int(KotrailRule.NARROW_LOCAL_SCOPE, "maxDistance") ?: DEFAULT_LOCAL_MAX_DISTANCE,
+                ),
+                unloadableCode = KotrailUnloadableCode(
+                    registrations = list(KotrailRule.UNLOADABLE_CODE, "registrations") ?: DEFAULT_REGISTRATIONS,
+                    disposableTypes = list(KotrailRule.UNLOADABLE_CODE, "disposableTypes") ?: DEFAULT_DISPOSABLE_TYPES,
                 ),
                 preferIdiom = KotrailPreferIdiom(
                     disabled = list(KotrailRule.PREFER_IDIOM, "disabled").orEmpty().onEach { key ->

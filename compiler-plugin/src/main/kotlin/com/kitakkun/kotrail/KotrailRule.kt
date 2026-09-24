@@ -52,6 +52,8 @@ enum class KotrailRule(
     PARAMETER_ORDER("parameterOrder", Severity.ERROR),
     /** Off by default: for a JVM module whose consumers include Java. */
     JVM_SYNTHETIC_FOR_INTERNAL("jvmSyntheticForInternal", Severity.ERROR, defaultEnabled = false),
+    /** Off by default: for a compilation loaded through its own class loader and unloaded later (a host or IDE plugin). */
+    UNLOADABLE_CODE("unloadableCode", Severity.ERROR, defaultEnabled = false),
     /** The class-shaped finding of the same rule, a warning: nothing can hide an internal class from Java. */
     JVM_SYNTHETIC_FOR_INTERNAL_CLASS("jvmSyntheticForInternalClass", Severity.WARNING, hasSwitch = false),
 

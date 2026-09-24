@@ -109,6 +109,10 @@ object ConfigSchema {
         KotrailRule.LIVE_VARIABLE_BUDGET to listOf(
             Setting("max", Kind.INT, "Variables (locals and parameters) that may be live at one statement of a function; 0 disables.", default = "7"),
         ),
+        KotrailRule.UNLOADABLE_CODE to listOf(
+            Setting("registrations", Kind.LIST, "Globs over fully qualified functions that register something with the platform for the rest of its life; a call without a disposable argument is reported. Replaces the default list of JVM, AWT and IntelliJ registrations.", default = "java.lang.Runtime.addShutdownHook, java.lang.Thread.setDefaultUncaughtExceptionHandler, java.awt.Toolkit.addAWTEventListener, java.awt.KeyboardFocusManager.addPropertyChangeListener, java.awt.KeyboardFocusManager.addKeyEventDispatcher, com.intellij.util.messages.MessageBus.connect, com.intellij.openapi.application.Application.addApplicationListener, com.intellij.openapi.extensions.ExtensionPointName.addExtensionPointListener, com.intellij.openapi.extensions.ExtensionPointName.addChangeListener, com.intellij.openapi.editor.EditorFactory.addEditorFactoryListener, com.intellij.openapi.vfs.VirtualFileManager.addVirtualFileListener, com.intellij.openapi.project.ProjectManager.addProjectManagerListener"),
+            Setting("disposableTypes", Kind.LIST, "Fully qualified types an argument of which scopes a registration to a lifetime. Replaces the default list.", default = "com.intellij.openapi.Disposable"),
+        ),
         KotrailRule.NARROW_LOCAL_SCOPE to listOf(
             Setting("maxDistance", Kind.INT, "Lines allowed between a local's declaration and the statement that first uses it; 0 switches the distance check off.", default = "5"),
         ),

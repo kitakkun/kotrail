@@ -114,6 +114,12 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Arguments: the helper's name, the first declaration that uses it; reported on a private function declared before its first user. */
     val HELPER_BEFORE_FIRST_USE = tunable2<KtNamedFunction, String, String>("HELPER_BEFORE_FIRST_USE", KotrailRule.NARRATIVE_ORDER, NAME)
 
+    /** Argument: the property, or `ThreadLocal()`; reported on a property of a ThreadLocal type, or a bare construction, in a compilation that is unloaded. */
+    val THREAD_LOCAL_IN_UNLOADABLE_CODE = tunable1<KtElement, String>("THREAD_LOCAL_IN_UNLOADABLE_CODE", KotrailRule.UNLOADABLE_CODE, WHOLE)
+
+    /** Argument: the registration function; reported on a call from `registrations` with no disposable argument. */
+    val UNSCOPED_REGISTRATION_IN_UNLOADABLE_CODE = tunable1<KtElement, String>("UNSCOPED_REGISTRATION_IN_UNLOADABLE_CODE", KotrailRule.UNLOADABLE_CODE, WHOLE)
+
     /** Arguments: the function-typed parameter, the data parameter after it; reported on the function-typed parameter. */
     val CALLBACK_BEFORE_DATA_PARAMETER = tunable2<KtElement, String, String>("CALLBACK_BEFORE_DATA_PARAMETER", KotrailRule.PARAMETER_ORDER, WHOLE)
 
@@ -560,6 +566,16 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             KotrailDiagnostics.TOO_MANY_LIVE_VARIABLES,
             "[Kotrail] {1} variables are live here: {0}. That is more than a reader holds at once; extract a step " +
                 "into a function, or narrow what is declared before this point.",
+        )
+        map.put1(
+            KotrailDiagnostics.THREAD_LOCAL_IN_UNLOADABLE_CODE,
+            "[Kotrail] ''{0}'' is a ThreadLocal in a compilation that is unloaded with its class loader: a value set on a " +
+                "thread that outlives the plugin keeps the class loader alive. Pass the value along instead.",
+        )
+        map.put1(
+            KotrailDiagnostics.UNSCOPED_REGISTRATION_IN_UNLOADABLE_CODE,
+            "[Kotrail] ''{0}'' registers with something that outlives the plugin and nothing here unregisters it, so the " +
+                "class loader stays alive. Pass a disposable that is disposed with the plugin, or unregister in its disposal.",
         )
         map.put2(
             KotrailDiagnostics.CALLBACK_BEFORE_DATA_PARAMETER,

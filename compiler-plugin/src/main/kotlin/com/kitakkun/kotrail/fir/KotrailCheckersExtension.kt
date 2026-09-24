@@ -32,6 +32,7 @@ import com.kitakkun.kotrail.fir.checkers.JvmSyntheticForInternalChecker
 import com.kitakkun.kotrail.fir.checkers.LiveVariableBudgetChecker
 import com.kitakkun.kotrail.fir.checkers.NarrativeOrderChecker
 import com.kitakkun.kotrail.fir.checkers.ParameterOrderChecker
+import com.kitakkun.kotrail.fir.checkers.UnloadableCodeChecker
 import com.kitakkun.kotrail.fir.checkers.EmptinessIdiomChecker
 import com.kitakkun.kotrail.fir.checkers.SizeComparisonIdiomChecker
 import com.kitakkun.kotrail.fir.checkers.NegationIdiomChecker
@@ -125,6 +126,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
     )
     override val propertyCheckers: Set<FirPropertyChecker> = setOf(
         PreferValChecker,
+        UnloadableCodeChecker.ThreadLocalChecker,
         NarrowLocalScopeChecker,
         PreferExplicitBackingFieldChecker,
         PreferStateDelegationChecker,
@@ -176,6 +178,7 @@ object KotrailExpressionCheckers : ExpressionCheckers() {
         CompositionLocalEntryPointChecker,
         WindowInsetsHandledTwiceChecker,
         ForbiddenCallChecker,
+        UnloadableCodeChecker.RegistrationChecker,
         PreconditionChecker,
         UnimplementedCodeChecker,
         NamedArgumentsChecker,
