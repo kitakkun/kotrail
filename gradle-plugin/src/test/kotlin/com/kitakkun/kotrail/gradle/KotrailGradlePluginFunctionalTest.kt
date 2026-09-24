@@ -264,9 +264,14 @@ class KotrailGradlePluginFunctionalTest {
 
             kotlin {
                 jvmToolchain(21)
+                // A second compilation of the dependency: its records must not become an input of the consumer.
+                target.compilations.create("preview") {
+                    associateWith(target.compilations.getByName("main"))
+                }
             }
             """.trimIndent(),
         )
+        writeFile("lib/src/preview/kotlin/Previews.kt", "object Previews")
         writeFile(
             "lib/src/main/kotlin/Buffers.kt",
             """
@@ -286,8 +291,11 @@ class KotrailGradlePluginFunctionalTest {
             """.trimIndent(),
         )
 
-        val result = runBuild("compileKotlin")
+        // Both the dependency's preview compilation and the consumer in one graph: Gradle validates that no task
+        // reads another's output without depending on it.
+        val result = runBuild("compileKotlin", ":lib:compilePreviewKotlin")
         assertEquals(TaskOutcome.SUCCESS, result.task(":lib:compileKotlin")?.outcome, result.output)
+        assertEquals(TaskOutcome.SUCCESS, result.task(":lib:compilePreviewKotlin")?.outcome, result.output)
         assertEquals(TaskOutcome.SUCCESS, result.task(":compileKotlin")?.outcome, result.output)
         // The rule is off in lib: its ThreadLocal is reported from the plugin module, with the file and line.
         assertFalse(result.output.contains("lib/src/main/kotlin/Buffers.kt:2:5"), result.output)

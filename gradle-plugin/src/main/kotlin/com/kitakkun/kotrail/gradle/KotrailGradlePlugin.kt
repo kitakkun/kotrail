@@ -63,9 +63,7 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
                     SubpluginOption("associatedComposablesDir", composablesDirectoryFor(it).get().asFile.path)
                 } +
                 SubpluginOption("unloadableDir", unloadableDirectoryFor(kotlinCompilation).get().asFile.path) +
-                bundledProjects(kotlinCompilation).map {
-                    SubpluginOption("bundledUnloadableDir", it.layout.buildDirectory.dir("kotrail/unloadable").get().asFile.path)
-                }
+                bundledRecordDirectories(kotlinCompilation).map { SubpluginOption("bundledUnloadableDir", it.path) }
             // `--info` shows what each compilation was handed, for a consumer to check its wiring.
             project.logger.info("Kotrail: options for ${kotlinCompilation.compileKotlinTaskName}: ${options.joinToString { "${it.key}=${it.value}" }}")
             options
@@ -130,12 +128,26 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
         val directory = unloadableDirectoryFor(kotlinCompilation)
         kotlinCompilation.compileTaskProvider.configure { task ->
             task.outputs.dir(directory).withPropertyName("kotrailUnloadable")
-            task.inputs.files(project.provider { bundledProjects(kotlinCompilation).map { it.layout.buildDirectory.dir("kotrail/unloadable").get() } })
+            task.inputs.files(project.provider { bundledRecordDirectories(kotlinCompilation) })
                 .withPropertyName("kotrailBundledUnloadable")
                 .withPathSensitivity(PathSensitivity.RELATIVE)
                 .optional()
         }
     }
+
+    /**
+     * The `*-main` record directories of the bundled projects, and only those: the compile task
+     * of a consumer depends on the main compilation of a dependency through its classes, so those
+     * records exist by the time the inputs are read, while a `test` or `preview` compilation of
+     * the dependency is not a task the consumer depends on, and its records must not be an input.
+     */
+    private fun bundledRecordDirectories(kotlinCompilation: KotlinCompilation<*>): List<File> =
+        bundledProjects(kotlinCompilation).flatMap { bundled ->
+            bundled.layout.buildDirectory.dir("kotrail/unloadable").get().asFile
+                .listFiles { file -> file.isDirectory && file.name.endsWith("-main") }
+                .orEmpty()
+                .sortedBy { it.name }
+        }
 
     /** The projects on the compilation's runtime class path, transitively; those whose classes the compilation's artifact bundles. */
     private fun bundledProjects(kotlinCompilation: KotlinCompilation<*>): List<Project> {

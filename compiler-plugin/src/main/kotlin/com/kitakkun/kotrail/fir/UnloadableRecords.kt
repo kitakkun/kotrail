@@ -7,7 +7,8 @@ import java.security.MessageDigest
  * Records, for every compilation that names an `unloadableDir`, the outbound references the
  * unloadable-code rule looks for (a `ThreadLocal`, a registration with no disposable), whether
  * or not the rule is on there. A compilation that is unloaded with its class loader bundles the
- * modules on its runtime class path, so it reads their records (`bundledUnloadableDir`) and
+ * modules on its runtime class path, so it reads their main compilations' records
+ * (`bundledUnloadableDir`, one per record directory) and
  * reports what they contain: a single switch on the plugin module then covers whatever it
  * bundles, and the set of bundled modules follows the dependency graph rather than a list kept
  * by hand.
@@ -37,18 +38,15 @@ object UnloadableRecords {
         }
     }
 
-    /** Every entry under the `*-main` record directories below each of [roots], from records whose file still exists. */
-    fun read(roots: List<String>): List<Entry> = roots.flatMap { root ->
-        val directories = File(root).listFiles { file -> file.isDirectory && file.name.endsWith("-main") }.orEmpty().sortedBy { it.name }
-        directories.flatMap { directory ->
-            directory.listFiles { file -> file.isFile && file.extension == "jsonl" }.orEmpty().sortedBy { it.name }.flatMap { record ->
-                val lines = record.readLines().filter { it.isNotBlank() }
-                val source = lines.firstOrNull()?.let(::fields)?.get("file") ?: return@flatMap emptyList()
-                if (!File(source).isFile) return@flatMap emptyList()
-                lines.drop(1).mapNotNull { line ->
-                    val entry = fields(line)
-                    Entry(source, entry["kind"] ?: return@mapNotNull null, entry["name"].orEmpty(), entry["offset"]?.toIntOrNull() ?: 0)
-                }
+    /** Every entry recorded under [directories], from records whose file still exists. */
+    fun read(directories: List<String>): List<Entry> = directories.flatMap { directory ->
+        File(directory).listFiles { file -> file.isFile && file.extension == "jsonl" }.orEmpty().sortedBy { it.name }.flatMap { record ->
+            val lines = record.readLines().filter { it.isNotBlank() }
+            val source = lines.firstOrNull()?.let(::fields)?.get("file") ?: return@flatMap emptyList()
+            if (!File(source).isFile) return@flatMap emptyList()
+            lines.drop(1).mapNotNull { line ->
+                val entry = fields(line)
+                Entry(source, entry["kind"] ?: return@mapNotNull null, entry["name"].orEmpty(), entry["offset"]?.toIntOrNull() ?: 0)
             }
         }
     }

@@ -62,8 +62,8 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
     private val bundledUnloadableDirOption = CliOption(
         optionName = "bundledUnloadableDir",
         valueDescription = "<directory>",
-        description = "The kotrail/unloadable record root of a module on this compilation's runtime class path; with " +
-            "unloadableCode on, what its main compilation recorded is reported here. May be given more than once",
+        description = "An unloadableDir of a module on this compilation's runtime class path (its main compilation's " +
+            "record directory); with unloadableCode on, what it recorded is reported here. May be given more than once",
         required = false,
         allowMultipleOccurrences = true,
     )

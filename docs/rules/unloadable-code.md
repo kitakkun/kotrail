@@ -41,7 +41,8 @@ module's artifact bundles the projects on its runtime class path. So every compi
 Gradle plugin configures records the findings the rule looks for under
 `build/kotrail/unloadable/<target>-<compilation>` (whether or not the rule is on there), and a
 compilation with the rule on reads the `*-main` records of every project on its runtime class
-path, transitively, and reports them on the package directive of its first file by name as
+path, transitively (those directories alone are its inputs, since a dependency's `test` or
+`preview` compilation is not a task the consumer depends on), and reports them on the package directive of its first file by name as
 `KOTRAIL_OUTBOUND_REFERENCE_IN_BUNDLED_CODE`, with the file and line. One switch on the plugin
 module covers whatever it bundles, and the set follows the dependency graph. Outside Gradle,
 the compiler plugin's `unloadableDir` and `bundledUnloadableDir` options do the same.
