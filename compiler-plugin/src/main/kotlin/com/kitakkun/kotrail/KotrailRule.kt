@@ -49,6 +49,7 @@ enum class KotrailRule(
     NARROW_LOCAL_SCOPE("narrowLocalScope", Severity.ERROR),
     LIVE_VARIABLE_BUDGET("liveVariableBudget", Severity.ERROR),
     NARRATIVE_ORDER("narrativeOrder", Severity.ERROR),
+    PARAMETER_ORDER("parameterOrder", Severity.ERROR),
     /** Off by default: for a JVM module whose consumers include Java. */
     JVM_SYNTHETIC_FOR_INTERNAL("jvmSyntheticForInternal", Severity.ERROR, defaultEnabled = false),
     /** The class-shaped finding of the same rule, a warning: nothing can hide an internal class from Java. */

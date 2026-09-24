@@ -31,6 +31,7 @@ import com.kitakkun.kotrail.fir.checkers.NarrowLocalScopeChecker
 import com.kitakkun.kotrail.fir.checkers.JvmSyntheticForInternalChecker
 import com.kitakkun.kotrail.fir.checkers.LiveVariableBudgetChecker
 import com.kitakkun.kotrail.fir.checkers.NarrativeOrderChecker
+import com.kitakkun.kotrail.fir.checkers.ParameterOrderChecker
 import com.kitakkun.kotrail.fir.checkers.EmptinessIdiomChecker
 import com.kitakkun.kotrail.fir.checkers.SizeComparisonIdiomChecker
 import com.kitakkun.kotrail.fir.checkers.NegationIdiomChecker
@@ -101,6 +102,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
         VisibilityPolicyChecker,
         RequiredAnnotationChecker,
         JvmSyntheticForInternalChecker,
+        ParameterOrderChecker,
     )
     override val fileCheckers: Set<FirFileChecker> = setOf(
         // First, so that a file's fix record is fresh before any rule reports on the file.

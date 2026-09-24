@@ -77,6 +77,7 @@ Full pages, with every condition and fixture, live under [`docs/rules/`](docs/ru
 | [JvmSynthetic for internal](docs/rules/jvm-synthetic-for-internal.md) (off by default) | `internal fun reset()` in a JVM module, public to Java | `@JvmSynthetic internal fun reset()`; a warning for `internal class` |
 | [Live variable budget](docs/rules/live-variable-budget.md) | A statement where more than 7 locals and parameters are still in play | Extracting a step; narrowing declarations |
 | [Narrative order](docs/rules/narrative-order.md) | A private function declared above the function that first calls it | The helper after its first caller, so the file reads top-down |
+| [Parameter order](docs/rules/parameter-order.md) | A function-typed parameter declared before a data parameter | Data first, then the functions that act on it; callbacks can trail |
 | [Window insets handling](docs/rules/compose/window-insets.md) (Compose) | A `@HandlesWindowInsets` contract that the body does not satisfy; insets applied twice | Contracts verified across modules through inferred metadata |
 | [Composition locals](docs/rules/compose/composition-locals.md) | A `@CompositionLocalRoot`, preview, or `setContent { }` below which a required local (`compositionLocalOf { error(...) }`) is read and never provided | A `CompositionLocalProvider` on the way, or a default |
 | [State delegation](docs/rules/compose/state-delegation.md) (Compose) | `val count = remember { mutableStateOf(0) }` used only through `.value` | `var count by remember { ... }` |
