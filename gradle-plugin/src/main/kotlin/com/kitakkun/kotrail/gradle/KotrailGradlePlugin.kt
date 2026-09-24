@@ -11,7 +11,11 @@ import org.jetbrains.kotlin.gradle.plugin.FilesSubpluginOption
 import org.jetbrains.kotlin.gradle.plugin.KotlinBasePlugin
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilation
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilerPluginSupportPlugin
+import org.jetbrains.kotlin.gradle.dsl.KotlinAndroidExtension
+import org.jetbrains.kotlin.gradle.dsl.KotlinJvmExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
+import org.jetbrains.kotlin.gradle.plugin.KotlinTarget
+import org.jetbrains.kotlin.gradle.plugin.KotlinTargetsContainer
 import org.jetbrains.kotlin.gradle.plugin.SubpluginArtifact
 import org.jetbrains.kotlin.gradle.plugin.SubpluginOption
 import java.io.File
@@ -129,20 +133,17 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
      */
     private fun wireUnloadableRecords(kotlinCompilation: KotlinCompilation<*>) {
         val directory = unloadableDirectoryFor(kotlinCompilation)
-        val platform = platformKey(kotlinCompilation)
         kotlinCompilation.compileTaskProvider.configure { task ->
             task.outputs.dir(directory).withPropertyName("kotrailUnloadable")
-            // The marker a consumer matches against its own platform, so that a JVM consumer of a multiplatform
-            // library reads the library's jvm records and not those of the targets it does not depend on. Written
-            // after the compilation: the Kotlin compile task clears its declared outputs before it runs.
-            task.doLast { directory.get().asFile.apply { mkdirs() }.resolve(PLATFORM_MARKER).writeText(platform) }
+            // Everything below is settled while the task is configured, as plain files: the configuration cache
+            // then has nothing of the plugin or the project to serialize with the task.
             // The artifacts of the bundled configurations: their project dependencies' compile tasks then run first,
             // so that their records exist when this task reads them.
-            task.inputs.files(project.provider { bundledConfigurations(kotlinCompilation) })
+            task.inputs.files(bundledConfigurations(kotlinCompilation))
                 .withPropertyName("kotrailBundledConfigurations")
                 .withPathSensitivity(PathSensitivity.RELATIVE)
                 .optional()
-            task.inputs.files(project.provider { bundledRecordDirectories(kotlinCompilation) })
+            task.inputs.files(bundledRecordDirectories(kotlinCompilation))
                 .withPropertyName("kotrailBundledUnloadable")
                 .withPathSensitivity(PathSensitivity.RELATIVE)
                 .optional()
@@ -160,32 +161,38 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
             }
 
     /**
-     * The `*-main` record directories of the bundled projects whose platform is the consumer's,
-     * and only those: the compile task of a consumer depends on the main compilation of a
-     * dependency for its own platform through its classes, so those records exist by the time
-     * the inputs are read, while a `test` or `preview` compilation, or the main compilation of
+     * The `*-main` record directories of the bundled projects for the targets of the consumer's
+     * platform, and only those: the compile task of a consumer depends on the main compilation
+     * of a dependency for its own platform through its classes, so those records exist by the
+     * time the task runs, while a `test` or `preview` compilation, or the main compilation of
      * another target of a multiplatform dependency, is not a task the consumer depends on, and
-     * its records must not be an input. An Android consumer of a library with no Android target
-     * gets the library's JVM variant, and its JVM records. A common (metadata) compilation
-     * bundles nothing.
+     * its records must not be an input. The targets are read from each bundled project's Kotlin
+     * extension, so the set is known while the task is configured. An Android consumer of a
+     * library with no Android target gets the library's JVM variant, and its JVM records. A
+     * common (metadata) compilation bundles nothing.
      */
     private fun bundledRecordDirectories(kotlinCompilation: KotlinCompilation<*>): List<File> {
         if (kotlinCompilation.platformType == KotlinPlatformType.common) return emptyList()
-        val wanted = platformKey(kotlinCompilation)
+        val wanted = platformKey(kotlinCompilation.target)
         val fallback = if (kotlinCompilation.platformType == KotlinPlatformType.androidJvm) KotlinPlatformType.jvm.name else null
         return bundledProjects(kotlinCompilation).flatMap { bundled ->
-            val candidates = bundled.layout.buildDirectory.dir("kotrail/unloadable").get().asFile
-                .listFiles { file -> file.isDirectory && file.name.endsWith("-main") }
-                .orEmpty()
-                .sortedBy { it.name }
-            val byPlatform = candidates.groupBy { runCatching { it.resolve(PLATFORM_MARKER).readText().trim() }.getOrDefault("") }
-            byPlatform[wanted] ?: fallback?.let { byPlatform[it] } ?: emptyList()
+            val targets = bundled.kotlinTargets()
+            val matching = targets.filter { platformKey(it) == wanted }.ifEmpty { targets.filter { fallback != null && platformKey(it) == fallback } }
+            matching.map { bundled.layout.buildDirectory.dir("kotrail/unloadable/${it.name.ifEmpty { "jvm" }}-main").get().asFile }
         }
     }
 
-    /** What a record directory's platform marker says: the platform type, and the target for the types that have several. */
-    private fun platformKey(kotlinCompilation: KotlinCompilation<*>): String = when (val type = kotlinCompilation.platformType) {
-        KotlinPlatformType.native, KotlinPlatformType.wasm -> "${type.name}:${kotlinCompilation.target.name}"
+    /** The Kotlin targets a project declares: one for a JVM or Android project, several for a multiplatform one, none without Kotlin. */
+    private fun Project.kotlinTargets(): List<KotlinTarget> = when (val extension = extensions.findByName("kotlin")) {
+        is KotlinTargetsContainer -> extension.targets.toList()
+        is KotlinJvmExtension -> listOf(extension.target)
+        is KotlinAndroidExtension -> listOf(extension.target)
+        else -> emptyList()
+    }
+
+    /** A target's platform for matching records: the platform type, and the target's name for the types that have several. */
+    private fun platformKey(target: KotlinTarget): String = when (val type = target.platformType) {
+        KotlinPlatformType.native, KotlinPlatformType.wasm -> "${type.name}:${target.name}"
         else -> type.name
     }
 
@@ -204,8 +211,6 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
             .sorted()
             .map { project.project(it) }
     }
-
-    private val PLATFORM_MARKER = "platform"
 
     private fun unloadableDirectoryFor(kotlinCompilation: KotlinCompilation<*>): Provider<Directory> =
         project.layout.buildDirectory.dir("kotrail/unloadable/${kotlinCompilation.directoryName()}")

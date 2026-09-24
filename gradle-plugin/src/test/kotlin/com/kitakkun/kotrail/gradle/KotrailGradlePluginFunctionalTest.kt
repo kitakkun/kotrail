@@ -311,8 +311,9 @@ class KotrailGradlePluginFunctionalTest {
         )
 
         // Both the dependency's preview compilation and the consumer in one graph: Gradle validates that no task
-        // reads another's output without depending on it.
-        val result = runBuild("compileKotlin", ":lib:compilePreviewKotlinJvm", ":lib:compileKotlinJs")
+        // reads another's output without depending on it. With the configuration cache, since a task action or
+        // input that captured the plugin would fail to serialize.
+        val result = runBuild("compileKotlin", ":lib:compilePreviewKotlinJvm", ":lib:compileKotlinJs", "--configuration-cache")
         assertEquals(TaskOutcome.SUCCESS, result.task(":lib:compileKotlinJvm")?.outcome, result.output)
         assertEquals(TaskOutcome.SUCCESS, result.task(":lib:compilePreviewKotlinJvm")?.outcome, result.output)
         assertEquals(TaskOutcome.SUCCESS, result.task(":lib:compileKotlinJs")?.outcome, result.output)
@@ -322,6 +323,7 @@ class KotrailGradlePluginFunctionalTest {
         assertTrue(result.output.contains("KOTRAIL_OUTBOUND_REFERENCE_IN_BUNDLED_CODE"), result.output)
         assertTrue(result.output.contains("'current' (a ThreadLocal) at lib/src/jvmMain/kotlin/Buffers.kt:2,"), result.output)
         assertFalse(result.output.contains("'scratch'"), result.output)
+        assertFalse(result.output.contains("Configuration cache problems"), result.output)
         assertTrue(result.output.contains("KOTRAIL_UNSCOPED_REGISTRATION_IN_UNLOADABLE_CODE"), result.output)
     }
 
