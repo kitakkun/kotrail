@@ -1,7 +1,7 @@
 <p align="center">
   <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/public/kotrail-lockup-dark.svg">
-    <img src="docs/public/kotrail-lockup.svg" alt="Kotrail" width="242" height="72">
+    <source media="(prefers-color-scheme: dark)" srcset="docs/public/kotrail-lockup-dark.png">
+    <img src="docs/public/kotrail-lockup.png" alt="Kotrail" width="242" height="72">
   </picture>
 </p>
 
