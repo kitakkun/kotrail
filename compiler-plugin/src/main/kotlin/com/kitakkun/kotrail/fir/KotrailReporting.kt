@@ -64,7 +64,7 @@ internal fun reportKotrail(source: KtSourceElement?, diagnostic: TunableDiagnost
         },
         context,
     )
-    writeFix(diagnostic.baseName, fix)
+    writeFix(diagnostic.rule, diagnostic.baseName, fix)
 }
 
 context(context: CheckerContext, reporter: DiagnosticReporter)
@@ -83,7 +83,7 @@ internal fun reportKotrail(source: KtSourceElement?, diagnostic: TunableDiagnost
         },
         context,
     )
-    writeFix(diagnostic.baseName, fix)
+    writeFix(diagnostic.rule, diagnostic.baseName, fix)
 }
 
 context(context: CheckerContext, reporter: DiagnosticReporter)
@@ -108,7 +108,7 @@ internal fun reportKotrail(
         },
         context,
     )
-    writeFix(diagnostic.baseName, fix)
+    writeFix(diagnostic.rule, diagnostic.baseName, fix)
 }
 
 /**
@@ -130,9 +130,11 @@ private fun shouldReport(baseName: String, rule: KotrailRule): Boolean =
     baseName !in context.suppressedDiagnostics && !isExcluded(rule)
 
 context(context: CheckerContext)
-private fun writeFix(diagnostic: String, fix: List<FixEdit>) {
+private fun writeFix(rule: KotrailRule, diagnostic: String, fix: List<FixEdit>) {
     if (fix.isEmpty()) return
-    val directory = context.session.kotrailConfig.fixesDir ?: return
+    val config = context.session.kotrailConfig
+    if (!config.fixEnabled(rule)) return
+    val directory = config.fixesDir ?: return
     val file = context.containingFileSymbol?.sourceFile?.path ?: return
     FixRecords.write(directory, file, diagnostic, fix)
 }

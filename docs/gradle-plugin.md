@@ -109,7 +109,10 @@ content hash, and
 ./gradlew kotrailFix
 ```
 
-applies them to the sources without compiling again. A file that changed since it was compiled
+applies them to the sources without compiling again. A rule whose edits the project would
+rather make by hand keeps its diagnostic and records nothing with `fix: false` in kotrail.yaml
+(per rule, or at the top level for all of them), so the task never touches what it was not
+asked to. A file that changed since it was compiled
 (edited by hand, or by a previous `kotrailFix`) is left alone until the next compilation refreshes
 its record, so the loop is: compile, `kotrailFix`, compile again, until it reports nothing. Two
 fixes that conflict in one file (one would insert inside text the other removes) are applied one

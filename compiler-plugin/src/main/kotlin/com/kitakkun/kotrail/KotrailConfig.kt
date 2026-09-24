@@ -367,6 +367,7 @@ data class KotrailConfig(
     private val switches: Map<KotrailRule, Boolean>,
     private val severities: Map<KotrailRule, Severity>,
     private val notes: Map<KotrailRule, String>,
+    private val fixes: Map<KotrailRule, Boolean>,
     val excludes: KotrailExcludes,
     val compose: KotrailComposeSettings,
     val narrowModelParameters: KotrailNarrowModelParameters,
@@ -402,6 +403,9 @@ data class KotrailConfig(
      * rewrite a rule asks for cannot be lost by configuring one.
      */
     fun note(rule: KotrailRule): String = notes[rule].orEmpty()
+
+    /** Whether the rule's fixes are recorded for `kotrailFix`; the diagnostic is reported either way. */
+    fun fixEnabled(rule: KotrailRule): Boolean = fixes[rule] ?: true
 
     companion object {
         const val DEFAULT_COMPOSE_MAX_NESTING = 5
@@ -670,6 +674,8 @@ data class KotrailConfig(
                 val text = string(ruleNode(rule), "note") ?: projectNote
                 if (text.isNullOrBlank()) "" else " " + text.trim()
             }
+            val projectFix = boolean(tree, "fix") ?: true
+            val fixes = KotrailRule.entries.associateWith { rule -> boolean(ruleNode(rule), "fix") ?: projectFix }
             val excludes = KotrailExcludes(
                 everywhere = predicate(tree, "exclude"),
                 perRule = KotrailRule.entries.mapNotNull { rule -> predicate(ruleNode(rule), "exclude")?.let { rule to it } }.toMap(),
@@ -683,6 +689,7 @@ data class KotrailConfig(
                 switches = switches,
                 severities = severities,
                 notes = notes,
+                fixes = fixes,
                 excludes = excludes,
                 compose = KotrailComposeSettings(
                     maxNesting = int(KotrailRule.COMPOSE_NESTING, "maxDepth") ?: DEFAULT_COMPOSE_MAX_NESTING,

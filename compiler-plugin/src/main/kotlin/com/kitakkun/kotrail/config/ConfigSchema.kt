@@ -27,6 +27,7 @@ object ConfigSchema {
         Setting("severity", Kind.ENUM, "How a violation is reported.", values = listOf("error", "warning")),
         Setting("note", Kind.STRING, "Text appended to this rule's messages; overrides the top-level note."),
         Setting("exclude", Kind.PREDICATE, "Locations this rule skips, as a predicate over where a diagnostic would be reported."),
+        Setting("fix", Kind.BOOLEAN, "Whether this rule's fixes are recorded for kotrailFix; false keeps the diagnostic and leaves the edit to the author. Overrides the top-level fix.", default = "true"),
     )
 
     /** The values a rule accepts as a scalar instead of a mapping. */
@@ -38,6 +39,7 @@ object ConfigSchema {
         Setting("severity", Kind.ENUM, "The severity of every rule that does not set its own; error unless set.", values = listOf("error", "warning")),
         Setting("note", Kind.STRING, "Text appended to every Kotrail message."),
         Setting("exclude", Kind.PREDICATE, "Locations every rule skips, as a predicate over where a diagnostic would be reported."),
+        Setting("fix", Kind.BOOLEAN, "Whether fixes are recorded for kotrailFix at all; false turns the task into a no-op until a rule says fix: true.", default = "true"),
     )
 
     /** `test.annotations`, shared by the test rules and the `test` predicate, lives under a `test` mapping. */

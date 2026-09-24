@@ -55,6 +55,7 @@ schema is generated from the same table the plugin validates against.
 | `severity` | `error` (default) or `warning`: the severity of every rule that does not set its own. `severity: warning` is the one line that turns a first run on an existing codebase into a measurement. |
 | `note` | Text appended to every Kotrail message. See [Project notes](#project-notes). |
 | `exclude` | A predicate over locations; matching diagnostics of every rule are dropped. See [Excluding by pattern](#excluding-by-pattern). |
+| `fix` | `false` stops every rule from recording fixes for `kotrailFix`; the diagnostics are still reported. A rule's own `fix` wins. |
 | `test.annotations` | Fully qualified annotations that mark a function as a test; shared by the test rules and the `test` predicate. Replaces the default list. |
 | `rules.<rule>` | One entry per rule, named by the rule's full key (`functionLength`, `compose.nesting`, `test.naming`), as a shorthand or a mapping. |
 
@@ -67,7 +68,7 @@ rules:
   noNotNullAssertion: error
 ```
 
-or a **mapping** of the four keys every rule has and the rule's own settings:
+or a **mapping** of the five keys every rule has and the rule's own settings:
 
 ```yaml
 rules:
@@ -76,6 +77,7 @@ rules:
     severity: error            # error or warning
     note: See ADR-014.         # appended to this rule's messages; wins over the top-level note
     exclude: name(main)        # locations this rule skips
+    fix: false                 # report, but record no fix for kotrailFix
     maxLines: 60               # the rule's settings, listed on its page
     maxComposableLines: 100
 ```
@@ -86,7 +88,7 @@ Rule keys are never split on dots: `compose.nesting` is one key under `rules`, a
 
 ## Rules and their settings
 
-Every rule takes `enabled`, `severity`, `note`, and `exclude`. The settings below are the rule's
+Every rule takes `enabled`, `severity`, `note`, `exclude`, and `fix`. The settings below are the rule's
 own; a rule not listed has none.
 
 | Rule | Setting | Default | Meaning |

@@ -26,6 +26,7 @@ class KotrailConfigTest {
             """
             note: Conventions live in CONTRIBUTING.md.
             exclude: package(com.acme.generated.*)
+            fix: false
             rules:
               preferValueClass: off
               commentLength: warning
@@ -34,6 +35,7 @@ class KotrailConfigTest {
                 maxLines: 60
                 exclude: name(main)
                 note: See ADR-014.
+                fix: true
               forbiddenCall:
                 functions: [kotlin.io.println, java.util.Date]
                 calls:
@@ -65,6 +67,8 @@ class KotrailConfigTest {
         assertEquals(" See ADR-014.", config.note(KotrailRule.FUNCTION_LENGTH))
         assertEquals(" Conventions live in CONTRIBUTING.md.", config.note(KotrailRule.PREFER_VALUE_CLASS))
         assertTrue(config.excludes.isConfiguredFor(KotrailRule.FUNCTION_LENGTH))
+        assertTrue(config.fixEnabled(KotrailRule.FUNCTION_LENGTH))
+        assertFalse(config.fixEnabled(KotrailRule.PREFER_VALUE_CLASS))
         assertEquals(listOf("kotlin.io.println", "java.util.Date", "globalScope"), config.forbiddenCall.entries.map { it.name })
         assertEquals(listOf("entities", "screens"), config.requiredAnnotations.map { it.name })
         assertEquals("com.acme.Persisted", config.requiredAnnotations.single { it.name == "entities" }.annotation)
