@@ -222,6 +222,9 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: the composable's fully qualified name; reported on the package directive of the compilation's anchor file. */
     val COMPOSABLE_NOT_COVERED_BY_PREVIEW = tunable1<KtElement, String>("COMPOSABLE_NOT_COVERED_BY_PREVIEW", KotrailRule.COMPOSE_PREVIEW_COVERAGE, WHOLE)
 
+    /** Arguments: the model class built inline, the preview; reported on the argument of a composable call inside a preview. */
+    val PREVIEW_MODEL_BUILT_INLINE = tunable2<KtElement, String, String>("PREVIEW_MODEL_BUILT_INLINE", KotrailRule.COMPOSE_PREVIEW_PARAMETER, WHOLE)
+
     /** Argument: the package; reported on the anchor file's package directive when a listed package has no UI composable to cover. */
     val PREVIEW_COVERAGE_PACKAGE_EMPTY = tunable1<KtElement, String>("PREVIEW_COVERAGE_PACKAGE_EMPTY", KotrailRule.COMPOSE_PREVIEW_COVERAGE, WHOLE)
 
@@ -447,6 +450,11 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             KotrailDiagnostics.COMPOSABLE_WITHOUT_PREVIEW,
             "[Kotrail] ''{0}'' has no @Preview in this file. Add a preview composable next to it that calls ''{0}'', " +
                 "or suppress this diagnostic when the composable cannot be previewed.",
+        )
+        map.put2(
+            KotrailDiagnostics.PREVIEW_MODEL_BUILT_INLINE,
+            "[Kotrail] ''{1}'' builds a ''{0}'' by hand. Take it as a @PreviewParameter from a PreviewParameterProvider, " +
+                "so that the states this composable can show are listed in one place and previewed together.",
         )
         map.put1(
             KotrailDiagnostics.PREVIEW_COVERAGE_PACKAGE_EMPTY,

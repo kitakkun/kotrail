@@ -3,6 +3,7 @@ package com.kitakkun.kotrail.fir.compose.checkers
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.compose.ComposeNames
+import com.kitakkun.kotrail.fir.compose.emitsUi
 import com.kitakkun.kotrail.fir.compose.isComposable
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.reportKotrail
@@ -33,7 +34,9 @@ import org.jetbrains.kotlin.fir.types.isUnit
  * trailing lambda reads as the composable's content slot. A plain callback there misleads the
  * reader, so it is reported on the parameter name.
  *
- * Stays quiet for composables that return a value (they are not UI emitters), for non-composable
+ * Stays quiet for composables that return a value (they are not UI emitters), for composables
+ * that draw nothing (an effect wrapper such as `MutationErrorEffect(mutation, ::key) { error -> }`,
+ * judged as [ComposablePreviewRequiredChecker] judges it, through [emitsUi]), for non-composable
  * functions, when the last parameter is a `@Composable` function type (nullable or not), when it
  * is not a function type at all, and for `override` / `expect` functions whose signature is
  * fixed elsewhere.
@@ -49,6 +52,9 @@ object ComposableTrailingCallbackChecker : NamedFunctionChecker(MppCheckerKind.C
         val session = context.session
         if (!declaration.symbol.isComposable(session)) return
         if (!declaration.returnTypeRef.coneType.isUnit) return
+        // An effect or a probe has no content slot for the trailing lambda to be mistaken for. A
+        // declaration without a body (an interface member) cannot be judged and is still held to the rule.
+        if (declaration.body != null && !declaration.symbol.emitsUi(session, config.compose.nonUiPackages)) return
 
         val last = declaration.valueParameters.lastOrNull() ?: return
         val type = last.returnTypeRef.coneType

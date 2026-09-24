@@ -14,6 +14,7 @@ object ComposeNames {
     val COMPOSABLE = ClassId(FqName("androidx.compose.runtime"), Name.identifier("Composable"))
     val MODIFIER = ClassId(FqName("androidx.compose.ui"), Name.identifier("Modifier"))
     val PREVIEW = ClassId(FqName("androidx.compose.ui.tooling.preview"), Name.identifier("Preview"))
+    val PREVIEW_PARAMETER = ClassId(FqName("androidx.compose.ui.tooling.preview"), Name.identifier("PreviewParameter"))
 }
 
 fun FirBasedSymbol<*>.isComposable(session: FirSession): Boolean = hasAnnotation(ComposeNames.COMPOSABLE, session)

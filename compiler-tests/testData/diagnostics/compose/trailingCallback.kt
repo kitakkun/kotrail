@@ -1,6 +1,7 @@
 // KOTRAIL_CONFIG: rules.compose.noTrailingCallback=on
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
 
 // Reported: a callback in the trailing position reads as a content slot at the call site.
@@ -75,6 +76,14 @@ fun plainCard(title: String, onClick: () -> Unit) {
 @Composable
 fun Empty() {
     Text("empty")
+}
+
+
+// Not reported: an effect draws nothing, so its trailing lambda cannot be mistaken for content;
+// the trailing-lambda call is the point.
+@Composable
+fun ErrorEffect(key: Any?, saver: String = "", block: suspend (Throwable) -> Unit) {
+    LaunchedEffect(key) { block(IllegalStateException(saver)) }
 }
 
 /* GENERATED_FIR_TAGS: classDeclaration, functionDeclaration, functionalType, integerLiteral, interfaceDeclaration,

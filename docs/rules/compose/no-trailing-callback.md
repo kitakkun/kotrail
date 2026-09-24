@@ -38,6 +38,11 @@ that is **not** annotated `@Composable`.
 ## When it stays quiet
 
 - The composable returns a value (`@Composable fun rememberX(...): X`): it is not a UI emitter.
+- The composable draws nothing: an effect wrapper (`ErrorEffect(state) { error -> ... }`), a
+  probe that only reads state. There is no content slot for the trailing lambda to be mistaken
+  for, and the trailing-lambda call is the point. "Draws" is judged as
+  [preview required](preview-required.md#when-it-stays-quiet) judges it, through the shared
+  `previewRequired.nonUiPackages`.
 - The function is not `@Composable`.
 - The last parameter is a `@Composable` function type, nullable or not.
 - The last parameter is not a function type at all (`enabled: Boolean`).

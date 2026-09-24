@@ -73,6 +73,8 @@ enum class KotrailRule(
     COMPOSE_NO_UNSTABLE_PARAMETER("compose.noUnstableParameter", Severity.ERROR, defaultEnabled = false),
     /** Off by default: enabled in the compilation that carries the previews of a library or a screenshot-test source set. */
     COMPOSE_PREVIEW_COVERAGE("compose.previewCoverage", Severity.ERROR, defaultEnabled = false),
+    /** Off by default: an established codebase previews by hand everywhere. */
+    COMPOSE_PREVIEW_PARAMETER("compose.previewParameter", Severity.ERROR, defaultEnabled = false),
 
     TEST_NAMING("test.naming", Severity.ERROR),
     TEST_NO_SLEEP("test.noSleep", Severity.ERROR),

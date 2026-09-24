@@ -61,6 +61,7 @@ fixtures that pin its behavior.
 | No side effect in composition | `KOTRAIL_COMPOSABLE_SIDE_EFFECT_IN_COMPOSITION` | [compose/no-side-effect-in-composition.md](compose/no-side-effect-in-composition.md) |
 | No hardcoded string (off by default) | `KOTRAIL_COMPOSABLE_HARDCODED_STRING` | [compose/no-hardcoded-string.md](compose/no-hardcoded-string.md) |
 | Preview coverage (off by default) | `KOTRAIL_COMPOSABLE_NOT_COVERED_BY_PREVIEW` | [compose/preview-coverage.md](compose/preview-coverage.md) |
+| Preview parameter (off by default) | `KOTRAIL_PREVIEW_MODEL_BUILT_INLINE` | [compose/preview-parameter.md](compose/preview-parameter.md) |
 | No unstable parameter (experimental, off by default) | `KOTRAIL_COMPOSABLE_UNSTABLE_PARAMETER` | [compose/no-unstable-parameter.md](compose/no-unstable-parameter.md) |
 
 ## Test

@@ -50,6 +50,7 @@ import com.kitakkun.kotrail.fir.compose.checkers.ComposableNamingChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposableNestingChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposableManifestChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposablePreviewCoverageChecker
+import com.kitakkun.kotrail.fir.compose.checkers.ComposablePreviewParameterChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposablePreviewRequiredChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposablesPerFileChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposableHardcodedStringChecker
@@ -138,6 +139,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
         PassThroughFunctionChecker,
         PreferExpressionBodyChecker,
         ComposableTrailingCallbackChecker,
+        ComposablePreviewParameterChecker,
         ComposableNamingChecker,
         ComposableModifierParameterChecker,
         TestNamingChecker,
