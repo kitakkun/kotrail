@@ -75,6 +75,7 @@ enum class KotrailRule(
     COMPOSE_PREVIEW_COVERAGE("compose.previewCoverage", Severity.ERROR, defaultEnabled = false),
     /** Off by default: an established codebase previews by hand everywhere. */
     COMPOSE_PREVIEW_PARAMETER("compose.previewParameter", Severity.ERROR, defaultEnabled = false),
+    COMPOSE_NO_CALLBACK_IN_MODEL("compose.noCallbackInModel", Severity.ERROR),
 
     TEST_NAMING("test.naming", Severity.ERROR),
     TEST_NO_SLEEP("test.noSleep", Severity.ERROR),

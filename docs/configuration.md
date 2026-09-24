@@ -129,6 +129,7 @@ own; a rule not listed has none.
 | `compose.previewCoverage` (off by default) | `packages` | `[]` | Exact package names whose top-level UI composables must be called by a `@Preview` somewhere in this compilation. |
 | | `visibility` | `public` | Which composables of those packages count: `public`, or `internal` (public and internal). |
 | | `excludeNames` | `[]` | Globs over fully qualified composable names to leave out. |
+| `compose.noCallbackInModel` | `allowComposableSlots` | `false` | Whether a `@Composable` function-typed property (a content slot) in a model handed to a UI composable is allowed; other function types are always reported. |
 | `compose.composablesPerFile` | `max` | `3` | Maximum non-private UI composables in one file, previews excluded; `0` disables. |
 | | `countOverloadsSeparately` | `false` | Whether overloads of one composable name count one each; by default they count as one component. |
 | `compose.noSideEffectInComposition` | `types` | `[kotlinx.coroutines.Job, kotlinx.coroutines.Deferred]` | Declared return types that mark a call as starting work. Replaces the default list. |

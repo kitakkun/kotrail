@@ -89,6 +89,7 @@ Full pages, with every condition and fixture, live under [`docs/rules/`](docs/ru
 | [Preview required](docs/rules/compose/preview-required.md) (Compose) | A UI composable whose file has no `@Preview` calling it | A preview composable next to it |
 | [Preview coverage](docs/rules/compose/preview-coverage.md) (Compose, off by default) | A public composable of a listed package that no `@Preview` in this compilation calls (libraries, screenshot tests) | A preview in the sample or test source set |
 | [Preview parameter](docs/rules/compose/preview-parameter.md) (Compose, off by default) | A `@Preview` that builds its model by hand: `UserCard(User("Ada"))` | `@PreviewParameter(UserProvider::class) user: User` |
+| [No callback in model](docs/rules/compose/no-callback-in-model.md) (Compose) | `data class Row(val name: String, val onClick: () -> Unit)` handed to a UI composable | A value model, and `onClick: (Id) -> Unit` on the composable |
 | [Composables per file](docs/rules/compose/composables-per-file.md) (Compose) | More than 3 non-private UI composables in one file | One component (and its helpers) per file |
 | [No side effect in composition](docs/rules/compose/no-side-effect-in-composition.md) (Compose) | `scope.launch { }` in a composable body | `LaunchedEffect`, or an event handler |
 | [No hardcoded string](docs/rules/compose/no-hardcoded-string.md) (Compose, off by default) | `Text("Submit")` | `Text(stringResource(Res.string.submit))` |

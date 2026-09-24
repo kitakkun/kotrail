@@ -134,6 +134,9 @@ object ConfigSchema {
             Setting("scope", Kind.ENUM, "Which UI composables need a @Preview in their file.", values = listOf("public", "internal", "all"), default = "internal"),
             Setting("nonUiPackages", Kind.LIST, "Packages whose composables emit nothing themselves (effects, providers), so that calling them does not make a composable a UI one; shared with previewCoverage. Replaces the default list.", default = "androidx.compose.runtime"),
         ),
+        KotrailRule.COMPOSE_NO_CALLBACK_IN_MODEL to listOf(
+            Setting("allowComposableSlots", Kind.BOOLEAN, "Whether a @Composable function-typed property (a content slot) in a model handed to a UI composable is allowed; other function types are always reported.", default = "false"),
+        ),
         KotrailRule.COMPOSE_COMPOSABLES_PER_FILE to listOf(
             Setting("max", Kind.INT, "Maximum non-private UI composables in one file, previews excluded; 0 disables.", default = "3"),
             Setting("countOverloadsSeparately", Kind.BOOLEAN, "Whether overloads of one composable name count one each; by default they count as one component.", default = "false"),

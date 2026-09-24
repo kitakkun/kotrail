@@ -240,6 +240,9 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Arguments: the parameter with its type (`items: List<Item>`), why the type is unstable; reported on the parameter. */
     val COMPOSABLE_UNSTABLE_PARAMETER = tunable2<KtParameter, String, String>("COMPOSABLE_UNSTABLE_PARAMETER", KotrailRule.COMPOSE_NO_UNSTABLE_PARAMETER, NAME)
 
+    /** Arguments: the parameter with its type, the `Class.property` that is a callback; reported on a UI composable's parameter. */
+    val CALLBACK_IN_UI_MODEL = tunable2<KtParameter, String, String>("CALLBACK_IN_UI_MODEL", KotrailRule.COMPOSE_NO_CALLBACK_IN_MODEL, NAME)
+
     /** Arguments: the literal (abbreviated), the parameter name; reported on a string literal passed to a composable. */
     val COMPOSABLE_HARDCODED_STRING = tunable2<KtElement, String, String>("COMPOSABLE_HARDCODED_STRING", KotrailRule.COMPOSE_NO_HARDCODED_STRING, WHOLE)
 
@@ -483,6 +486,12 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             KotrailDiagnostics.COMPOSABLE_SIDE_EFFECT_IN_COMPOSITION,
             "[Kotrail] ''{0}'' starts work during composition, which runs again on every recomposition. " +
                 "Move it into LaunchedEffect (or another effect), or call it from an event handler.",
+        )
+        map.put2(
+            KotrailDiagnostics.CALLBACK_IN_UI_MODEL,
+            "[Kotrail] ''{0}'' carries a callback: {1} is a function-typed property. A model that holds a lambda is never " +
+                "equal to its previous version, so the composable recomposes whenever it is rebuilt, and a preview has to " +
+                "invent the callback. Keep the model a value and take the callback as a parameter of the composable.",
         )
         map.put2(
             KotrailDiagnostics.COMPOSABLE_UNSTABLE_PARAMETER,
