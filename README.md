@@ -1,8 +1,5 @@
 <p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/public/kotrail-lockup-dark.png">
-    <img src="docs/public/kotrail-lockup.png" alt="Kotrail" width="242" height="72">
-  </picture>
+  <img src="docs/public/kotrail-lockup.png" alt="Kotrail" width="282" height="104">
 </p>
 
 **A flexible set of compiler checker rules that keep your Kotlin code durable when developing with AI.**
