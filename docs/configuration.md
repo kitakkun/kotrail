@@ -119,7 +119,7 @@ own; a rule not listed has none.
 | | `factories` | `[java.nio.ByteBuffer.allocateDirect]` | Factory functions that return such an instance. Replaces the default list. |
 | | `callbacks` | `collect`, `onEach`, `withFrameNanos`, `repeat`, `forEach`, ... | Functions whose lambda runs once per item or frame, counted like a loop body. Replaces the default list. |
 | `weakOnlyReference` | `types` | `[java.lang.ref.WeakReference, java.lang.ref.SoftReference, kotlin.native.ref.WeakReference]` | Weak or soft reference types (subtypes included). Replaces the default list. |
-| `catchTooBroad` | `types` | `[kotlin.Throwable, kotlin.Exception, kotlin.RuntimeException, java.lang.Error]` | Exception types a catch clause must not name. Replaces the default list. |
+| `catchTooBroad` | `types` | `kotlin.Throwable`, `kotlin.Exception`, `kotlin.RuntimeException` and their `java.lang` classes, `java.lang.Error` | Exception types a catch clause must not name. Replaces the default list. |
 | `unretained` | `annotations` | `[com.kitakkun.kotrail.lifetime.Unretained]` | Annotations that mark a parameter as not to be retained. Replaces the default list. |
 | | `weakTypes` | `[java.lang.ref.WeakReference, ...]` | Weak reference types through which such a parameter may be kept. Replaces the default list. |
 | `requiredSupertype` | `policies` | `{}` | Named policies, `where -> supertype` or a mapping with `where` and `supertype`; matching classes must extend or implement it. |

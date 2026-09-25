@@ -131,7 +131,7 @@ object ConfigSchema {
             Setting("types", Kind.LIST, "Fully qualified weak or soft reference types (subtypes included); replaces the default list.", default = "java.lang.ref.WeakReference, java.lang.ref.SoftReference, kotlin.native.ref.WeakReference"),
         ),
         KotrailRule.CATCH_TOO_BROAD to listOf(
-            Setting("types", Kind.LIST, "Fully qualified exception types a catch clause must not name; replaces the default list.", default = "kotlin.Throwable, kotlin.Exception, kotlin.RuntimeException, java.lang.Error"),
+            Setting("types", Kind.LIST, "Fully qualified exception types a catch clause must not name; replaces the default list.", default = "kotlin.Throwable, kotlin.Exception, kotlin.RuntimeException, java.lang.Throwable, java.lang.Exception, java.lang.RuntimeException, java.lang.Error"),
         ),
         KotrailRule.UNRETAINED to listOf(
             Setting("annotations", Kind.LIST, "Fully qualified annotations that mark a parameter as not to be retained; replaces the default list.", default = "com.kitakkun.kotrail.lifetime.Unretained"),

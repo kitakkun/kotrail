@@ -1,0 +1,7 @@
+rules:
+  dependencyRules:
+    policies:
+      ui:
+        from: layered.ui.*
+        deny: [layered.data.*]
+        allow: [layered.data.model]

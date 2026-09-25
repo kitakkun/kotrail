@@ -548,7 +548,10 @@ data class KotrailConfig(
             "kotlin.collections.map",
         )
         val DEFAULT_WEAK_TYPES: List<String> = listOf("java.lang.ref.WeakReference", "java.lang.ref.SoftReference", "kotlin.native.ref.WeakReference")
-        val DEFAULT_BROAD_CATCH_TYPES: List<String> = listOf("kotlin.Throwable", "kotlin.Exception", "kotlin.RuntimeException", "java.lang.Error")
+        val DEFAULT_BROAD_CATCH_TYPES: List<String> = listOf(
+            "kotlin.Throwable", "kotlin.Exception", "kotlin.RuntimeException",
+            "java.lang.Throwable", "java.lang.Exception", "java.lang.RuntimeException", "java.lang.Error",
+        )
         val DEFAULT_UNRETAINED_ANNOTATIONS: List<String> = listOf("com.kitakkun.kotrail.lifetime.Unretained")
         val DEFAULT_REMEMBER_KEYS_FUNCTIONS: List<String> = listOf(
             "androidx.compose.runtime.remember",
