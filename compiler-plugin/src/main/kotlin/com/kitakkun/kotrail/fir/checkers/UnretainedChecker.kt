@@ -13,11 +13,13 @@ import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirBasicDeclarationChecker
 import org.jetbrains.kotlin.fir.declarations.FirAnonymousFunction
+import org.jetbrains.kotlin.fir.declarations.FirAnonymousObject
 import org.jetbrains.kotlin.fir.declarations.FirConstructor
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirFunction
 import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
 import org.jetbrains.kotlin.fir.declarations.FirProperty
+import org.jetbrains.kotlin.fir.declarations.FirRegularClass
 import org.jetbrains.kotlin.fir.declarations.FirValueParameter
 import org.jetbrains.kotlin.fir.declarations.hasAnnotation
 import org.jetbrains.kotlin.fir.declarations.utils.isInline
@@ -73,9 +75,11 @@ import org.jetbrains.kotlin.types.AbstractTypeChecker
  * from it, the receiver or `it` of `also`/`apply`/`let`/`run`/`with`) escape when stored in a
  * non-local property, passed to a callee whose parameter is not `@Unretained` (a callee that
  * cannot be seen counts as retaining, so a finding can be a false positive but not a false
- * negative), captured by a lambda that is not inlined into the call, or returned. Calling a
- * method on the parameter, or handing it a lambda, is not an escape. The annotation travels in
- * metadata, so a library's contract is honored by its callers.
+ * negative), captured by a lambda that is not inlined into the call, captured by an anonymous
+ * object, a local class or a local function (`object : WeakReference<T> { override fun get() =
+ * referent }` retains the referent strongly), or returned. Calling a method on the parameter, or
+ * handing it a lambda, is not an escape. The annotation travels in metadata, so a library's
+ * contract is honored by its callers.
  */
 object UnretainedChecker : FirBasicDeclarationChecker(MppCheckerKind.Common) {
     private val SCOPE_FUNCTIONS = setOf("kotlin.also", "kotlin.apply", "kotlin.let", "kotlin.run", "kotlin.with")
@@ -85,6 +89,14 @@ object UnretainedChecker : FirBasicDeclarationChecker(MppCheckerKind.Common) {
         "kotlin.io.println", "kotlin.io.print",
     )
     private val DECLARES_PROPERTY = Regex("""(^|\s)(val|var)\s""")
+
+    /** Standard-library functions that build a value out of their arguments: the parameter ends up inside that value. */
+    private val VALUE_BUILDERS = setOf(
+        "kotlin.to", "kotlin.collections.plus", "kotlin.collections.listOf", "kotlin.collections.setOf", "kotlin.collections.mapOf",
+        "kotlin.collections.mutableListOf", "kotlin.collections.mutableSetOf", "kotlin.collections.mutableMapOf",
+        "kotlin.collections.arrayListOf", "kotlin.collections.hashMapOf", "kotlin.collections.hashSetOf", "kotlin.arrayOf",
+        "kotlin.Pair", "kotlin.Triple",
+    )
 
     context(context: CheckerContext, reporter: DiagnosticReporter)
     override fun check(declaration: FirDeclaration) {
@@ -206,8 +218,13 @@ object UnretainedChecker : FirBasicDeclarationChecker(MppCheckerKind.Common) {
                 if (callee is FirConstructorSymbol && weakTypes.any { callee.resolvedReturnType.isSubtypeOf(it) }) continue
                 if (fqn in ALLOWED_CALLEES) continue
                 if (parameterSymbol != null && annotations.any { parameterSymbol.hasAnnotation(it, session) }) continue
-                val where = fqn ?: "an unresolved function"
-                argument.source?.let { escapes += it to "it is passed to '$where', which does not declare its parameter unretained" }
+                // A constructor is named by its class: `Pair(a, b)`, not `kotlin.Pair.<init>`.
+                val builder = if (callee is FirConstructorSymbol) callee.callableId.classId?.asSingleFqName()?.asString() else fqn
+                val how = when {
+                    builder in VALUE_BUILDERS -> "it is put into a value built with '${builder!!.substringAfterLast('.')}'"
+                    else -> "it is passed to '${fqn ?: "an unresolved function"}', which does not declare its parameter unretained"
+                }
+                argument.source?.let { escapes += it to how }
             }
             functionCall.acceptChildren(this)
         }
@@ -218,10 +235,26 @@ object UnretainedChecker : FirBasicDeclarationChecker(MppCheckerKind.Common) {
                 return
             }
             // A lambda that may run after the call: any read of the parameter inside it keeps the parameter alive.
-            val read = FirstAliasRead().also { anonymousFunction.body?.accept(it) }.found
-            if (read != null) {
-                read.source?.let { escapes += it to "it is captured by a lambda that outlives the call" }
-            }
+            captured(anonymousFunction, "it is captured by a lambda that outlives the call")
+        }
+
+        // An object, a local class or a local function is a value of its own: whatever it reads, it retains.
+        override fun visitAnonymousObject(anonymousObject: FirAnonymousObject) {
+            captured(anonymousObject, "it is captured by an object that outlives the call")
+        }
+
+        override fun visitRegularClass(regularClass: FirRegularClass) {
+            captured(regularClass, "it is captured by a local class that outlives the call")
+        }
+
+        override fun visitNamedFunction(namedFunction: FirNamedFunction) {
+            captured(namedFunction, "it is captured by a local function that outlives the call")
+        }
+
+        /** Records the first read of an alias inside [declaration] as an escape with [how]; the declaration is not walked further. */
+        private fun captured(declaration: FirElement, how: String) {
+            val read = FirstAliasRead().also { declaration.acceptChildren(it) }.found ?: return
+            read.source?.let { escapes += it to how }
         }
 
         private fun FirExpression.lambda(): FirAnonymousFunction? = when (this) {

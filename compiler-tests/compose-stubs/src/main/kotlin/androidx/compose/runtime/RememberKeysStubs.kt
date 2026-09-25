@@ -59,3 +59,9 @@ class Observable<T>(val value: T)
 
 @Composable
 fun <T> Observable<T>.collectAsState(): State<T> = mutableStateOf(value)
+
+/** Stands in for Flow.collect on the observable: the lambda runs for every value, for as long as the effect lives. */
+suspend fun <T> Observable<T>.collect(action: suspend (T) -> Unit) = action(value)
+
+/** Stands in for kotlinx.coroutines.awaitCancellation. */
+suspend fun awaitCancellation(): Nothing = throw IllegalStateException()

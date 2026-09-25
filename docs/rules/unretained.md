@@ -21,8 +21,9 @@ fun register(@Unretained job: Job, name: String)
 
 The annotation is a contract: the function may read the parameter, call it and register
 callbacks on it, but must not keep it alive past the call except through a weak reference. It
-lives in the `kotrail-annotations` artifact, which the Gradle plugin adds as `compileOnly`; a
-project's own annotation is listed under `annotations`.
+lives in the `kotrail-annotations` artifact, a multiplatform library the Gradle plugin adds as
+`compileOnly`, so it can be written in common code; a project's own annotation is listed under
+`annotations`.
 
 ## What it rejects
 
@@ -31,8 +32,13 @@ fun register(@Unretained job: Job, name: String) {
     roots[name] = job                              // reported: stored in a property
     jobs.add(job)                                  // reported: passed to 'MutableList.add', which does not declare its parameter unretained
     scope.launch { track(job) }                    // reported: captured by a lambda that outlives the call
+    roots = roots + (name to job)                  // reported: put into a value built with 'to'
     val handle = job
     current = handle                               // reported: an alias escapes the same way
+}
+
+fun hold(@Unretained job: Job): Holder = object : Holder {
+    override fun get() = job                       // reported: captured by an object that outlives the call
 }
 
 fun handle(@Unretained job: Job): Job = job        // reported: returned
@@ -63,9 +69,25 @@ The parameter and its aliases (locals assigned from it, the receiver or `it` of 
 - read inside a lambda that the call does not inline: a `launch { }` body, a listener, a
   stored callback. A lambda passed to an inline function's inline parameter, or handed to the
   parameter itself (`job.invokeOnCompletion { }`), runs within the call and is not an escape;
+- read inside an anonymous object, a local class or a local function: each is a value of its
+  own that retains what it reads (`object : WeakReference<T> { override fun get() = referent }`
+  holds `referent` strongly, whatever its name promises);
 - returned from the function.
 
-Calling a method on the parameter is never an escape.
+A value built from the parameter with a standard-library builder (`name to job`, `list + job`,
+`listOf(job)`, `Pair(a, job)`) is reported as "put into a value built with 'to'": the site is
+the argument, the retention is wherever that value goes. Calling a method on the parameter is
+never an escape.
+
+## A project's own weak wrapper
+
+A multiplatform project usually declares its own weak reference (`expect fun <T>
+WeakReference(referent: T): WeakReference<T>` with `java.lang.ref`, `kotlin.native.ref` and
+`WeakRef` actuals). Passing an unretained parameter to it is reported until the wrapper says
+what it does: annotate the `referent` parameter `@Unretained` on the `expect` and every `actual`,
+or, when the wrapper is a class, list it under `unretained.weakTypes`. The rule then also checks
+the actuals themselves, which is where a fallback that keeps the referent strongly (a web actual
+made of an anonymous object) is caught.
 
 ## Across modules
 

@@ -96,7 +96,7 @@ tasks.test {
     useJUnitPlatform()
     dependsOn(
         ":compiler-plugin:publishMavenPublicationToTestRepository",
-        ":annotations:publishMavenPublicationToTestRepository",
+        ":annotations:publishAllPublicationsToTestRepository",
         tasks.named("publishAllPublicationsToTestRepository"),
     )
     systemProperty("kotrail.test.repo", rootProject.layout.buildDirectory.dir("test-repo").get().asFile.absolutePath)

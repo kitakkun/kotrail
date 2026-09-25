@@ -40,13 +40,19 @@ import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
  * the rule's `exclude` predicate.
  */
 object CatchTooBroadChecker : FirTryExpressionChecker(MppCheckerKind.Common) {
+    private val CANCELLATION_TYPES = setOf(
+        "kotlinx.coroutines.CancellationException",
+        "kotlin.coroutines.cancellation.CancellationException",
+        "java.util.concurrent.CancellationException",
+    )
+
     context(context: CheckerContext, reporter: DiagnosticReporter)
     override fun check(expression: FirTryExpression) {
         val config = context.session.kotrailConfig
         if (!config.isEnabled(KotrailRule.CATCH_TOO_BROAD)) return
         val session = context.session
         val broad = config.catchTooBroad.types
-        for (catch in expression.catches) {
+        for ((index, catch) in expression.catches.withIndex()) {
             val parameter = catch.parameter
             val source = parameter.source ?: continue
             if (source.kind is KtFakeSourceElementKind) continue
@@ -56,7 +62,15 @@ object CatchTooBroadChecker : FirTryExpressionChecker(MppCheckerKind.Common) {
             val names = listOfNotNull(classId, written.fullyExpandedType().classId, written.abbreviatedTypeOrSelf.classId).map { it.asSingleFqName().asString() }
             if (names.none { it in broad }) continue
             if (catch.rethrows()) continue
-            reportKotrail(source, KotrailDiagnostics.CATCH_TOO_BROAD, classId.shortClassName.asString())
+            // A clause before it that rethrows cancellation has already let cancellation through.
+            val cancellationHandled = expression.catches.take(index).any { earlier ->
+                earlier.parameter.returnTypeRef.coneType.let { type ->
+                    listOfNotNull(type.classId, type.fullyExpandedType().classId, type.abbreviatedTypeOrSelf.classId)
+                        .any { it.asSingleFqName().asString() in CANCELLATION_TYPES }
+                } && earlier.rethrows()
+            }
+            val swallows = if (cancellationHandled) "bugs included" else "bugs and cancellations included"
+            reportKotrail(source, KotrailDiagnostics.CATCH_TOO_BROAD, classId.shortClassName.asString(), swallows)
         }
     }
 

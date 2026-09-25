@@ -2,7 +2,7 @@
 
 **Diagnostic:** `KOTRAIL_NATIVE_ALLOCATION_IN_LOOP` (error, on the construction or factory call)
 **Key:** `rules.nativeAllocationInLoop` (on by default)
-**Settings:** `types` (default `[org.jetbrains.skia.Managed, java.awt.image.VolatileImage]`), `factories` (default `[java.nio.ByteBuffer.allocateDirect]`), `callbacks` (default: `collect`, `onEach`, `withFrameNanos`, `repeat`, `forEach` and their kin)
+**Settings:** `types` (default `[org.jetbrains.skia.impl.Managed, java.awt.image.VolatileImage]`), `factories` (default `[java.nio.ByteBuffer.allocateDirect]`), `callbacks` (default: `collect`, `onEach`, `withFrameNanos`, `repeat`, `forEach` and their kin)
 
 ## What it rejects
 

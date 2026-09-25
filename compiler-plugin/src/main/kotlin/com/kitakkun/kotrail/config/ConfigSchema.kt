@@ -123,7 +123,7 @@ object ConfigSchema {
             Setting("disposableTypes", Kind.LIST, "Fully qualified types an argument of which scopes a registration to a lifetime. Replaces the default list.", default = "com.intellij.openapi.Disposable"),
         ),
         KotrailRule.NATIVE_ALLOCATION_IN_LOOP to listOf(
-            Setting("types", Kind.LIST, "Fully qualified types (subtypes included) whose instances hold native memory that only a cleaner frees; replaces the default list.", default = "org.jetbrains.skia.Managed, java.awt.image.VolatileImage"),
+            Setting("types", Kind.LIST, "Fully qualified types (subtypes included) whose instances hold native memory that only a cleaner frees; replaces the default list.", default = "org.jetbrains.skia.impl.Managed, java.awt.image.VolatileImage"),
             Setting("factories", Kind.LIST, "Fully qualified factory functions that return such an instance; replaces the default list.", default = "java.nio.ByteBuffer.allocateDirect"),
             Setting("callbacks", Kind.LIST, "Fully qualified functions whose lambda runs once per item or frame, counted like a loop body; replaces the default list.", default = "kotlinx.coroutines.flow.collect, kotlinx.coroutines.flow.onEach, androidx.compose.runtime.withFrameNanos, kotlin.repeat, kotlin.collections.forEach, ..."),
         ),
@@ -203,7 +203,7 @@ object ConfigSchema {
             Setting("minWords", Kind.INT, "Words a backticked test name must have; 1 accepts any name.", default = "3"),
         ),
         KotrailRule.TEST_MUST_ASSERT to listOf(
-            Setting("assertions", Kind.LIST, "Globs over fully qualified functions that assert or verify; a test that calls none of them, directly or through its helpers, is reported. Replaces the default list.", default = "kotlin.test.*, org.junit.Assert.*, org.junit.jupiter.api.Assertions.*, assertk.*, io.kotest.*, com.google.common.truth.*, dev.mokkery.verify*, io.mockk.verify*, org.mockito.*verify*, *.assert*, *.verify*, *.expect*, *.should*"),
+            Setting("assertions", Kind.LIST, "Globs over fully qualified functions that assert or verify; a test that calls none of them, directly or through its helpers, is reported. Replaces the default list.", default = "kotlin.test.*, org.junit.Assert.*, org.junit.jupiter.api.Assertions.*, assertk.*, io.kotest.*, com.google.common.truth.*, dev.mokkery.verify*, io.mockk.verify*, org.mockito.*verify*, *.assert*, *.verify*, *.expect*, *.should*, *.waitUntil*, *.captureRoboImage*, kotlinx.coroutines.withTimeout"),
         ),
         KotrailRule.TEST_NO_SLEEP to listOf(
             Setting("functions", Kind.LIST, "Fully qualified functions that wait real time; replaces the default list.", default = "java.lang.Thread.sleep, android.os.SystemClock.sleep, java.util.concurrent.TimeUnit.sleep"),

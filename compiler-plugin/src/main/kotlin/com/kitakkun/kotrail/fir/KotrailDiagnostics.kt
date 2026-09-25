@@ -130,8 +130,8 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: what was wrapped; reported on a weak reference built from an object nothing else holds. */
     val WEAK_REFERENCE_TO_FRESH_OBJECT = tunable1<KtElement, String>("WEAK_REFERENCE_TO_FRESH_OBJECT", KotrailRule.WEAK_ONLY_REFERENCE, WHOLE)
 
-    /** Argument: the caught type; reported on the catch parameter. */
-    val CATCH_TOO_BROAD = tunable1<KtElement, String>("CATCH_TOO_BROAD", KotrailRule.CATCH_TOO_BROAD, WHOLE)
+    /** Arguments: the caught type, what the clause swallows ("bugs and cancellations included" or "bugs included"); reported on the catch parameter. */
+    val CATCH_TOO_BROAD = tunable2<KtElement, String, String>("CATCH_TOO_BROAD", KotrailRule.CATCH_TOO_BROAD, WHOLE)
 
     /** Arguments: the parameter, how it escapes; reported on the expression through which an unretained parameter is retained. */
     val UNRETAINED_PARAMETER_RETAINED = tunable2<KtElement, String, String>("UNRETAINED_PARAMETER_RETAINED", KotrailRule.UNRETAINED, WHOLE)
@@ -622,10 +622,10 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             "[Kotrail] This weak reference is the only reference to {0}, so it is collected at the next opportunity and " +
                 "the reference goes empty. Hold the object strongly somewhere for as long as it should act.",
         )
-        map.put1(
+        map.put2(
             KotrailDiagnostics.CATCH_TOO_BROAD,
-            "[Kotrail] Catching ''{0}'' handles every failure alike, bugs and cancellations included. Catch the exceptions " +
-                "this code can recover from, or rethrow what it cannot.",
+            "[Kotrail] Catching ''{0}'' handles every failure alike, {1}. Catch the exceptions this code can recover " +
+                "from, or rethrow what it cannot.",
         )
         map.put2(
             KotrailDiagnostics.UNRETAINED_PARAMETER_RETAINED,
@@ -641,8 +641,7 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         )
         map.put2(
             KotrailDiagnostics.EFFECT_KEY_MISSING,
-            "[Kotrail] The lambda of ''{0}'' reads {1}, which is not among its keys: when that changes, the lambda keeps " +
-                "the old value. Add it to the keys, or read it through rememberUpdatedState.",
+            "[Kotrail] The lambda of ''{0}'' captures {1}. When that value changes, the lambda keeps the one it saw first.",
         )
         map.put1(
             KotrailDiagnostics.TEST_WITHOUT_ASSERTION,

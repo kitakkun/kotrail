@@ -6,59 +6,78 @@
 
 ## What it rejects
 
-A `remember` or effect lambda that reads something of the enclosing composable which is not
-among the call's keys:
+A `remember` or effect lambda that captures a value of the enclosing composable which can go
+stale and which the call's keys do not cover:
 
 ```kotlin
 @Composable
-fun Price(amount: Long, id: Long) {
-    val text = remember { format(amount) }          // reported: amount
-    LaunchedEffect(Unit) { load(id) }               // reported: id
+fun Price(amount: Long, events: Flow<Event>, onEvent: (Event) -> Unit) {
+    val text = remember { format(amount) }                     // reported: amount
+    LaunchedEffect(Unit) { events.collect { onEvent(it) } }    // reported: onEvent
 }
 ```
 
 ## What it asks for
 
-```kotlin
-@Composable
-fun Price(amount: Long, id: Long) {
-    val text = remember(amount) { format(amount) }
-    LaunchedEffect(id) { load(id) }
-}
-```
+There are two right fixes, and the message says which one applies to each name.
 
-or, for a keyless effect that must see the latest value without restarting:
+A data value a `remember { }` computes from belongs in the keys:
 
 ```kotlin
-val currentOnClick by rememberUpdatedState(onClick)
-LaunchedEffect(Unit) { events.collect { currentOnClick() } }
+val text = remember(amount) { format(amount) }
 ```
+
+A callback captured by an effect is read through `rememberUpdatedState`: restarting the
+collection because a lambda changed identity is itself the classic bug.
+
+```kotlin
+val currentOnEvent by rememberUpdatedState(onEvent)
+LaunchedEffect(Unit) { events.collect { currentOnEvent(it) } }
+```
+
+A data value read by a long-lived effect body (a `collect`, a loop, `onDispose`, a body that
+waits for cancellation) goes in the keys if the work should restart when it changes, and
+through `rememberUpdatedState` otherwise; the message offers both.
 
 A lambda keyed on nothing runs once and keeps the first value of whatever it captured: the
-composable shows the old price, the effect loads the old id, the handler stored in a remembered
-holder calls the old callback. Nothing at the call site says so, which is why this survives
-review and why generated code does it constantly (`LaunchedEffect(Unit) { viewModel.load(id) }`).
+composable shows the old price, the handler stored in a remembered holder calls the old callback,
+the collector calls the first composition's `onEvent` forever. Nothing at the call site says so,
+which is why this survives review and why generated code does it constantly.
 
 ## When it fires
 
 - The call is one of `functions` (by fully qualified name) with a literal lambda as its last
   argument, inside a `@Composable` function.
-- The lambda reads, at any depth including nested lambdas, a value of the enclosing composable:
-  a parameter, a delegated local (`by remember { mutableStateOf(...) }`, `by flow.collectAsState()`),
-  or a local whose initializer reads one of those (transitively).
-- No key argument is a direct read of that value. `Unit`, `true` and literals cover nothing.
+- The lambda reads a value of the enclosing composable that can go stale: a parameter, or a
+  local whose initializer reads one, transitively.
+- No key covers it: a key that reads the same value, or whose text is the property path the
+  read roots (`remember(tx.request.url) { parse(tx.request.url) }`). `Unit`, `true` and
+  literals cover nothing.
+- For `remember` and `rememberSaveable`: any such read. For the effects: a function-typed value
+  read anywhere in the body, or a data value read inside a long-lived body (the lambda of
+  `collect`, `collectLatest`, `onEach`, `onDispose`, `awaitPointerEventScope`, `withFrameNanos`,
+  a `while`/`do`/`for` loop, or a body that reaches `awaitCancellation()`).
 
-One finding per call, naming the missing values in source order.
+One finding per call, naming the missing values in source order with the advice for each:
+`onEvent (read it through rememberUpdatedState); tag (add it to the keys if the work should
+restart when it changes, otherwise read it through rememberUpdatedState)`.
 
 ## When it stays quiet
 
-- Every value the lambda reads is among the keys.
+- Every value the lambda reads is covered by a key, or derived only from covered values.
+- The value is a `State`: a delegated local (`by remember { mutableStateOf(...) }`,
+  `by flow.collectAsState()`) or a `State`-typed parameter. A `State` is always current when
+  read, and writing to one (`visible = true`) is not a read.
+- The value is a local from `rememberUpdatedState(...)`, from any other `remember*` call
+  (`rememberCoroutineScope()`, a keyed `remember`), from a keyed call under check, or from
+  `CompositionLocal.current`: stable for the composition.
+- The read is the initial value handed to `mutableStateOf(...)` and its typed variants: a seed
+  is meant to be taken once.
 - The read is inside `snapshotFlow { }` or `derivedStateOf { }`, which observe on their own.
-- The value is a local from `rememberUpdatedState(...)`.
-- The value is a local from another `remember*` call (`rememberCoroutineScope()`,
-  `rememberNavController()`) or from `CompositionLocal.current`: stable for the composition.
-- The lambda is not a literal (a function reference, a variable).
-- The call is not inside a composable.
+- The effect is one-shot and reads a data value once (`LaunchedEffect(Unit) { load(id) }`,
+  a callback called once with the current value): that is what such effects are for.
+- The lambda is not a literal (a function reference, a variable), or the call is not inside a
+  composable.
 
 ## Fixtures
 
@@ -67,7 +86,10 @@ One finding per call, naming the missing values in source order.
 ## Implementation notes
 
 `fir/compose/checkers/ComposableRememberKeysChecker.kt`, a `FirFunctionCallChecker`. The
-enclosing composable's parameters are flagged, then its locals declared before the call (a
-delegated one, or one whose initializer reads something flagged) in one pass over the body; a
-second visitor collects the flagged symbols the lambda reads, skipping the lambdas of the
-observing functions; the keys are compared by symbol after unwrapping smart casts.
+enclosing composable's non-`State` parameters are flagged, then its plain locals declared before
+the call whose initializer reads something flagged, each with what it depends on; a second
+visitor walks the lambda body with an ancestor stack, skipping assignment targets, seed
+arguments and observing lambdas, marking reads under long-lived lambdas and loops, and
+dropping reads a key covers by symbol, by dependency, or by the text of the property path the
+read roots. The advice per name follows from the value's type (function or data), the call
+(remember or effect) and whether a read sits in a long-lived body.

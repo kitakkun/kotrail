@@ -531,7 +531,7 @@ data class KotrailConfig(
         const val DEFAULT_FUNCTION_MAX_LINES = 50
         val DEFAULT_NO_DATA_CLASS_SCOPE = PublicApiScope.EXPLICIT_API
         const val DEFAULT_COMPOSABLE_MAX_LINES = 80
-        val DEFAULT_NATIVE_TYPES: List<String> = listOf("org.jetbrains.skia.Managed", "java.awt.image.VolatileImage")
+        val DEFAULT_NATIVE_TYPES: List<String> = listOf("org.jetbrains.skia.impl.Managed", "java.awt.image.VolatileImage")
         val DEFAULT_NATIVE_FACTORIES: List<String> = listOf("java.nio.ByteBuffer.allocateDirect")
         val DEFAULT_PER_ITEM_CALLBACKS: List<String> = listOf(
             "kotlinx.coroutines.flow.collect",
@@ -564,6 +564,7 @@ data class KotrailConfig(
             "kotlin.test.*", "org.junit.Assert.*", "org.junit.jupiter.api.Assertions.*", "assertk.*", "io.kotest.*",
             "com.google.common.truth.*", "dev.mokkery.verify*", "io.mockk.verify*", "org.mockito.*verify*",
             "*.assert*", "*.verify*", "*.expect*", "*.should*",
+            "*.waitUntil*", "*.captureRoboImage*", "kotlinx.coroutines.withTimeout",
         )
         val DEFAULT_GENERATED_PATHS: List<String> = listOf("*/build/generated/*")
         val DEFAULT_GENERATED_ANNOTATIONS: List<String> = listOf(

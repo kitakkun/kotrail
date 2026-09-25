@@ -115,7 +115,7 @@ own; a rule not listed has none.
 | `preferIdiom` | `disabled` | `[]` | Idioms not asked for: `emptiness`, `negation`, `nullOrEmpty`, `chain`, `elvis`. |
 | | `chains` | `[]` | The project's own chain idioms, each `<inner fqn> then <outer fqn> -> <replacement fqn>`. |
 | | `calls` | `[]` | The project's own call idioms, each `<fqn>(<literal>) -> <replacement fqn>`. |
-| `nativeAllocationInLoop` | `types` | `[org.jetbrains.skia.Managed, java.awt.image.VolatileImage]` | Types (subtypes included) whose instances hold native memory that only a cleaner frees. Replaces the default list. |
+| `nativeAllocationInLoop` | `types` | `[org.jetbrains.skia.impl.Managed, java.awt.image.VolatileImage]` | Types (subtypes included) whose instances hold native memory that only a cleaner frees. Replaces the default list. |
 | | `factories` | `[java.nio.ByteBuffer.allocateDirect]` | Factory functions that return such an instance. Replaces the default list. |
 | | `callbacks` | `collect`, `onEach`, `withFrameNanos`, `repeat`, `forEach`, ... | Functions whose lambda runs once per item or frame, counted like a loop body. Replaces the default list. |
 | `weakOnlyReference` | `types` | `[java.lang.ref.WeakReference, java.lang.ref.SoftReference, kotlin.native.ref.WeakReference]` | Weak or soft reference types (subtypes included). Replaces the default list. |
@@ -155,7 +155,7 @@ own; a rule not listed has none.
 | `compose.noHardcodedString` (off by default) | `parameters` | `[text, label, title, placeholder, contentDescription, message]` | Composable parameters that must not receive a string literal. Replaces the default list. |
 | `test.naming` | `style` | `backticked` | `backticked` for a sentence name, `identifier` for targets that reject spaces (Android instrumented tests). |
 | | `minWords` | `3` | Words a backticked test name must have; `2` requires backticks only, `1` accepts any name. |
-| `test.mustAssert` | `assertions` | kotlin.test, JUnit, assertk, kotest, Truth, Mokkery/MockK/Mockito verify, and `*.assert*`, `*.verify*`, `*.expect*`, `*.should*` | Globs over functions that assert or verify; a test calling none, directly or through helpers, is reported. Replaces the default list. |
+| `test.mustAssert` | `assertions` | kotlin.test, JUnit, assertk, kotest, Truth, Mokkery/MockK/Mockito verify, and `*.assert*`, `*.verify*`, `*.expect*`, `*.should*`, `*.waitUntil*`, `*.captureRoboImage*`, `withTimeout` | Globs over functions that assert or verify; a test calling none, directly or through helpers, is reported. Replaces the default list. |
 | `test.noSleep` | `functions` | `[java.lang.Thread.sleep, android.os.SystemClock.sleep, java.util.concurrent.TimeUnit.sleep]` | Functions that wait real time; reported anywhere in a test. Replaces the default list. |
 | | `virtualTime` | `[kotlinx.coroutines.test.runTest]` | Functions whose lambda runs on virtual time, where `delay` is free. Replaces the default list. |
 
