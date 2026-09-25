@@ -71,7 +71,10 @@ The parameter and its aliases (locals assigned from it, the receiver or `it` of 
   parameter itself (`job.invokeOnCompletion { }`), runs within the call and is not an escape;
 - read inside an anonymous object, a local class or a local function: each is a value of its
   own that retains what it reads (`object : WeakReference<T> { override fun get() = referent }`
-  holds `referent` strongly, whatever its name promises);
+  holds `referent` strongly, whatever its name promises). A property initializer or an `init`
+  block of such an object runs while the function does, so it is read like the function's own
+  code: `private val reference = WeakReference(referent)` is fine, `private val kept = referent`
+  is a store, and only reads in function bodies, accessors and lambdas count as capture;
 - returned from the function.
 
 A value built from the parameter with a standard-library builder (`name to job`, `list + job`,

@@ -20,11 +20,17 @@ class User(val name: String)
 class Request(val url: String)
 class Transaction(val request: Request)
 
+class Session(val iconBase64: String?)
+class Flags(val interactiveOnly: Boolean)
+class SplitState(val fraction: Float)
+
 fun format(amount: Long): String = amount.toString()
 fun parse(url: String): String = url
 suspend fun load(id: Long) {}
+suspend fun pause() {}
 fun track(name: String) {}
 fun step(speed: Int) {}
+fun filterBy(predicate: (String) -> Boolean): Int = if (predicate("")) 1 else 0
 
 // Reported: a remember computes from a parameter that is not among its keys; the fix is the key.
 @Composable
@@ -119,12 +125,55 @@ fun Url(tx: Transaction) {
     Text(parsed)
 }
 
-// Not reported: the initial value handed to mutableStateOf is meant to be taken once.
+// Not reported: the key spells the property path through a safe call, and a path read inside a
+// nested lambda of the body is covered all the same.
 @Composable
-fun Seeded(initial: Int) {
+fun SafeIcon(session: Session?) {
+    val icon = remember(session?.iconBase64) { session?.iconBase64?.let { parse(it) } }
+    Text(icon ?: "")
+}
+
+@Composable
+fun Filtered(flags: Flags) {
+    val count = remember(flags.interactiveOnly) { filterBy { node -> flags.interactiveOnly && node.isNotEmpty() } }
+    Text("$count")
+}
+
+// Reported: the same nested read with no key.
+@Composable
+fun Unfiltered(flags: Flags) {
+    val count = <!KOTRAIL_EFFECT_KEY_MISSING!>remember { filterBy { node -> flags.interactiveOnly && node.isNotEmpty() } }<!>
+    Text("$count")
+}
+
+// Not reported: the initial value handed to mutableStateOf, or to a constructor inside remember, is
+// meant to be taken once.
+@Composable
+fun Seeded(initial: Int, initialFraction: Float) {
     var value by remember { mutableStateOf(initial) }
-    Text("$value")
+    val split = remember { SplitState(initialFraction) }
+    Text("$value ${split.fraction}")
     value++
+}
+
+// Not reported: a callback called before the effect's first suspension point sees this
+// composition's value once, which is what a one-shot effect is for.
+@Composable
+fun Starting(onStart: () -> Unit) {
+    LaunchedEffect(Unit) {
+        onStart()
+        pause()
+    }
+}
+
+// Reported: the same callback read after the suspension point, when the composition may have moved on.
+@Composable
+fun Resuming(onStart: () -> Unit) {
+    <!KOTRAIL_EFFECT_KEY_MISSING!>LaunchedEffect(Unit) {
+        onStart()
+        pause()
+        onStart()
+    }<!>
 }
 
 // Reported: a local computed from a parameter is as stale as the parameter; the message names the local.

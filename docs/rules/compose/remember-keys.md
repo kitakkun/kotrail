@@ -54,7 +54,7 @@ which is why this survives review and why generated code does it constantly.
   read roots (`remember(tx.request.url) { parse(tx.request.url) }`). `Unit`, `true` and
   literals cover nothing.
 - For `remember` and `rememberSaveable`: any such read. For the effects: a function-typed value
-  read anywhere in the body, or a data value read inside a long-lived body (the lambda of
+  read in the body after its first suspension point, loop or long-lived lambda (or inside any nested lambda), or a data value read inside a long-lived body (the lambda of
   `collect`, `collectLatest`, `onEach`, `onDispose`, `awaitPointerEventScope`, `withFrameNanos`,
   a `while`/`do`/`for` loop, or a body that reaches `awaitCancellation()`).
 
@@ -71,8 +71,16 @@ restart when it changes, otherwise read it through rememberUpdatedState)`.
 - The value is a local from `rememberUpdatedState(...)`, from any other `remember*` call
   (`rememberCoroutineScope()`, a keyed `remember`), from a keyed call under check, or from
   `CompositionLocal.current`: stable for the composition.
-- The read is the initial value handed to `mutableStateOf(...)` and its typed variants: a seed
-  is meant to be taken once.
+- The read is the initial value handed to `mutableStateOf(...)` and its typed variants, or an
+  argument of a constructor call inside `remember { }` (`remember { SplitState(initialFraction) }`):
+  a seed is meant to be taken once.
+- A key spells any property path the read roots, through safe calls and at any depth of the
+  lambda: `remember(session?.icon) { session?.icon?.let(::decode) }`,
+  `remember(flags.interactiveOnly) { filterBy { flags.interactiveOnly && it.isVisible } }`.
+- The value is a callback called at the top level of an effect body before its first suspension
+  point, loop, `collect`, `onDispose` or `awaitCancellation()`: it runs once with this
+  composition's value. The same callback read after that point, or inside a nested lambda, is
+  reported.
 - The read is inside `snapshotFlow { }` or `derivedStateOf { }`, which observe on their own.
 - The effect is one-shot and reads a data value once (`LaunchedEffect(Unit) { load(id) }`,
   a callback called once with the current value): that is what such effects are for.

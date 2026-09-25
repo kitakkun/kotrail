@@ -15,7 +15,9 @@ import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirFunctionCallChec
 import org.jetbrains.kotlin.fir.declarations.FirAnonymousFunction
 import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
 import org.jetbrains.kotlin.fir.declarations.FirProperty
+import org.jetbrains.kotlin.fir.declarations.utils.isSuspend
 import org.jetbrains.kotlin.fir.expressions.FirAnonymousFunctionExpression
+import org.jetbrains.kotlin.fir.expressions.FirCheckedSafeCallSubject
 import org.jetbrains.kotlin.fir.expressions.FirDesugaredAssignmentValueReferenceExpression
 import org.jetbrains.kotlin.fir.expressions.FirDoWhileLoop
 import org.jetbrains.kotlin.fir.expressions.FirExpression
@@ -24,6 +26,7 @@ import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirQualifiedAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirSafeCallExpression
 import org.jetbrains.kotlin.fir.expressions.FirSmartCastExpression
+import org.jetbrains.kotlin.fir.expressions.FirStatement
 import org.jetbrains.kotlin.fir.expressions.FirVarargArgumentsExpression
 import org.jetbrains.kotlin.fir.expressions.FirVariableAssignment
 import org.jetbrains.kotlin.fir.expressions.FirWhileLoop
@@ -34,6 +37,8 @@ import org.jetbrains.kotlin.fir.resolve.fullyExpandedType
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.ConeStarProjection
 import org.jetbrains.kotlin.fir.types.coneType
@@ -77,9 +82,12 @@ import org.jetbrains.kotlin.types.AbstractTypeChecker
  * the keys cover; writes; the initial value handed to `mutableStateOf(...)`; reads inside
  * `snapshotFlow { }` and `derivedStateOf { }`, which observe on their own. A read is covered by
  * a key that reads the same value, or whose text is the property path the read roots
- * (`remember(tx.request.url) { parse(tx.request.url) }`). In an effect, a data value read only
- * by a one-shot body (a callback called once with the current value) is left alone: that is
- * what such effects are for.
+ * (`remember(tx.request.url) { parse(tx.request.url) }`), at any depth of the lambda and through
+ * safe calls. In an effect, a data value read only by a one-shot body is left alone, and so is
+ * a callback called before the body's first suspension point or long-lived construct: both read
+ * this composition's value once, which is what such effects are for. In a `remember { }`, an
+ * argument handed to a constructor (`remember { SplitState(initialFraction) }`) is a seed like
+ * the one handed to `mutableStateOf`.
  */
 object ComposableRememberKeysChecker : FirFunctionCallChecker(MppCheckerKind.Common) {
     private val STATE = ClassId(FqName("androidx.compose.runtime"), Name.identifier("State"))
@@ -120,11 +128,13 @@ object ComposableRememberKeysChecker : FirFunctionCallChecker(MppCheckerKind.Com
 
         val coverage = Coverage(
             symbols = keys.mapNotNullTo(HashSet()) { it.unwrapped().readSymbol() },
-            texts = keys.mapNotNullTo(HashSet()) { it.source?.text?.toString()?.trim() },
+            texts = keys.mapNotNullTo(HashSet()) { it.source?.text?.toString()?.trim() } + keys.mapNotNullTo(HashSet()) { it.canonicalPath() },
             flagged = flagged,
         )
         val isEffect = callee.name.asString() in EFFECT_NAMES
-        val reads = ReadCollector(flagged, coverage, isEffect)
+        // A callback called before the body's first suspension point or long-lived construct sees this composition's value.
+        val syncPrefixEnd = if (isEffect) lambda.body?.statements?.firstOrNull { it.reachesSuspension() }?.source?.startOffset ?: Int.MAX_VALUE else Int.MIN_VALUE
+        val reads = ReadCollector(flagged, coverage, isEffect, syncPrefixEnd)
         lambda.body?.accept(reads)
         if (reads.found.isEmpty()) return
         // A body that waits for cancellation keeps everything it read for as long as the effect lives.
@@ -252,10 +262,17 @@ object ComposableRememberKeysChecker : FirFunctionCallChecker(MppCheckerKind.Com
      * whether some read sits in a long-lived body. Writes, seeds, observing lambdas and covered
      * property paths are skipped.
      */
-    private class ReadCollector(private val flagged: Flagged, private val coverage: Coverage, private val isEffect: Boolean) : FirVisitorVoid() {
+    private class ReadCollector(
+        private val flagged: Flagged,
+        private val coverage: Coverage,
+        private val isEffect: Boolean,
+        /** Offset of the first statement of an effect body that suspends or lives long; callbacks read before it, at the top level, are one-shot. */
+        private val syncPrefixEnd: Int = Int.MIN_VALUE,
+    ) : FirVisitorVoid() {
         val found = linkedMapOf<FirBasedSymbol<*>, Read>()
         private val ancestors = ArrayList<FirElement>()
         private var longLivedDepth = 0
+        private var lambdaDepth = 0
         private var awaitsForever = false
 
         override fun visitElement(element: FirElement) {
@@ -275,6 +292,12 @@ object ComposableRememberKeysChecker : FirFunctionCallChecker(MppCheckerKind.Com
             // The `x` of `x += 1` and `x++`.
         }
 
+        override fun visitAnonymousFunction(anonymousFunction: FirAnonymousFunction) {
+            lambdaDepth++
+            visitElement(anonymousFunction)
+            lambdaDepth--
+        }
+
         override fun visitWhileLoop(whileLoop: FirWhileLoop) = longLived { visitElement(whileLoop) }
 
         override fun visitDoWhileLoop(doWhileLoop: FirDoWhileLoop) = longLived { visitElement(doWhileLoop) }
@@ -291,8 +314,9 @@ object ComposableRememberKeysChecker : FirFunctionCallChecker(MppCheckerKind.Com
                 ancestors.removeAt(ancestors.lastIndex)
                 return
             }
-            if (name in SEEDS) {
-                // `mutableStateOf(initial)`: the initial value is meant to be taken once.
+            val isConstructorInRemember = !isEffect && functionCall.calleeReference.toResolvedCallableSymbol() is FirConstructorSymbol
+            if (name in SEEDS || isConstructorInRemember) {
+                // `mutableStateOf(initial)`, or `remember { Holder(initial) }`: the initial value is meant to be taken once.
                 ancestors.add(functionCall)
                 functionCall.explicitReceiver?.accept(this)
                 ancestors.removeAt(ancestors.lastIndex)
@@ -314,10 +338,10 @@ object ComposableRememberKeysChecker : FirFunctionCallChecker(MppCheckerKind.Com
 
         override fun visitPropertyAccessExpression(propertyAccessExpression: FirPropertyAccessExpression) {
             val symbol = propertyAccessExpression.calleeReference.toResolvedCallableSymbol()
-            if (symbol != null && flagged.contains(symbol) && !coverage.coversSymbol(symbol) && !coverage.coversPath(pathRootedAt(propertyAccessExpression))) {
-                val read = found.getOrPut(symbol) {
-                    Read(symbol, flagged.nameOf(symbol)!!, propertyAccessExpression.source?.startOffset ?: Int.MAX_VALUE, longLived = false)
-                }
+            val offset = propertyAccessExpression.source?.startOffset ?: Int.MAX_VALUE
+            val oneShotCallback = symbol != null && flagged.isFunctionTyped(symbol) && lambdaDepth == 0 && longLivedDepth == 0 && offset < syncPrefixEnd
+            if (symbol != null && flagged.contains(symbol) && !oneShotCallback && !coverage.coversSymbol(symbol) && pathsRootedAt(propertyAccessExpression).none { coverage.coversPath(it) }) {
+                val read = found.getOrPut(symbol) { Read(symbol, flagged.nameOf(symbol)!!, offset, longLived = false) }
                 if (longLivedDepth > 0) read.longLived = true
             }
             visitElement(propertyAccessExpression)
@@ -333,12 +357,19 @@ object ComposableRememberKeysChecker : FirFunctionCallChecker(MppCheckerKind.Com
         }
 
         /**
-         * The outermost qualified access chain the read roots, as text: `tx` inside
-         * `tx.request.url` gives `tx.request.url`; the read itself when it roots nothing.
+         * Every qualified access chain the read roots, from the read itself outwards, as source text
+         * and as a canonical path: `tx` inside `tx.request.url.length` gives `tx`, `tx.request`,
+         * `tx.request.url` and `tx.request.url.length`, so that a key spelling any of them covers
+         * the read. Safe calls are crossed (`session?.icon` is the path `session.icon`).
          */
-        private fun pathRootedAt(read: FirPropertyAccessExpression): String {
+        private fun pathsRootedAt(read: FirPropertyAccessExpression): List<String> {
+            val paths = ArrayList<String>()
             var current: FirElement = read
-            var text = read.source?.text?.toString()?.trim().orEmpty()
+            fun add(element: FirElement) {
+                element.source?.text?.toString()?.trim()?.let { paths += it }
+                (element as? FirExpression)?.canonicalPath()?.let { paths += it }
+            }
+            add(read)
             for (ancestor in ancestors.asReversed()) {
                 val receiver = when (ancestor) {
                     is FirSafeCallExpression -> ancestor.receiver
@@ -348,10 +379,73 @@ object ComposableRememberKeysChecker : FirFunctionCallChecker(MppCheckerKind.Com
                 } ?: break
                 if (receiver.unwrapped() !== current) break
                 current = ancestor
-                ancestor.source?.text?.toString()?.trim()?.let { text = it }
+                add(ancestor)
             }
-            return text
+            return paths
         }
+    }
+
+    /** Whether a statement of an effect body suspends, loops, or starts something that outlives it: from there on the body is no longer one-shot. */
+    private fun FirStatement.reachesSuspension(): Boolean {
+        var found = false
+        accept(object : FirVisitorVoid() {
+            override fun visitElement(element: FirElement) {
+                if (found) return
+                element.acceptChildren(this)
+            }
+
+            override fun visitWhileLoop(whileLoop: FirWhileLoop) {
+                found = true
+            }
+
+            override fun visitDoWhileLoop(doWhileLoop: FirDoWhileLoop) {
+                found = true
+            }
+
+            override fun visitFunctionCall(functionCall: FirFunctionCall) {
+                if (found) return
+                val callee = functionCall.calleeReference.toResolvedCallableSymbol()
+                val name = callee?.name?.asString()
+                if ((callee as? FirNamedFunctionSymbol)?.isSuspend == true || name in LONG_LIVED_LAMBDAS || name in AWAIT_FOREVER) {
+                    found = true
+                    return
+                }
+                visitElement(functionCall)
+            }
+        })
+        return found
+    }
+
+    /**
+     * A qualified access as a dotted path of names, `session.icon` for `session?.icon` and
+     * `tx.request.url` alike, so that a key and a read spell the same path however they are
+     * written; null for anything that is not a chain of names rooted at a name.
+     */
+    private fun FirExpression.canonicalPath(): String? = when (val expression = unwrapArgument().unwrapped()) {
+        is FirSafeCallExpression -> {
+            val root = expression.receiver.canonicalPath() ?: return null
+            val selector = expression.selector as? FirQualifiedAccessExpression ?: return null
+            val name = selector.calleeReference.toResolvedCallableSymbol()?.name?.asString() ?: return null
+            "$root.$name" + if (selector is FirFunctionCall) "()" else ""
+        }
+        is FirCheckedSafeCallSubject -> null
+        is FirPropertyAccessExpression -> {
+            val name = expression.calleeReference.toResolvedCallableSymbol()?.name?.asString() ?: return null
+            when (val receiver = expression.explicitReceiver?.unwrapped()) {
+                null -> name
+                is FirCheckedSafeCallSubject -> null
+                else -> receiver.canonicalPath()?.let { "$it.$name" }
+            }
+        }
+        is FirFunctionCall -> {
+            val name = expression.calleeReference.toResolvedCallableSymbol()?.name?.asString() ?: return null
+            when (val receiver = expression.explicitReceiver?.unwrapped()) {
+                null -> null
+                is FirCheckedSafeCallSubject -> null
+                else -> receiver.canonicalPath()?.let { "$it.$name()" }
+            }
+        }
+        else -> null
     }
 
     private fun FirExpression.unwrapped(): FirExpression = if (this is FirSmartCastExpression) originalExpression.unwrapped() else this

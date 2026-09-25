@@ -48,6 +48,19 @@ class Registry {
         override fun get(): Job = <!KOTRAIL_UNRETAINED_PARAMETER_RETAINED!>job<!>
     }
 
+    // Not reported: an object's property initializer runs while the function does, and the parameter flows
+    // into a weak reference there; the members read the weak reference, not the parameter.
+    fun wrap(@Unretained job: Job): Holder = object : Holder {
+        private val reference = WeakReference(job)
+        override fun get(): Job = reference.get()!!
+    }
+
+    // Reported: the object stores the parameter itself in a property.
+    fun keepStrongly(@Unretained job: Job): Holder = object : Holder {
+        <!KOTRAIL_UNRETAINED_PARAMETER_RETAINED!>private val kept = job<!>
+        override fun get(): Job = kept
+    }
+
     fun holdLocally(@Unretained job: Job): Holder {
         class Local : Holder {
             override fun get(): Job = <!KOTRAIL_UNRETAINED_PARAMETER_RETAINED!>job<!>

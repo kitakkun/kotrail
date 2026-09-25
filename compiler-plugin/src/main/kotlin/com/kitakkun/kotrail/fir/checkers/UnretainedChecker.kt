@@ -1,3 +1,5 @@
+@file:OptIn(DirectDeclarationsAccess::class)
+
 package com.kitakkun.kotrail.fir.checkers
 
 import com.kitakkun.kotrail.KotrailRule
@@ -12,8 +14,11 @@ import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirBasicDeclarationChecker
+import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirAnonymousFunction
+import org.jetbrains.kotlin.fir.declarations.FirAnonymousInitializer
 import org.jetbrains.kotlin.fir.declarations.FirAnonymousObject
+import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirConstructor
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirFunction
@@ -77,9 +82,11 @@ import org.jetbrains.kotlin.types.AbstractTypeChecker
  * cannot be seen counts as retaining, so a finding can be a false positive but not a false
  * negative), captured by a lambda that is not inlined into the call, captured by an anonymous
  * object, a local class or a local function (`object : WeakReference<T> { override fun get() =
- * referent }` retains the referent strongly), or returned. Calling a method on the parameter, or
- * handing it a lambda, is not an escape. The annotation travels in metadata, so a library's
- * contract is honored by its callers.
+ * referent }` retains the referent strongly), or returned. A property initializer or an `init`
+ * block of such an object runs while the function does, so it is read like the function's own
+ * code: `private val reference = WeakReference(referent)` is fine, `private val kept = referent`
+ * is a store. Calling a method on the parameter, or handing it a lambda, is not an escape. The
+ * annotation travels in metadata, so a library's contract is honored by its callers.
  */
 object UnretainedChecker : FirBasicDeclarationChecker(MppCheckerKind.Common) {
     private val SCOPE_FUNCTIONS = setOf("kotlin.also", "kotlin.apply", "kotlin.let", "kotlin.run", "kotlin.with")
@@ -240,11 +247,36 @@ object UnretainedChecker : FirBasicDeclarationChecker(MppCheckerKind.Common) {
 
         // An object, a local class or a local function is a value of its own: whatever it reads, it retains.
         override fun visitAnonymousObject(anonymousObject: FirAnonymousObject) {
-            captured(anonymousObject, "it is captured by an object that outlives the call")
+            members(anonymousObject, "it is captured by an object that outlives the call")
         }
 
         override fun visitRegularClass(regularClass: FirRegularClass) {
-            captured(regularClass, "it is captured by a local class that outlives the call")
+            members(regularClass, "it is captured by a local class that outlives the call")
+        }
+
+        /**
+         * A property initializer or an `init` block runs while the function does, so it is read as
+         * ordinary code: the parameter escapes there only when stored or passed on. Everything
+         * else in the class (function bodies, accessors, delegates, nested declarations) runs
+         * later, and any read there is capture.
+         */
+        private fun members(klass: FirClass, how: String) {
+            for (member in klass.declarations) {
+                when (member) {
+                    is FirProperty -> {
+                        val initializer = member.initializer
+                        if (initializer != null) {
+                            if (initializer.isAliasRead()) member.source?.let { escapes += it to "it is stored in property '${member.name.asString()}'" }
+                            else initializer.accept(this)
+                        }
+                        member.getter?.let { captured(it, how) }
+                        member.setter?.let { captured(it, how) }
+                        member.delegate?.let { captured(it, how) }
+                    }
+                    is FirAnonymousInitializer -> member.body?.accept(this)
+                    else -> captured(member, how)
+                }
+            }
         }
 
         override fun visitNamedFunction(namedFunction: FirNamedFunction) {
