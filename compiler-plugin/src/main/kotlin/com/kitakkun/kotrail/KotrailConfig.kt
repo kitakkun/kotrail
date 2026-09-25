@@ -46,6 +46,8 @@ data class KotrailComposeSettings(
     val allowComposableSlots: Boolean,
     /** How many previews of one file must build the same model inline before they are reported. */
     val previewParameterMinPreviews: Int,
+    /** Fully qualified functions whose trailing lambda is keyed by their other arguments: remember, LaunchedEffect and the like. */
+    val rememberKeysFunctions: List<String>,
     val previewCoverage: KotrailPreviewCoverage,
     /**
      * The project's changes to the insets knowledge base, keyed by the composable's fully
@@ -332,6 +334,52 @@ enum class TestNamingStyle(val key: String) {
 }
 
 /** Tunables for the test rules. From `test.annotations` and `rules.test.naming`. */
+/** Tunables for the native-allocation-in-loop rule. From `rules.nativeAllocationInLoop`. */
+data class KotrailNativeAllocation(
+    /** Fully qualified types (subtypes included) whose instances hold native memory freed only by a cleaner. */
+    val types: List<String>,
+    /** Fully qualified factory functions that return such an instance. */
+    val factories: List<String>,
+    /** Fully qualified functions whose lambda runs once per item or frame, like a loop body. */
+    val callbacks: List<String>,
+)
+
+/** Tunables for the weak-only-reference rule. From `rules.weakOnlyReference`. */
+data class KotrailWeakOnlyReference(
+    /** Fully qualified weak (or soft) reference types (subtypes included). */
+    val types: List<String>,
+)
+
+/** Tunables for the catch-too-broad rule. From `rules.catchTooBroad`. */
+data class KotrailCatchTooBroad(
+    /** Fully qualified exception types a catch clause must not name. */
+    val types: List<String>,
+)
+
+/** Tunables for the unretained rule. From `rules.unretained`. */
+data class KotrailUnretained(
+    /** Fully qualified annotations that mark a parameter as not to be retained. */
+    val annotations: List<String>,
+    /** Fully qualified weak reference types (subtypes included), through which a parameter may be kept. */
+    val weakTypes: List<String>,
+)
+
+/** One `requiredSupertype` policy: declarations matching [predicate] must extend or implement [supertype]. */
+data class KotrailSupertypePolicy(
+    val name: String,
+    val predicate: ExcludePredicate,
+    /** Fully qualified class or interface name. */
+    val supertype: String,
+)
+
+/** One `dependencyRules` policy: code in packages matching [from] must not refer to packages matching [deny], unless they match [allow]. */
+data class KotrailDependencyPolicy(
+    val name: String,
+    val from: Glob,
+    val deny: List<Glob>,
+    val allow: List<Glob>,
+)
+
 /** What counts as generated code, which every rule skips. From the top-level `generated` mapping. */
 data class KotrailGenerated(
     /** Globs over source file paths, `/` separated. */
@@ -354,6 +402,8 @@ data class KotrailTest(
      */
     val annotations: List<String>,
     val namingStyle: TestNamingStyle,
+    /** Globs over fully qualified functions that assert or verify; a test that calls none is reported. */
+    val assertions: List<String>,
     /** Functions (fully qualified) that wait real time; reported anywhere in a test. */
     val sleepFunctions: List<String>,
     /** Functions (fully qualified) whose lambda runs on virtual time, where `delay` is free. */
@@ -408,6 +458,12 @@ data class KotrailConfig(
     val serialization: KotrailSerialization,
     val test: KotrailTest,
     val generated: KotrailGenerated,
+    val nativeAllocation: KotrailNativeAllocation,
+    val weakOnlyReference: KotrailWeakOnlyReference,
+    val catchTooBroad: KotrailCatchTooBroad,
+    val unretained: KotrailUnretained,
+    val requiredSupertypes: List<KotrailSupertypePolicy>,
+    val dependencyPolicies: List<KotrailDependencyPolicy>,
     val functionLength: KotrailFunctionLength,
     val noDataClassInPublicApi: KotrailNoDataClassInPublicApi,
     val visibilityPolicy: KotrailVisibilityPolicy,
@@ -475,6 +531,37 @@ data class KotrailConfig(
         const val DEFAULT_FUNCTION_MAX_LINES = 50
         val DEFAULT_NO_DATA_CLASS_SCOPE = PublicApiScope.EXPLICIT_API
         const val DEFAULT_COMPOSABLE_MAX_LINES = 80
+        val DEFAULT_NATIVE_TYPES: List<String> = listOf("org.jetbrains.skia.Managed", "java.awt.image.VolatileImage")
+        val DEFAULT_NATIVE_FACTORIES: List<String> = listOf("java.nio.ByteBuffer.allocateDirect")
+        val DEFAULT_PER_ITEM_CALLBACKS: List<String> = listOf(
+            "kotlinx.coroutines.flow.collect",
+            "kotlinx.coroutines.flow.Flow.collect",
+            "kotlinx.coroutines.flow.FlowCollector.emit",
+            "kotlinx.coroutines.flow.onEach",
+            "kotlinx.coroutines.flow.map",
+            "kotlinx.coroutines.flow.transform",
+            "androidx.compose.runtime.withFrameNanos",
+            "androidx.compose.runtime.withFrameMillis",
+            "androidx.compose.runtime.MonotonicFrameClock.withFrameNanos",
+            "kotlin.repeat",
+            "kotlin.collections.forEach",
+            "kotlin.collections.map",
+        )
+        val DEFAULT_WEAK_TYPES: List<String> = listOf("java.lang.ref.WeakReference", "java.lang.ref.SoftReference", "kotlin.native.ref.WeakReference")
+        val DEFAULT_BROAD_CATCH_TYPES: List<String> = listOf("kotlin.Throwable", "kotlin.Exception", "kotlin.RuntimeException", "java.lang.Error")
+        val DEFAULT_UNRETAINED_ANNOTATIONS: List<String> = listOf("com.kitakkun.kotrail.lifetime.Unretained")
+        val DEFAULT_REMEMBER_KEYS_FUNCTIONS: List<String> = listOf(
+            "androidx.compose.runtime.remember",
+            "androidx.compose.runtime.saveable.rememberSaveable",
+            "androidx.compose.runtime.LaunchedEffect",
+            "androidx.compose.runtime.DisposableEffect",
+            "androidx.compose.runtime.produceState",
+        )
+        val DEFAULT_TEST_ASSERTIONS: List<String> = listOf(
+            "kotlin.test.*", "org.junit.Assert.*", "org.junit.jupiter.api.Assertions.*", "assertk.*", "io.kotest.*",
+            "com.google.common.truth.*", "dev.mokkery.verify*", "io.mockk.verify*", "org.mockito.*verify*",
+            "*.assert*", "*.verify*", "*.expect*", "*.should*",
+        )
         val DEFAULT_GENERATED_PATHS: List<String> = listOf("*/build/generated/*")
         val DEFAULT_GENERATED_ANNOTATIONS: List<String> = listOf(
             "javax.annotation.processing.Generated",
@@ -746,6 +833,7 @@ data class KotrailConfig(
                     countOverloadsSeparately = boolean(ruleNode(KotrailRule.COMPOSE_COMPOSABLES_PER_FILE), "countOverloadsSeparately") ?: false,
                     allowComposableSlots = boolean(ruleNode(KotrailRule.COMPOSE_NO_CALLBACK_IN_MODEL), "allowComposableSlots") ?: true,
                     previewParameterMinPreviews = int(KotrailRule.COMPOSE_PREVIEW_PARAMETER, "minPreviews") ?: 2,
+                    rememberKeysFunctions = list(KotrailRule.COMPOSE_REMEMBER_KEYS, "functions") ?: DEFAULT_REMEMBER_KEYS_FUNCTIONS,
                     sideEffectTypes = list(KotrailRule.COMPOSE_NO_SIDE_EFFECT_IN_COMPOSITION, "types") ?: DEFAULT_SIDE_EFFECT_TYPES,
                     sideEffectFunctions = list(KotrailRule.COMPOSE_NO_SIDE_EFFECT_IN_COMPOSITION, "functions").orEmpty(),
                     hardcodedStringParameters = list(KotrailRule.COMPOSE_NO_HARDCODED_STRING, "parameters") ?: DEFAULT_HARDCODED_STRING_PARAMETERS,
@@ -825,6 +913,25 @@ data class KotrailConfig(
                 ),
                 namedArguments = KotrailNamedArguments(minSameTypeArguments = int(KotrailRule.NAMED_ARGUMENTS_FOR_REPEATED_TYPES, "minArguments") ?: DEFAULT_MIN_SAME_TYPE_ARGUMENTS),
                 serialization = KotrailSerialization(requiredFor = list(KotrailRule.MUST_BE_SERIALIZABLE, "requiredFor") ?: DEFAULT_SERIALIZATION_REQUIRED_FOR),
+                nativeAllocation = KotrailNativeAllocation(
+                    types = list(KotrailRule.NATIVE_ALLOCATION_IN_LOOP, "types") ?: DEFAULT_NATIVE_TYPES,
+                    factories = list(KotrailRule.NATIVE_ALLOCATION_IN_LOOP, "factories") ?: DEFAULT_NATIVE_FACTORIES,
+                    callbacks = list(KotrailRule.NATIVE_ALLOCATION_IN_LOOP, "callbacks") ?: DEFAULT_PER_ITEM_CALLBACKS,
+                ),
+                weakOnlyReference = KotrailWeakOnlyReference(
+                    types = list(KotrailRule.WEAK_ONLY_REFERENCE, "types") ?: DEFAULT_WEAK_TYPES,
+                ),
+                catchTooBroad = KotrailCatchTooBroad(
+                    types = list(KotrailRule.CATCH_TOO_BROAD, "types") ?: DEFAULT_BROAD_CATCH_TYPES,
+                ),
+                unretained = KotrailUnretained(
+                    annotations = list(KotrailRule.UNRETAINED, "annotations") ?: DEFAULT_UNRETAINED_ANNOTATIONS,
+                    weakTypes = list(KotrailRule.UNRETAINED, "weakTypes") ?: DEFAULT_WEAK_TYPES,
+                ),
+                requiredSupertypes = entries(KotrailRule.REQUIRED_SUPERTYPE, "policies") { node -> node }
+                    .map { (name, node) -> policy(name, node, "supertype", "a fully qualified class or interface name").let { (predicate, value) -> KotrailSupertypePolicy(name, predicate, value) } },
+                dependencyPolicies = entries(KotrailRule.DEPENDENCY_RULES, "policies") { node -> node }
+                    .map { (name, node) -> dependencyPolicy(name, node) },
                 generated = KotrailGenerated(
                     paths = (generated?.get("paths")?.let { list(it, "generated.paths") } ?: DEFAULT_GENERATED_PATHS).map(::Glob),
                     annotations = generated?.get("annotations")?.let { list(it, "generated.annotations") } ?: DEFAULT_GENERATED_ANNOTATIONS,
@@ -833,6 +940,7 @@ data class KotrailConfig(
                     annotations = test?.get("annotations")?.let { list(it, "test.annotations") } ?: DEFAULT_TEST_ANNOTATIONS,
                     namingStyle = enumValue(KotrailRule.TEST_NAMING, "style", TestNamingStyle.entries.map { it.key })?.let { TestNamingStyle.fromKey(it)!! } ?: DEFAULT_TEST_NAMING_STYLE,
                     minNameWords = int(KotrailRule.TEST_NAMING, "minWords") ?: DEFAULT_TEST_MIN_NAME_WORDS,
+                    assertions = list(KotrailRule.TEST_MUST_ASSERT, "assertions") ?: DEFAULT_TEST_ASSERTIONS,
                     sleepFunctions = list(KotrailRule.TEST_NO_SLEEP, "functions") ?: DEFAULT_TEST_SLEEP_FUNCTIONS,
                     virtualTimeFunctions = list(KotrailRule.TEST_NO_SLEEP, "virtualTime") ?: DEFAULT_TEST_VIRTUAL_TIME_FUNCTIONS,
                 ),
@@ -931,6 +1039,43 @@ data class KotrailConfig(
         }
 
         /** A policy: `{where: <predicate>, annotation: <fqn>}`, or the one-line `<predicate> -> <fqn>`. */
+        /** A `where -> value` policy in either form; returns the predicate and the value under [valueKey]. */
+        private fun policy(name: String, node: ConfigNode, valueKey: String, valueWhat: String): Pair<ExcludePredicate, String> {
+            val where: String
+            val value: String
+            when (node) {
+                is ConfigNode.Mapping -> {
+                    for ((key, child) in node.entries) if (key != "where" && key != valueKey) fail(child, "unknown key '$key' in policy '$name'; expected where and $valueKey")
+                    where = string(node, "where") ?: fail(node, "policy '$name' needs 'where', a predicate over declarations")
+                    value = string(node, valueKey) ?: fail(node, "policy '$name' needs '$valueKey', $valueWhat")
+                }
+                is ConfigNode.Scalar -> {
+                    val arrow = node.value.lastIndexOf("->")
+                    if (arrow < 0) fail(node, "policy '$name' is a mapping with where and $valueKey, or '<predicate> -> <$valueKey>'")
+                    where = node.value.substring(0, arrow)
+                    value = node.value.substring(arrow + 2).trim()
+                }
+                else -> fail(node, "policy '$name' is a mapping with where and $valueKey")
+            }
+            if (value.isEmpty() || value.any { it.isWhitespace() }) fail(node, "'$valueKey' of policy '$name' must be one name, got '$value'")
+            val predicate = try {
+                ExcludeParser.parse(where)
+            } catch (e: ExcludeParser.ExcludeSyntaxException) {
+                fail(node, e.message.orEmpty())
+            }
+            return predicate to value
+        }
+
+        /** A dependency policy: a mapping with `from` (a package glob), `deny` (package globs) and optional `allow`. */
+        private fun dependencyPolicy(name: String, node: ConfigNode): KotrailDependencyPolicy {
+            val mapping = node as? ConfigNode.Mapping ?: fail(node, "dependency policy '$name' must be a mapping with from, deny and optionally allow")
+            for ((key, child) in mapping.entries) if (key !in setOf("from", "deny", "allow")) fail(child, "unknown key '$key' in dependency policy '$name'; expected from, deny, allow")
+            val from = string(mapping, "from") ?: fail(node, "dependency policy '$name' needs 'from', a package glob")
+            val deny = mapping["deny"]?.let { list(it, "deny") } ?: fail(node, "dependency policy '$name' needs 'deny', package globs")
+            val allow = mapping["allow"]?.let { list(it, "allow") }.orEmpty()
+            return KotrailDependencyPolicy(name, Glob(from), deny.map(::Glob), allow.map(::Glob))
+        }
+
         private fun requiredAnnotation(name: String, node: ConfigNode): KotrailRequiredAnnotation {
             val where: String
             val annotation: String

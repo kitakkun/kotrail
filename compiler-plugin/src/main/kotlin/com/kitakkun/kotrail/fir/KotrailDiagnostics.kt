@@ -13,6 +13,7 @@ import org.jetbrains.kotlin.diagnostics.rendering.BaseDiagnosticRendererFactory
 import org.jetbrains.kotlin.diagnostics.rendering.CommonRenderers
 import org.jetbrains.kotlin.diagnostics.rendering.DiagnosticParameterRenderer
 import org.jetbrains.kotlin.psi.KtClass
+import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtElement
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtParameter
@@ -122,6 +123,30 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
 
     /** Argument: the registration function; reported on a call from `registrations` with no disposable argument. */
     val UNSCOPED_REGISTRATION_IN_UNLOADABLE_CODE = tunable1<KtElement, String>("UNSCOPED_REGISTRATION_IN_UNLOADABLE_CODE", KotrailRule.UNLOADABLE_CODE, WHOLE)
+
+    /** Argument: the type; reported on a construction or factory call of a native-backed type inside a loop body or a per-item callback. */
+    val NATIVE_ALLOCATION_IN_LOOP = tunable1<KtElement, String>("NATIVE_ALLOCATION_IN_LOOP", KotrailRule.NATIVE_ALLOCATION_IN_LOOP, WHOLE)
+
+    /** Argument: what was wrapped; reported on a weak reference built from an object nothing else holds. */
+    val WEAK_REFERENCE_TO_FRESH_OBJECT = tunable1<KtElement, String>("WEAK_REFERENCE_TO_FRESH_OBJECT", KotrailRule.WEAK_ONLY_REFERENCE, WHOLE)
+
+    /** Argument: the caught type; reported on the catch parameter. */
+    val CATCH_TOO_BROAD = tunable1<KtElement, String>("CATCH_TOO_BROAD", KotrailRule.CATCH_TOO_BROAD, WHOLE)
+
+    /** Arguments: the parameter, how it escapes; reported on the expression through which an unretained parameter is retained. */
+    val UNRETAINED_PARAMETER_RETAINED = tunable2<KtElement, String, String>("UNRETAINED_PARAMETER_RETAINED", KotrailRule.UNRETAINED, WHOLE)
+
+    /** Arguments: the class, the required supertype with the policy; reported on a class name. */
+    val SUPERTYPE_REQUIRED = tunable2<KtClassOrObject, String, String>("SUPERTYPE_REQUIRED", KotrailRule.REQUIRED_SUPERTYPE, NAME)
+
+    /** Arguments: the referenced package, the policy; reported on the import or the reference. */
+    val DEPENDENCY_NOT_ALLOWED = tunable2<KtElement, String, String>("DEPENDENCY_NOT_ALLOWED", KotrailRule.DEPENDENCY_RULES, WHOLE)
+
+    /** Arguments: the call, the names read in its lambda but missing from its keys; reported on the call. */
+    val EFFECT_KEY_MISSING = tunable2<KtElement, String, String>("EFFECT_KEY_MISSING", KotrailRule.COMPOSE_REMEMBER_KEYS, WHOLE)
+
+    /** Argument: the test's name; reported on a test function that asserts nothing. */
+    val TEST_WITHOUT_ASSERTION = tunable1<KtNamedFunction, String>("TEST_WITHOUT_ASSERTION", KotrailRule.TEST_MUST_ASSERT, NAME)
 
     /** Arguments: the function-typed parameter, the data parameter after it; reported on the function-typed parameter. */
     val CALLBACK_BEFORE_DATA_PARAMETER = tunable2<KtElement, String, String>("CALLBACK_BEFORE_DATA_PARAMETER", KotrailRule.PARAMETER_ORDER, WHOLE)
@@ -585,6 +610,44 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             KotrailDiagnostics.UNSCOPED_REGISTRATION_IN_UNLOADABLE_CODE,
             "[Kotrail] ''{0}'' registers with something that outlives the plugin and nothing here unregisters it, so the " +
                 "class loader stays alive. Pass a disposable that is disposed with the plugin, or unregister in its disposal.",
+        )
+        map.put1(
+            KotrailDiagnostics.NATIVE_ALLOCATION_IN_LOOP,
+            "[Kotrail] ''{0}'' holds native memory that is freed only when a cleaner runs, and this creates one per iteration: " +
+                "the heap stays small, the collector rarely runs, and native memory grows unbounded. Reuse one instance " +
+                "across iterations, or close each with use '{' '}'.",
+        )
+        map.put1(
+            KotrailDiagnostics.WEAK_REFERENCE_TO_FRESH_OBJECT,
+            "[Kotrail] This weak reference is the only reference to {0}, so it is collected at the next opportunity and " +
+                "the reference goes empty. Hold the object strongly somewhere for as long as it should act.",
+        )
+        map.put1(
+            KotrailDiagnostics.CATCH_TOO_BROAD,
+            "[Kotrail] Catching ''{0}'' handles every failure alike, bugs and cancellations included. Catch the exceptions " +
+                "this code can recover from, or rethrow what it cannot.",
+        )
+        map.put2(
+            KotrailDiagnostics.UNRETAINED_PARAMETER_RETAINED,
+            "[Kotrail] ''{0}'' is declared unretained, but {1}. Keep it only through a weak reference, or drop the annotation.",
+        )
+        map.put2(
+            KotrailDiagnostics.SUPERTYPE_REQUIRED,
+            "[Kotrail] ''{0}'' must extend or implement {1}.",
+        )
+        map.put2(
+            KotrailDiagnostics.DEPENDENCY_NOT_ALLOWED,
+            "[Kotrail] ''{0}'' is not a package this code may depend on ({1}).",
+        )
+        map.put2(
+            KotrailDiagnostics.EFFECT_KEY_MISSING,
+            "[Kotrail] The lambda of ''{0}'' reads {1}, which is not among its keys: when that changes, the lambda keeps " +
+                "the old value. Add it to the keys, or read it through rememberUpdatedState.",
+        )
+        map.put1(
+            KotrailDiagnostics.TEST_WITHOUT_ASSERTION,
+            "[Kotrail] ''{0}'' asserts nothing: it passes as long as nothing throws. Assert on the result, or verify an " +
+                "interaction.",
         )
         map.put2(
             KotrailDiagnostics.CALLBACK_BEFORE_DATA_PARAMETER,

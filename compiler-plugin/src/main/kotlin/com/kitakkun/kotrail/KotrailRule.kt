@@ -54,6 +54,12 @@ enum class KotrailRule(
     JVM_SYNTHETIC_FOR_INTERNAL("jvmSyntheticForInternal", Severity.ERROR, defaultEnabled = false),
     /** Off by default: for a compilation loaded through its own class loader and unloaded later (a host or IDE plugin). */
     UNLOADABLE_CODE("unloadableCode", Severity.ERROR, defaultEnabled = false),
+    NATIVE_ALLOCATION_IN_LOOP("nativeAllocationInLoop", Severity.ERROR),
+    WEAK_ONLY_REFERENCE("weakOnlyReference", Severity.ERROR),
+    CATCH_TOO_BROAD("catchTooBroad", Severity.ERROR),
+    UNRETAINED("unretained", Severity.ERROR),
+    REQUIRED_SUPERTYPE("requiredSupertype", Severity.ERROR),
+    DEPENDENCY_RULES("dependencyRules", Severity.ERROR),
     /** The class-shaped finding of the same rule, a warning: nothing can hide an internal class from Java. */
     JVM_SYNTHETIC_FOR_INTERNAL_CLASS("jvmSyntheticForInternalClass", Severity.WARNING, hasSwitch = false),
 
@@ -78,9 +84,11 @@ enum class KotrailRule(
     /** Off by default: an established codebase previews by hand everywhere. */
     COMPOSE_PREVIEW_PARAMETER("compose.previewParameter", Severity.ERROR, defaultEnabled = false),
     COMPOSE_NO_CALLBACK_IN_MODEL("compose.noCallbackInModel", Severity.ERROR),
+    COMPOSE_REMEMBER_KEYS("compose.rememberKeys", Severity.ERROR),
 
     TEST_NAMING("test.naming", Severity.ERROR),
     TEST_NO_SLEEP("test.noSleep", Severity.ERROR),
+    TEST_MUST_ASSERT("test.mustAssert", Severity.ERROR),
 
     NATIVE_OBJC_IDENTITY("native.objcIdentity", Severity.ERROR);
 

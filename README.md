@@ -75,6 +75,12 @@ Full pages, with every condition and fixture, live under [`docs/rules/`](docs/ru
 | [Live variable budget](docs/rules/live-variable-budget.md) | A statement where more than 7 locals and parameters are still in play | Extracting a step; narrowing declarations |
 | [Narrative order](docs/rules/narrative-order.md) | A private function declared above the function that first calls it | The helper after its first caller, so the file reads top-down |
 | [Parameter order](docs/rules/parameter-order.md) | A function-typed parameter declared before a data parameter | Data first, then the functions that act on it; callbacks can trail |
+| [Native allocation in loop](docs/rules/native-allocation-in-loop.md) | `Bitmap().apply { allocPixels(...) }` once per decoded frame, never closed | One instance reused across iterations, or `use { }` |
+| [Weak-only reference](docs/rules/weak-only-reference.md) | `WeakReference { event -> ... }`: the listener is collected at once | A strong reference held for as long as the listener should act |
+| [Catch too broad](docs/rules/catch-too-broad.md) | `catch (e: Exception) { showError() }` | Catching what the code recovers from; rethrowing the rest |
+| [Unretained](docs/rules/unretained.md) | `fun register(@Unretained job: Job)` storing `job` in a map | Keeping it through a `WeakReference`, or not at all |
+| [Required supertype](docs/rules/required-supertype.md) | `class SettingsViewModel : ViewModel()` where the policy says `BaseViewModel` | The project's base class |
+| [Dependency rules](docs/rules/dependency-rules.md) | `com.acme.ui` importing `com.acme.data.db` | Layers that only see what the policy allows |
 | [Unloadable code](docs/rules/unloadable-code.md) (off by default) | A `ThreadLocal`, or a shutdown hook / platform listener with no disposable, in a plugin that is unloaded | Values passed along; registrations scoped to a disposable that goes with the plugin |
 | [Window insets handling](docs/rules/compose/window-insets.md) (Compose) | A `@HandlesWindowInsets` contract that the body does not satisfy; insets applied twice | Contracts verified across modules through inferred metadata |
 | [Composition locals](docs/rules/compose/composition-locals.md) | A `@CompositionLocalRoot`, preview, or `setContent { }` below which a required local (`compositionLocalOf { error(...) }`) is read and never provided | A `CompositionLocalProvider` on the way, or a default |
@@ -87,12 +93,14 @@ Full pages, with every condition and fixture, live under [`docs/rules/`](docs/ru
 | [Preview required](docs/rules/compose/preview-required.md) (Compose) | A UI composable whose file has no `@Preview` calling it | A preview composable next to it |
 | [Preview coverage](docs/rules/compose/preview-coverage.md) (Compose, off by default) | A public composable of a listed package that no `@Preview` in this compilation calls (libraries, screenshot tests) | A preview in the sample or test source set |
 | [Preview parameter](docs/rules/compose/preview-parameter.md) (Compose, off by default) | A `@Preview` that builds its model by hand: `UserCard(User("Ada"))` | `@PreviewParameter(UserProvider::class) user: User` |
+| [Remember keys](docs/rules/compose/remember-keys.md) (Compose) | `remember { format(amount) }`, `LaunchedEffect(Unit) { load(id) }` | `amount` and `id` among the keys, or `rememberUpdatedState` |
 | [No callback in model](docs/rules/compose/no-callback-in-model.md) (Compose) | `data class Row(val name: String, val onClick: () -> Unit)` handed to a UI composable | A value model, and `onClick: (Id) -> Unit` on the composable |
 | [Composables per file](docs/rules/compose/composables-per-file.md) (Compose) | More than 3 non-private UI composables in one file | One component (and its helpers) per file |
 | [No side effect in composition](docs/rules/compose/no-side-effect-in-composition.md) (Compose) | `scope.launch { }` in a composable body | `LaunchedEffect`, or an event handler |
 | [No hardcoded string](docs/rules/compose/no-hardcoded-string.md) (Compose, off by default) | `Text("Submit")` | `Text(stringResource(Res.string.submit))` |
 | [No unstable parameter](docs/rules/compose/no-unstable-parameter.md) (Compose, experimental, off by default) | `fun UserList(users: List<User>)`, a parameter of a class with a `var` | `ImmutableList<User>`, `@Immutable` / `@Stable` types |
 | [Test naming](docs/rules/test/naming.md) (Test) | `@Test fun returnsEmptyList()` | `` @Test fun `returns an empty list when nothing matches`() `` |
+| [Test must assert](docs/rules/test/must-assert.md) (Test) | `@Test fun loads() = runTest { viewModel.load() }` with no assertion | An assertion on the result, or a verified interaction |
 | [No sleep in tests](docs/rules/test/no-sleep.md) (Test) | `Thread.sleep(500)`, `delay(500)` outside `runTest` | `runTest` and virtual time, or awaiting the condition |
 | [Objective-C identity](docs/rules/native/objc-identity.md) (Kotlin/Native) | `view.window === window`, `WeakReference(window)` | `==` (isEqual:) or `objcPtr()`, a strong reference |
 

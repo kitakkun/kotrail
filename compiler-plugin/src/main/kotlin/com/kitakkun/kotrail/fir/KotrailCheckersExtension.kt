@@ -31,7 +31,15 @@ import com.kitakkun.kotrail.fir.checkers.NarrowLocalScopeChecker
 import com.kitakkun.kotrail.fir.checkers.JvmSyntheticForInternalChecker
 import com.kitakkun.kotrail.fir.checkers.LiveVariableBudgetChecker
 import com.kitakkun.kotrail.fir.checkers.NarrativeOrderChecker
+import com.kitakkun.kotrail.fir.checkers.CatchTooBroadChecker
+import com.kitakkun.kotrail.fir.checkers.DependencyRulesChecker
+import com.kitakkun.kotrail.fir.checkers.NativeAllocationInLoopChecker
 import com.kitakkun.kotrail.fir.checkers.ParameterOrderChecker
+import com.kitakkun.kotrail.fir.checkers.RequiredSupertypeChecker
+import com.kitakkun.kotrail.fir.checkers.UnretainedChecker
+import com.kitakkun.kotrail.fir.checkers.WeakOnlyReferenceChecker
+import com.kitakkun.kotrail.fir.compose.checkers.ComposableRememberKeysChecker
+import com.kitakkun.kotrail.fir.test.checkers.TestMustAssertChecker
 import com.kitakkun.kotrail.fir.checkers.UnloadableCodeChecker
 import com.kitakkun.kotrail.fir.checkers.EmptinessIdiomChecker
 import com.kitakkun.kotrail.fir.checkers.SizeComparisonIdiomChecker
@@ -106,6 +114,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
         RequiredAnnotationChecker,
         JvmSyntheticForInternalChecker,
         ParameterOrderChecker,
+        UnretainedChecker,
     )
     override val fileCheckers: Set<FirFileChecker> = setOf(
         // First, so that a file's fix record is fresh before any rule reports on the file.
@@ -113,6 +122,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
         UnloadableCodeChecker.RecordChecker,
         ComposableManifestChecker,
         UnloadableCodeChecker.BundledChecker,
+        DependencyRulesChecker,
         CommentLengthChecker,
         NarrativeOrderChecker.FileChecker,
         ParameterCommentChecker,
@@ -124,6 +134,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
     override val regularClassCheckers: Set<FirRegularClassChecker> = setOf(
         PreconditionWarmup.ClassChecker,
         NarrativeOrderChecker.ClassChecker,
+        RequiredSupertypeChecker,
         PreferValueClassChecker,
         NoDataClassInPublicApiChecker,
     )
@@ -150,6 +161,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
         ComposableModifierParameterChecker,
         TestNamingChecker,
         TestSleepChecker,
+        TestMustAssertChecker,
         FunctionLengthChecker,
         LiveVariableBudgetChecker,
         ComposableSideEffectChecker,
@@ -181,6 +193,9 @@ object KotrailExpressionCheckers : ExpressionCheckers() {
         WindowInsetsHandledTwiceChecker,
         ForbiddenCallChecker,
         UnloadableCodeChecker.RegistrationChecker,
+        NativeAllocationInLoopChecker,
+        WeakOnlyReferenceChecker,
+        ComposableRememberKeysChecker,
         PreconditionChecker,
         UnimplementedCodeChecker,
         NamedArgumentsChecker,
@@ -213,6 +228,7 @@ object KotrailExpressionCheckers : ExpressionCheckers() {
         NotNullAssertionChecker,
     )
     override val tryExpressionCheckers: Set<FirTryExpressionChecker> = setOf(
+        CatchTooBroadChecker,
         SwallowedCancellationChecker,
         IgnoredExceptionChecker,
     )

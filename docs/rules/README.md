@@ -40,6 +40,12 @@ fixtures that pin its behavior.
 | Live variable budget | `KOTRAIL_TOO_MANY_LIVE_VARIABLES` | [live-variable-budget.md](live-variable-budget.md) |
 | Narrative order | `KOTRAIL_HELPER_BEFORE_FIRST_USE` | [narrative-order.md](narrative-order.md) |
 | Parameter order | `KOTRAIL_CALLBACK_BEFORE_DATA_PARAMETER` | [parameter-order.md](parameter-order.md) |
+| Native allocation in loop | `KOTRAIL_NATIVE_ALLOCATION_IN_LOOP` | [native-allocation-in-loop.md](native-allocation-in-loop.md) |
+| Weak-only reference | `KOTRAIL_WEAK_REFERENCE_TO_FRESH_OBJECT` | [weak-only-reference.md](weak-only-reference.md) |
+| Catch too broad | `KOTRAIL_CATCH_TOO_BROAD` | [catch-too-broad.md](catch-too-broad.md) |
+| Unretained | `KOTRAIL_UNRETAINED_PARAMETER_RETAINED` | [unretained.md](unretained.md) |
+| Required supertype | `KOTRAIL_SUPERTYPE_REQUIRED` | [required-supertype.md](required-supertype.md) |
+| Dependency rules | `KOTRAIL_DEPENDENCY_NOT_ALLOWED` | [dependency-rules.md](dependency-rules.md) |
 | Unloadable code (off by default) | `KOTRAIL_THREAD_LOCAL_IN_UNLOADABLE_CODE`, `KOTRAIL_UNSCOPED_REGISTRATION_IN_UNLOADABLE_CODE`, `KOTRAIL_OUTBOUND_REFERENCE_IN_BUNDLED_CODE` | [unloadable-code.md](unloadable-code.md) |
 | No data class in public API | `KOTRAIL_DATA_CLASS_IN_PUBLIC_API` | [no-data-class-in-public-api.md](no-data-class-in-public-api.md) |
 | Visibility policy | `KOTRAIL_VISIBILITY_TOO_WIDE` | [visibility-policy.md](visibility-policy.md) |
@@ -63,6 +69,7 @@ fixtures that pin its behavior.
 | No hardcoded string (off by default) | `KOTRAIL_COMPOSABLE_HARDCODED_STRING` | [compose/no-hardcoded-string.md](compose/no-hardcoded-string.md) |
 | Preview coverage (off by default) | `KOTRAIL_COMPOSABLE_NOT_COVERED_BY_PREVIEW` | [compose/preview-coverage.md](compose/preview-coverage.md) |
 | Preview parameter (off by default) | `KOTRAIL_PREVIEW_MODEL_BUILT_INLINE` | [compose/preview-parameter.md](compose/preview-parameter.md) |
+| Remember keys | `KOTRAIL_EFFECT_KEY_MISSING` | [compose/remember-keys.md](compose/remember-keys.md) |
 | No callback in model | `KOTRAIL_CALLBACK_IN_UI_MODEL` | [compose/no-callback-in-model.md](compose/no-callback-in-model.md) |
 | No unstable parameter (experimental, off by default) | `KOTRAIL_COMPOSABLE_UNSTABLE_PARAMETER` | [compose/no-unstable-parameter.md](compose/no-unstable-parameter.md) |
 
@@ -71,6 +78,7 @@ fixtures that pin its behavior.
 | Rule | Diagnostics | Page |
 |---|---|---|
 | Test naming | `KOTRAIL_TEST_NAME_NOT_DESCRIPTIVE`, `KOTRAIL_TEST_NAME_NOT_IDENTIFIER` | [test/naming.md](test/naming.md) |
+| Test must assert | `KOTRAIL_TEST_WITHOUT_ASSERTION` | [test/must-assert.md](test/must-assert.md) |
 | No sleep in tests | `KOTRAIL_TEST_REAL_TIME_WAIT` | [test/no-sleep.md](test/no-sleep.md) |
 
 ## Kotlin/Native

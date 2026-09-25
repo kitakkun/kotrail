@@ -115,6 +115,15 @@ own; a rule not listed has none.
 | `preferIdiom` | `disabled` | `[]` | Idioms not asked for: `emptiness`, `negation`, `nullOrEmpty`, `chain`, `elvis`. |
 | | `chains` | `[]` | The project's own chain idioms, each `<inner fqn> then <outer fqn> -> <replacement fqn>`. |
 | | `calls` | `[]` | The project's own call idioms, each `<fqn>(<literal>) -> <replacement fqn>`. |
+| `nativeAllocationInLoop` | `types` | `[org.jetbrains.skia.Managed, java.awt.image.VolatileImage]` | Types (subtypes included) whose instances hold native memory that only a cleaner frees. Replaces the default list. |
+| | `factories` | `[java.nio.ByteBuffer.allocateDirect]` | Factory functions that return such an instance. Replaces the default list. |
+| | `callbacks` | `collect`, `onEach`, `withFrameNanos`, `repeat`, `forEach`, ... | Functions whose lambda runs once per item or frame, counted like a loop body. Replaces the default list. |
+| `weakOnlyReference` | `types` | `[java.lang.ref.WeakReference, java.lang.ref.SoftReference, kotlin.native.ref.WeakReference]` | Weak or soft reference types (subtypes included). Replaces the default list. |
+| `catchTooBroad` | `types` | `[kotlin.Throwable, kotlin.Exception, kotlin.RuntimeException, java.lang.Error]` | Exception types a catch clause must not name. Replaces the default list. |
+| `unretained` | `annotations` | `[com.kitakkun.kotrail.lifetime.Unretained]` | Annotations that mark a parameter as not to be retained. Replaces the default list. |
+| | `weakTypes` | `[java.lang.ref.WeakReference, ...]` | Weak reference types through which such a parameter may be kept. Replaces the default list. |
+| `requiredSupertype` | `policies` | `{}` | Named policies, `where -> supertype` or a mapping with `where` and `supertype`; matching classes must extend or implement it. |
+| `dependencyRules` | `policies` | `{}` | Named policies, each a mapping with `from` (a package glob), `deny` (package globs) and optionally `allow`. |
 | `unloadableCode` (off by default) | `registrations` | JVM, AWT and IntelliJ hooks (see the rule page) | Globs over fully qualified functions that register something with the platform for the rest of its life; a call without a disposable argument is reported. Replaces the default list. |
 | | `disposableTypes` | `[com.intellij.openapi.Disposable]` | Fully qualified types an argument of which scopes a registration to a lifetime. Replaces the default list. |
 | `narrowLocalScope` | `maxDistance` | `5` | Lines allowed between a local's declaration and the statement that first uses it; `0` switches the distance check off. |
@@ -136,6 +145,7 @@ own; a rule not listed has none.
 | | `visibility` | `public` | Which composables of those packages count: `public`, or `internal` (public and internal). |
 | | `excludeNames` | `[]` | Globs over fully qualified composable names to leave out. |
 | `compose.previewParameter` (off by default) | `minPreviews` | `2` | How many `@Preview` functions of one file must build the same model inline before they are reported; `1` reports every one. |
+| `compose.rememberKeys` | `functions` | `remember`, `rememberSaveable`, `LaunchedEffect`, `DisposableEffect`, `produceState` | Functions whose trailing lambda is keyed by their other arguments. Replaces the default list. |
 | `compose.noCallbackInModel` | `allowComposableSlots` | `true` | Whether a `@Composable` function-typed property (a content slot such as a table column's cell renderer) in a model handed to a UI composable is allowed; other function types are always reported. |
 | `compose.composablesPerFile` | `max` | `3` | Maximum non-private UI composables in one file, previews excluded; `0` disables. |
 | | `countOverloadsSeparately` | `false` | Whether overloads of one composable name count one each; by default they count as one component. |
@@ -145,6 +155,7 @@ own; a rule not listed has none.
 | `compose.noHardcodedString` (off by default) | `parameters` | `[text, label, title, placeholder, contentDescription, message]` | Composable parameters that must not receive a string literal. Replaces the default list. |
 | `test.naming` | `style` | `backticked` | `backticked` for a sentence name, `identifier` for targets that reject spaces (Android instrumented tests). |
 | | `minWords` | `3` | Words a backticked test name must have; `2` requires backticks only, `1` accepts any name. |
+| `test.mustAssert` | `assertions` | kotlin.test, JUnit, assertk, kotest, Truth, Mokkery/MockK/Mockito verify, and `*.assert*`, `*.verify*`, `*.expect*`, `*.should*` | Globs over functions that assert or verify; a test calling none, directly or through helpers, is reported. Replaces the default list. |
 | `test.noSleep` | `functions` | `[java.lang.Thread.sleep, android.os.SystemClock.sleep, java.util.concurrent.TimeUnit.sleep]` | Functions that wait real time; reported anywhere in a test. Replaces the default list. |
 | | `virtualTime` | `[kotlinx.coroutines.test.runTest]` | Functions whose lambda runs on virtual time, where `delay` is free. Replaces the default list. |
 

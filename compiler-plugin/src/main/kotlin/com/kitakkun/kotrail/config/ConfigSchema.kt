@@ -122,6 +122,29 @@ object ConfigSchema {
             Setting("registrations", Kind.LIST, "Globs over fully qualified functions that register something with the platform for the rest of its life; a call without a disposable argument is reported. Replaces the default list of JVM, AWT and IntelliJ registrations.", default = "java.lang.Runtime.addShutdownHook, java.lang.Thread.setDefaultUncaughtExceptionHandler, java.awt.Toolkit.addAWTEventListener, java.awt.KeyboardFocusManager.addPropertyChangeListener, java.awt.KeyboardFocusManager.addKeyEventDispatcher, com.intellij.util.messages.MessageBus.connect, com.intellij.openapi.application.Application.addApplicationListener, com.intellij.openapi.extensions.ExtensionPointName.addExtensionPointListener, com.intellij.openapi.extensions.ExtensionPointName.addChangeListener, com.intellij.openapi.editor.EditorFactory.addEditorFactoryListener, com.intellij.openapi.vfs.VirtualFileManager.addVirtualFileListener, com.intellij.openapi.project.ProjectManager.addProjectManagerListener"),
             Setting("disposableTypes", Kind.LIST, "Fully qualified types an argument of which scopes a registration to a lifetime. Replaces the default list.", default = "com.intellij.openapi.Disposable"),
         ),
+        KotrailRule.NATIVE_ALLOCATION_IN_LOOP to listOf(
+            Setting("types", Kind.LIST, "Fully qualified types (subtypes included) whose instances hold native memory that only a cleaner frees; replaces the default list.", default = "org.jetbrains.skia.Managed, java.awt.image.VolatileImage"),
+            Setting("factories", Kind.LIST, "Fully qualified factory functions that return such an instance; replaces the default list.", default = "java.nio.ByteBuffer.allocateDirect"),
+            Setting("callbacks", Kind.LIST, "Fully qualified functions whose lambda runs once per item or frame, counted like a loop body; replaces the default list.", default = "kotlinx.coroutines.flow.collect, kotlinx.coroutines.flow.onEach, androidx.compose.runtime.withFrameNanos, kotlin.repeat, kotlin.collections.forEach, ..."),
+        ),
+        KotrailRule.WEAK_ONLY_REFERENCE to listOf(
+            Setting("types", Kind.LIST, "Fully qualified weak or soft reference types (subtypes included); replaces the default list.", default = "java.lang.ref.WeakReference, java.lang.ref.SoftReference, kotlin.native.ref.WeakReference"),
+        ),
+        KotrailRule.CATCH_TOO_BROAD to listOf(
+            Setting("types", Kind.LIST, "Fully qualified exception types a catch clause must not name; replaces the default list.", default = "kotlin.Throwable, kotlin.Exception, kotlin.RuntimeException, java.lang.Error"),
+        ),
+        KotrailRule.UNRETAINED to listOf(
+            Setting("annotations", Kind.LIST, "Fully qualified annotations that mark a parameter as not to be retained; replaces the default list.", default = "com.kitakkun.kotrail.lifetime.Unretained"),
+            Setting("weakTypes", Kind.LIST, "Fully qualified weak reference types (subtypes included) through which such a parameter may be kept; replaces the default list.", default = "java.lang.ref.WeakReference, java.lang.ref.SoftReference, kotlin.native.ref.WeakReference"),
+        ),
+        KotrailRule.REQUIRED_SUPERTYPE to listOf(
+            Setting("policies", Kind.ENTRIES, "Named policies; matching classes must extend or implement the supertype.",
+                entryHint = "a mapping with where (a predicate) and supertype (a fully qualified name), or '<predicate> -> <fqn>'"),
+        ),
+        KotrailRule.DEPENDENCY_RULES to listOf(
+            Setting("policies", Kind.ENTRIES, "Named policies; code in packages matching from must not refer to packages matching deny, unless they match allow.",
+                entryHint = "a mapping with from (a package glob), deny (package globs) and optionally allow (package globs)"),
+        ),
         KotrailRule.NARROW_LOCAL_SCOPE to listOf(
             Setting("maxDistance", Kind.INT, "Lines allowed between a local's declaration and the statement that first uses it; 0 switches the distance check off.", default = "5"),
         ),
@@ -150,6 +173,9 @@ object ConfigSchema {
         KotrailRule.COMPOSE_PREVIEW_PARAMETER to listOf(
             Setting("minPreviews", Kind.INT, "How many @Preview functions of one file must build the same model inline before they are reported; 1 reports every one.", default = "2"),
         ),
+        KotrailRule.COMPOSE_REMEMBER_KEYS to listOf(
+            Setting("functions", Kind.LIST, "Fully qualified functions whose trailing lambda is keyed by their other arguments; replaces the default list.", default = "androidx.compose.runtime.remember, androidx.compose.runtime.saveable.rememberSaveable, androidx.compose.runtime.LaunchedEffect, androidx.compose.runtime.DisposableEffect, androidx.compose.runtime.produceState"),
+        ),
         KotrailRule.COMPOSE_NO_CALLBACK_IN_MODEL to listOf(
             Setting("allowComposableSlots", Kind.BOOLEAN, "Whether a @Composable function-typed property (a content slot such as a table column's cell renderer) in a model handed to a UI composable is allowed; other function types are always reported.", default = "true"),
         ),
@@ -175,6 +201,9 @@ object ConfigSchema {
         KotrailRule.TEST_NAMING to listOf(
             Setting("style", Kind.ENUM, "backticked for a sentence name, identifier for targets that reject spaces.", values = listOf("backticked", "identifier"), default = "backticked"),
             Setting("minWords", Kind.INT, "Words a backticked test name must have; 1 accepts any name.", default = "3"),
+        ),
+        KotrailRule.TEST_MUST_ASSERT to listOf(
+            Setting("assertions", Kind.LIST, "Globs over fully qualified functions that assert or verify; a test that calls none of them, directly or through its helpers, is reported. Replaces the default list.", default = "kotlin.test.*, org.junit.Assert.*, org.junit.jupiter.api.Assertions.*, assertk.*, io.kotest.*, com.google.common.truth.*, dev.mokkery.verify*, io.mockk.verify*, org.mockito.*verify*, *.assert*, *.verify*, *.expect*, *.should*"),
         ),
         KotrailRule.TEST_NO_SLEEP to listOf(
             Setting("functions", Kind.LIST, "Fully qualified functions that wait real time; replaces the default list.", default = "java.lang.Thread.sleep, android.os.SystemClock.sleep, java.util.concurrent.TimeUnit.sleep"),
