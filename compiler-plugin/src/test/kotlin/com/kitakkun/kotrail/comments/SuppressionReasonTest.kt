@@ -31,8 +31,8 @@ class SuppressionReasonTest {
     }
 
     @Test
-    fun `a blank line between the comment and the annotation does not count`() {
-        assertFalse(hasReason("// a section comment\n\n$annotation\nfun f() {}"))
+    fun `a blank line between the comment and the annotation counts`() {
+        assertTrue(hasReason("// a section comment\n\n$annotation\nfun f() {}"))
     }
 
     @Test
@@ -80,8 +80,21 @@ class SuppressionReasonTest {
     }
 
     @Test
-    fun `a comment three lines above a single annotation with two blank lines between does not count`() {
-        assertFalse(hasReason("// a section comment\n\n\n$annotation\nfun f() {}"))
+    fun `a comment three lines above a single annotation with two blank lines between counts`() {
+        assertTrue(hasReason("// a section comment\n\n\n$annotation\nfun f() {}"))
+    }
+
+    @Test
+    fun `a comment with three blank lines between it and the annotation does not count`() {
+        assertFalse(hasReason("// a section comment\n\n\n\n$annotation\nfun f() {}"))
+    }
+
+    @Test
+    fun `a section comment a blank line above a group counts for every member`() {
+        val text = "// Each operation below is kept for the old callers.\n\n$annotation fun a() {}\n\n$annotation fun b() {}\n\n$annotation fun c() {}"
+        assertTrue(hasReason(text, 0))
+        assertTrue(hasReason(text, 1))
+        assertTrue(hasReason(text, 2))
     }
 
     @Test

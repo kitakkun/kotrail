@@ -15,11 +15,14 @@ package com.kitakkun.kotrail.comments
  * only when the next non-blank line above is such a member or such a closing brace. A line at
  * the annotation's level that carries no annotation is a declaration outside the group, unless
  * the line above it is an annotation line, in which case those annotations decide; the walk
- * stops there, and after [MAX_GROUP_LINES] lines. A comment with a blank line between it and
- * the annotation is out of reach, so it does not count.
+ * stops there, and after [MAX_GROUP_LINES] lines. A comment block that ends within
+ * [MAX_BLANK_LINES_BEFORE_COMMENT] blank lines above the annotation, or above the first member
+ * of its group, with nothing but blank lines between, counts too: a section comment is often
+ * set off by a blank line. A comment further away is out of reach, so it does not count.
  */
 object SuppressionReason {
     private const val MAX_GROUP_LINES = 60
+    private const val MAX_BLANK_LINES_BEFORE_COMMENT = 2
 
     /**
      * [isSuppression] says whether a line of the file carries one of the checked suppression
@@ -43,6 +46,8 @@ object SuppressionReason {
                     var above = current - 1
                     while (above >= 0 && lines[above].isBlank()) above--
                     if (above < 0) return false
+                    // A section comment above the group, or above a lone annotation, may sit a blank line or two away.
+                    if (isCommentLine(lines[above]) && current - above <= MAX_BLANK_LINES_BEFORE_COMMENT) return true
                     if (!isSuppression(lines[above]) && !closesMember(lines[above], level)) return false
                     current = above
                 }

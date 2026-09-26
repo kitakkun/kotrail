@@ -1,5 +1,7 @@
 // KOTRAIL_CONFIG: rules.suppressReason=on
 
+// A file header, set off from the file annotation by a blank line.
+
 <!KOTRAIL_SUPPRESS_WITHOUT_REASON!>@file:Suppress("KOTRAIL_FILE_TOO_LONG")<!>
 
 <!KOTRAIL_SUPPRESS_WITHOUT_REASON!>@Suppress("KOTRAIL_CATCH_TOO_BROAD")<!>
@@ -34,7 +36,7 @@ fun optIn() {}
 
 // A section comment, with a blank line before the annotation.
 
-<!KOTRAIL_SUPPRESS_WITHOUT_REASON!>@Suppress("KOTRAIL_CATCH_TOO_BROAD")<!>
+@Suppress("KOTRAIL_CATCH_TOO_BROAD")
 fun blankBetween() {}
 
 // Legacy entry points kept for the old callers until they migrate.

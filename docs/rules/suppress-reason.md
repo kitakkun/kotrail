@@ -46,16 +46,19 @@ there is none and fixes the code.
   checked: the message quotes the annotation as written, so it names the id that owes the
   reason.
 - No comment is on the annotation's line (before or after it, `//` or a block), on the line
-  directly above it (a `//` line, or the line a block comment or KDoc ends on), or above the
-  group it belongs to (below).
-- Any comment text counts; the rule does not judge it. A blank line between a comment and the
-  annotation breaks the link: the comment is about something else.
+  above, or a comment block that ends within two blank lines above the annotation (or the
+  first member of a group of suppressed declarations, below); the line above may be a `//`
+  line, or the line a block comment or KDoc ends on.
+- Any comment text counts; the rule does not judge it. Three or more blank lines between a
+  comment and the annotation break the link, and so does any other line: the comment is about
+  something else.
 
 ## When it stays quiet
 
 - A comment above a group of suppressed declarations counts for the whole group: walking up
   from the annotation, a declaration that carries a checked suppression is a member, and a
   single blank line between members is crossed; the walk stops at a declaration without one.
+  A section comment set off from the first member by one or two blank lines still counts.
 
   ```kotlin
   // Legacy entry points kept for the old callers until they migrate.
