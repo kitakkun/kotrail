@@ -4,22 +4,16 @@ package com.kitakkun.kotrail.fir.compose.effects
 
 import com.kitakkun.kotrail.fir.compose.ComposeNames
 import com.kitakkun.kotrail.fir.compose.isComposable
+import com.kitakkun.kotrail.KotrailRule
+import com.kitakkun.kotrail.fir.inferred.InferredFactService
+import com.kitakkun.kotrail.fir.inferred.InferredMetadata.strings
 import com.kitakkun.kotrail.fir.kotrailConfig
+import org.jetbrains.kotlin.fir.expressions.FirAnnotation
+import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.fir.FirSession
-import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
-import org.jetbrains.kotlin.fir.declarations.findArgumentByName
-import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
-import org.jetbrains.kotlin.fir.expressions.FirCollectionLiteral
-import org.jetbrains.kotlin.fir.expressions.FirExpression
-import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
-import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
-import org.jetbrains.kotlin.fir.expressions.FirVarargArgumentsExpression
 import org.jetbrains.kotlin.fir.expressions.arguments
-import org.jetbrains.kotlin.fir.expressions.unwrapArgument
-import org.jetbrains.kotlin.fir.extensions.FirExtensionSessionComponent
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
-import org.jetbrains.kotlin.fir.symbols.lazyResolveToPhase
 import org.jetbrains.kotlin.name.Name
 
 /**
@@ -31,48 +25,27 @@ import org.jetbrains.kotlin.name.Name
  * it is taken as keeping its lambdas current. Bodies are released after Fir2Ir, so the checker
  * warms the cache for every composable it looks into; the IR writer only reads cached results.
  */
-class EffectCaptureService(session: FirSession) : FirExtensionSessionComponent(session) {
-    private val cache = HashMap<FirNamedFunctionSymbol, Set<String>>()
-    private val visiting = HashSet<FirNamedFunctionSymbol>()
+class EffectCaptureService(session: FirSession) : InferredFactService<FirNamedFunctionSymbol, Set<String>>(session) {
+    override val rule: KotrailRule get() = KotrailRule.COMPOSE_REMEMBER_KEYS
+    override val annotation: ClassId get() = ComposeNames.INFERRED_EFFECT_CAPTURE
+    override val parameters: List<Name> get() = listOf(CAPTURED_PARAM)
+    override val empty: Set<String> get() = emptySet()
 
     /** Names of the parameters of [symbol] that a long-lived effect in its body captures raw; empty when none or unknown. */
-    fun capturedParameters(symbol: FirNamedFunctionSymbol): Set<String> {
-        cache[symbol]?.let { return it }
-        if (!visiting.add(symbol)) return emptySet()
-        try {
-            val result = compute(symbol)
-            cache[symbol] = result
-            return result
-        } finally {
-            visiting.remove(symbol)
-        }
-    }
+    fun capturedParameters(symbol: FirNamedFunctionSymbol): Set<String> = of(symbol)
 
-    private fun compute(symbol: FirNamedFunctionSymbol): Set<String> {
-        if (!symbol.origin.fromSource) return inferredMetadata(symbol)
+    override fun shouldWarm(symbol: FirNamedFunctionSymbol): Boolean = symbol.isComposable(session)
+
+    override fun decode(annotation: FirAnnotation): Set<String> = annotation.strings(CAPTURED_PARAM).toCollection(LinkedHashSet())
+
+    override fun encode(value: Set<String>): List<List<String>>? = value.takeIf { it.isNotEmpty() }?.let { listOf(it.toList()) }
+
+    override fun analyze(symbol: FirNamedFunctionSymbol): Set<String> {
         if (!symbol.isComposable(session)) return emptySet()
-        symbol.lazyResolveToPhase(FirResolvePhase.BODY_RESOLVE)
         val function = symbol.fir
         if (function.body == null) return emptySet()
         return EffectCaptureAnalysis.capturedParameters(session, session.kotrailConfig.compose.rememberKeysFunctions, function, ::capturedParameters)
     }
-
-    private fun inferredMetadata(symbol: FirNamedFunctionSymbol): Set<String> {
-        val annotation = symbol.resolvedAnnotationsWithArguments
-            .firstOrNull { it.toAnnotationClassId(session) == ComposeNames.INFERRED_EFFECT_CAPTURE }
-            ?: return emptySet()
-        val argument = annotation.findArgumentByName(CAPTURED_PARAM, returnFirstWhenNotFound = false)
-        return arrayElements(argument).mapNotNullTo(LinkedHashSet()) { (it as? FirLiteralExpression)?.value as? String }
-    }
-
-    private fun arrayElements(expression: FirExpression?): List<FirExpression> =
-        when (val expr = expression?.unwrapArgument()) {
-            null -> emptyList()
-            is FirCollectionLiteral -> expr.arguments.map { it.unwrapArgument() }
-            is FirVarargArgumentsExpression -> expr.arguments.map { it.unwrapArgument() }
-            is FirFunctionCall -> expr.arguments.map { it.unwrapArgument() } // arrayOf(...)
-            else -> emptyList()
-        }
 
     private companion object {
         val CAPTURED_PARAM = Name.identifier("captured")

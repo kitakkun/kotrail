@@ -100,7 +100,8 @@ on a declaration whose body is not visible, and then takes precedence over analy
 three-valued evaluator and renderer, and `CondParser`. `fir/preconditions/CondConverter.kt`
 turns resolved FIR into a `Cond`, following `val`s to their initializers; the same converter
 serves extraction (with the callee's parameters mapped to `Param` nodes) and argument folding
-(with no parameters, so every reference must fold). `PreconditionService.kt` caches contracts per
-symbol and reads `@InferredPreconditions` for anything not from source; the warm-up checkers fill
-the cache while bodies exist, and `ir/preconditions/InferredPreconditionsMetadataWriter.kt` writes
-the annotation through `metadataDeclarationRegistrar`.
+(with no parameters, so every reference must fold). `PreconditionService.kt` holds two inferred
+facts, one per function and one per class, on the shared base described in
+[Inferred metadata](../inferred-metadata.md): the annotation, hand-written or inferred, wins over
+the body; the shared warm-up fills the cache while bodies exist, and the shared writer puts
+`@InferredPreconditions` into the metadata.

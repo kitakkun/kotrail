@@ -2,6 +2,13 @@
 
 package com.kitakkun.kotrail.fir.preconditions
 
+import com.kitakkun.kotrail.KotrailRule
+import com.kitakkun.kotrail.fir.inferred.InferredFactService
+import com.kitakkun.kotrail.fir.inferred.InferredMetadata.strings
+import org.jetbrains.kotlin.fir.expressions.FirAnnotation
+import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.Name
+
 import com.kitakkun.kotrail.preconditions.Cond
 import com.kitakkun.kotrail.preconditions.CondParser
 import org.jetbrains.kotlin.fir.FirSession
@@ -12,16 +19,9 @@ import org.jetbrains.kotlin.fir.declarations.impl.FirDefaultPropertyGetter
 import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
 import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.FirRegularClass
-import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.expressions.FirStatement
-import org.jetbrains.kotlin.fir.declarations.findArgumentByName
-import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.utils.fromPrimaryConstructor
-import org.jetbrains.kotlin.fir.expressions.FirCollectionLiteral
-import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
-import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
-import org.jetbrains.kotlin.fir.expressions.FirVarargArgumentsExpression
 import org.jetbrains.kotlin.fir.expressions.arguments
 import org.jetbrains.kotlin.fir.expressions.unwrapArgument
 import org.jetbrains.kotlin.fir.extensions.FirExtensionSessionComponent
@@ -33,7 +33,6 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
-import org.jetbrains.kotlin.fir.symbols.lazyResolveToPhase
 import org.jetbrains.kotlin.fir.types.coneType
 
 /**
@@ -49,12 +48,20 @@ import org.jetbrains.kotlin.fir.types.coneType
  * declaration; the IR writer only reads what was cached.
  */
 class PreconditionService(session: FirSession) : FirExtensionSessionComponent(session) {
-    private val cache = HashMap<FirBasedSymbol<*>, List<Cond>>()
-    private val visiting = HashSet<FirBasedSymbol<*>>()
+    /** The fact about a function: the conditions its leading `require` / `check` calls impose. */
+    val functions: InferredFactService<FirNamedFunctionSymbol, List<Cond>> = Fact { symbol ->
+        val function = symbol.fir as? FirNamedFunction ?: return@Fact emptyList()
+        val params = function.valueParameters.associate { it.symbol as FirBasedSymbol<*> to it.name.asString() }
+        val body = function.body ?: return@Fact emptyList()
+        extract(body.statements, params)
+    }
+
+    /** The fact about a class: the conditions its `init` blocks impose on the primary constructor's parameters. */
+    val classes: InferredFactService<FirRegularClassSymbol, List<Cond>> = Fact { symbol -> computeForClass(symbol) }
 
     /** The conditions a call to [callee] must satisfy. Constructors other than the primary one have none. */
     fun preconditionsOf(callee: FirFunctionSymbol<*>): List<Cond> = when (callee) {
-        is FirNamedFunctionSymbol -> cached(callee) { computeForFunction(callee) }
+        is FirNamedFunctionSymbol -> functions.of(callee)
         is FirConstructorSymbol -> {
             val classSymbol = callee.resolvedReturnTypeRef.coneType.toRegularClassSymbol(session)
             if (classSymbol == null || !callee.isPrimary) emptyList() else preconditionsOfClass(classSymbol)
@@ -62,41 +69,21 @@ class PreconditionService(session: FirSession) : FirExtensionSessionComponent(se
         else -> emptyList()
     }
 
-    fun preconditionsOfClass(classSymbol: FirRegularClassSymbol): List<Cond> =
-        cached(classSymbol) { computeForClass(classSymbol) }
+    fun preconditionsOfClass(classSymbol: FirRegularClassSymbol): List<Cond> = classes.of(classSymbol)
 
-    /** Rendered conditions for the metadata writer; empty when not cached or when the declaration already carries the annotation. */
-    fun renderedPreconditions(symbol: FirBasedSymbol<*>): List<String> =
-        cache[symbol].orEmpty().mapNotNull { it.render() }
-
-    fun hasDeclaredAnnotation(symbol: FirBasedSymbol<*>): Boolean = declaredConditions(symbol) != null
-
-    private fun cached(symbol: FirBasedSymbol<*>, compute: () -> List<Cond>): List<Cond> {
-        cache[symbol]?.let { return it }
-        if (!visiting.add(symbol)) return emptyList()
-        try {
-            val result = compute()
-            cache[symbol] = result
-            return result
-        } finally {
-            visiting.remove(symbol)
-        }
-    }
-
-    private fun computeForFunction(symbol: FirNamedFunctionSymbol): List<Cond> {
-        declaredConditions(symbol)?.let { return it }
-        if (!symbol.origin.fromSource) return emptyList()
-        symbol.lazyResolveToPhase(FirResolvePhase.BODY_RESOLVE)
-        val function = symbol.fir as? FirNamedFunction ?: return emptyList()
-        val params = function.valueParameters.associate { it.symbol as FirBasedSymbol<*> to it.name.asString() }
-        val body = function.body ?: return emptyList()
-        return extract(body.statements, params)
+    /** One fact shape for functions and classes: a hand-written or inferred annotation always wins over the body. */
+    private inner class Fact<S : FirBasedSymbol<*>>(private val analysis: (S) -> List<Cond>) : InferredFactService<S, List<Cond>>(session) {
+        override val rule: KotrailRule get() = KotrailRule.PRECONDITIONS
+        override val annotation: ClassId get() = PreconditionNames.INFERRED_PRECONDITIONS
+        override val parameters: List<Name> get() = listOf(PreconditionNames.CONDITIONS_PARAM)
+        override val empty: List<Cond> get() = emptyList()
+        override val metadataForSource: Boolean get() = true
+        override fun decode(annotation: FirAnnotation): List<Cond> = annotation.strings(PreconditionNames.CONDITIONS_PARAM).mapNotNull { CondParser.parse(it) }
+        override fun encode(value: List<Cond>): List<List<String>>? = value.mapNotNull { it.render() }.takeIf { it.isNotEmpty() }?.let { listOf(it) }
+        override fun analyze(symbol: S): List<Cond> = analysis(symbol)
     }
 
     private fun computeForClass(symbol: FirRegularClassSymbol): List<Cond> {
-        declaredConditions(symbol)?.let { return it }
-        if (!symbol.origin.fromSource) return emptyList()
-        symbol.lazyResolveToPhase(FirResolvePhase.BODY_RESOLVE)
         val klass = symbol.fir as? FirRegularClass ?: return emptyList()
         val primary = klass.declarations.filterIsInstance<FirConstructor>().firstOrNull { it.isPrimary } ?: return emptyList()
         val params = HashMap<FirBasedSymbol<*>, String>()
@@ -140,24 +127,6 @@ class PreconditionService(session: FirSession) : FirExtensionSessionComponent(se
         return result
     }
 
-    private fun declaredConditions(symbol: FirBasedSymbol<*>): List<Cond>? {
-        val annotation = symbol.resolvedAnnotationsWithArguments
-            .firstOrNull { it.toAnnotationClassId(session) == PreconditionNames.INFERRED_PRECONDITIONS }
-            ?: return null
-        val argument = annotation.findArgumentByName(PreconditionNames.CONDITIONS_PARAM, returnFirstWhenNotFound = false)
-        return arrayElements(argument)
-            .mapNotNull { (it as? FirLiteralExpression)?.value as? String }
-            .mapNotNull { CondParser.parse(it) }
-    }
-
-    private fun arrayElements(expression: FirExpression?): List<FirExpression> =
-        when (val expr = expression?.unwrapArgument()) {
-            null -> emptyList()
-            is FirCollectionLiteral -> expr.arguments.map { it.unwrapArgument() }
-            is FirVarargArgumentsExpression -> expr.arguments.map { it.unwrapArgument() }
-            is FirFunctionCall -> expr.arguments.map { it.unwrapArgument() }
-            else -> emptyList()
-        }
 }
 
 val FirSession.preconditionService: PreconditionService by FirSession.sessionComponentAccessor()

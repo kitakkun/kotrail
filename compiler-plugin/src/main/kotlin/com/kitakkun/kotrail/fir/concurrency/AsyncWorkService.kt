@@ -2,19 +2,20 @@
 
 package com.kitakkun.kotrail.fir.concurrency
 
+import com.kitakkun.kotrail.KotrailRule
+import com.kitakkun.kotrail.fir.inferred.InferredFactService
 import com.kitakkun.kotrail.fir.kotrailConfig
+import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirAnonymousFunction
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
-import org.jetbrains.kotlin.fir.declarations.hasAnnotation
 import org.jetbrains.kotlin.fir.declarations.utils.isSuspend
 import org.jetbrains.kotlin.fir.expressions.FirBlock
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.FirStatement
 import org.jetbrains.kotlin.fir.expressions.FirTryExpression
 import org.jetbrains.kotlin.fir.expressions.FirWhenExpression
-import org.jetbrains.kotlin.fir.extensions.FirExtensionSessionComponent
 import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
@@ -37,21 +38,28 @@ import org.jetbrains.kotlin.name.Name
  * taken as not starting work. Results are memoized per symbol; the fire-and-forget checker warms
  * the cache for every named function it sees, so that the IR writer only reads cached results.
  */
-class AsyncWorkService(session: FirSession) : FirExtensionSessionComponent(session) {
-    private val cache = HashMap<FirNamedFunctionSymbol, Boolean>()
-    private val visiting = HashSet<FirNamedFunctionSymbol>()
+class AsyncWorkService(session: FirSession) : InferredFactService<FirNamedFunctionSymbol, Boolean>(session) {
+    override val rule: KotrailRule get() = KotrailRule.DELAY_FOR_COMPLETION
+    override val annotation: ClassId get() = INFERRED_STARTS_ASYNC_WORK
+    override val parameters: List<Name> get() = emptyList()
+    override val empty: Boolean get() = false
 
     /** Whether [symbol] starts asynchronous work its caller cannot wait for. */
-    fun startsAsyncWork(symbol: FirNamedFunctionSymbol): Boolean {
-        cache[symbol]?.let { return it }
-        if (!visiting.add(symbol)) return false
-        try {
-            val result = compute(symbol)
-            cache[symbol] = result
-            return result
-        } finally {
-            visiting.remove(symbol)
-        }
+    fun startsAsyncWork(symbol: FirNamedFunctionSymbol): Boolean = of(symbol)
+
+    /** A suspending function never counts: a caller can already await it. */
+    override fun override(symbol: FirNamedFunctionSymbol): Boolean? = if (symbol.isSuspend) false else null
+
+    override fun shouldWarm(symbol: FirNamedFunctionSymbol): Boolean = !symbol.isSuspend
+
+    /** A marker: its presence is the fact. */
+    override fun decode(annotation: FirAnnotation): Boolean = true
+
+    override fun encode(value: Boolean): List<List<String>>? = if (value) emptyList() else null
+
+    override fun analyze(symbol: FirNamedFunctionSymbol): Boolean {
+        val body = symbol.fir.body ?: return false
+        return firstStartingStatement(body, transitive = true) != null
     }
 
     /**
@@ -74,14 +82,6 @@ class AsyncWorkService(session: FirSession) : FirExtensionSessionComponent(sessi
 
     /** What a statement starts: [name] as called, and the configured starter it is when the call is the starter itself. */
     class Started(val name: String, val starter: String?)
-
-    private fun compute(symbol: FirNamedFunctionSymbol): Boolean {
-        if (symbol.isSuspend) return false
-        if (!symbol.origin.fromSource) return symbol.hasAnnotation(INFERRED_STARTS_ASYNC_WORK, session)
-        symbol.lazyResolveToPhase(FirResolvePhase.BODY_RESOLVE)
-        val body = symbol.fir.body ?: return false
-        return firstStartingStatement(body, transitive = true) != null
-    }
 
     /** The first statement under [root] that starts work, with the name of what it calls. */
     private fun firstStartingStatement(root: FirElement, transitive: Boolean): Pair<FirStatement, Started>? {

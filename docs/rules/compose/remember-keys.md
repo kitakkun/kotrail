@@ -151,5 +151,6 @@ keyed call from the analysis in `fir/compose/effects/EffectCaptureAnalysis.kt` (
 coverage by symbol and property path, long-lived bodies, seeds, the one-shot prefix), and a call
 into a composable whose captured parameters, from `EffectCaptureService` (a session component:
 source bodies, or `@InferredEffectCapture` on the classpath, memoized, transitive), receive a
-lambda or a callback. `ir/compose/effects/InferredEffectCaptureMetadataWriter.kt` writes the
-metadata onto non-private composables after Fir2Ir, from the cache the checker warmed.
+lambda or a callback. `EffectCaptureService` is an inferred fact on the shared base described in
+[Inferred metadata](../../inferred-metadata.md); the shared writer puts `@InferredEffectCapture`
+onto non-private composables after Fir2Ir, from the cache the shared warm-up filled.

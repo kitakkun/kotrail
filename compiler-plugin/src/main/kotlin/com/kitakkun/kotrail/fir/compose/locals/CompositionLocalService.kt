@@ -4,6 +4,9 @@ package com.kitakkun.kotrail.fir.compose.locals
 
 import com.kitakkun.kotrail.KotrailCompositionLocalKnowledge
 import com.kitakkun.kotrail.fir.compose.isComposable
+import com.kitakkun.kotrail.KotrailRule
+import com.kitakkun.kotrail.fir.inferred.InferredFactService
+import com.kitakkun.kotrail.fir.inferred.InferredMetadata.strings
 import com.kitakkun.kotrail.fir.kotrailConfig
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
@@ -11,16 +14,12 @@ import org.jetbrains.kotlin.fir.declarations.FirAnonymousFunction
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.declarations.processAllDeclarations
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
-import org.jetbrains.kotlin.fir.declarations.findArgumentByName
 import org.jetbrains.kotlin.fir.declarations.hasAnnotation
-import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.expressions.FirAnonymousFunctionExpression
 import org.jetbrains.kotlin.fir.expressions.FirBlock
-import org.jetbrains.kotlin.fir.expressions.FirCollectionLiteral
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.FirImplicitInvokeCall
-import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
 import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirReturnExpression
 import org.jetbrains.kotlin.fir.expressions.FirThrowExpression
@@ -28,7 +27,6 @@ import org.jetbrains.kotlin.fir.expressions.FirVarargArgumentsExpression
 import org.jetbrains.kotlin.fir.expressions.arguments
 import org.jetbrains.kotlin.fir.expressions.resolvedArgumentMapping
 import org.jetbrains.kotlin.fir.expressions.unwrapArgument
-import org.jetbrains.kotlin.fir.extensions.FirExtensionSessionComponent
 import org.jetbrains.kotlin.fir.references.toResolvedNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.references.toResolvedPropertySymbol
 import org.jetbrains.kotlin.fir.references.toResolvedValueParameterSymbol
@@ -84,13 +82,61 @@ class LocalsAnalysis(
  * `@InferredCompositionLocals` metadata (another module compiled with Kotrail), or its source
  * body (this module). A composable none of these covers is taken to read and provide nothing.
  */
-class CompositionLocalService(session: FirSession) : FirExtensionSessionComponent(session) {
+class CompositionLocalService(session: FirSession) : InferredFactService<FirNamedFunctionSymbol, LocalsAnalysis>(session) {
     private val settings get() = session.kotrailConfig.compose.compositionLocals
-    private val cache = HashMap<FirNamedFunctionSymbol, LocalsAnalysis>()
-    private val visiting = HashSet<FirNamedFunctionSymbol>()
-    private val getterCache = HashMap<FirPropertySymbol, LocalsAnalysis>()
-    private val visitingGetters = HashSet<FirPropertySymbol>()
     private val requiredCache = HashMap<FirPropertySymbol, Boolean>()
+
+    override val rule: KotrailRule get() = KotrailRule.COMPOSE_COMPOSITION_LOCALS
+    override val annotation: ClassId get() = CompositionLocalNames.INFERRED_COMPOSITION_LOCALS
+    override val parameters: List<Name> get() = listOf(CompositionLocalNames.READS_PARAM, CompositionLocalNames.PROVIDES_PARAM)
+    override val empty: LocalsAnalysis get() = LocalsAnalysis.EMPTY
+    override val metadataForSource: Boolean get() = true
+
+    /** The project's knowledge base wins over everything, metadata included. */
+    override fun override(symbol: FirNamedFunctionSymbol): LocalsAnalysis? =
+        settings.known[symbol.callableId.asSingleFqName().asString()]?.toAnalysis()
+
+    override fun shouldWarm(symbol: FirNamedFunctionSymbol): Boolean = symbol.isComposable(session)
+
+    override fun decode(annotation: FirAnnotation): LocalsAnalysis = declaredMetadata(annotation)
+
+    override fun encode(value: LocalsAnalysis): List<List<String>>? = encodeAnalysis(value)
+
+    override fun analyze(symbol: FirNamedFunctionSymbol): LocalsAnalysis {
+        val body = symbol.fir.body ?: return LocalsAnalysis.EMPTY
+        val collector = Collector(ownParameters = symbol.valueParameterSymbols.toSet())
+        body.accept(collector)
+        return LocalsAnalysis(collector.reads, collector.provides.mapValues { it.value ?: emptySet() }, collector.required)
+    }
+
+    /**
+     * The same fact about a property with a composable getter (`val colors: Colors @Composable get() = LocalColors.current`):
+     * a reader like any composable, so that a private local behind a public getter is still seen. Same annotation, on the property.
+     */
+    val getters: InferredFactService<FirPropertySymbol, LocalsAnalysis> = object : InferredFactService<FirPropertySymbol, LocalsAnalysis>(session) {
+        override val rule: KotrailRule get() = this@CompositionLocalService.rule
+        override val annotation: ClassId get() = this@CompositionLocalService.annotation
+        override val parameters: List<Name> get() = this@CompositionLocalService.parameters
+        override val empty: LocalsAnalysis get() = LocalsAnalysis.EMPTY
+        override val metadataForSource: Boolean get() = true
+        override fun shouldWarm(symbol: FirPropertySymbol): Boolean = symbol.getterSymbol?.isComposable(session) == true
+        override fun decode(annotation: FirAnnotation): LocalsAnalysis = declaredMetadata(annotation)
+        override fun encode(value: LocalsAnalysis): List<List<String>>? = encodeAnalysis(value)
+        override fun analyze(symbol: FirPropertySymbol): LocalsAnalysis {
+            val body = symbol.getterSymbol?.fir?.body ?: return LocalsAnalysis.EMPTY
+            val collector = Collector(ownParameters = emptySet())
+            body.accept(collector)
+            return LocalsAnalysis(collector.reads, emptyMap(), collector.required)
+        }
+    }
+
+    /** Reads sorted, a required one marked with `!`, and `parameter:local` provides sorted; null when both are empty. */
+    private fun encodeAnalysis(analysis: LocalsAnalysis): List<List<String>>? {
+        val reads = analysis.reads.keys.sorted().map { if (it in analysis.required) it + REQUIRED_MARK else it }
+        val provides = analysis.provides.entries.flatMap { (parameter, locals) -> locals.map { "$parameter:$it" } }.sorted()
+        if (reads.isEmpty() && provides.isEmpty()) return null
+        return listOf(reads, provides)
+    }
     private val sourceRequiredCache = HashMap<FirPropertySymbol, Boolean>()
 
     /** Whether reading [local] without a provider is an error: its default throws, or the project said so. */
@@ -118,17 +164,7 @@ class CompositionLocalService(session: FirSession) : FirExtensionSessionComponen
         sourceRequiredCache.getOrPut(local) { local.origin.fromSource && defaultThrows(local) }
 
     /** The analysis of [symbol], cached; bodies are only available during the FIR phase. */
-    fun analysis(symbol: FirNamedFunctionSymbol): LocalsAnalysis {
-        cache[symbol]?.let { return it }
-        if (!visiting.add(symbol)) return LocalsAnalysis.EMPTY
-        try {
-            val result = compute(symbol)
-            cache[symbol] = result
-            return result
-        } finally {
-            visiting.remove(symbol)
-        }
-    }
+    fun analysis(symbol: FirNamedFunctionSymbol): LocalsAnalysis = of(symbol)
 
     /** What [body] reads when nothing above it provides anything, for entry-point lambdas and roots. */
     fun readsBelow(body: FirElement): LocalsAnalysis {
@@ -137,32 +173,8 @@ class CompositionLocalService(session: FirSession) : FirExtensionSessionComponen
         return LocalsAnalysis(collector.reads, emptyMap(), collector.required)
     }
 
-    /**
-     * The analysis of a composable property getter (`val colors: Colors @Composable get() = LocalColors.current`):
-     * a reader like any composable, so that a private local behind a public getter is still seen.
-     */
-    fun getterAnalysis(property: FirPropertySymbol): LocalsAnalysis {
-        getterCache[property]?.let { return it }
-        if (!visitingGetters.add(property)) return LocalsAnalysis.EMPTY
-        try {
-            val result = computeGetter(property)
-            getterCache[property] = result
-            return result
-        } finally {
-            visitingGetters.remove(property)
-        }
-    }
-
-    private fun computeGetter(property: FirPropertySymbol): LocalsAnalysis {
-        declaredMetadata(property.resolvedAnnotationsWithArguments)?.let { return it }
-        if (!property.origin.fromSource) return LocalsAnalysis.EMPTY
-        val getter = property.getterSymbol ?: return LocalsAnalysis.EMPTY
-        property.lazyResolveToPhase(FirResolvePhase.BODY_RESOLVE)
-        val body = getter.fir.body ?: return LocalsAnalysis.EMPTY
-        val collector = Collector(ownParameters = emptySet())
-        body.accept(collector)
-        return LocalsAnalysis(collector.reads, emptyMap(), collector.required)
-    }
+    /** The analysis of a composable property getter; see [getters]. */
+    fun getterAnalysis(property: FirPropertySymbol): LocalsAnalysis = getters.of(property)
 
     /** A top-level or object-member property from its fully qualified name, or `null`. */
     private fun resolveLocal(fqName: String): FirPropertySymbol? {
@@ -206,29 +218,13 @@ class CompositionLocalService(session: FirSession) : FirExtensionSessionComponen
         return expression is FirThrowExpression || (expression is FirExpression && expression.resolvedType.isNothing)
     }
 
-    private fun compute(symbol: FirNamedFunctionSymbol): LocalsAnalysis {
-        settings.known[symbol.callableId.asSingleFqName().asString()]?.let { return it.toAnalysis() }
-        declaredMetadata(symbol)?.let { return it }
-        if (!symbol.origin.fromSource) return LocalsAnalysis.EMPTY
-        symbol.lazyResolveToPhase(FirResolvePhase.BODY_RESOLVE)
-        val body = symbol.fir.body ?: return LocalsAnalysis.EMPTY
-        val collector = Collector(ownParameters = symbol.valueParameterSymbols.toSet())
-        body.accept(collector)
-        return LocalsAnalysis(collector.reads, collector.provides.mapValues { it.value ?: emptySet() }, collector.required)
-    }
-
     private fun KotrailCompositionLocalKnowledge.toAnalysis(): LocalsAnalysis =
         LocalsAnalysis(reads.associateWith { emptyList() }, provides)
 
-    private fun declaredMetadata(symbol: FirNamedFunctionSymbol): LocalsAnalysis? = declaredMetadata(symbol.resolvedAnnotationsWithArguments)
-
     /** The metadata the IR writer put on a function or a property: a read ending in `!` is one the reader found required. */
-    private fun declaredMetadata(annotations: List<FirAnnotation>): LocalsAnalysis? {
-        val annotation = annotations
-            .firstOrNull { it.toAnnotationClassId(session) == CompositionLocalNames.INFERRED_COMPOSITION_LOCALS }
-            ?: return null
-        val reads = strings(annotation.findArgumentByName(CompositionLocalNames.READS_PARAM, returnFirstWhenNotFound = false))
-        val provides = strings(annotation.findArgumentByName(CompositionLocalNames.PROVIDES_PARAM, returnFirstWhenNotFound = false))
+    private fun declaredMetadata(annotation: FirAnnotation): LocalsAnalysis {
+        val reads = annotation.strings(CompositionLocalNames.READS_PARAM)
+        val provides = annotation.strings(CompositionLocalNames.PROVIDES_PARAM)
         return LocalsAnalysis(
             reads = reads.associate { it.removeSuffix(REQUIRED_MARK) to emptyList() },
             provides = provides.mapNotNull { entry ->
@@ -237,17 +233,6 @@ class CompositionLocalService(session: FirSession) : FirExtensionSessionComponen
             }.groupBy({ it.first }, { it.second }).mapValues { it.value.toSet() },
             required = reads.filter { it.endsWith(REQUIRED_MARK) }.map { it.removeSuffix(REQUIRED_MARK) }.toSet(),
         )
-    }
-
-    private fun strings(expression: FirExpression?): List<String> {
-        val elements = when (val expr = expression?.unwrapArgument()) {
-            null -> emptyList()
-            is FirCollectionLiteral -> expr.arguments
-            is FirVarargArgumentsExpression -> expr.arguments
-            is FirFunctionCall -> expr.arguments // arrayOf(...)
-            else -> emptyList()
-        }
-        return elements.mapNotNull { (it.unwrapArgument() as? FirLiteralExpression)?.value as? String }
     }
 
     /**

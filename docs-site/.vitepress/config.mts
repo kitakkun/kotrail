@@ -62,6 +62,7 @@ export default defineConfig({
           { text: 'The Gradle plugin', link: '/gradle-plugin' },
           { text: 'Configuration', link: '/configuration' },
           { text: 'Supported Kotlin versions', link: '/supported-kotlin-versions' },
+          { text: 'Inferred metadata', link: '/inferred-metadata' },
           { text: 'Publishing', link: '/publishing' },
         ],
       },

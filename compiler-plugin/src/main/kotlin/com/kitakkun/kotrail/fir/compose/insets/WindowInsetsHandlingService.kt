@@ -5,30 +5,30 @@ package com.kitakkun.kotrail.fir.compose.insets
 import com.kitakkun.kotrail.compose.insets.InsetsAnalysis
 import com.kitakkun.kotrail.compose.insets.InsetsSet
 import com.kitakkun.kotrail.compose.insets.Sides
+import com.kitakkun.kotrail.KotrailRule
+import com.kitakkun.kotrail.fir.inferred.InferredFactService
+import com.kitakkun.kotrail.fir.inferred.InferredMetadata.arrayElements
+import com.kitakkun.kotrail.fir.inferred.InferredMetadata.strings
 import com.kitakkun.kotrail.fir.kotrailConfig
+import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
-import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.declarations.findArgumentByName
 import org.jetbrains.kotlin.fir.declarations.hasAnnotation
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
-import org.jetbrains.kotlin.fir.expressions.FirCollectionLiteral
 import org.jetbrains.kotlin.fir.expressions.FirEnumEntryDeserializedAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
-import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
 import org.jetbrains.kotlin.fir.expressions.FirQualifiedAccessExpression
-import org.jetbrains.kotlin.fir.expressions.FirVarargArgumentsExpression
 import org.jetbrains.kotlin.fir.expressions.arguments
 import org.jetbrains.kotlin.fir.expressions.resolvedArgumentMapping
 import org.jetbrains.kotlin.fir.expressions.unwrapArgument
-import org.jetbrains.kotlin.fir.extensions.FirExtensionSessionComponent
 import org.jetbrains.kotlin.fir.references.toResolvedEnumEntrySymbol
 import org.jetbrains.kotlin.fir.references.toResolvedNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
-import org.jetbrains.kotlin.fir.symbols.lazyResolveToPhase
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
@@ -38,9 +38,14 @@ import org.jetbrains.kotlin.name.CallableId
  * Per-session analysis of which window insets a composable handles. Shared by the FIR checkers
  * and, through the FIR declaration attached to each IR function, by the IR metadata writer.
  */
-class WindowInsetsHandlingService(session: FirSession) : FirExtensionSessionComponent(session) {
-    private val cache = HashMap<FirNamedFunctionSymbol, InsetsAnalysis>()
-    private val visiting = HashSet<FirNamedFunctionSymbol>()
+class WindowInsetsHandlingService(session: FirSession) : InferredFactService<FirNamedFunctionSymbol, InsetsAnalysis>(session) {
+    override val rule: KotrailRule get() = KotrailRule.COMPOSE_WINDOW_INSETS
+    override val annotation: ClassId get() = WindowInsetsNames.INFERRED_WINDOW_INSETS_HANDLING
+    override val parameters: List<Name> get() = listOf(WindowInsetsNames.HANDLED_PARAM)
+    override val empty: InsetsAnalysis get() = InsetsAnalysis.EMPTY
+
+    /** A hand-written contract is what the writer would produce: it is read on a source declaration too. */
+    override val metadataForSource: Boolean get() = true
 
     /**
      * Composables known to handle insets without being analyzed: the built-in entries for
@@ -67,17 +72,7 @@ class WindowInsetsHandlingService(session: FirSession) : FirExtensionSessionComp
     }
 
     /** What [symbol] handles, following declared contracts, inferred metadata, the knowledge base, and source bodies. */
-    fun handledInsets(symbol: FirNamedFunctionSymbol): InsetsAnalysis {
-        cache[symbol]?.let { return it }
-        if (!visiting.add(symbol)) return InsetsAnalysis.EMPTY
-        try {
-            val result = compute(symbol)
-            cache[symbol] = result
-            return result
-        } finally {
-            visiting.remove(symbol)
-        }
-    }
+    fun handledInsets(symbol: FirNamedFunctionSymbol): InsetsAnalysis = of(symbol)
 
     /** What an arbitrary expression (typically a `Modifier` chain) handles. */
     fun handledByExpression(expression: FirExpression): InsetsAnalysis {
@@ -86,27 +81,22 @@ class WindowInsetsHandlingService(session: FirSession) : FirExtensionSessionComp
         return collector.result
     }
 
-    private fun compute(symbol: FirNamedFunctionSymbol): InsetsAnalysis {
-        declaredContract(symbol)?.let { return InsetsAnalysis(it, unverifiable = false) }
-        inferredMetadata(symbol)?.let { return InsetsAnalysis(it, unverifiable = false) }
-        known(symbol.callableId)?.let { return InsetsAnalysis(it, unverifiable = false) }
-        return analyzeBody(symbol)
-    }
+    override fun override(symbol: FirNamedFunctionSymbol): InsetsAnalysis? =
+        declaredContract(symbol)?.let { InsetsAnalysis(it, unverifiable = false) }
 
-    private fun inferredMetadata(symbol: FirNamedFunctionSymbol): InsetsSet? {
-        val annotation = symbol.resolvedAnnotationsWithArguments
-            .firstOrNull { it.toAnnotationClassId(session) == WindowInsetsNames.INFERRED_WINDOW_INSETS_HANDLING }
-            ?: return null
-        val argument = annotation.findArgumentByName(WindowInsetsNames.HANDLED_PARAM, returnFirstWhenNotFound = false)
-        val strings = arrayElements(argument).mapNotNull { (it as? FirLiteralExpression)?.value as? String }
-        return InsetsSet.decode(strings)
-    }
+    override fun knowledge(symbol: FirNamedFunctionSymbol): InsetsAnalysis? =
+        known(symbol.callableId)?.let { InsetsAnalysis(it, unverifiable = false) }
 
-    private fun analyzeBody(symbol: FirNamedFunctionSymbol): InsetsAnalysis {
-        if (!symbol.origin.fromSource) return InsetsAnalysis.EMPTY
-        symbol.lazyResolveToPhase(FirResolvePhase.BODY_RESOLVE)
-        // Bodies are released after Fir2Ir, so this must run during the FIR phase. The checkers
-        // warm the cache for every composable; the IR writer only reads cached results.
+    override fun decode(annotation: FirAnnotation): InsetsAnalysis =
+        InsetsAnalysis(InsetsSet.decode(annotation.strings(WindowInsetsNames.HANDLED_PARAM)) ?: InsetsSet.EMPTY, unverifiable = false)
+
+    override fun encode(value: InsetsAnalysis): List<List<String>>? =
+        value.handled.takeUnless { it.isEmpty }?.let { listOf(it.encode()) }
+
+    /** Only a composable without a declared contract is worth analyzing for the metadata. */
+    override fun shouldWarm(symbol: FirNamedFunctionSymbol): Boolean = isComposable(symbol) && declaredContract(symbol) == null
+
+    override fun analyze(symbol: FirNamedFunctionSymbol): InsetsAnalysis {
         val body = symbol.fir.body ?: return InsetsAnalysis.EMPTY
         val collector = HandlingCollector()
         body.accept(collector)
@@ -133,15 +123,6 @@ class WindowInsetsHandlingService(session: FirSession) : FirExtensionSessionComp
             is FirEnumEntryDeserializedAccessExpression -> expr.enumEntryName.asString()
             is FirQualifiedAccessExpression -> expr.calleeReference.toResolvedEnumEntrySymbol()?.name?.asString()
             else -> null
-        }
-
-    private fun arrayElements(expression: FirExpression?): List<FirExpression> =
-        when (val expr = expression?.unwrapArgument()) {
-            null -> emptyList()
-            is FirCollectionLiteral -> expr.arguments.map { it.unwrapArgument() }
-            is FirVarargArgumentsExpression -> expr.arguments.map { it.unwrapArgument() }
-            is FirFunctionCall -> expr.arguments.map { it.unwrapArgument() } // arrayOf(...)
-            else -> emptyList()
         }
 
     /** Walks an element and unions everything that handles insets, including nested lambdas. */

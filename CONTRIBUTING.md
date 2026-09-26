@@ -15,7 +15,8 @@ kotrail/
 │       ├── fir/compose/checkers/  # Compose rules: nesting limit, state delegation
 │       ├── fir/compose/insets/    # insets analysis service, expression evaluator, checkers
 │       ├── compose/insets/        # insets algebra shared by FIR and IR
-│       └── ir/compose/insets/     # writes @InferredWindowInsetsHandling into metadata
+│       ├── fir/inferred/          # the base every inferred fact is built on, and its warm-up
+│       └── ir/inferred/           # the one writer that puts every inferred fact into metadata
 │   └── src/{k2321,k240,k2420}/kotlin/  # com.kitakkun.kotrail.compat, one directory per Kotlin family
 ├── gradle-plugin/                 # the `com.kitakkun.kotrail` Gradle plugin and its DSL
 ├── annotations/           # @HandlesWindowInsets, @MustBeSerializable (ship with your app)

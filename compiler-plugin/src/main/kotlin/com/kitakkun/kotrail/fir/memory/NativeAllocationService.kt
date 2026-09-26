@@ -2,33 +2,32 @@
 
 package com.kitakkun.kotrail.fir.memory
 
+import com.kitakkun.kotrail.KotrailRule
+import com.kitakkun.kotrail.fir.inferred.InferredFactService
+import com.kitakkun.kotrail.fir.inferred.InferredMetadata.strings
 import com.kitakkun.kotrail.fir.kotrailConfig
+import org.jetbrains.kotlin.descriptors.Visibilities
+import org.jetbrains.kotlin.fir.declarations.utils.visibility
+import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirAnonymousFunction
 import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
 import org.jetbrains.kotlin.fir.declarations.FirProperty
-import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
-import org.jetbrains.kotlin.fir.declarations.findArgumentByName
-import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.utils.isInline
 import org.jetbrains.kotlin.fir.expressions.resolvedArgumentMapping
 import org.jetbrains.kotlin.fir.expressions.FirAnonymousFunctionExpression
 import org.jetbrains.kotlin.fir.expressions.FirAnonymousObjectExpression
-import org.jetbrains.kotlin.fir.expressions.FirCall
 import org.jetbrains.kotlin.fir.expressions.FirElvisExpression
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
-import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
 import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirReturnExpression
 import org.jetbrains.kotlin.fir.expressions.FirSafeCallExpression
 import org.jetbrains.kotlin.fir.expressions.FirVariableAssignment
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.expressions.FirSmartCastExpression
-import org.jetbrains.kotlin.fir.expressions.FirVarargArgumentsExpression
 import org.jetbrains.kotlin.fir.expressions.unwrapArgument
-import org.jetbrains.kotlin.fir.extensions.FirExtensionSessionComponent
 import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
 import org.jetbrains.kotlin.fir.references.toResolvedNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.resolve.fullyExpandedType
@@ -37,7 +36,6 @@ import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
-import org.jetbrains.kotlin.fir.symbols.lazyResolveToPhase
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.ConeStarProjection
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
@@ -66,7 +64,12 @@ import org.jetbrains.kotlin.types.AbstractTypeChecker
  * the plugin wrote is read; a library without it is taken as not allocating. Results are
  * memoized per symbol; a recorder warms the cache so that the IR writer only reads it.
  */
-class NativeAllocationService(session: FirSession) : FirExtensionSessionComponent(session) {
+class NativeAllocationService(session: FirSession) : InferredFactService<FirNamedFunctionSymbol, NativeAllocationService.Allocation?>(session) {
+    override val rule: KotrailRule get() = KotrailRule.NATIVE_ALLOCATION_IN_LOOP
+    override val annotation: ClassId get() = INFERRED_NATIVE_ALLOCATION
+    override val parameters: List<Name> get() = listOf(TYPES, PATH)
+    override val empty: Allocation? get() = null
+
     /**
      * What a function lets out: the type as written; the callee path from the function to the
      * allocation, innermost last, each name qualified by its class when it is a member
@@ -81,21 +84,10 @@ class NativeAllocationService(session: FirSession) : FirExtensionSessionComponen
         }
     }
 
-    private val cache = HashMap<FirNamedFunctionSymbol, Allocation?>()
-    private val visiting = HashSet<FirNamedFunctionSymbol>()
-
     /** The native-backed object [symbol] creates per call and lets out, or null. */
-    fun allocates(symbol: FirNamedFunctionSymbol): Allocation? {
-        if (cache.containsKey(symbol)) return cache[symbol]
-        if (!visiting.add(symbol)) return null
-        try {
-            val result = compute(symbol)
-            cache[symbol] = result
-            return result
-        } finally {
-            visiting.remove(symbol)
-        }
-    }
+    fun allocates(symbol: FirNamedFunctionSymbol): Allocation? = of(symbol)
+
+    override fun shouldWarm(symbol: FirNamedFunctionSymbol): Boolean = symbol.visibility != Visibilities.Private
 
     /** What [call] allocates when it is a constructor of a listed type, a listed factory, or a call to a function that allocates. */
     fun allocationOf(call: FirFunctionCall): Allocation? {
@@ -116,35 +108,21 @@ class NativeAllocationService(session: FirSession) : FirExtensionSessionComponen
         return if (owner != null) "$owner.${name.asString()}" else name.asString()
     }
 
-    private fun compute(symbol: FirNamedFunctionSymbol): Allocation? {
-        if (!symbol.origin.fromSource) return declared(symbol)
-        symbol.lazyResolveToPhase(FirResolvePhase.BODY_RESOLVE)
+    override fun analyze(symbol: FirNamedFunctionSymbol): Allocation? {
         val body = symbol.fir.body ?: return null
         val finder = Finder()
         body.accept(finder)
         return finder.leaked()
     }
 
-    private fun declared(symbol: FirNamedFunctionSymbol): Allocation? {
-        val annotation = symbol.resolvedAnnotationsWithArguments.firstOrNull { it.toAnnotationClassId(session) == INFERRED_NATIVE_ALLOCATION } ?: return null
-        val argument = annotation.findArgumentByName(TYPES, returnFirstWhenNotFound = true) ?: return null
-        val elements = when (argument) {
-            is FirVarargArgumentsExpression -> argument.arguments
-            is FirCall -> argument.argumentList.arguments
-            else -> listOf(argument)
-        }
-        val type = elements.firstNotNullOfOrNull { (it.unwrapArgument() as? FirLiteralExpression)?.value as? String } ?: return null
-        val path = annotation.findArgumentByName(PATH, returnFirstWhenNotFound = false)?.let { argument ->
-            val items = when (argument) {
-                is FirVarargArgumentsExpression -> argument.arguments
-                is FirCall -> argument.argumentList.arguments
-                else -> listOf(argument)
-            }
-            items.mapNotNull { (it.unwrapArgument() as? FirLiteralExpression)?.value as? String }
-        }.orEmpty()
-        val fate = elements.drop(1).firstNotNullOfOrNull { (it.unwrapArgument() as? FirLiteralExpression)?.value as? String } ?: "lets go of"
-        return Allocation(type, path, fate)
+    /** `types` is the type and, second, what the function does with it; `path` the functions it went through. */
+    override fun decode(annotation: FirAnnotation): Allocation? {
+        val types = annotation.strings(TYPES)
+        val type = types.firstOrNull() ?: return null
+        return Allocation(type, annotation.strings(PATH), types.getOrNull(1) ?: "lets go of")
     }
+
+    override fun encode(value: Allocation?): List<List<String>>? = value?.let { listOf(listOf(it.type, it.fate), it.path) }
 
     /** Finds the allocations of a body and which of them are closed there. */
     private inner class Finder : FirVisitorVoid() {
