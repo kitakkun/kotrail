@@ -10,6 +10,7 @@ import com.kitakkun.kotrail.fir.checkers.UnimplementedCodeChecker
 import com.kitakkun.kotrail.fir.checkers.RequiredAnnotationChecker
 import com.kitakkun.kotrail.fir.checkers.VisibilityPolicyChecker
 import com.kitakkun.kotrail.fir.native.checkers.ObjCIdentityChecker
+import com.kitakkun.kotrail.fir.native.checkers.ObjCThrowsChecker
 import com.kitakkun.kotrail.fir.native.checkers.ObjCWeakReferenceChecker
 import com.kitakkun.kotrail.fir.checkers.IgnoredExceptionChecker
 import com.kitakkun.kotrail.fir.checkers.MutableCollectionInPublicApiChecker
@@ -170,6 +171,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
         AsyncWorkRecorder,
         ComposableSideEffectChecker,
         ComposableGlobalMutableStateChecker,
+        ObjCThrowsChecker,
         ComposableUnstableParameterChecker,
     )
     override val callableDeclarationCheckers: Set<FirCallableDeclarationChecker> = setOf(

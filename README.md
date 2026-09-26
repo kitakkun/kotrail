@@ -36,7 +36,7 @@ The compiler is the one gate every line of code has to pass. Kotrail puts your c
 
 ## Rules
 
-65 rules ship today, grouped by what they protect. Full pages, with every condition and
+66 rules ship today, grouped by what they protect. Full pages, with every condition and
 fixture, live under [`docs/rules/`](docs/rules/README.md); the index there lists each rule with
 its diagnostic and whether it is on by default.
 
@@ -65,7 +65,9 @@ its diagnostic and whether it is on by default.
   [Window insets handling](docs/rules/compose/window-insets.md) and [Composition locals](docs/rules/compose/composition-locals.md) as contracts verified across modules; naming,
   modifier, callback and preview conventions.
 - **Test** (3): [Test must assert](docs/rules/test/must-assert.md), [No sleep in tests](docs/rules/test/no-sleep.md), [Test naming](docs/rules/test/naming.md).
-- **Kotlin/Native** (1): [Objective-C identity](docs/rules/native/objc-identity.md) for `===` and `WeakReference` on Objective-C objects.
+- **Kotlin/Native** (2): [Objective-C throws](docs/rules/native/objc-throws.md) for a framework function that can throw without
+  `@Throws`, which crashes Swift instead of handing it an `NSError`; [Objective-C identity](docs/rules/native/objc-identity.md) for `===`
+  and `WeakReference` on Objective-C objects.
 
 Rules that know the exact rewrite record it while compiling, and `./gradlew kotrailFix` applies
 those fixes to the sources without compiling again; the rule pages say **Fix: automatic** where

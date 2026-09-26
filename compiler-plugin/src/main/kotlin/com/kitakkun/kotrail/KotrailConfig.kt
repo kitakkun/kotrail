@@ -336,6 +336,12 @@ enum class TestNamingStyle(val key: String) {
 }
 
 /** Tunables for the test rules. From `test.annotations` and `rules.test.naming`. */
+/** Tunables for the Objective-C throws rule. From `rules.native.objcThrows`. */
+data class KotrailObjCThrows(
+    /** Package globs of the API a framework exports to Swift; empty means every public function of an Apple compilation. */
+    val packages: List<Glob>,
+)
+
 /** Tunables for the native-allocation-in-loop rule. From `rules.nativeAllocationInLoop`. */
 data class KotrailNativeAllocation(
     /** Fully qualified types (subtypes included) whose instances hold native memory freed only by a cleaner. */
@@ -473,6 +479,7 @@ data class KotrailConfig(
     val test: KotrailTest,
     val generated: KotrailGenerated,
     val nativeAllocation: KotrailNativeAllocation,
+    val objcThrows: KotrailObjCThrows,
     val weakOnlyReference: KotrailWeakOnlyReference,
     val catchTooBroad: KotrailCatchTooBroad,
     val unretained: KotrailUnretained,
@@ -1005,6 +1012,7 @@ data class KotrailConfig(
                     factories = list(KotrailRule.NATIVE_ALLOCATION_IN_LOOP, "factories") ?: DEFAULT_NATIVE_FACTORIES,
                     callbacks = list(KotrailRule.NATIVE_ALLOCATION_IN_LOOP, "callbacks") ?: DEFAULT_PER_ITEM_CALLBACKS,
                 ),
+                objcThrows = KotrailObjCThrows(packages = list(KotrailRule.NATIVE_OBJC_THROWS, "packages").orEmpty().map(::Glob)),
                 weakOnlyReference = KotrailWeakOnlyReference(
                     types = list(KotrailRule.WEAK_ONLY_REFERENCE, "types") ?: DEFAULT_WEAK_TYPES,
                 ),
