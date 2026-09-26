@@ -137,6 +137,9 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: the type; reported on a construction or factory call of a native-backed type inside a loop body or a per-item callback. */
     val NATIVE_ALLOCATION_IN_LOOP = tunable1<KtElement, String>("NATIVE_ALLOCATION_IN_LOOP", KotrailRule.NATIVE_ALLOCATION_IN_LOOP, WHOLE)
 
+    /** Arguments: the callee path to the allocation (`decode > newBitmap`), the type; reported on a call in a loop to a function that allocates. */
+    val NATIVE_ALLOCATION_THROUGH_CALL_IN_LOOP = tunable2<KtElement, String, String>("NATIVE_ALLOCATION_THROUGH_CALL_IN_LOOP", KotrailRule.NATIVE_ALLOCATION_IN_LOOP, WHOLE)
+
     /** Argument: what was wrapped; reported on a weak reference built from an object nothing else holds. */
     val WEAK_REFERENCE_TO_FRESH_OBJECT = tunable1<KtElement, String>("WEAK_REFERENCE_TO_FRESH_OBJECT", KotrailRule.WEAK_ONLY_REFERENCE, WHOLE)
 
@@ -652,6 +655,12 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             "[Kotrail] ''{0}'' holds native memory that is freed only when a cleaner runs, and this creates one per iteration: " +
                 "the heap stays small, the collector rarely runs, and native memory grows unbounded. Reuse one instance " +
                 "across iterations, or close each with use '{' '}'.",
+        )
+        map.put2(
+            KotrailDiagnostics.NATIVE_ALLOCATION_THROUGH_CALL_IN_LOOP,
+            "[Kotrail] ''{0}'' creates a ''{1}'' each time it is called and lets it out unclosed, and this calls it once per " +
+                "iteration: its native memory is freed only when a cleaner runs, the heap stays small, and native memory grows " +
+                "unbounded. Reuse one instance across iterations, close each result with use '{' '}', or have it fill an instance it is given.",
         )
         map.put1(
             KotrailDiagnostics.WEAK_REFERENCE_TO_FRESH_OBJECT,

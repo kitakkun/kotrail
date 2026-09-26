@@ -174,6 +174,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
         ComposableSideEffectChecker,
         ComposableGlobalMutableStateChecker,
         ObjCThrowsChecker,
+        NativeAllocationInLoopChecker.Recorder,
         ComposableUnstableParameterChecker,
     )
     override val callableDeclarationCheckers: Set<FirCallableDeclarationChecker> = setOf(

@@ -7,6 +7,7 @@ import com.kitakkun.kotrail.fir.KotrailFirExtensionRegistrar
 import com.kitakkun.kotrail.ir.compose.effects.InferredEffectCaptureMetadataWriter
 import com.kitakkun.kotrail.ir.compose.insets.InferredWindowInsetsMetadataWriter
 import com.kitakkun.kotrail.ir.concurrency.InferredStartsAsyncWorkMetadataWriter
+import com.kitakkun.kotrail.ir.memory.InferredNativeAllocationMetadataWriter
 import com.kitakkun.kotrail.ir.compose.locals.InferredCompositionLocalsMetadataWriter
 import com.kitakkun.kotrail.ir.preconditions.InferredPreconditionsMetadataWriter
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
@@ -35,6 +36,9 @@ class KotrailComponentRegistrar : CompilerPluginRegistrar() {
         }
         if (config.isEnabled(KotrailRule.COMPOSE_REMEMBER_KEYS)) {
             IrGenerationExtension.registerExtension(InferredEffectCaptureMetadataWriter())
+        }
+        if (config.isEnabled(KotrailRule.NATIVE_ALLOCATION_IN_LOOP)) {
+            IrGenerationExtension.registerExtension(InferredNativeAllocationMetadataWriter())
         }
         if (config.isEnabled(KotrailRule.DELAY_FOR_COMPLETION)) {
             IrGenerationExtension.registerExtension(InferredStartsAsyncWorkMetadataWriter())

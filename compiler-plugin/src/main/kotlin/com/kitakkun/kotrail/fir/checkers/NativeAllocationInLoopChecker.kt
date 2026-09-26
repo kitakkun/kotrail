@@ -2,12 +2,17 @@ package com.kitakkun.kotrail.fir.checkers
 
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
+import com.kitakkun.kotrail.compat.NamedFunctionChecker
 import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.memory.NativeAllocationService
+import com.kitakkun.kotrail.fir.memory.nativeAllocationService
+import org.jetbrains.kotlin.descriptors.Visibilities
+import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
+import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.fir.FirElement
-import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirFunctionCallChecker
@@ -18,19 +23,6 @@ import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.FirSmartCastExpression
 import org.jetbrains.kotlin.fir.expressions.FirWhileLoop
 import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
-import org.jetbrains.kotlin.fir.resolve.fullyExpandedType
-import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
-import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
-import org.jetbrains.kotlin.fir.types.ConeKotlinType
-import org.jetbrains.kotlin.fir.types.ConeStarProjection
-import org.jetbrains.kotlin.fir.types.constructClassLikeType
-import org.jetbrains.kotlin.fir.types.isNullableNothing
-import org.jetbrains.kotlin.fir.types.renderReadable
-import org.jetbrains.kotlin.fir.types.resolvedType
-import org.jetbrains.kotlin.fir.types.typeContext
-import org.jetbrains.kotlin.name.ClassId
-import org.jetbrains.kotlin.name.FqName
-import org.jetbrains.kotlin.types.AbstractTypeChecker
 
 /**
  * Keeps native-backed objects from being created once per iteration:
@@ -55,10 +47,17 @@ import org.jetbrains.kotlin.types.AbstractTypeChecker
  * that is the receiver of `use { }` (directly, or through `apply`/`also`/`let`/`run`) is
  * closed on every path and is left alone. An allocation whose result is kept in a property
  * declared outside the loop is still reported: the previous instance is dropped unclosed.
+ *
+ * The allocation may sit inside a function the loop calls: `publish(decode(frame))` where
+ * `decode` builds a `Bitmap` and returns it is the same leak one function away, and is reported
+ * at the call with the path to the allocation. [NativeAllocationService] decides what a
+ * function lets out, in this module from its body and across modules through the
+ * `@InferredNativeAllocation` metadata the plugin writes. A function that creates the object
+ * and closes it itself (`use { }`, or `close()` on the local) lets nothing out.
  */
 object NativeAllocationInLoopChecker : FirFunctionCallChecker(MppCheckerKind.Common) {
-    private val USE = setOf("kotlin.use", "kotlin.io.use", "kotlin.AutoCloseable.use")
-    private val SCOPE_FUNCTIONS = setOf("kotlin.apply", "kotlin.also", "kotlin.let", "kotlin.run", "kotlin.takeIf", "kotlin.takeUnless")
+    private val USE = NativeAllocationService.USE
+    private val SCOPE_FUNCTIONS = NativeAllocationService.SCOPE_FUNCTIONS
 
     context(context: CheckerContext, reporter: DiagnosticReporter)
     override fun check(expression: FirFunctionCall) {
@@ -67,18 +66,24 @@ object NativeAllocationInLoopChecker : FirFunctionCallChecker(MppCheckerKind.Com
         val source = expression.source ?: return
         if (source.kind is KtFakeSourceElementKind) return
         val settings = config.nativeAllocation
-        val session = context.session
-        val callee = expression.calleeReference.toResolvedCallableSymbol() ?: return
-
-        val allocated = when {
-            callee is FirConstructorSymbol && settings.types.any { expression.resolvedType.isSubtypeOf(ClassId.topLevel(FqName(it)), session) } ->
-                expression.resolvedType.renderReadable()
-            callee.callableId?.asSingleFqName()?.asString() in settings.factories -> expression.resolvedType.renderReadable()
-            else -> return
-        }
+        val allocation = context.session.nativeAllocationService.allocationOf(expression) ?: return
         if (!context.isPerIteration(settings.callbacks)) return
         if (context.isClosedByUse(expression)) return
-        reportKotrail(source, KotrailDiagnostics.NATIVE_ALLOCATION_IN_LOOP, allocated)
+        if (allocation.path.isEmpty()) {
+            reportKotrail(source, KotrailDiagnostics.NATIVE_ALLOCATION_IN_LOOP, allocation.type)
+        } else {
+            reportKotrail(source, KotrailDiagnostics.NATIVE_ALLOCATION_THROUGH_CALL_IN_LOOP, allocation.path.joinToString(" > "), allocation.type)
+        }
+    }
+
+    /** Warms the allocation analysis for every non-private function, so that the IR metadata writer only reads cached results. */
+    object Recorder : NamedFunctionChecker(MppCheckerKind.Common) {
+        context(context: CheckerContext, reporter: DiagnosticReporter)
+        override fun check(declaration: FirNamedFunction) {
+            if (!context.session.kotrailConfig.isEnabled(KotrailRule.NATIVE_ALLOCATION_IN_LOOP)) return
+            if (declaration.body == null || declaration.visibility == Visibilities.Private) return
+            context.session.nativeAllocationService.allocates(declaration.symbol)
+        }
     }
 
     /** Whether the current expression sits in a loop body or in the lambda of a per-item callback. */
@@ -118,11 +123,4 @@ object NativeAllocationInLoopChecker : FirFunctionCallChecker(MppCheckerKind.Com
     }
 
     private fun FirExpression.unwrapped(): FirExpression = (this as? FirSmartCastExpression)?.originalExpression ?: this
-
-    private fun ConeKotlinType.isSubtypeOf(classId: ClassId, session: FirSession): Boolean {
-        val expanded = fullyExpandedType(session)
-        val symbol = session.symbolProvider.getClassLikeSymbolByClassId(classId) ?: return false
-        val superType = classId.constructClassLikeType(Array(symbol.typeParameterSymbols.size) { ConeStarProjection }, isMarkedNullable = true)
-        return !expanded.isNullableNothing && AbstractTypeChecker.isSubtypeOf(session.typeContext, expanded, superType)
-    }
 }

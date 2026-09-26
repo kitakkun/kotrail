@@ -47,6 +47,40 @@ class Decoder(private val frames: List<Frame>) {
         }
         reused.close()
     }
+
+    // Reported: the allocation sits in a helper the loop calls, directly or two calls away.
+    fun decodeThroughHelpers() {
+        for (frame in frames) {
+            publish(<!KOTRAIL_NATIVE_ALLOCATION_THROUGH_CALL_IN_LOOP!>decode(frame)<!>)
+            publish(<!KOTRAIL_NATIVE_ALLOCATION_THROUGH_CALL_IN_LOOP!>decodeTwice(frame)<!>)
+        }
+        frames.forEach { publish(<!KOTRAIL_NATIVE_ALLOCATION_THROUGH_CALL_IN_LOOP!>decode(it)<!>) }
+
+        // Not reported: the helper's result is closed here, or the helper closes what it creates itself,
+        // or the helper returns an instance it did not create.
+        for (frame in frames) {
+            decode(frame).use { draw(it) }
+            drawDecoded(frame)
+            drawAndClose(frame)
+            publish(current())
+        }
+    }
+
+    fun decode(frame: Frame): Bitmap = Bitmap().apply { allocPixels() }
+
+    fun decodeTwice(frame: Frame): Bitmap = decode(frame)
+
+    fun drawDecoded(frame: Frame) {
+        Bitmap().use { draw(it) }
+    }
+
+    fun drawAndClose(frame: Frame) {
+        val bitmap = Bitmap().apply { allocPixels() }
+        draw(bitmap)
+        bitmap.close()
+    }
+
+    fun current(): Bitmap = latest ?: Bitmap().also { latest = it }
 }
 
 /* GENERATED_FIR_TAGS: assignment, classDeclaration, comparisonExpression, flexibleType, forLoop, functionDeclaration,
