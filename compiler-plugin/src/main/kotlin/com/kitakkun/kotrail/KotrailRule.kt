@@ -42,6 +42,7 @@ enum class KotrailRule(
     PRECONDITIONS("preconditions", Severity.ERROR),
     FUNCTION_LENGTH("functionLength", Severity.ERROR),
     FILE_LENGTH("fileLength", Severity.ERROR),
+    CLASS_COHESION("classCohesion", Severity.ERROR),
     NO_LITERAL_LOOP("noLiteralLoop", Severity.ERROR),
     NULL_CHAIN_LENGTH("nullChainLength", Severity.ERROR),
     IMPLICIT_RECEIVERS("implicitReceivers", Severity.ERROR),

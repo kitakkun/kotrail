@@ -158,6 +158,9 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Arguments: the class, the required supertype with the policy; reported on a class name. */
     val SUPERTYPE_REQUIRED = tunable2<KtClassOrObject, String, String>("SUPERTYPE_REQUIRED", KotrailRule.REQUIRED_SUPERTYPE, NAME)
 
+    /** Arguments: how many groups, the groups (`onEdit, onSave (draft, repo); onExport (exporter)`); reported on a class name. */
+    val CLASS_NOT_COHESIVE = tunable2<KtClassOrObject, String, String>("CLASS_NOT_COHESIVE", KotrailRule.CLASS_COHESION, NAME)
+
     /** Arguments: the referenced package, the policy; reported on the import or the reference. */
     val DEPENDENCY_NOT_ALLOWED = tunable2<KtElement, String, String>("DEPENDENCY_NOT_ALLOWED", KotrailRule.DEPENDENCY_RULES, WHOLE)
 
@@ -773,6 +776,11 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             KotrailDiagnostics.LITERAL_LOOP,
             "[Kotrail] This {0} and the body branches on the element: cases the author already knows, folded into a loop " +
                 "the reader has to unfold. {1}.",
+        )
+        map.put2(
+            KotrailDiagnostics.CLASS_NOT_COHESIVE,
+            "[Kotrail] The members of this class fall into {0} groups that share nothing: {1}. It is that many classes under one " +
+                "name. Give each group a class of its own, or make the events it handles an interface with one implementation per group.",
         )
         map.put1(
             KotrailDiagnostics.FILE_TOO_LONG,

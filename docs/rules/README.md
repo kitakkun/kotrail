@@ -9,7 +9,7 @@ reason to keep it off, and the **Default** column names that reason; an `off` ru
 per project, and an `experimental` rule may change shape.
 A rule can belong to two groups; it is listed once, under the one it serves first.
 
-## Readability and structure (13)
+## Readability and structure (14)
 
 How a body reads: its length, how much is in play at once, the order of what it declares.
 
@@ -18,6 +18,7 @@ How a body reads: its length, how much is in play at once, the order of what it 
 | Function length | on | `KOTRAIL_FUNCTION_TOO_LONG` | [function-length.md](function-length.md) |
 | File length | on | `KOTRAIL_FILE_TOO_LONG`, `KOTRAIL_FILE_TOO_FLAT`, `KOTRAIL_TOO_MANY_TOP_LEVEL_DECLARATIONS` | [file-length.md](file-length.md) |
 | Live variable budget | on | `KOTRAIL_TOO_MANY_LIVE_VARIABLES` | [live-variable-budget.md](live-variable-budget.md) |
+| Class cohesion | on | `KOTRAIL_CLASS_NOT_COHESIVE` | [class-cohesion.md](class-cohesion.md) |
 | Narrative order | on | `KOTRAIL_HELPER_BEFORE_FIRST_USE` | [narrative-order.md](narrative-order.md) |
 | Parameter order | on | `KOTRAIL_CALLBACK_BEFORE_DATA_PARAMETER` | [parameter-order.md](parameter-order.md) |
 | Null chain length | on | `KOTRAIL_ELVIS_CHAIN_TOO_LONG`, `KOTRAIL_SAFE_CALL_CHAIN_TOO_LONG` | [null-chain-length.md](null-chain-length.md) |

@@ -90,6 +90,9 @@ object ConfigSchema {
         KotrailRule.NO_LITERAL_LOOP to listOf(
             Setting("maxElements", Kind.INT, "Most elements a literal collection may have and still be reported when looped over with a body that branches on the element; a longer literal list is a table. Booleans are reported at any size.", default = "3"),
         ),
+        KotrailRule.CLASS_COHESION to listOf(
+            Setting("minMembers", Kind.INT, "Fewest members touching the class's state a class must have before its unrelated groups are reported.", default = "4"),
+        ),
         KotrailRule.FILE_LENGTH to listOf(
             Setting("maxLines", Kind.INT, "Most lines of code a file may have; blank, brace-only, comment, package and import lines do not count. 0 for unlimited.", default = "500"),
             Setting("maxTopLevelDeclarations", Kind.INT, "Most distinct top-level names a file may declare: classes, functions, public properties and type aliases, overloads once; previews, private properties, actual declarations and private implementations of a same-file interface do not count. 0 for unlimited.", default = "15"),

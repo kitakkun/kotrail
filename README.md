@@ -37,13 +37,13 @@ The compiler is the one gate every line of code has to pass. Kotrail puts your c
 
 ## Rules
 
-70 rules ship today, grouped by what they protect. Full pages, with every condition and
+71 rules ship today, grouped by what they protect. Full pages, with every condition and
 fixture, live under [`docs/rules/`](docs/rules/README.md); the index there lists each rule with
 its diagnostic and whether it is on by default.
 
-- **Readability and structure** (12): [Function length](docs/rules/function-length.md) and a [Live variable budget](docs/rules/live-variable-budget.md) keep a
+- **Readability and structure** (14): [Function length](docs/rules/function-length.md) and a [Live variable budget](docs/rules/live-variable-budget.md) keep a
   body small enough to hold in mind, and [File length](docs/rules/file-length.md) keeps a file from becoming a flat list of
-  unrelated names; [No literal loop](docs/rules/no-literal-loop.md) unfolds `listOf(false, true).forEach { if (it) ... }`
+  unrelated names, and [Class cohesion](docs/rules/class-cohesion.md) a class from becoming several classes under one name; [No literal loop](docs/rules/no-literal-loop.md) unfolds `listOf(false, true).forEach { if (it) ... }`
   back into the two calls it was; [Narrative order](docs/rules/narrative-order.md) and [Parameter order](docs/rules/parameter-order.md) put helpers after
   their first caller and data before callbacks; [Narrow local scope](docs/rules/narrow-local-scope.md), [Prefer val](docs/rules/prefer-val.md) and
   [Prefer idiom](docs/rules/prefer-idiom.md) tidy what is left.

@@ -1,5 +1,6 @@
 package com.kitakkun.kotrail.fir
 
+import com.kitakkun.kotrail.fir.checkers.ClassCohesionChecker
 import com.kitakkun.kotrail.fir.checkers.CommentLengthChecker
 import com.kitakkun.kotrail.fir.checkers.ParameterCommentChecker
 import com.kitakkun.kotrail.fir.checkers.ForbiddenCallChecker
@@ -141,6 +142,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
     )
     override val regularClassCheckers: Set<FirRegularClassChecker> = setOf(
         InferredFactWarmup.ClassChecker,
+        ClassCohesionChecker,
         NarrativeOrderChecker.ClassChecker,
         RequiredSupertypeChecker,
         PreferValueClassChecker,

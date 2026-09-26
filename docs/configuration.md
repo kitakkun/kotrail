@@ -138,6 +138,7 @@ own; a rule not listed has none.
 | `unloadableCode` (off by default) | `registrations` | JVM, AWT and IntelliJ hooks (see the rule page) | Globs over fully qualified functions that register something with the platform for the rest of its life; a call without a disposable argument is reported. Replaces the default list. |
 | | `disposableTypes` | `[com.intellij.openapi.Disposable]` | Fully qualified types an argument of which scopes a registration to a lifetime. Replaces the default list. |
 | `narrowLocalScope` | `maxDistance` | `5` | Lines allowed between a local's declaration and the statement that first uses it; `0` switches the distance check off. |
+| `classCohesion` | `minMembers` | `4` | Fewest members touching the class's state a class must have before its unrelated groups are reported. |
 | `liveVariableBudget` | `max` | `7` | Variables (locals and parameters) that may be live at one statement of a function; `0` disables. |
 | `noDataClassInPublicApi` | `scope` | `explicitApi` | `explicitApi` applies the rule only to modules compiled with explicit API mode; `all` everywhere. |
 | `visibilityPolicy` | `private` | | A predicate; matching declarations must be `private`. |
