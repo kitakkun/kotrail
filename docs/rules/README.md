@@ -105,7 +105,7 @@ Rules a project declares in its configuration: what may call, extend, depend on 
 | Composition locals | on | `KOTRAIL_COMPOSITION_LOCAL_NOT_PROVIDED`, `KOTRAIL_COMPOSITION_LOCAL_NOT_PROVIDED_AT_ENTRY_POINT` | [compose/composition-locals.md](compose/composition-locals.md) |
 | State delegation | on | `KOTRAIL_PREFER_STATE_DELEGATION` | [compose/state-delegation.md](compose/state-delegation.md) |
 | Nesting limit | on | `KOTRAIL_COMPOSABLE_NESTING_TOO_DEEP` | [compose/nesting.md](compose/nesting.md) |
-| Complexity | on | `KOTRAIL_COMPOSABLE_TOO_COMPLEX`, `KOTRAIL_COMPOSABLE_COMPLEXITY_HOTSPOT` | [compose/complexity.md](compose/complexity.md) |
+| Complexity | on | `KOTRAIL_COMPOSABLE_TOO_COMPLEX`, `KOTRAIL_COMPOSABLE_COMPLEXITY_HOTSPOT`, `KOTRAIL_COMPOSABLE_HOTSPOT_STANDALONE` | [compose/complexity.md](compose/complexity.md) |
 | No trailing callback | on | `KOTRAIL_COMPOSABLE_TRAILING_CALLBACK` | [compose/no-trailing-callback.md](compose/no-trailing-callback.md) |
 | Composable naming | on | `KOTRAIL_COMPOSABLE_NAMING` | [compose/naming.md](compose/naming.md) |
 | Modifier parameter | on | `KOTRAIL_COMPOSABLE_MODIFIER_PARAMETER` | [compose/modifier-parameter.md](compose/modifier-parameter.md) |

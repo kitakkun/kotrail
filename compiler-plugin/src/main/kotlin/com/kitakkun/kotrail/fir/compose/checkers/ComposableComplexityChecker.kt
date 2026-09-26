@@ -23,6 +23,7 @@ import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.expressions.FirAnonymousFunctionExpression
 import org.jetbrains.kotlin.fir.expressions.FirBlock
 import org.jetbrains.kotlin.fir.expressions.FirBooleanOperatorExpression
+import org.jetbrains.kotlin.fir.expressions.FirDesugaredAssignmentValueReferenceExpression
 import org.jetbrains.kotlin.fir.expressions.FirDoWhileLoop
 import org.jetbrains.kotlin.fir.expressions.FirElvisExpression
 import org.jetbrains.kotlin.fir.expressions.FirExpression
@@ -30,7 +31,9 @@ import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
 import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirResolvedQualifier
+import org.jetbrains.kotlin.fir.expressions.FirSmartCastExpression
 import org.jetbrains.kotlin.fir.expressions.FirThisReceiverExpression
+import org.jetbrains.kotlin.fir.expressions.FirTypeOperatorCall
 import org.jetbrains.kotlin.fir.expressions.FirVariableAssignment
 import org.jetbrains.kotlin.fir.expressions.FirWhenExpression
 import org.jetbrains.kotlin.fir.expressions.FirWhileLoop
@@ -66,7 +69,7 @@ import org.jetbrains.kotlin.types.AbstractTypeChecker
  * | A state source: a call that produces a `State` (`remember { mutableStateOf(...) }`, `rememberSaveable`, `derivedStateOf`, `collectAsState`), or a call listed in `stateFactories`; not `rememberUpdatedState` | 1 each |
  * | An effect (`LaunchedEffect`, `DisposableEffect`, `produceState`, `SideEffect`) | 1, +1 when it writes a `State`; its body's branches count as branches |
  * | A `launch` / `async` from a handler | 1 each |
- * | A branch (`if`, a `when` case, `?:` with a computed fallback), a boolean `&&` / `||` in such a condition, a loop | 1 each; an `if` / `when` whose every result is a constant is a lookup and scores 1 in all |
+ * | A branch (`if`, a `when` case, `?:` with a computed fallback), a boolean `&&` / `||` in such a condition, a loop | 1 each; an `if` / `when` whose every result is a constant or a reference (`colors.hover`, `theme.colors.idle`: a property chain with no call in it) is a lookup and scores 1 in all, and a fallback that is one scores nothing |
  * | A `CompositionLocal.current` read | 1 each |
  * | A callback parameter beyond four | 1 each, at most 4 |
  *
@@ -74,9 +77,12 @@ import org.jetbrains.kotlin.types.AbstractTypeChecker
  * own those. Every lambda handed to a composable (`Column { }`, `items { }`), every effect and every
  * branch is a subtree with a score of its own, so that a composable over the limit is told which
  * block to extract (the innermost subtree carrying at least `hotspotShare` percent of the total)
- * and what kind of extraction fits it, or, when the points are spread, which kinds dominate. Every
- * composable's score and breakdown is also written to a record for the `kotrailComplexity`
- * report, under or over the limit.
+ * and what kind of extraction fits it, or, when the points are spread, which kinds dominate. A
+ * block that spans nearly the whole body (at least [WHOLE_BODY_SHARE] percent of its source) is
+ * the root layout, not something to extract, and is never named; the search goes on inside it.
+ * A composable within the limit that still has one block carrying `hotspotMin` points on its own
+ * gets that block reported as a standalone hotspot. Every composable's score and breakdown is
+ * also written to a record for the `kotrailComplexity` report, under or over the limit.
  */
 object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common) {
     private val EFFECTS = setOf("LaunchedEffect", "DisposableEffect", "produceState", "SideEffect")
@@ -90,6 +96,8 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
     private const val HOTSPOT_MIN = 5
     /** A kind that carries at least this share of the total is named as dominating a spread score. */
     private const val DOMINANT_SHARE = 30
+    /** A block covering at least this share of the body's source is the body itself, not a block to extract. */
+    private const val WHOLE_BODY_SHARE = 90
 
     context(context: CheckerContext, reporter: DiagnosticReporter)
     override fun check(declaration: FirNamedFunction) {
@@ -108,14 +116,22 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
         body.accept(scorer)
         val root = scorer.root
         val total = root.total()
+        val bodySource = body.source
+        val hotspot = scorer.hotspot(total, settings.hotspotShare, bodySource)
 
         config.complexityDir?.let { directory ->
             val path = context.containingFileSymbol?.sourceFile?.path
-            if (path != null) ComplexityRecords.record(directory, path, declaration, total, root, scorer.hotspot(total, settings.hotspotShare))
+            if (path != null) ComplexityRecords.record(directory, path, declaration, total, root, hotspot)
         }
-        if (settings.maxScore <= 0 || total <= settings.maxScore) return
+        if (settings.maxScore <= 0) return
+        if (total <= settings.maxScore) {
+            // Within the limit, one block can still carry enough on its own to be worth taking out.
+            if (settings.hotspotMin <= 0) return
+            val standalone = scorer.innermost(bodySource) { it.total() >= settings.hotspotMin } ?: return
+            reportKotrail(standalone.source, KotrailDiagnostics.COMPOSABLE_HOTSPOT_STANDALONE, standalone.total().toString(), standalone.extraction())
+            return
+        }
 
-        val hotspot = scorer.hotspot(total, settings.hotspotShare)
         val advice = if (hotspot != null) {
             "'${hotspot.label}' carries ${hotspot.total()} of them: ${hotspot.extraction()}"
         } else {
@@ -124,7 +140,7 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
             val named = dominant.joinToString(" and ") { (kind, points) -> "${kind.label} ($points)" }
             val verb = if (dominant.size == 1 && dominant.first().key == Kind.COUPLING) "dominates" else "dominate"
             val returnsValue = !declaration.returnTypeRef.coneType.isUnit
-            "the points are spread across the body with no single block to extract; $named $verb: ${root.adviceFor(dominant.first().key, returnsValue)}"
+            "the points are spread across the body with no single block to extract; $named $verb: ${root.adviceFor(dominant.first().key, returnsValue, bodySource)}"
         }
         reportKotrail(source, KotrailDiagnostics.COMPOSABLE_TOO_COMPLEX, "$total (${root.breakdown()}), limit ${settings.maxScore}", advice)
         if (hotspot != null) {
@@ -159,16 +175,25 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
 
         /**
          * The advice when [kind] dominates a spread score. Branches get the advice of the block
-         * that holds most of them when one does, or a plain function when the composable
-         * computes a value rather than emitting UI.
+         * that holds most of them when one does and it is not the whole body ([body]), or a plain
+         * function when the composable computes a value rather than emitting UI.
          */
-        fun adviceFor(kind: Kind, returnsValue: Boolean): String {
+        fun adviceFor(kind: Kind, returnsValue: Boolean, body: KtSourceElement?): String {
             if (kind != Kind.BRANCHES) return kind.advice
             if (returnsValue) return "move the mapping into a plain function"
             val branches = byKind()[Kind.BRANCHES] ?: 0
-            val holder = children.maxByOrNull { it.byKind()[Kind.BRANCHES] ?: 0 }
+            val holder = children.filterNot { it.spans(body) }.maxByOrNull { it.byKind()[Kind.BRANCHES] ?: 0 }
             val held = holder?.byKind()?.get(Kind.BRANCHES) ?: 0
             return if (holder != null && held * 2 >= branches) "most of them sit in '${holder.label}', ${holder.extraction()}" else kind.advice
+        }
+
+        /** Whether this block covers at least [WHOLE_BODY_SHARE] percent of [body]'s source: the root layout, not a block to extract. */
+        fun spans(body: KtSourceElement?): Boolean {
+            val own = source ?: return false
+            if (body == null) return false
+            val length = body.endOffset - body.startOffset
+            val covered = minOf(own.endOffset, body.endOffset) - maxOf(own.startOffset, body.startOffset)
+            return length > 0 && covered * 100 >= length * WHOLE_BODY_SHARE
         }
 
         /** How to take this block out of the composable. */
@@ -190,15 +215,22 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
         private var conditionDepth = 0
 
         /** The innermost subtree carrying at least [sharePercent] of [total] and [HOTSPOT_MIN] points, or null when the points are spread. */
-        fun hotspot(total: Int, sharePercent: Int): Node? {
+        fun hotspot(total: Int, sharePercent: Int, body: KtSourceElement?): Node? = innermost(body) { node ->
+            val points = node.total()
+            points >= HOTSPOT_MIN && points * 100 >= total * sharePercent
+        }
+
+        /**
+         * The innermost subtree that [qualifies], going inward as long as a child still does. A
+         * subtree that spans the whole [body] is never the answer, but the search goes on inside it.
+         */
+        fun innermost(body: KtSourceElement?, qualifies: (Node) -> Boolean): Node? {
             var best: Node? = null
             fun visit(node: Node) {
                 for (child in node.children) {
-                    val points = child.total()
-                    if (points >= HOTSPOT_MIN && points * 100 >= total * sharePercent) {
-                        best = child
-                        visit(child)
-                    }
+                    if (!qualifies(child)) continue
+                    if (!child.spans(body)) best = child
+                    visit(child)
                 }
             }
             visit(root)
@@ -247,16 +279,23 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
         }
 
         override fun visitElvisExpression(elvisExpression: FirElvisExpression) {
-            // `?: Color.Unspecified`, `?: ""`: a constant fallback is a default, not a path the reader follows.
+            // `?: Color.Unspecified`, `?: ""`, `?: colors.fallback`: a constant or a reference is a default,
+            // not a path the reader follows.
             if (!elvisExpression.rhs.isConstantLike()) current.add(Kind.BRANCHES, 1)
             visitElement(elvisExpression)
         }
 
+        /**
+         * A literal, or a chain of property reads with no call anywhere in it (`Color.Transparent`,
+         * `colors.hover`, `theme.colors.idle`): a value looked up, not computed. A call never is.
+         */
         private fun FirExpression.isConstantLike(): Boolean = when (this) {
             is FirLiteralExpression -> true
+            is FirSmartCastExpression -> originalExpression.isConstantLike()
+            is FirTypeOperatorCall -> argumentList.arguments.singleOrNull()?.isConstantLike() == true
             is FirPropertyAccessExpression -> {
                 val receiver = explicitReceiver
-                receiver == null || receiver is FirResolvedQualifier || receiver is FirThisReceiverExpression
+                receiver == null || receiver is FirResolvedQualifier || receiver is FirThisReceiverExpression || receiver.isConstantLike()
             }
             else -> false
         }
@@ -350,7 +389,9 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
         }
 
         override fun visitVariableAssignment(variableAssignment: FirVariableAssignment) {
-            val target = variableAssignment.lValue as? FirPropertyAccessExpression
+            // `count++` assigns through a reference to the desugared read of `count`.
+            val lValue = variableAssignment.lValue
+            val target = (if (lValue is FirDesugaredAssignmentValueReferenceExpression) lValue.expressionRef.value else lValue) as? FirPropertyAccessExpression
             val symbol = target?.calleeReference?.toResolvedCallableSymbol() as? FirPropertySymbol
             if (symbol != null) {
                 val receiverIsState = target.explicitReceiver?.resolvedType?.isState(session) == true

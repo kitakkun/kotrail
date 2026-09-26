@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.compose.complexity=on, rules.compose.complexity.maxScore=5
+// KOTRAIL_CONFIG: rules.compose.complexity=on, rules.compose.complexity.maxScore=5, rules.compose.complexity.hotspotMin=4
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -18,6 +18,10 @@ object Labels {
     const val NONE = "-"
 }
 
+class Palette(val hover: Int, val idle: Int, val pressed: Int, val disabled: Int)
+
+class Theme(val colors: Palette)
+
 @Composable
 fun Column(content: @Composable () -> Unit) {
     content()
@@ -30,6 +34,7 @@ fun Row(content: @Composable () -> Unit) {
 
 suspend fun load(query: String): List<Item> = emptyList()
 suspend fun observe(events: Observable<String>, onEvent: (String) -> Unit) {}
+suspend fun send(action: String, id: String) {}
 
 // Not reported: a list item with one branch scores 1.
 @Composable
@@ -79,14 +84,54 @@ fun Styled(hovered: Boolean, selected: Boolean, enabled: Boolean, focused: Boole
     current.value
 }
 
-// Reported: the points pile up in the Column, which is the place to extract.
+// Not reported: a table of property references is a lookup like a table of constants. The `if` and
+// the `when` score 1 each and the reference fallback nothing: 2 in all (per row it would be 7). The Row
+// spans the whole body, so it would never be named anyway.
+@Composable
+fun Swatch(colors: Palette, theme: Theme, hovered: Boolean, pressed: Boolean, enabled: Boolean, custom: Int?) {
+    Row {
+        val background = if (hovered) colors.hover else colors.idle
+        val border = when {
+            !enabled -> theme.colors.disabled
+            pressed && hovered -> theme.colors.pressed
+            hovered -> theme.colors.hover
+            else -> theme.colors.idle
+        }
+        val accent = custom ?: theme.colors.idle
+        Text("$background $border $accent")
+    }
+}
+
+// Standalone hotspot: the composable scores 4, within the limit, but the effect carries all 4 on its
+// own (1 for the effect, 3 for the computed rows of its `when`), which reaches `hotspotMin` (4).
+@Composable
+fun Dispatcher(request: String, id: String, title: String, subtitle: String) {
+    <!KOTRAIL_COMPOSABLE_HOTSPOT_STANDALONE!>LaunchedEffect(request) {
+        when (request) {
+            "open" -> send("open", id)
+            "close" -> send("close", id)
+            "reload" -> send("reload", id)
+            else -> send("unknown", id)
+        }
+    }<!>
+    Column {
+        Text(title)
+        Text(subtitle)
+        Text(request)
+        Text(id)
+    }
+}
+
+// Reported: the points pile up in the Column, which is the place to extract. States 1, effect 1 + 1 for
+// writing a state, and the Column 5 (the loop, the computed fallback, the `if` with its `&&`, the
+// `else if`): 8.
 @Composable
 fun <!KOTRAIL_COMPOSABLE_TOO_COMPLEX!>Overview<!>(items: List<Item>, filter: String?, events: Observable<String>) {
     var count by remember { mutableStateOf(0) }
     LaunchedEffect(events) { events.collect { count++ } }
     <!KOTRAIL_COMPOSABLE_COMPLEXITY_HOTSPOT!>Column {
         items.forEach { item ->
-            val label = filter ?: item.name
+            val label = filter ?: item.name.trim()
             if (item.selected && count > 0) {
                 Text("$label!")
             } else if (item.name.isEmpty()) {
@@ -99,7 +144,8 @@ fun <!KOTRAIL_COMPOSABLE_TOO_COMPLEX!>Overview<!>(items: List<Item>, filter: Str
     }<!>
 }
 
-// Reported: the points are spread, so the kinds that dominate are named instead of a block.
+// Reported: the points are spread, so the kinds that dominate are named instead of a block. States 4,
+// effect 1, four `if`s in the Column (4, under the 5 a hotspot needs): 9.
 @Composable
 fun <!KOTRAIL_COMPOSABLE_TOO_COMPLEX!>Dashboard<!>(a: Boolean, b: Boolean, c: Boolean, d: Boolean) {
     var x by remember { mutableStateOf(0) }
@@ -117,15 +163,17 @@ fun <!KOTRAIL_COMPOSABLE_TOO_COMPLEX!>Dashboard<!>(a: Boolean, b: Boolean, c: Bo
 }
 
 // Reported: a composable that computes a value has no UI to split, so the advice asks for a plain function.
+// The loop 1, its computed `if` with the `&&` 2, and three computed `if`s: 6.
 @Composable
 fun <!KOTRAIL_COMPOSABLE_TOO_COMPLEX!>presenter<!>(items: List<Item>, filter: String?, mode: Int): String {
-    val names = items.map { item -> if (filter != null && item.name.startsWith(filter)) item.name else "" }
+    val names = items.map { item -> if (filter != null && item.name.startsWith(filter)) item.name.trim() else "" }
     val prefix = if (mode > 1) names.size.toString() else names.joinToString()
     val suffix = if (names.isEmpty()) "" else names.first()
     return if (mode > 0) prefix + suffix else suffix
 }
 
-// Reported: spread, but most of the branches sit inside the effect, and the advice says so.
+// Reported: spread, but most of the branches sit inside the effect, and the advice says so. States 1,
+// the effect 1 + 1 for writing a state + 2 branches, the Column 1: 6.
 @Composable
 fun <!KOTRAIL_COMPOSABLE_TOO_COMPLEX!>Router<!>(events: Observable<String>, a: Boolean, b: Boolean) {
     var x by remember { mutableStateOf(0) }
@@ -140,7 +188,21 @@ fun <!KOTRAIL_COMPOSABLE_TOO_COMPLEX!>Router<!>(events: Observable<String>, a: B
     }
 }
 
+// Reported: the Column spans the whole body and carries every point, but it is the root layout, not
+// a block to extract: no hotspot, and the advice does not name it. Six `if`s: 6.
+@Composable
+fun <!KOTRAIL_COMPOSABLE_TOO_COMPLEX!>Board<!>(a: Boolean, b: Boolean, c: Boolean, d: Boolean, e: Boolean, f: Boolean) {
+    Column {
+        if (a) Text("a")
+        if (b) Text("b")
+        if (c) Text("c")
+        if (d) Text("d")
+        if (e) Text("e")
+        if (f) Text("f")
+    }
+}
+
 /* GENERATED_FIR_TAGS: additiveExpression, andExpression, assignment, classDeclaration, comparisonExpression, const,
 elvisExpression, equalityExpression, functionDeclaration, functionalType, ifExpression, incrementDecrementExpression,
 integerLiteral, lambdaLiteral, localProperty, nullableType, objectDeclaration, primaryConstructor, propertyDeclaration,
-propertyDelegate, setter, smartcast, stringLiteral, suspend, whenExpression */
+propertyDelegate, setter, smartcast, stringLiteral, suspend, whenExpression, whenWithSubject */

@@ -364,6 +364,8 @@ data class KotrailComplexity(
     val maxScore: Int,
     /** Percent of a composable's points a block must carry to be named as the place to extract. */
     val hotspotShare: Int,
+    /** Points one block must carry on its own to be reported as a hotspot in a composable under the limit; 0 switches that off. */
+    val hotspotMin: Int,
     /** Fully qualified functions that produce a source of state besides the calls whose result is a `State`: a project's remember wrapper. */
     val stateFactories: List<String>,
 )
@@ -593,6 +595,7 @@ data class KotrailConfig(
         const val DEFAULT_FILE_MAX_LINES = 500
         const val DEFAULT_COMPLEXITY_MAX_SCORE = 15
         const val DEFAULT_COMPLEXITY_HOTSPOT_SHARE = 40
+        const val DEFAULT_COMPLEXITY_HOTSPOT_MIN = 10
         const val DEFAULT_LITERAL_LOOP_MAX_ELEMENTS = 3
         const val DEFAULT_FILE_MAX_TOP_LEVEL = 15
         val DEFAULT_NO_DATA_CLASS_SCOPE = PublicApiScope.EXPLICIT_API
@@ -1000,6 +1003,7 @@ data class KotrailConfig(
                     complexity = KotrailComplexity(
                         maxScore = int(KotrailRule.COMPOSE_COMPLEXITY, "maxScore") ?: DEFAULT_COMPLEXITY_MAX_SCORE,
                         hotspotShare = int(KotrailRule.COMPOSE_COMPLEXITY, "hotspotShare") ?: DEFAULT_COMPLEXITY_HOTSPOT_SHARE,
+                        hotspotMin = int(KotrailRule.COMPOSE_COMPLEXITY, "hotspotMin") ?: DEFAULT_COMPLEXITY_HOTSPOT_MIN,
                         stateFactories = list(KotrailRule.COMPOSE_COMPLEXITY, "stateFactories").orEmpty(),
                     ),
                     globalStateHandlerWrites = boolean(ruleNode(KotrailRule.COMPOSE_NO_GLOBAL_MUTABLE_STATE), "handlerWrites") ?: true,

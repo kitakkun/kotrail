@@ -269,6 +269,9 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Arguments: the block's points, the composable's total; reported on the block that carries most of a composable's points. */
     val COMPOSABLE_COMPLEXITY_HOTSPOT = tunable2<KtElement, String, String>("COMPOSABLE_COMPLEXITY_HOTSPOT", KotrailRule.COMPOSE_COMPLEXITY, WHOLE)
 
+    /** Arguments: the block's points, the advice for extracting it; reported on a block that carries `hotspotMin` points in a composable within the limit. */
+    val COMPOSABLE_HOTSPOT_STANDALONE = tunable2<KtElement, String, String>("COMPOSABLE_HOTSPOT_STANDALONE", KotrailRule.COMPOSE_COMPLEXITY, WHOLE)
+
     /** Argument: the parameter name; reported on a trailing non-composable function-type parameter. */
     val COMPOSABLE_TRAILING_CALLBACK = tunable1<KtParameter, String>("COMPOSABLE_TRAILING_CALLBACK", KotrailRule.COMPOSE_NO_TRAILING_CALLBACK, NAME)
 
@@ -509,6 +512,10 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         map.put2(
             KotrailDiagnostics.COMPOSABLE_COMPLEXITY_HOTSPOT,
             "[Kotrail] This block carries {0} of the composable''s {1} points: the place to extract.",
+        )
+        map.put2(
+            KotrailDiagnostics.COMPOSABLE_HOTSPOT_STANDALONE,
+            "[Kotrail] This block carries {0} points on its own: {1}.",
         )
         map.put2(
             KotrailDiagnostics.COMPOSABLE_NESTING_TOO_DEEP,

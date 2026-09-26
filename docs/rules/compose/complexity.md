@@ -1,8 +1,8 @@
 # Complexity (Compose)
 
-**Diagnostics:** `KOTRAIL_COMPOSABLE_TOO_COMPLEX` (error, on the function name), `KOTRAIL_COMPOSABLE_COMPLEXITY_HOTSPOT` (error, on the block that carries most of the points)
+**Diagnostics:** `KOTRAIL_COMPOSABLE_TOO_COMPLEX` (error, on the function name), `KOTRAIL_COMPOSABLE_COMPLEXITY_HOTSPOT` (error, on the block that carries most of the points), `KOTRAIL_COMPOSABLE_HOTSPOT_STANDALONE` (error, on a block that carries `hotspotMin` points in a composable within the limit)
 **Key:** `rules.compose.complexity` (on by default)
-**Settings:** `maxScore` (default `15`), `hotspotShare` (default `40`), `stateFactories` (default none); `0` for `maxScore` switches the limit off while the records are still written
+**Settings:** `maxScore` (default `15`), `hotspotShare` (default `40`), `hotspotMin` (default `10`), `stateFactories` (default none); `0` for `maxScore` switches the limit off while the records are still written, `0` for `hotspotMin` switches standalone hotspots off
 
 ## What it rejects
 
@@ -16,7 +16,7 @@ fun Overview(items: List<Item>, filter: String?, events: Observable<String>) {
     LaunchedEffect(events) { events.collect { count++ } }   // effects 1 + 1 for writing a state
     Column {                                                // reported as the hotspot
         items.forEach { item ->                             // branches 1
-            val label = filter ?: item.name                 // branches 1
+            val label = filter ?: item.name.trim()          // branches 1
             if (item.selected && count > 0) {               // branches 2
                 Text("$label!")
             } else if (item.name.isEmpty()) {               // branches 1
@@ -35,7 +35,8 @@ e: Overview.kt:62:5 [KOTRAIL_COMPOSABLE_TOO_COMPLEX] [Kotrail] This composable s
 e: Overview.kt:65:5 [KOTRAIL_COMPOSABLE_COMPLEXITY_HOTSPOT] [Kotrail] This block carries 5 of the composable's 8 points: the place to extract. (KOTRAIL_COMPOSABLE_COMPLEXITY_HOTSPOT)
 ```
 
-(The fixture runs with `maxScore` set to `5`; the default is `15`.)
+(The fixture runs with `maxScore` set to `5` and `hotspotMin` set to `4`; the defaults are `15`
+and `10`.)
 
 ## What it asks for
 
@@ -97,7 +98,7 @@ fine on its own; the score is what accumulates.
 | An effect (`LaunchedEffect`, `DisposableEffect`, `produceState`, `SideEffect`) | 1, +1 when it writes a `State`; the branches in its body count as branches |
 | A `launch` / `async` from a handler | 1 each |
 | A branch (`if`, a `when` case, `?:` with a computed fallback), a boolean `&&` / `||` inside such a condition, a loop | 1 each |
-| An `if` / `when` whose every result is a literal or a constant: a lookup | 1 in all |
+| An `if` / `when` whose every result is a literal, a constant or a reference (`colors.hover`, `theme.colors.idle`): a lookup | 1 in all |
 | A `CompositionLocal.current` read | 1 each |
 | A callback parameter beyond four | 1 each, at most 4 |
 
@@ -114,13 +115,17 @@ What does not count:
 - Call nesting. [Nesting limit](nesting.md) owns that.
 - `remember { }` of a plain object: a remembered formatter or a `Modifier` is not a source of
   change.
-- A fallback to a literal or a constant: `color ?: Color.Unspecified`, `name ?: ""`. It is a
-  default, not a path the reader follows; a mapping of twenty tokens with a default each scores
-  nothing. An elvis whose fallback is computed (`filter ?: item.name`, `cached ?: load()`)
-  counts.
+- A fallback to a literal, a constant or a reference: `color ?: Color.Unspecified`,
+  `name ?: ""`, `tint ?: colors.fallback`. It is a default, not a path the reader follows; a
+  mapping of twenty tokens with a default each scores nothing. An elvis whose fallback is
+  computed (`filter ?: item.name.trim()`, `cached ?: load()`) counts.
 - The rows of a lookup. `when { hovered && selected -> Color.A; hovered -> Color.B; else ->
   Color.C }` is one thing to read, so it scores one branch in all, and the `&&` in its rows
-  nothing. A `when` with a computed result in any row scores per row as usual.
+  nothing. A reference counts as a constant here: `if (hovered) colors.hover else
+  Color.Transparent` and `when { ... -> theme.colors.idle }` are lookups too. A reference is a
+  chain of property reads with no call anywhere in it (`theme.colors.idle`, `this.tint`); a
+  call is never one, so `colors.hover()` or `palette().hover` is computed. A `when` with a
+  computed result in any row scores per row as usual.
 - A boolean written as a value: `enabled = a && b`, `val active = hovered && !disabled`. Only
   an `&&` / `||` inside the condition of a counted `if`, `when` row or loop is a path.
 - `rememberUpdatedState`: it returns a `State`, but holds a fresh callback for an effect, not
@@ -141,10 +146,51 @@ points is reported on the block as the place to extract. The search goes inward 
 child still carries the share, so the block named is the smallest one worth extracting, not the
 outermost `Column`.
 
+A block that spans nearly the whole body (at least 90 percent of its source) is the root layout,
+not a block to extract: a composable whose body is one `Row { }` would otherwise be told to
+extract all of itself. Such a block is never named as the hotspot, but the search goes on inside
+it, so a block within the root layout still can be. The same holds for the advice on a spread
+score: "most of them sit in ..." never names a block that spans the body, and the advice falls
+back to the one for the kind. The `Board` fixture is one `Column` holding six `if`s; it is
+reported with no hotspot and the advice to give each variant of the UI a composable of its own.
+
 When no subtree carries the share, the points are spread, and the advice names the dominant
 kinds instead. The `Dashboard` fixture has four states, four `if` branches in one `Column` and
 one effect; the `Column` carries four points, under the five a hotspot needs, so the message
 says states and branches dominate and asks for a state holder.
+
+### Standalone hotspots
+
+A composable within the limit can still hide one block with many points: a `when (request)`
+dispatch inside a single `LaunchedEffect` can carry most of a composable that scores just under
+`maxScore`. When a composable is within the limit, the innermost block (not one that spans the
+whole body) that carries at least `hotspotMin` points on its own is reported with
+`KOTRAIL_COMPOSABLE_HOTSPOT_STANDALONE`, and the composable itself is not reported:
+
+```kotlin
+@Composable
+fun Dispatcher(request: String, id: String, title: String, subtitle: String) {
+    LaunchedEffect(request) {                   // effects 1, reported as a standalone hotspot
+        when (request) {
+            "open" -> send("open", id)          // branches 1
+            "close" -> send("close", id)        // branches 1
+            "reload" -> send("reload", id)      // branches 1
+            else -> send("unknown", id)
+        }
+    }
+    Column {
+        Text(title)
+        Text(subtitle)
+    }
+}
+```
+
+```
+e: Dispatcher.kt:3:5 [KOTRAIL_COMPOSABLE_HOTSPOT_STANDALONE] [Kotrail] This block carries 4 points on its own: move its body into a non-composable handler or an effect helper of its own. (KOTRAIL_COMPOSABLE_HOTSPOT_STANDALONE)
+```
+
+(With `hotspotMin` at `4`, as in the fixture; the default is `10`.) A composable within the limit
+and with no such block reports nothing. `0` for `hotspotMin` switches standalone hotspots off.
 
 ## The report
 
@@ -172,7 +218,11 @@ readable with `jq` or any script.
 - `KOTRAIL_COMPOSABLE_TOO_COMPLEX` is reported on the function name with the score, its
   breakdown, the limit and the advice.
 - `KOTRAIL_COMPOSABLE_COMPLEXITY_HOTSPOT` is reported on the block, in addition, when a subtree
-  carries at least `hotspotShare` percent of the total and at least 5 points.
+  carries at least `hotspotShare` percent of the total and at least 5 points, and does not span
+  the whole body.
+- `KOTRAIL_COMPOSABLE_HOTSPOT_STANDALONE` is reported on a block, and nothing on the function
+  name, when the score is within the limit but that block carries at least `hotspotMin` points
+  on its own (and `hotspotMin` is above `0`).
 
 ## When it stays quiet
 
@@ -180,6 +230,8 @@ readable with `jq` or any script.
   effect that writes a state and one branch, and is accepted at `maxScore: 5`.
 - The fallbacks are constants. `Defaults` in the fixture has six `?: ""` and `?: Labels.NONE`
   and scores nothing.
+- The branches pick references. `Swatch` in the fixture is one `Row { }` with an `if` and a
+  four-row `when` over `colors.x` and `theme.colors.x`, and a `?: theme.colors.idle`: 2 in all.
 - The function is not a composable.
 - The function is a `@Preview`.
 - `maxScore` is `0`:
@@ -205,7 +257,9 @@ accepted, `Search` at the limit accepted, `Defaults` with constant fallbacks acc
 `Styled` with a lookup, a boolean value and a `rememberUpdatedState` accepted, `Overview`
 reported with the `Column { }` hotspot, `Dashboard` reported with spread points and no hotspot,
 `presenter` (returns a value) asked for a plain function, `Router` told its branches sit in the
-effect.
+effect, `Swatch` with a whole-body `Row { }` of reference lookups accepted, `Dispatcher` within
+the limit with its effect reported as a standalone hotspot, `Board` with a whole-body `Column { }`
+reported with no hotspot and the generic advice.
 
 ## Implementation notes
 
