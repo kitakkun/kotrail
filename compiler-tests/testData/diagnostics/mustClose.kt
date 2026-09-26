@@ -4,7 +4,9 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.InputStream
+import java.io.Reader
 import java.io.StringReader
+import kotlin.concurrent.thread
 
 class Pooled : AutoCloseable {
     override fun close() {}
@@ -89,6 +91,52 @@ fun consumes(path: String, process: Process): String {
 }
 
 fun openNarrowed(path: String): BufferedReader = File(path).takeIf { it.exists() }?.bufferedReader() ?: error("missing")
+
+class Surface : AutoCloseable {
+    override fun close() {}
+}
+
+fun onDispose(block: () -> Unit) {}
+
+fun handsOffClosing() {
+    // Not reported: a bound reference hands the closing to whoever runs it.
+    val surface = Surface()
+    thread(block = surface::close)
+    val other = Surface()
+    Runtime.getRuntime().addShutdownHook(Thread(other::close))
+    val third = Surface()
+    onDispose(third::close)
+}
+
+class Wrapper(private val inner: InputStream) : InputStream() {
+    override fun read(): Int = inner.read()
+}
+
+class Bounded(private val parent: Reader, private val limit: Int) : Reader() {
+    override fun read(cbuf: CharArray, off: Int, len: Int): Int = parent.read(cbuf, off, minOf(len, limit))
+    override fun close() {}
+}
+
+class Source(private val stream: InputStream) : Reader() {
+    override fun read(cbuf: CharArray, off: Int, len: Int): Int = -1
+    override fun close() {}
+
+    // Not reported: a view over this reader; its owner closes it.
+    fun limited(n: Int): Int = Bounded(this, n).read()
+
+    // Not reported: a view over a property the class owns.
+    fun peek(): Int = Wrapper(this.stream).read()
+}
+
+fun views(parameterStream: InputStream, path: String): Int {
+    // Not reported: a view over a parameter; the caller owns the stream.
+    val view = Wrapper(parameterStream)
+    view.read()
+
+    // Reported: the wrapped stream is created here, so the wrapper carries the obligation.
+    val owned = <!KOTRAIL_RESOURCE_NOT_CLOSED!>Wrapper(FileInputStream(path))<!>
+    return owned.read()
+}
 
 /* GENERATED_FIR_TAGS: additiveExpression, assignment, classDeclaration, elvisExpression, flexibleType,
 functionDeclaration, functionalType, integerLiteral, javaFunction, lambdaLiteral, localProperty, nullableType, override,

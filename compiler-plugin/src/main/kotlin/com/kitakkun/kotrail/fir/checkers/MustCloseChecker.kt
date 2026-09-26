@@ -15,6 +15,7 @@ import org.jetbrains.kotlin.fir.declarations.FirAnonymousFunction
 import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
 import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.expressions.FirAnonymousFunctionExpression
+import org.jetbrains.kotlin.fir.expressions.FirCallableReferenceAccess
 import org.jetbrains.kotlin.fir.expressions.FirElvisExpression
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
@@ -60,8 +61,13 @@ import org.jetbrains.kotlin.types.AbstractTypeChecker
  * `inputStream` property, a pooled connection) is not one, since the rule cannot tell whether
  * the caller owns it. The resource is fine when it is the receiver of `use { }` (through scope
  * functions and safe calls), a local the body closes with `close()` or `use`, or when it leaves
- * the function: returned, assigned to a property, or passed as an argument, where whoever
- * receives it is the owner. Everything else is a leak on every path, reported at the creation.
+ * the function: returned, assigned to a property, passed as an argument, or the receiver of a
+ * bound callable reference (`thread(block = reader::close)`), where whoever receives it is the
+ * owner. Everything else is a leak on every path, reported at the creation.
+ *
+ * A creation that takes, as an argument, a resource this function did not create (a parameter,
+ * `this`, a property, a call that is not a creation) is a view over a stream someone else owns:
+ * closing it would close the parent, so the parent's owner decides and the view is not tracked.
  */
 object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
     private val CLOSEABLE = listOf(
@@ -133,7 +139,7 @@ object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
 
         override fun visitFunctionCall(functionCall: FirFunctionCall) {
             val type = resourceType(functionCall)
-            if (type != null) {
+            if (type != null && !isViewOverUnowned(functionCall)) {
                 created[functionCall] = type
                 if (isSettledAbove(functionCall)) settled += functionCall
             }
@@ -153,6 +159,15 @@ object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
             visitElement(functionCall)
         }
 
+        /** `thread(block = reader::close)`, `onDispose(reader::stop)`: the reference escapes the object, so whoever holds it closes it. */
+        override fun visitCallableReferenceAccess(callableReferenceAccess: FirCallableReferenceAccess) {
+            callableReferenceAccess.explicitReceiver?.let { receiver ->
+                receiver.localSymbol()?.let { settledLocals += it }
+                (unwrapScopeChain(receiver) as? FirFunctionCall)?.let { settled += it }
+            }
+            visitElement(callableReferenceAccess)
+        }
+
         /** `close()`, and `use { }` on a local: the local is settled either way. */
         private fun FirFunctionCall.settlesReceiver(): Boolean {
             val name = calleeReference.toResolvedCallableSymbol()?.name?.asString()
@@ -161,15 +176,35 @@ object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
 
         /** A constructor of an `AutoCloseable`, or a listed factory: a resource this body owns; an in-memory type on the ignored list is not one. */
         private fun resourceType(call: FirFunctionCall): String? {
-            val callee = call.calleeReference.toResolvedCallableSymbol() ?: return null
-            val isResource = when (callee) {
-                is FirConstructorSymbol -> CLOSEABLE.any { call.resolvedType.isSubtypeOf(it) }
-                else -> callee.callableId?.asSingleFqName()?.asString() in factories
-            }
-            if (!isResource) return null
+            if (!isCreation(call)) return null
             if (ignoredTypes.any { call.resolvedType.isSubtypeOf(ClassId.topLevel(FqName(it))) }) return null
             return call.resolvedType.renderReadable()
         }
+
+        /** A constructor of an `AutoCloseable` or a listed factory, whether or not its type is on the ignored list. */
+        private fun isCreation(call: FirFunctionCall): Boolean {
+            val callee = call.calleeReference.toResolvedCallableSymbol() ?: return false
+            return when (callee) {
+                is FirConstructorSymbol -> call.resolvedType.isCloseable()
+                else -> callee.callableId?.asSingleFqName()?.asString() in factories
+            }
+        }
+
+        /**
+         * `BoundedReader(this, n)`, `BufferedReader(parameterReader)`: an argument is a resource this
+         * function did not create, so the new object is a view over a stream its owner closes.
+         * `BufferedReader(FileReader(path))` and a wrapper over a local holding a creation stay tracked.
+         */
+        private fun isViewOverUnowned(call: FirFunctionCall): Boolean = call.argumentList.arguments.any { argument ->
+            val expression = argument.unwrapArgument().unwrapped()
+            if (expression is FirAnonymousFunctionExpression || !expression.resolvedType.isCloseable()) return@any false
+            val local = expression.localSymbol()
+            if (local != null) return@any !isCreation(locals.getValue(local))
+            val inner = unwrapScopeChain(expression) as? FirFunctionCall
+            inner == null || !isCreation(inner)
+        }
+
+        private fun ConeKotlinType.isCloseable(): Boolean = CLOSEABLE.any { isSubtypeOf(it) }
 
         /** `also { installation = it }` / `apply { field = this }`: the lambda stores the receiver in a property. */
         private fun FirFunctionCall.assignsToProperty(): Boolean {

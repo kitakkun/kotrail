@@ -40,8 +40,16 @@ because nothing in the code it is looking at says the object is a resource.
 ## When it stays quiet
 
 - The resource leaves the function: returned (`fun open() = File(p).bufferedReader()`),
-  assigned to a property (also through `also { installed = it }`), or passed as an argument.
-  Whoever receives it is the owner; the rule does not follow it.
+  assigned to a property (also through `also { installed = it }`), passed as an argument, or
+  the receiver of a bound callable reference (`thread(block = surface::close)`,
+  `onDispose(surface::close)`). Whoever receives it is the owner; the rule does not follow it.
+- The resource is a view over a stream the function does not own: a constructor or factory
+  that takes, as an argument, a resource that is not a creation in the same function (a
+  parameter, `this`, a property, the result of a call that is not a creation), as in
+  `BufferedReader(parameterReader)` or `BoundedReader(this, length)` inside the wrapped
+  reader's own class. Closing the view would close the parent, so the parent's owner decides.
+  A wrapper over a fresh creation, `BufferedReader(FileReader(path))`, is still tracked: the
+  wrapper carries the obligation of what it wraps.
 - The type is on `ignoredTypes`: an in-memory buffer holds nothing a close would free, and a
   project's `AutoCloseable` registration handles (an uninstall token) go there too:
 
@@ -63,6 +71,18 @@ because nothing in the code it is looking at says the object is a resource.
 - A local closed anywhere in the body counts as closed, whatever the paths; the rule does not
   reason about paths, so a `close()` reachable on one branch settles the resource.
 
+## Views and pointers
+
+A type that is only a pointer or a view over memory owned elsewhere, with no deallocator of its
+own (a native pointer into a buffer another object frees), is `AutoCloseable` in name only: its
+`close()` frees nothing, and closing it early can be wrong. List it in `ignoredTypes`:
+
+```yaml
+rules:
+  mustClose:
+    ignoredTypes: [java.io.ByteArrayOutputStream, okio.Buffer, com.acme.gfx.PixelView]
+```
+
 ## Related rules
 
 [Native allocation in loop](native-allocation-in-loop.md) covers the objects whose memory is
@@ -78,4 +98,7 @@ off the heap, in a loop, following the helpers a loop calls; this rule covers an
 `fir/checkers/MustCloseChecker.kt`, a function checker: one walk of the body collects the
 creations, what the elements above each one do with it (`use`, return, assignment, argument),
 the locals initialized from a creation (through scope functions, safe calls, `?:` and the
-result of a `use` / `let` / `run` lambda) and the `close()` / `use` calls on those locals.
+result of a `use` / `let` / `run` lambda), the `close()` / `use` calls on those locals and the
+bound callable references whose receiver is one of them. A creation with a closeable argument
+that is not itself a creation (directly or through a local holding one) is a view and is not
+collected.
