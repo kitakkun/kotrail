@@ -155,6 +155,9 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Arguments: what creates what (`'decode > newBitmap' creates a 'Bitmap'`), what becomes of it (`returns`, `keeps`, `lets go of`); reported on a call in a loop to a function that allocates. */
     val NATIVE_ALLOCATION_THROUGH_CALL_IN_LOOP = tunable2<KtElement, String, String>("NATIVE_ALLOCATION_THROUGH_CALL_IN_LOOP", KotrailRule.NATIVE_ALLOCATION_IN_LOOP, WHOLE)
 
+    /** Argument: the annotation as written (`@Suppress("KOTRAIL_CATCH_TOO_BROAD")`); reported on a suppression annotation with no comment on its line, above it, or above its group. */
+    val SUPPRESS_WITHOUT_REASON = tunable1<KtElement, String>("SUPPRESS_WITHOUT_REASON", KotrailRule.SUPPRESS_REASON, WHOLE)
+
     /** Argument: what was wrapped; reported on a weak reference built from an object nothing else holds. */
     val WEAK_REFERENCE_TO_FRESH_OBJECT = tunable1<KtElement, String>("WEAK_REFERENCE_TO_FRESH_OBJECT", KotrailRule.WEAK_ONLY_REFERENCE, WHOLE)
 
@@ -710,6 +713,10 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             KotrailDiagnostics.MUTATED_OUTSIDE_OWNER,
             "[Kotrail] ''{0}'' is mutated here, outside ''{1}'', which owns it: give ''{1}'' a method that makes this " +
                 "change, so every transition is in one place.",
+        )
+        map.put1(
+            KotrailDiagnostics.SUPPRESS_WITHOUT_REASON,
+            "[Kotrail] ''{0}'' silences a check without saying why: put the reason in a comment on this line or the line above.",
         )
         map.put1(
             KotrailDiagnostics.NATIVE_ALLOCATION_IN_LOOP,

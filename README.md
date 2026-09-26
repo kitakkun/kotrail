@@ -37,17 +37,18 @@ The compiler is the one gate every line of code has to pass. Kotrail puts your c
 
 ## Rules
 
-71 rules ship today, grouped by what they protect. Full pages, with every condition and
+74 rules ship today, grouped by what they protect. Full pages, with every condition and
 fixture, live under [`docs/rules/`](docs/rules/README.md); the index there lists each rule with
 its diagnostic and whether it is on by default.
 
-- **Readability and structure** (14): [Function length](docs/rules/function-length.md) and a [Live variable budget](docs/rules/live-variable-budget.md) keep a
+- **Readability and structure** (15): [Function length](docs/rules/function-length.md) and a [Live variable budget](docs/rules/live-variable-budget.md) keep a
   body small enough to hold in mind, and [File length](docs/rules/file-length.md) keeps a file from becoming a flat list of
   unrelated names; [No literal loop](docs/rules/no-literal-loop.md) unfolds `listOf(false, true).forEach { if (it) ... }`
   back into the two calls it was; [Named condition](docs/rules/named-condition.md) gives a compound `if` condition a name,
   once, instead of the same `a && b && c` in three files; [Narrative order](docs/rules/narrative-order.md) and [Parameter order](docs/rules/parameter-order.md) put helpers after
   their first caller and data before callbacks; [Narrow local scope](docs/rules/narrow-local-scope.md), [Prefer val](docs/rules/prefer-val.md) and
-  [Prefer idiom](docs/rules/prefer-idiom.md) tidy what is left.
+  [Prefer idiom](docs/rules/prefer-idiom.md) tidy what is left; [Suppress reason](docs/rules/suppress-reason.md) asks every
+  `@Suppress` of a Kotrail check for a comment that says why.
 - **Naming and style** (8): [Prefer function references](docs/rules/prefer-function-references.md) over `{ transform(it) }`,
   [Named arguments for repeated types](docs/rules/named-arguments-for-repeated-types.md) for `Padding(8, 16, 8, 16)`, no comments longer than five lines
   and no fully qualified names inline.

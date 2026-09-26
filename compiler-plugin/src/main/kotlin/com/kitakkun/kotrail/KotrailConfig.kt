@@ -394,6 +394,14 @@ data class KotrailNoExternalMutation(
     val plainVars: Boolean,
 )
 
+/** Tunables for the suppress-reason rule. From `rules.suppressReason`. */
+data class KotrailSuppressReason(
+    /** Fully qualified suppression annotations whose use must carry a reason. */
+    val annotations: List<String>,
+    /** Globs over the suppressed ids (the annotation's string arguments); an annotation is checked when one of its ids matches. */
+    val ids: List<String>,
+)
+
 /** Tunables for the native-allocation-in-loop rule. From `rules.nativeAllocationInLoop`. */
 data class KotrailNativeAllocation(
     /** Fully qualified types (subtypes included) whose instances hold native memory freed only by a cleaner. */
@@ -535,6 +543,7 @@ data class KotrailConfig(
     val nativeAllocation: KotrailNativeAllocation,
     val mustClose: KotrailMustClose,
     val noExternalMutation: KotrailNoExternalMutation,
+    val suppressReason: KotrailSuppressReason,
     val objcThrows: KotrailObjCThrows,
     val weakOnlyReference: KotrailWeakOnlyReference,
     val catchTooBroad: KotrailCatchTooBroad,
@@ -651,6 +660,9 @@ data class KotrailConfig(
             "java.io.ByteArrayInputStream", "java.io.ByteArrayOutputStream", "java.io.StringReader", "java.io.StringWriter",
             "java.io.CharArrayReader", "java.io.CharArrayWriter", "okio.Buffer",
         )
+        val DEFAULT_SUPPRESSION_ANNOTATIONS: List<String> = listOf("kotlin.Suppress", "android.annotation.SuppressLint")
+        /** Only a silenced Kotrail check needs explaining by default; `*` checks every suppression. */
+        val DEFAULT_SUPPRESSION_IDS: List<String> = listOf("KOTRAIL_*")
         val DEFAULT_NATIVE_TYPES: List<String> = listOf("org.jetbrains.skia.impl.Managed", "java.awt.image.VolatileImage")
         val DEFAULT_NATIVE_FACTORIES: List<String> = listOf(
             "java.nio.ByteBuffer.allocateDirect",
@@ -1123,6 +1135,10 @@ data class KotrailConfig(
                 noExternalMutation = KotrailNoExternalMutation(
                     types = list(KotrailRule.NO_EXTERNAL_MUTATION, "types") ?: DEFAULT_STATE_HOLDER_TYPES,
                     plainVars = boolean(ruleNode(KotrailRule.NO_EXTERNAL_MUTATION), "plainVars") ?: false,
+                ),
+                suppressReason = KotrailSuppressReason(
+                    annotations = list(KotrailRule.SUPPRESS_REASON, "annotations") ?: DEFAULT_SUPPRESSION_ANNOTATIONS,
+                    ids = list(KotrailRule.SUPPRESS_REASON, "ids") ?: DEFAULT_SUPPRESSION_IDS,
                 ),
                 objcThrows = KotrailObjCThrows(packages = list(KotrailRule.NATIVE_OBJC_THROWS, "packages").orEmpty().map(::Glob)),
                 weakOnlyReference = KotrailWeakOnlyReference(

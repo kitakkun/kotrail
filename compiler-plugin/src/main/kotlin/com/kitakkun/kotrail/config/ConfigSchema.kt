@@ -147,6 +147,10 @@ object ConfigSchema {
             Setting("types", Kind.LIST, "Fully qualified types (subtypes included) whose instances hold mutable state, written through value, update or emit; replaces the default list.", default = "androidx.compose.runtime.MutableState, kotlinx.coroutines.flow.MutableStateFlow, kotlinx.coroutines.flow.MutableSharedFlow"),
             Setting("plainVars", Kind.BOOLEAN, "Whether a write to a plain var member of another class is reported too.", default = "false"),
         ),
+        KotrailRule.SUPPRESS_REASON to listOf(
+            Setting("annotations", Kind.LIST, "Fully qualified suppression annotations whose use must carry a reason in a comment on the same line or the line above; replaces the default list.", default = "kotlin.Suppress, android.annotation.SuppressLint"),
+            Setting("ids", Kind.LIST, "Globs over the suppressed ids (the annotation's string arguments); an annotation is checked when one of its ids matches, and * checks every suppression. Replaces the default list.", default = "KOTRAIL_*"),
+        ),
         KotrailRule.NATIVE_ALLOCATION_IN_LOOP to listOf(
             Setting("types", Kind.LIST, "Fully qualified types (subtypes included) whose instances hold native memory that only a cleaner frees; replaces the default list.", default = "org.jetbrains.skia.impl.Managed, java.awt.image.VolatileImage"),
             Setting("factories", Kind.LIST, "Fully qualified factory functions that return such an instance; replaces the default list.", default = "java.nio.ByteBuffer.allocateDirect, org.jetbrains.skia.Image.Companion.makeFromEncoded, org.jetbrains.skia.Image.Companion.makeRaster, org.jetbrains.skia.Surface.Companion.makeRaster, ..."),

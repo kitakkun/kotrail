@@ -37,6 +37,7 @@ import com.kitakkun.kotrail.fir.checkers.DelayForCompletionChecker
 import com.kitakkun.kotrail.fir.checkers.DependencyRulesChecker
 import com.kitakkun.kotrail.fir.checkers.MustCloseChecker
 import com.kitakkun.kotrail.fir.checkers.NoExternalMutationChecker
+import com.kitakkun.kotrail.fir.checkers.SuppressReasonChecker
 import com.kitakkun.kotrail.fir.checkers.NativeAllocationInLoopChecker
 import com.kitakkun.kotrail.fir.inferred.InferredFactWarmup
 import com.kitakkun.kotrail.fir.checkers.NamedConditionChecker
@@ -127,6 +128,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
         JvmSyntheticForInternalChecker,
         ParameterOrderChecker,
         UnretainedChecker,
+        SuppressReasonChecker,
     )
     override val fileCheckers: Set<FirFileChecker> = setOf(
         // First, so that a file's fix record is fresh before any rule reports on the file.
