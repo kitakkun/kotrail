@@ -9,7 +9,7 @@ needed) that adds checks the standard compiler does not provide. It turns the co
 team already agrees on into compile errors, so code written by AI assistants stays on the rails
 instead of drifting a little further with every generation.
 
-> **Status: early development.** Thirty-seven rules ship today, applied through a Gradle plugin.
+> **Status: early development.** The rules are applied through a Gradle plugin.
 > Every rule can be switched off or demoted to a warning, per project and per compilation.
 > Nothing is published yet. Feedback on the direction is very welcome.
 
@@ -36,80 +36,39 @@ The compiler is the one gate every line of code has to pass. Kotrail puts your c
 
 ## Rules
 
-Full pages, with every condition and fixture, live under [`docs/rules/`](docs/rules/README.md).
+64 rules ship today, grouped by what they protect. Full pages, with every condition and
+fixture, live under [`docs/rules/`](docs/rules/README.md); the index there lists each rule with
+its diagnostic and whether it is on by default.
 
-| Rule | Rejects | Asks for |
-|---|---|---|
-| [Prefer explicit backing fields](docs/rules/prefer-explicit-backing-field.md) | `private val _items` exposed through `val items` | `val items: StateFlow<...>` with `field = MutableStateFlow(...)` (Kotlin 2.4) |
-| [Prefer private setter](docs/rules/prefer-private-setter.md) | `private var _count = 0; val count get() = _count` | `var count = 0; private set` |
-| [Narrow model parameters](docs/rules/narrow-model-parameters.md) | A data-class parameter of which the function reads only a few properties | The values it reads, or a smaller model |
-| [No pass-through return](docs/rules/no-pass-through-return.md) | A function that returns one of its inputs unchanged on every path | `Unit`, or a computed result |
-| [No pass-through function](docs/rules/no-pass-through-function.md) | `fun persist(user: User) = store(user)`: another function under a new name, same call shape | Call the target directly, or make the wrapper do something |
-| [Prefer function references](docs/rules/prefer-function-references.md) | `{ transform(it) }`, `{ it.name }`, `{ repo.save(it) }` | `::transform`, `User::name`, `repo::save` |
-| [Comment length](docs/rules/comment-length.md) | More than 5 consecutive `//` lines or a block comment longer than 5 lines | Shorter comments; KDoc for documentation |
-| [No parameter comments](docs/rules/no-parameter-comments.md) | `fun f(x: Int, /* retries */ n: Int)` | `@param n` in the KDoc, or a comment above the declaration |
-| [No FQN references](docs/rules/no-fqn-references.md) | `java.util.UUID.randomUUID()`, `val f: java.io.File` | `import java.util.UUID` and a simple name |
-| [No redundant else](docs/rules/no-redundant-else.md) | `else ->` on a `when` that already covers every case | Remove it, so a new case fails to compile |
-| [Prefer value class](docs/rules/prefer-value-class.md) | `data class UserId(val value: String)` | `@JvmInline value class UserId(val value: String)` |
-| [Forbidden call](docs/rules/forbidden-call.md) | Calls listed by name, or by a predicate on receiver, overload, extension, or context | Whatever the project prescribes instead |
-| [No not-null assertion](docs/rules/no-not-null-assertion.md) | `x!!` | `?.`, `?:`, `requireNotNull`, smart casts |
-| [No swallowed cancellation](docs/rules/no-swallowed-cancellation.md) | `catch (e: Exception)` in a suspend context that does not rethrow | Rethrow `CancellationException` or catch a narrower type |
-| [No ignored exception](docs/rules/no-ignored-exception.md) | A catch clause that never touches the caught exception | Handle it, rethrow it, or name it `_` deliberately |
-| [Prefer expression body](docs/rules/prefer-expression-body.md) | `fun f() { return x }` | `fun f() = x` |
-| [No mutable collection in public API](docs/rules/no-mutable-collection-in-public-api.md) | `fun items(): MutableList<Item>` | `List<Item>` |
-| [No data class in public API](docs/rules/no-data-class-in-public-api.md) | `public data class Config(...)` in a module with explicit API mode | A regular class with explicit `equals`/`hashCode`, or `internal` |
-| [Visibility policy](docs/rules/visibility-policy.md) | A declaration matching `visibilityPolicy.private=composable && name(*Preview)` that is not private | The visibility the policy names |
-| [Required annotation](docs/rules/required-annotation.md) | A declaration matching a policy (`where: composable && name(*Screen)`) without its annotation | The annotation the policy names |
-| [Named arguments for repeated types](docs/rules/named-arguments-for-repeated-types.md) | `Padding(8, 16, 8, 16)` | `Padding(start = 8, top = 16, end = 8, bottom = 16)` |
-| [Must be serializable](docs/rules/must-be-serializable.md) | `rememberSerializable { Filter() }`, or `save<@MustBeSerializable T>(value)`, with a type that is not `@Serializable` | `@Serializable` on the class, or an explicit serializer |
-| [No unimplemented code](docs/rules/no-unimplemented.md) | `TODO()`, `throw NotImplementedError()` (switch it off for debug and test compilations) | The implementation, or an explicit `UnsupportedOperationException` |
-| [Preconditions](docs/rules/preconditions.md) | `retry(-1)` where `retry` starts with `require(times >= 0)`; arguments folded through constants and locals, contracts carried across modules as metadata | Arguments that satisfy the callee's own `require` / `check` |
-| [Function length](docs/rules/function-length.md) | A function body over 50 lines of code (80 for a composable); blank, brace-only, and comment lines do not count | Extraction into named pieces |
-| [Null chain length](docs/rules/null-chain-length.md) | `a ?: b ?: c ?: d`; `a?.b?.c?.d` past `maxSafeCalls` | Candidates in a function or `listOfNotNull(...).firstOrNull()`; named intermediates |
-| [Implicit receivers](docs/rules/implicit-receivers.md) | `view.apply { text = "" }` when both `View` and the enclosing class have a `text` | `this.text` / `this@Screen.text`; optionally a cap on receivers in scope |
-| [Sealed when branch style](docs/rules/sealed-when-branch-style.md) | `Cancel ->` next to `is Save ->` in a `when` over a sealed type | `is Cancel ->` (or the reverse, by setting) |
-| [Prefer val](docs/rules/prefer-val.md) | `var sum = …` that nothing reassigns | `val` |
-| [Prefer idiom](docs/rules/prefer-idiom.md) | `list.size == 0`, `!s.isEmpty()`, `x == null \|\| x.isEmpty()`, `filter { }.first()`, `if (x != null) x else y` | `isEmpty()`, `isNotEmpty()`, `isNullOrEmpty()`, `first { }`, `x ?: y` |
-| [Narrow local scope](docs/rules/narrow-local-scope.md) | A local `val` read by one branch of the `if` / `when` / `try` below it | The declaration inside that branch |
-| [JvmSynthetic for internal](docs/rules/jvm-synthetic-for-internal.md) (off by default) | `internal fun reset()` in a JVM module, public to Java | `@JvmSynthetic internal fun reset()`; a warning for `internal class` |
-| [Live variable budget](docs/rules/live-variable-budget.md) | A statement where more than 7 locals and parameters are still in play | Extracting a step; narrowing declarations |
-| [Narrative order](docs/rules/narrative-order.md) | A private function declared above the function that first calls it | The helper after its first caller, so the file reads top-down |
-| [Parameter order](docs/rules/parameter-order.md) | A function-typed parameter declared before a data parameter | Data first, then the functions that act on it; callbacks can trail |
-| [Native allocation in loop](docs/rules/native-allocation-in-loop.md) | `Bitmap().apply { allocPixels(...) }` once per decoded frame, never closed | One instance reused across iterations, or `use { }` |
-| [Weak-only reference](docs/rules/weak-only-reference.md) | `WeakReference { event -> ... }`: the listener is collected at once | A strong reference held for as long as the listener should act |
-| [Catch too broad](docs/rules/catch-too-broad.md) | `catch (e: Exception) { showError() }` | Catching what the code recovers from; rethrowing the rest |
-| [Unretained](docs/rules/unretained.md) | `fun register(@Unretained job: Job)` storing `job` in a map | Keeping it through a `WeakReference`, or not at all |
-| [Required supertype](docs/rules/required-supertype.md) | `class SettingsViewModel : ViewModel()` where the policy says `BaseViewModel` | The project's base class |
-| [Dependency rules](docs/rules/dependency-rules.md) | `com.acme.ui` importing `com.acme.data.db` | Layers that only see what the policy allows |
-| [Delay for completion](docs/rules/delay-for-completion.md) | `manager.reconnect(); delay(500); send(hello)`, a fixed wait for work a call started | `reconnect` as `suspend`, or returning its `Job` to await |
-| [Unloadable code](docs/rules/unloadable-code.md) (off by default) | A `ThreadLocal`, or a shutdown hook / platform listener with no disposable, in a plugin that is unloaded | Values passed along; registrations scoped to a disposable that goes with the plugin |
-| [Window insets handling](docs/rules/compose/window-insets.md) (Compose) | A `@HandlesWindowInsets` contract that the body does not satisfy; insets applied twice | Contracts verified across modules through inferred metadata |
-| [Composition locals](docs/rules/compose/composition-locals.md) | A `@CompositionLocalRoot`, preview, or `setContent { }` below which a required local (`compositionLocalOf { error(...) }`) is read and never provided | A `CompositionLocalProvider` on the way, or a default |
-| [State delegation](docs/rules/compose/state-delegation.md) (Compose) | `val count = remember { mutableStateOf(0) }` used only through `.value` | `var count by remember { ... }` |
-| [Nesting limit](docs/rules/compose/nesting.md) (Compose) | Composable calls nested deeper than the limit | Extracting the subtree into its own composable |
-| [No trailing callback](docs/rules/compose/no-trailing-callback.md) (Compose) | `onClick: () -> Unit` as the last parameter of a UI composable | Callbacks before the optional parameters; `content` last |
-| [Composable naming](docs/rules/compose/naming.md) (Compose) | `fun userCard()` emitting UI, `fun RememberState()` returning a value | PascalCase for UI, camelCase for values |
-| [Modifier parameter](docs/rules/compose/modifier-parameter.md) (Compose) | A Modifier parameter that is misnamed, has no `Modifier` default, is out of place, or is applied twice | `modifier: Modifier = Modifier`, first optional parameter, applied once |
-| [Named callback arguments](docs/rules/compose/named-callback-arguments.md) (Compose) | `IconButton { ... }` passing a callback as a trailing lambda | `IconButton(onClick = { ... })` |
-| [Preview required](docs/rules/compose/preview-required.md) (Compose) | A UI composable whose file has no `@Preview` calling it | A preview composable next to it |
-| [Preview coverage](docs/rules/compose/preview-coverage.md) (Compose, off by default) | A public composable of a listed package that no `@Preview` in this compilation calls (libraries, screenshot tests) | A preview in the sample or test source set |
-| [Preview parameter](docs/rules/compose/preview-parameter.md) (Compose, off by default) | A `@Preview` that builds its model by hand: `UserCard(User("Ada"))` | `@PreviewParameter(UserProvider::class) user: User` |
-| [Remember keys](docs/rules/compose/remember-keys.md) (Compose) | `remember { format(amount) }`, `LaunchedEffect(Unit) { load(id) }` | `amount` and `id` among the keys, or `rememberUpdatedState` |
-| [No callback in model](docs/rules/compose/no-callback-in-model.md) (Compose) | `data class Row(val name: String, val onClick: () -> Unit)` handed to a UI composable | A value model, and `onClick: (Id) -> Unit` on the composable |
-| [Composables per file](docs/rules/compose/composables-per-file.md) (Compose) | More than 3 non-private UI composables in one file | One component (and its helpers) per file |
-| [No side effect in composition](docs/rules/compose/no-side-effect-in-composition.md) (Compose) | `scope.launch { }` in a composable body | `LaunchedEffect`, or an event handler |
-| [No hardcoded string](docs/rules/compose/no-hardcoded-string.md) (Compose, off by default) | `Text("Submit")` | `Text(stringResource(Res.string.submit))` |
-| [No unstable parameter](docs/rules/compose/no-unstable-parameter.md) (Compose, experimental, off by default) | `fun UserList(users: List<User>)`, a parameter of a class with a `var` | `ImmutableList<User>`, `@Immutable` / `@Stable` types |
-| [Test naming](docs/rules/test/naming.md) (Test) | `@Test fun returnsEmptyList()` | `` @Test fun `returns an empty list when nothing matches`() `` |
-| [Test must assert](docs/rules/test/must-assert.md) (Test) | `@Test fun loads() = runTest { viewModel.load() }` with no assertion | An assertion on the result, or a verified interaction |
-| [No sleep in tests](docs/rules/test/no-sleep.md) (Test) | `Thread.sleep(500)`, `delay(500)` outside `runTest` | `runTest` and virtual time, or awaiting the condition |
-| [Objective-C identity](docs/rules/native/objc-identity.md) (Kotlin/Native) | `view.window === window`, `WeakReference(window)` | `==` (isEqual:) or `objcPtr()`, a strong reference |
+- **Readability and structure** (11): [Function length](docs/rules/function-length.md) and a [Live variable budget](docs/rules/live-variable-budget.md) keep a
+  body small enough to hold in mind; [Narrative order](docs/rules/narrative-order.md) and [Parameter order](docs/rules/parameter-order.md) put helpers after
+  their first caller and data before callbacks; [Narrow local scope](docs/rules/narrow-local-scope.md), [Prefer val](docs/rules/prefer-val.md) and
+  [Prefer idiom](docs/rules/prefer-idiom.md) tidy what is left.
+- **Naming and style** (8): [Prefer function references](docs/rules/prefer-function-references.md) over `{ transform(it) }`,
+  [Named arguments for repeated types](docs/rules/named-arguments-for-repeated-types.md) for `Padding(8, 16, 8, 16)`, no comments longer than five lines
+  and no fully qualified names inline.
+- **API design** (7): [Prefer explicit backing fields](docs/rules/prefer-explicit-backing-field.md) instead of `_items`,
+  [Prefer value class](docs/rules/prefer-value-class.md) over a one-field data class, no mutable collection or data class in a
+  public API.
+- **Errors and concurrency** (7): [Catch too broad](docs/rules/catch-too-broad.md) and [No swallowed cancellation](docs/rules/no-swallowed-cancellation.md) for
+  the `catch (e: Exception)` reflex, [Delay for completion](docs/rules/delay-for-completion.md) for `reconnect(); delay(500)`,
+  [Preconditions](docs/rules/preconditions.md) for arguments that violate the callee's own `require`, checked across modules.
+- **Memory and lifetime** (4): [Native allocation in loop](docs/rules/native-allocation-in-loop.md) for a Skia `Bitmap` created per frame,
+  [Weak-only reference](docs/rules/weak-only-reference.md) for a listener collected at once, [Unretained](docs/rules/unretained.md) for a parameter stored
+  against its contract.
+- **Architecture policies** (6): [Forbidden call](docs/rules/forbidden-call.md), [Dependency rules](docs/rules/dependency-rules.md),
+  [Required supertype](docs/rules/required-supertype.md), [Required annotation](docs/rules/required-annotation.md) and [Visibility policy](docs/rules/visibility-policy.md) turn a project's own
+  conventions into predicates over receivers, packages, names and annotations.
+- **Compose** (17): [Remember keys](docs/rules/compose/remember-keys.md) for a `remember` or `LaunchedEffect` that freezes a value its keys
+  do not cover, checked through helpers in other modules; [No side effect in composition](docs/rules/compose/no-side-effect-in-composition.md);
+  [Window insets handling](docs/rules/compose/window-insets.md) and [Composition locals](docs/rules/compose/composition-locals.md) as contracts verified across modules; naming,
+  modifier, callback and preview conventions.
+- **Test** (3): [Test must assert](docs/rules/test/must-assert.md), [No sleep in tests](docs/rules/test/no-sleep.md), [Test naming](docs/rules/test/naming.md).
+- **Kotlin/Native** (1): [Objective-C identity](docs/rules/native/objc-identity.md) for `===` and `WeakReference` on Objective-C objects.
 
 Rules that know the exact rewrite record it while compiling, and `./gradlew kotrailFix` applies
 those fixes to the sources without compiling again; the rule pages say **Fix: automatic** where
 that holds. See [Applying fixes](docs/gradle-plugin.md#applying-fixes).
-
-Ideas not started yet: `required-annotation` (predicate-driven), `forbidden-supertype`.
 
 ## Configuration
 
