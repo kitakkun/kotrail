@@ -150,7 +150,10 @@ object ComposableRememberKeysChecker : FirFunctionCallChecker(MppCheckerKind.Com
             "${read.name} ($advice)"
         }
         if (missing.isEmpty()) return
-        reportKotrail(source, KotrailDiagnostics.EFFECT_KEY_MISSING, callee.name.asString(), missing.joinToString("; "))
+        // Several values in one effect: one lambda that does the work captures them all, and only it needs rememberUpdatedState.
+        val summary = missing.joinToString("; ") +
+            if (isEffect && missing.size >= 2) ". Or wrap what the body does with them in one lambda and read that lambda through rememberUpdatedState" else ""
+        reportKotrail(source, KotrailDiagnostics.EFFECT_KEY_MISSING, callee.name.asString(), summary)
     }
 
     /** The values of the enclosing composable that a keyless lambda would freeze: parameters and the locals computed from them. */

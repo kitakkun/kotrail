@@ -39,6 +39,23 @@ A data value read by a long-lived effect body (a `collect`, a loop, `onDispose`,
 waits for cancellation) goes in the keys if the work should restart when it changes, and
 through `rememberUpdatedState` otherwise; the message offers both.
 
+When an effect reads several values, wrapping each one is more ceremony than the effect
+deserves. One lambda that does the work captures them all, and only that lambda needs
+`rememberUpdatedState`: the lambda is recreated on every recomposition with the current
+values, and the effect reads the latest lambda.
+
+```kotlin
+val handle by rememberUpdatedState<(Request) -> Unit> { request ->
+    when (request) {
+        is Request.Home -> onNavigateHome()
+        is Request.Plugin -> onClickPlugin(request.id, sessions.firstOrNull { it.id == request.sessionId } ?: selectedSession)
+    }
+}
+LaunchedEffect(channel) { channel.requests.collect { handle(it) } }
+```
+
+The message suggests this form whenever two or more values are missing from one effect.
+
 A lambda keyed on nothing runs once and keeps the first value of whatever it captured: the
 composable shows the old price, the handler stored in a remembered holder calls the old callback,
 the collector calls the first composition's `onEvent` forever. Nothing at the call site says so,
