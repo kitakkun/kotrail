@@ -64,6 +64,7 @@ import com.kitakkun.kotrail.fir.compose.checkers.ComposableNamingChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposableNestingChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposableManifestChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposableCallbackInModelChecker
+import com.kitakkun.kotrail.fir.compose.checkers.ComposableComplexityChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposableGlobalMutableStateChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposablePreviewCoverageChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposablePreviewParameterChecker
@@ -174,6 +175,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
         LiveVariableBudgetChecker,
         ComposableSideEffectChecker,
         ComposableGlobalMutableStateChecker,
+        ComposableComplexityChecker,
         ObjCThrowsChecker,
         MustCloseChecker,
         ComposableUnstableParameterChecker,

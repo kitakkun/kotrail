@@ -60,11 +60,13 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
         registerConfigFilesAsInputs(kotlinCompilation, compilationName)
         wireFixRecords(kotlinCompilation)
         wireComposableRecords(kotlinCompilation)
+        wireComplexityRecords(kotlinCompilation)
         wireUnloadableRecords(kotlinCompilation)
         return project.provider {
             val options = optionsFor(compilationName) +
                 SubpluginOption("fixesDir", fixesDirectoryFor(kotlinCompilation).get().asFile.path) +
                 SubpluginOption("composablesDir", composablesDirectoryFor(kotlinCompilation).get().asFile.path) +
+                SubpluginOption("complexityDir", complexityDirectoryFor(kotlinCompilation).get().asFile.path) +
                 kotlinCompilation.allAssociatedCompilations.map {
                     SubpluginOption("associatedComposablesDir", composablesDirectoryFor(it).get().asFile.path)
                 } +
@@ -214,6 +216,17 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
 
     private fun unloadableDirectoryFor(kotlinCompilation: KotlinCompilation<*>): Provider<Directory> =
         project.layout.buildDirectory.dir("kotrail/unloadable/${kotlinCompilation.directoryName()}")
+
+    /** The complexity records are an output of the compile task, for the kotrailComplexity report to read. */
+    private fun wireComplexityRecords(kotlinCompilation: KotlinCompilation<*>) {
+        val directory = complexityDirectoryFor(kotlinCompilation)
+        kotlinCompilation.compileTaskProvider.configure { task ->
+            task.outputs.dir(directory).withPropertyName("kotrailComplexity")
+        }
+    }
+
+    private fun complexityDirectoryFor(kotlinCompilation: KotlinCompilation<*>): Provider<Directory> =
+        project.layout.buildDirectory.dir("kotrail/complexity/${kotlinCompilation.directoryName()}")
 
     private fun composablesDirectoryFor(kotlinCompilation: KotlinCompilation<*>): Provider<Directory> =
         project.layout.buildDirectory.dir("kotrail/composables/${kotlinCompilation.directoryName()}")

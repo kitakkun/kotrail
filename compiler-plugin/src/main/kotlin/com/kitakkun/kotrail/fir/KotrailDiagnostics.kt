@@ -263,6 +263,12 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Arguments: the depth at the reported call, the configured limit. */
     val COMPOSABLE_NESTING_TOO_DEEP = tunable2<KtElement, String, String>("COMPOSABLE_NESTING_TOO_DEEP", KotrailRule.COMPOSE_NESTING, WHOLE)
 
+    /** Arguments: the score with its breakdown and the limit, the advice; reported on a composable's name. */
+    val COMPOSABLE_TOO_COMPLEX = tunable2<KtNamedFunction, String, String>("COMPOSABLE_TOO_COMPLEX", KotrailRule.COMPOSE_COMPLEXITY, NAME)
+
+    /** Arguments: the block's points, the composable's total; reported on the block that carries most of a composable's points. */
+    val COMPOSABLE_COMPLEXITY_HOTSPOT = tunable2<KtElement, String, String>("COMPOSABLE_COMPLEXITY_HOTSPOT", KotrailRule.COMPOSE_COMPLEXITY, WHOLE)
+
     /** Argument: the parameter name; reported on a trailing non-composable function-type parameter. */
     val COMPOSABLE_TRAILING_CALLBACK = tunable1<KtParameter, String>("COMPOSABLE_TRAILING_CALLBACK", KotrailRule.COMPOSE_NO_TRAILING_CALLBACK, NAME)
 
@@ -495,6 +501,14 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             KotrailDiagnostics.PREFER_STATE_DELEGATION,
             "[Kotrail] ''{0}'' is a State that is only used through .value. Delegate it instead: " +
                 "''{1} {0} by ...'' and use ''{0}'' directly.",
+        )
+        map.put2(
+            KotrailDiagnostics.COMPOSABLE_TOO_COMPLEX,
+            "[Kotrail] This composable scores {0}: more state, effects and branches than a reader can hold at once. {1}.",
+        )
+        map.put2(
+            KotrailDiagnostics.COMPOSABLE_COMPLEXITY_HOTSPOT,
+            "[Kotrail] This block carries {0} of the composable''s {1} points: the place to extract.",
         )
         map.put2(
             KotrailDiagnostics.COMPOSABLE_NESTING_TOO_DEEP,

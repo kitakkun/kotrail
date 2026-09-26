@@ -199,6 +199,10 @@ object ConfigSchema {
         KotrailRule.COMPOSE_REMEMBER_KEYS to listOf(
             Setting("functions", Kind.LIST, "Fully qualified functions whose trailing lambda is keyed by their other arguments; replaces the default list.", default = "androidx.compose.runtime.remember, androidx.compose.runtime.saveable.rememberSaveable, androidx.compose.runtime.LaunchedEffect, androidx.compose.runtime.DisposableEffect, androidx.compose.runtime.produceState"),
         ),
+        KotrailRule.COMPOSE_COMPLEXITY to listOf(
+            Setting("maxScore", Kind.INT, "Most points a composable may score (state sources, effects, branches, coupling); 0 switches the limit off while the records for kotrailComplexity are still written.", default = "15"),
+            Setting("hotspotShare", Kind.INT, "Percent of a composable's points a block (a lambda handed to a composable, a branch) must carry to be named as the place to extract.", default = "40"),
+        ),
         KotrailRule.COMPOSE_NO_CALLBACK_IN_MODEL to listOf(
             Setting("allowComposableSlots", Kind.BOOLEAN, "Whether a @Composable function-typed property (a content slot such as a table column's cell renderer) in a model handed to a UI composable is allowed; other function types are always reported.", default = "true"),
         ),

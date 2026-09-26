@@ -24,6 +24,9 @@ object KotrailConfigurationKeys {
     /** Directories of the composable records of the compilations this one is associated with, for preview coverage. */
     val ASSOCIATED_COMPOSABLES_DIRS = CompilerConfigurationKey<List<String>>("associatedComposablesDir")
 
+    /** Directory where this compilation records every composable's complexity, for the kotrailComplexity report. */
+    val COMPLEXITY_DIR = CompilerConfigurationKey<String>("complexityDir")
+
     /** Directory where this compilation records the outbound references the unloadable-code rule looks for. */
     val UNLOADABLE_DIR = CompilerConfigurationKey<String>("unloadableDir")
 

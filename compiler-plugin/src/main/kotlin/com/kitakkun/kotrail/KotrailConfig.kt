@@ -44,6 +44,8 @@ data class KotrailComposeSettings(
     val stableTypes: List<String>,
     /** Whether a `@Composable` function-typed property of a model handed to a UI composable is allowed. */
     val allowComposableSlots: Boolean,
+    /** The complexity rule's limit and hotspot threshold. */
+    val complexity: KotrailComplexity,
     /** Whether an assignment to a global `var` inside a composable's event handler is reported, besides those made during composition. */
     val globalStateHandlerWrites: Boolean,
     /** How many previews of one file must build the same model inline before they are reported. */
@@ -356,6 +358,14 @@ data class KotrailObjCThrows(
     val packages: List<Glob>,
 )
 
+/** Tunables for the composable complexity rule. From `rules.compose.complexity`. */
+data class KotrailComplexity(
+    /** Most points a composable may score; 0 switches the limit off (records are still written). */
+    val maxScore: Int,
+    /** Percent of a composable's points a block must carry to be named as the place to extract. */
+    val hotspotShare: Int,
+)
+
 /** Tunables for the must-close rule. From `rules.mustClose`. */
 data class KotrailMustClose(
     /** Fully qualified factory functions whose result is a resource the caller owns, besides constructors of `AutoCloseable` classes. */
@@ -474,6 +484,8 @@ data class KotrailConfig(
     val associatedComposablesDirs: List<String>,
     /** Directory of the per-file unloadable-code records, or `null` to record none (the `unloadableDir` plugin option). */
     val unloadableDir: String?,
+    /** Directory of the per-file composable complexity records, or `null` to record none (the `complexityDir` plugin option). */
+    val complexityDir: String?,
     /** Record roots of the modules on the runtime class path, for the unloadable-code rule (the `bundledUnloadableDir` plugin option). */
     val bundledUnloadableDirs: List<String>,
     /** The build's root directory, for paths in messages that name a file of another module (the `rootDir` plugin option). */
@@ -577,6 +589,8 @@ data class KotrailConfig(
         const val DEFAULT_MIN_SAME_TYPE_ARGUMENTS = 3
         const val DEFAULT_FUNCTION_MAX_LINES = 50
         const val DEFAULT_FILE_MAX_LINES = 500
+        const val DEFAULT_COMPLEXITY_MAX_SCORE = 15
+        const val DEFAULT_COMPLEXITY_HOTSPOT_SHARE = 40
         const val DEFAULT_LITERAL_LOOP_MAX_ELEMENTS = 3
         const val DEFAULT_FILE_MAX_TOP_LEVEL = 15
         val DEFAULT_NO_DATA_CLASS_SCOPE = PublicApiScope.EXPLICIT_API
@@ -707,6 +721,7 @@ data class KotrailConfig(
                 composablesDir = configuration.get(KotrailConfigurationKeys.COMPOSABLES_DIR),
                 associatedComposablesDirs = configuration.get(KotrailConfigurationKeys.ASSOCIATED_COMPOSABLES_DIRS).orEmpty(),
                 unloadableDir = configuration.get(KotrailConfigurationKeys.UNLOADABLE_DIR),
+                complexityDir = configuration.get(KotrailConfigurationKeys.COMPLEXITY_DIR),
                 bundledUnloadableDirs = configuration.get(KotrailConfigurationKeys.BUNDLED_UNLOADABLE_DIRS).orEmpty(),
                 rootDir = configuration.get(KotrailConfigurationKeys.ROOT_DIR),
             )
@@ -962,6 +977,7 @@ data class KotrailConfig(
                 enabled = boolean(tree, "enabled") ?: true,
                 fixesDir = null,
                 composablesDir = null,
+                complexityDir = null,
                 associatedComposablesDirs = emptyList(),
                 unloadableDir = null,
                 bundledUnloadableDirs = emptyList(),
@@ -979,6 +995,10 @@ data class KotrailConfig(
                     maxComposablesPerFile = int(KotrailRule.COMPOSE_COMPOSABLES_PER_FILE, "max") ?: DEFAULT_MAX_COMPOSABLES_PER_FILE,
                     countOverloadsSeparately = boolean(ruleNode(KotrailRule.COMPOSE_COMPOSABLES_PER_FILE), "countOverloadsSeparately") ?: false,
                     allowComposableSlots = boolean(ruleNode(KotrailRule.COMPOSE_NO_CALLBACK_IN_MODEL), "allowComposableSlots") ?: true,
+                    complexity = KotrailComplexity(
+                        maxScore = int(KotrailRule.COMPOSE_COMPLEXITY, "maxScore") ?: DEFAULT_COMPLEXITY_MAX_SCORE,
+                        hotspotShare = int(KotrailRule.COMPOSE_COMPLEXITY, "hotspotShare") ?: DEFAULT_COMPLEXITY_HOTSPOT_SHARE,
+                    ),
                     globalStateHandlerWrites = boolean(ruleNode(KotrailRule.COMPOSE_NO_GLOBAL_MUTABLE_STATE), "handlerWrites") ?: true,
                     previewParameterMinPreviews = int(KotrailRule.COMPOSE_PREVIEW_PARAMETER, "minPreviews") ?: 2,
                     rememberKeysFunctions = list(KotrailRule.COMPOSE_REMEMBER_KEYS, "functions") ?: DEFAULT_REMEMBER_KEYS_FUNCTIONS,

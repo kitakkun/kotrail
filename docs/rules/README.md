@@ -97,7 +97,7 @@ Rules a project declares in its configuration: what may call, extend, depend on 
 | Visibility policy | on | `KOTRAIL_VISIBILITY_TOO_WIDE` | [visibility-policy.md](visibility-policy.md) |
 | Must be serializable | on | `KOTRAIL_TYPE_NOT_SERIALIZABLE` | [must-be-serializable.md](must-be-serializable.md) |
 
-## Compose (18)
+## Compose (19)
 
 | Rule | Default | Diagnostics | Page |
 |---|---|---|---|
@@ -105,6 +105,7 @@ Rules a project declares in its configuration: what may call, extend, depend on 
 | Composition locals | on | `KOTRAIL_COMPOSITION_LOCAL_NOT_PROVIDED`, `KOTRAIL_COMPOSITION_LOCAL_NOT_PROVIDED_AT_ENTRY_POINT` | [compose/composition-locals.md](compose/composition-locals.md) |
 | State delegation | on | `KOTRAIL_PREFER_STATE_DELEGATION` | [compose/state-delegation.md](compose/state-delegation.md) |
 | Nesting limit | on | `KOTRAIL_COMPOSABLE_NESTING_TOO_DEEP` | [compose/nesting.md](compose/nesting.md) |
+| Complexity | on | `KOTRAIL_COMPOSABLE_TOO_COMPLEX`, `KOTRAIL_COMPOSABLE_COMPLEXITY_HOTSPOT` | [compose/complexity.md](compose/complexity.md) |
 | No trailing callback | on | `KOTRAIL_COMPOSABLE_TRAILING_CALLBACK` | [compose/no-trailing-callback.md](compose/no-trailing-callback.md) |
 | Composable naming | on | `KOTRAIL_COMPOSABLE_NAMING` | [compose/naming.md](compose/naming.md) |
 | Modifier parameter | on | `KOTRAIL_COMPOSABLE_MODIFIER_PARAMETER` | [compose/modifier-parameter.md](compose/modifier-parameter.md) |

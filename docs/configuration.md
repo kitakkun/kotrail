@@ -148,6 +148,8 @@ own; a rule not listed has none.
 | | `required` | `[]` | Locals to treat as required although their default does not throw. |
 | | `roots` | `[setContent, Window, application, ...]` | Functions whose composable lambda is a root of composition. Replaces the default list. |
 | | `known` | `{}` | What a library composable reads and provides, keyed by its fully qualified name. See [Composition locals](rules/compose/composition-locals.md#knowledge-base). |
+| `compose.complexity` | `maxScore` | `15` | Most points a composable may score: state sources, effects, branches and coupling. `0` switches the limit off; the records for the report are still written. |
+| | `hotspotShare` | `40` | Percent of a composable's points a block (a lambda handed to a composable, a branch) must carry to be named as the place to extract. |
 | `compose.nesting` | `maxDepth` | `5` | Nesting limit for composable calls; `0` disables the rule. |
 | `compose.noTrailingCallback` | `allowedPackages` | `[androidx.compose.runtime]` | Packages whose composables may still take a callback as a trailing lambda. |
 | `compose.previewRequired` | `scope` | `internal` | Which UI composables need a `@Preview` in their file: `public`, `internal` (public and internal), or `all`. |
