@@ -47,7 +47,7 @@ object InferredFactWarmup {
             val config = context.session.kotrailConfig
             if (!config.inferredMetadata) return
             for (fact in functionFacts(context.session)) {
-                if (config.isEnabled(fact.rule)) fact.warm(declaration.symbol)
+                if (fact.rules.any(config::isEnabled)) fact.warm(declaration.symbol)
             }
         }
     }
@@ -57,7 +57,7 @@ object InferredFactWarmup {
         override fun check(declaration: FirRegularClass) {
             if (!context.session.kotrailConfig.inferredMetadata) return
             val classes = context.session.preconditionService.classes
-            if (context.session.kotrailConfig.isEnabled(classes.rule)) classes.warm(declaration.symbol)
+            if (classes.rules.any(context.session.kotrailConfig::isEnabled)) classes.warm(declaration.symbol)
         }
     }
 
@@ -66,7 +66,7 @@ object InferredFactWarmup {
         override fun check(declaration: FirProperty) {
             if (!context.session.kotrailConfig.inferredMetadata) return
             val locals = context.session.compositionLocalService
-            if (!context.session.kotrailConfig.isEnabled(locals.rule)) return
+            if (locals.rules.none(context.session.kotrailConfig::isEnabled)) return
             locals.isRequiredBySource(declaration.symbol)
             locals.getters.warm(declaration.symbol)
         }

@@ -55,7 +55,7 @@ data class NoOpConditions(val conditions: List<Cond>, val hint: String)
  * [NoOpNames.KNOWN_FUNCTIONS].
  */
 class NoOpService(session: FirSession) : InferredFactService<FirNamedFunctionSymbol, NoOpConditions>(session) {
-    override val rule: KotrailRule get() = KotrailRule.NO_OP_CALL
+    override val rules: List<KotrailRule> get() = listOf(KotrailRule.NO_OP_CALL)
     override val annotation: ClassId get() = NoOpNames.INFERRED_NO_OP_WHEN
     override val factName: String get() = InferredFactNames.NO_OP_WHEN
     override val parameters: List<Name> get() = listOf(NoOpNames.CONDITIONS_PARAM)

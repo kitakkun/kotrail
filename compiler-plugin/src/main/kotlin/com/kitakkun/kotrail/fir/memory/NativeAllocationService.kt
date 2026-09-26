@@ -65,7 +65,7 @@ import org.jetbrains.kotlin.types.AbstractTypeChecker
  * memoized per symbol; a recorder warms the cache so that the IR writer only reads it.
  */
 class NativeAllocationService(session: FirSession) : InferredFactService<FirNamedFunctionSymbol, NativeAllocationService.Allocation?>(session) {
-    override val rule: KotrailRule get() = KotrailRule.NATIVE_ALLOCATION_IN_LOOP
+    override val rules: List<KotrailRule> get() = listOf(KotrailRule.NATIVE_ALLOCATION_IN_LOOP)
     override val annotation: ClassId get() = INFERRED_NATIVE_ALLOCATION
     override val factName: String get() = InferredFactNames.NATIVE_ALLOCATION
     override val parameters: List<Name> get() = listOf(TYPES, PATH)

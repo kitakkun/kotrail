@@ -26,7 +26,7 @@ import org.jetbrains.kotlin.name.Name
  * warms the cache for every composable it looks into; the IR writer only reads cached results.
  */
 class EffectCaptureService(session: FirSession) : InferredFactService<FirNamedFunctionSymbol, Set<String>>(session) {
-    override val rule: KotrailRule get() = KotrailRule.COMPOSE_REMEMBER_KEYS
+    override val rules: List<KotrailRule> get() = listOf(KotrailRule.COMPOSE_REMEMBER_KEYS)
     override val annotation: ClassId get() = ComposeNames.INFERRED_EFFECT_CAPTURE
     override val factName: String get() = InferredFactNames.EFFECT_CAPTURE
     override val parameters: List<Name> get() = listOf(CAPTURED_PARAM)

@@ -40,7 +40,7 @@ import org.jetbrains.kotlin.name.CallableId
  * and, through the FIR declaration attached to each IR function, by the IR metadata writer.
  */
 class WindowInsetsHandlingService(session: FirSession) : InferredFactService<FirNamedFunctionSymbol, InsetsAnalysis>(session) {
-    override val rule: KotrailRule get() = KotrailRule.COMPOSE_WINDOW_INSETS
+    override val rules: List<KotrailRule> get() = listOf(KotrailRule.COMPOSE_WINDOW_INSETS)
     override val annotation: ClassId get() = WindowInsetsNames.INFERRED_WINDOW_INSETS_HANDLING
     override val factName: String get() = InferredFactNames.WINDOW_INSETS
     override val parameters: List<Name> get() = listOf(WindowInsetsNames.HANDLED_PARAM)

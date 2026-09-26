@@ -33,8 +33,8 @@ import org.jetbrains.kotlin.name.Name
  * either.
  */
 abstract class InferredFactService<S : FirBasedSymbol<*>, T>(session: FirSession) : FirExtensionSessionComponent(session) {
-    /** The rule whose being on switches the analysis and the metadata on. */
-    abstract val rule: KotrailRule
+    /** The rules that read the fact: any of them being on switches the analysis and the metadata on. */
+    abstract val rules: List<KotrailRule>
 
     /** The annotation the fact travels as in a klib. */
     abstract val annotation: ClassId

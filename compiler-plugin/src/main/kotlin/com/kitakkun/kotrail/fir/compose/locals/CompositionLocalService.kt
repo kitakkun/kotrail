@@ -87,7 +87,7 @@ class CompositionLocalService(session: FirSession) : InferredFactService<FirName
     private val settings get() = session.kotrailConfig.compose.compositionLocals
     private val requiredCache = HashMap<FirPropertySymbol, Boolean>()
 
-    override val rule: KotrailRule get() = KotrailRule.COMPOSE_COMPOSITION_LOCALS
+    override val rules: List<KotrailRule> get() = listOf(KotrailRule.COMPOSE_COMPOSITION_LOCALS)
     override val annotation: ClassId get() = CompositionLocalNames.INFERRED_COMPOSITION_LOCALS
     override val factName: String get() = InferredFactNames.COMPOSITION_LOCALS
     override val parameters: List<Name> get() = listOf(CompositionLocalNames.READS_PARAM, CompositionLocalNames.PROVIDES_PARAM)
@@ -116,7 +116,7 @@ class CompositionLocalService(session: FirSession) : InferredFactService<FirName
      * a reader like any composable, so that a private local behind a public getter is still seen. Same annotation, on the property.
      */
     val getters: InferredFactService<FirPropertySymbol, LocalsAnalysis> = object : InferredFactService<FirPropertySymbol, LocalsAnalysis>(session) {
-        override val rule: KotrailRule get() = this@CompositionLocalService.rule
+        override val rules: List<KotrailRule> get() = this@CompositionLocalService.rules
         override val annotation: ClassId get() = this@CompositionLocalService.annotation
         override val factName: String get() = InferredFactNames.COMPOSITION_LOCAL_GETTER
         override val parameters: List<Name> get() = this@CompositionLocalService.parameters

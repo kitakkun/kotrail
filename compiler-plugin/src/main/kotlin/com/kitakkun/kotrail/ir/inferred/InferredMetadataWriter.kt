@@ -41,8 +41,8 @@ import java.io.File
  * the FIR declaration attached as its metadata source.
  */
 interface InferredFact<D : IrDeclaration, F : FirDeclaration> {
-    /** The rule that reads the fact: it is written while that rule is enabled. */
-    val rule: KotrailRule
+    /** The rules that read the fact: it is written while any of them is enabled. */
+    val rules: List<KotrailRule>
 
     /** The fact's name in a facts file, one of [com.kitakkun.kotrail.inferred.InferredFactNames]. */
     val name: String
@@ -72,7 +72,7 @@ typealias InferredClassFact = InferredFact<IrClass, FirRegularClass>
 class FactsFileOutput(val file: File?, val module: () -> String?, val rootDir: String?)
 
 /**
- * Writes every inferred fact whose rule is on for the modules that compile against this one:
+ * Writes every inferred fact with one of its rules on for the modules that compile against this one:
  * for every exported (non-private, non-local, directly in a file or a class) function, property
  * or class, unless it already carries the fact's annotation (a hand-written contract).
  *

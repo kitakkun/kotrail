@@ -40,7 +40,7 @@ import org.jetbrains.kotlin.name.Name
  * the cache for every named function it sees, so that the IR writer only reads cached results.
  */
 class AsyncWorkService(session: FirSession) : InferredFactService<FirNamedFunctionSymbol, Boolean>(session) {
-    override val rule: KotrailRule get() = KotrailRule.DELAY_FOR_COMPLETION
+    override val rules: List<KotrailRule> get() = listOf(KotrailRule.DELAY_FOR_COMPLETION)
     override val annotation: ClassId get() = INFERRED_STARTS_ASYNC_WORK
     override val factName: String get() = InferredFactNames.STARTS_ASYNC_WORK
     override val parameters: List<Name> get() = emptyList()

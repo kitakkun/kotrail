@@ -73,7 +73,7 @@ class PreconditionService(session: FirSession) : FirExtensionSessionComponent(se
 
     /** One fact shape for functions and classes: a hand-written or inferred annotation always wins over the body. */
     private inner class Fact<S : FirBasedSymbol<*>>(override val factName: String, private val analysis: (S) -> List<Cond>) : InferredFactService<S, List<Cond>>(session) {
-        override val rule: KotrailRule get() = KotrailRule.PRECONDITIONS
+        override val rules: List<KotrailRule> get() = listOf(KotrailRule.PRECONDITIONS)
         override val annotation: ClassId get() = PreconditionNames.INFERRED_PRECONDITIONS
         override val parameters: List<Name> get() = listOf(PreconditionNames.CONDITIONS_PARAM)
         override val empty: List<Cond> get() = emptyList()
