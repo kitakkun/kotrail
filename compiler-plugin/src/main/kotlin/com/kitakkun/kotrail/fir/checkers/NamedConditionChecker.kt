@@ -17,14 +17,21 @@ import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirLoopExpressionChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirWhenExpressionChecker
 import org.jetbrains.kotlin.fir.expressions.FirBooleanOperatorExpression
+import org.jetbrains.kotlin.fir.expressions.FirComparisonExpression
 import org.jetbrains.kotlin.fir.expressions.FirDoWhileLoop
 import org.jetbrains.kotlin.fir.expressions.impl.FirElseIfTrueCondition
 import org.jetbrains.kotlin.fir.expressions.FirEqualityOperatorCall
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
+import org.jetbrains.kotlin.fir.expressions.FirFunctionCallOrigin
 import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
 import org.jetbrains.kotlin.fir.expressions.FirLoop
 import org.jetbrains.kotlin.fir.expressions.FirOperation
+import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
+import org.jetbrains.kotlin.fir.expressions.FirResolvedQualifier
+import org.jetbrains.kotlin.fir.expressions.FirSmartCastExpression
+import org.jetbrains.kotlin.fir.expressions.FirThisReceiverExpression
+import org.jetbrains.kotlin.fir.expressions.FirTypeOperatorCall
 import org.jetbrains.kotlin.fir.expressions.FirWhenExpression
 import org.jetbrains.kotlin.fir.expressions.FirWhileLoop
 import org.jetbrains.kotlin.fir.extensions.FirExtensionSessionComponent
@@ -40,10 +47,11 @@ import org.jetbrains.kotlin.types.ConstantValueKind
  *
  * ```kotlin
  * if (!visible && !includeInvisible && children.isEmpty()) return   // reported when written twice
- * if (a && b && c && d) submit()                                    // reported: four operands inline
+ * if (list.contains(x) || a || b || c) submit()                     // reported: three operators, not a plain list
  * if (a && b || c) submit()                                         // reported: && and || unparenthesized
  * val canSubmit = a && b && c && d; if (canSubmit) submit()         // fine: the decision has a name
  * if (event.isKeyDown && event.key == Key.Q) quit()                 // fine: reads in place
+ * if (c.isLetterOrDigit() || c == '.' || c == '-' || c == '_') ok() // fine: a uniform list of simple terms
  * ```
  *
  * An inline condition says what it computes but not what it decides; a name does. The same
@@ -53,7 +61,8 @@ import org.jetbrains.kotlin.types.ConstantValueKind
  * Duplicates are found through a module-wide index kept in memory while the module is checked,
  * so the occurrence checked first stays quiet and every later one names it. An `&&` whose left
  * side is a null comparison (`x != null && x.isEmpty()`) is a smart-cast guard and does not count
- * toward the lone-condition limit. Arguments of `require`, `check` and the like, `when (subject)`
+ * toward the lone-condition limit, and a uniform chain (one operator throughout over simple terms,
+ * see [isUniformChain]) reads as a list and is not held to that limit. Arguments of `require`, `check` and the like, `when (subject)`
  * branches, test functions and test source sets are not looked at.
  */
 object NamedConditionChecker {
@@ -105,7 +114,7 @@ object NamedConditionChecker {
         }
         when {
             shape.mixed -> reportKotrail(source, KotrailDiagnostics.CONDITION_TOO_COMPOUND, collapse(text), "mixed && and ||")
-            settings.maxOperators > 0 && shape.counted >= settings.maxOperators ->
+            settings.maxOperators > 0 && shape.counted >= settings.maxOperators && !condition.isUniformChain() ->
                 reportKotrail(source, KotrailDiagnostics.CONDITION_TOO_COMPOUND, collapse(text), shape.counted.toString())
         }
     }
@@ -140,6 +149,67 @@ object NamedConditionChecker {
             visit(operator.rightOperand)
         }
     }
+
+    /**
+     * Whether this condition is a flat chain of one operator kind (`&&` only or `||` only, at every
+     * level) whose leaves are all simple terms: `a || b || c || d`,
+     * `c.isLetterOrDigit() || c == '.' || c == '-'`. Such a chain reads as a list, not as a decision.
+     * A negated chain, a nested chain of the other kind or a leaf that is not simple makes it non-uniform.
+     */
+    private fun FirExpression.isUniformChain(): Boolean {
+        val root = this as? FirBooleanOperatorExpression ?: return false
+        fun isUniform(expression: FirExpression): Boolean =
+            if (expression is FirBooleanOperatorExpression) {
+                expression.kind == root.kind && isUniform(expression.leftOperand) && isUniform(expression.rightOperand)
+            } else {
+                expression.isSimpleTerm()
+            }
+        return isUniform(root)
+    }
+
+    /**
+     * A property access (any receiver chain without call arguments), a call without value arguments,
+     * a comparison (`==`, `!=`, `<`, `>`, `<=`, `>=`, `in`, `is`) over simple values or literals, or
+     * the negation of one of these.
+     */
+    private fun FirExpression.isSimpleTerm(): Boolean = when (val expression = unwrapSmartCast()) {
+        is FirEqualityOperatorCall -> expression.argumentList.arguments.all { it.isSimpleValue() }
+        is FirComparisonExpression -> {
+            val call = expression.compareToCall
+            call.explicitReceiver?.isSimpleValue() == true && call.argumentList.arguments.all { it.isSimpleValue() }
+        }
+        is FirTypeOperatorCall ->
+            (expression.operation == FirOperation.IS || expression.operation == FirOperation.NOT_IS) &&
+                expression.argumentList.arguments.all { it.isSimpleValue() }
+        is FirFunctionCall -> when {
+            expression.isNotCall() -> expression.explicitReceiver?.isSimpleTerm() == true
+            expression.isInCall() ->
+                expression.explicitReceiver?.isSimpleValue() == true && expression.argumentList.arguments.all { it.isSimpleValue() }
+            else -> expression.isSimpleValue()
+        }
+        else -> expression.isSimpleValue()
+    }
+
+    /** A literal, `this`, a qualifier, or a property access or argument-less call on such a receiver chain. */
+    private fun FirExpression.isSimpleValue(): Boolean = when (val expression = unwrapSmartCast()) {
+        is FirLiteralExpression, is FirThisReceiverExpression, is FirResolvedQualifier -> true
+        is FirPropertyAccessExpression -> expression.explicitReceiver?.isSimpleValue() ?: true
+        is FirFunctionCall ->
+            expression.origin == FirFunctionCallOrigin.Regular &&
+                expression.argumentList.arguments.isEmpty() &&
+                (expression.explicitReceiver?.isSimpleValue() ?: true)
+        else -> false
+    }
+
+    private fun FirExpression.unwrapSmartCast(): FirExpression =
+        if (this is FirSmartCastExpression) originalExpression.unwrapSmartCast() else this
+
+    private fun FirFunctionCall.isNotCall(): Boolean =
+        calleeReference.name.asString() == "not" && argumentList.arguments.isEmpty()
+
+    /** `x in xs` is `xs.contains(x)` with the operator origin; a spelled-out `contains(x)` is a call with an argument. */
+    private fun FirFunctionCall.isInCall(): Boolean =
+        origin == FirFunctionCallOrigin.Operator && calleeReference.name.asString() == "contains"
 
     /** `!x` is `x.not()` in FIR; the operators under it still count. */
     private fun FirExpression.unwrapNot(): FirExpression {

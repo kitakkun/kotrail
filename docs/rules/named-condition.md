@@ -23,8 +23,8 @@ fun draw(node: Node, options: Options) {
 and a lone inline condition too compound to read in place:
 
 ```kotlin
-if (form.isValid && !form.isSubmitting && user != null && user.canPost) submit()   // reported: 3 operators
-if (isAdmin && hasToken || isGuest) open()                                          // reported: && and || mixed
+if (form.isValid && !form.isSubmitting && user != null && user.canPost(thread)) submit()   // reported: 3 operators
+if (isAdmin && hasToken || isGuest) open()                                                  // reported: && and || mixed
 ```
 
 ## What it asks for
@@ -50,8 +50,9 @@ one decision with two definitions: one copy gets the new case and the other does
   such condition elsewhere in the same module: another function, another file. The message names
   the other occurrence as `File.kt:line`.
 - `KOTRAIL_CONDITION_TOO_COMPOUND`: such a condition with at least `maxOperators` operators
-  (`!` does not count), or with an `||` whose operand is an unparenthesized `&&` (`a && b || c`).
-  A condition reported as duplicated is not reported again as compound.
+  (`!` does not count) that is not a uniform chain (see below), or with an `||` whose operand is
+  an unparenthesized `&&` (`a && b || c`). A condition reported as duplicated is not reported
+  again as compound.
 
 ## When it stays quiet
 
@@ -61,6 +62,16 @@ one decision with two definitions: one copy gets the new case and the other does
   (`event.isKeyDown && event.key == Key.Q`).
 - An `&&` whose left side is a null comparison (`x != null && x.isEmpty()`) is a smart-cast guard,
   not a decision, and does not count toward `maxOperators`.
+- A uniform chain, however long: one operator kind throughout (`&&` only or `||` only, with no
+  mixing at any level) over simple terms, as in `r1.isNone || r2.isNone || r3.isNone || r4.isNone`
+  or `c.isLetterOrDigit() || c == '.' || c == '-' || c == '_'`. A simple term is a property
+  access (any receiver chain without call arguments), a call without value arguments
+  (`c.isLetterOrDigit()`), a comparison (`==`, `!=`, `<`, `>`, `<=`, `>=`, `in`, `is`) whose sides
+  are simple terms or literals, or the negation of one of these. Such a chain reads as a list
+  ("any of these", "all of these"), not as a decision whose parts interact, and naming it rarely
+  says more than the list itself. A term that is a call with arguments (`list.contains(x)`), a
+  nested boolean expression (`!(c || d)`) or an elvis makes the chain non-uniform, and it counts
+  as usual. Uniform chains are still checked for duplicates.
 - `when (subject)` branches (`is A, is B ->`, `in range ->`, constants), and the arguments of
   `require`, `check`, `assert` and any other call: they are not control-flow conditions.
 - Test functions (by `test.annotations`) and files in a test source set (`src/test/`,
@@ -69,6 +80,9 @@ one decision with two definitions: one copy gets the new case and the other does
   module is checked, in the order the compiler visits files, so the copy seen first finds nothing
   and every later copy is reported, naming the first. Which copy counts as first across files
   depends on that order; at least one of every pair is reported.
+- Known miss: copies of a condition in different source sets of one module (`commonMain` and
+  `jvmMain`, for instance) are separate compilations, each with its own index, so they are not
+  matched against each other.
 
 ## Related rules
 

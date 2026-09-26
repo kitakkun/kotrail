@@ -22,7 +22,7 @@ fun draw(node: Node, options: Options) {
 }
 
 fun submit(a: Boolean, b: Boolean, c: Boolean, d: Boolean) {
-    if (<!KOTRAIL_CONDITION_TOO_COMPOUND!>a && b && c && d<!>) println("submit")
+    if (<!KOTRAIL_CONDITION_TOO_COMPOUND!>a && b && c && ready(d)<!>) println("submit")
 }
 
 fun mixed(a: Boolean, b: Boolean, c: Boolean) {
@@ -31,11 +31,27 @@ fun mixed(a: Boolean, b: Boolean, c: Boolean) {
 }
 
 fun loops(a: Boolean, b: Boolean, c: Boolean, d: Boolean) {
-    while (<!KOTRAIL_CONDITION_TOO_COMPOUND!>a || b || c || d<!>) break
+    while (<!KOTRAIL_CONDITION_TOO_COMPOUND!>a || b || c || ready(d)<!>) break
     when {
         <!KOTRAIL_CONDITION_TOO_COMPOUND!>a && b && !(c || d)<!> -> println("when")
         else -> Unit
     }
+}
+
+fun ready(flag: Boolean): Boolean = flag
+
+class Flags(val a: Boolean, val b: Boolean, val c: Boolean, val d: Boolean)
+
+// A flat chain of one operator over simple terms reads as a list and is not held to maxOperators.
+fun uniformChains(flags: Flags, c: Char, x: String, y: String, z: String, w: String) {
+    if (flags.a || flags.b || flags.c || flags.d) println("any flag")
+    if (c.isLetterOrDigit() || c == '.' || c == '-' || c == '_') println("name character")
+    if (x.isEmpty() && y.isEmpty() && z.isEmpty() && w.isEmpty()) println("all empty")
+}
+
+// A term that is a call with arguments makes the chain a decision again.
+fun nonUniformChain(list: List<String>, x: String, a: Boolean, b: Boolean, c: Boolean) {
+    if (<!KOTRAIL_CONDITION_TOO_COMPOUND!>list.contains(x) || a || b || c<!>) println("non-uniform")
 }
 
 fun named(a: Boolean, b: Boolean, c: Boolean, d: Boolean) {
