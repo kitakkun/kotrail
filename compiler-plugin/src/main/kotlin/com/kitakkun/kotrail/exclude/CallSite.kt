@@ -79,6 +79,12 @@ sealed class CallPredicate {
         override fun matches(site: CallSite): Boolean = site.isComposable
     }
 
+    /** A named predicate from the configuration's `predicates`, standing for [expansion]; rendered as `name (= expansion)`. */
+    data class Alias(val name: String, val expansion: CallPredicate) : CallPredicate() {
+        override fun matches(site: CallSite): Boolean = expansion.matches(site)
+        override fun toString(): String = "$name (= $expansion)"
+    }
+
     data class Not(val operand: CallPredicate) : CallPredicate() {
         override fun matches(site: CallSite): Boolean = !operand.matches(site)
     }
@@ -94,13 +100,17 @@ sealed class CallPredicate {
 
 /** Parses a [CallPredicate]; the grammar is [PredicateGrammar]'s. */
 object CallPredicateParser {
-    fun parse(text: String): CallPredicate = PredicateGrammar.parse(text, ATOMS)
+    /** The built-in atoms; a named predicate may not take one of these names. */
+    val ATOM_NAMES: Set<String> = setOf("fqn", "constructor", "extension", "receiver", "context", "params", "annotated", "suspend", "composable")
+
+    fun parse(text: String, aliases: Map<String, String> = emptyMap()): CallPredicate = PredicateGrammar.parse(text, ATOMS, aliases)
 
     private val ATOMS = PredicateGrammar.Atoms(
         atom = ::atom,
         not = CallPredicate::Not,
         and = CallPredicate::And,
         or = CallPredicate::Or,
+        alias = CallPredicate::Alias,
     )
 
     private fun atom(name: String, argument: String?, fail: (String) -> Nothing): CallPredicate {

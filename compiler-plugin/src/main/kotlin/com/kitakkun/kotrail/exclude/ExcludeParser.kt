@@ -19,7 +19,13 @@ package com.kitakkun.kotrail.exclude
  * the offending position, and the configuration loader turns that into a build failure.
  */
 object ExcludeParser {
-    fun parse(text: String): ExcludePredicate = PredicateGrammar.parse(text, ATOMS)
+    /** The built-in atoms; a named predicate may not take one of these names. */
+    val ATOM_NAMES: Set<String> = setOf(
+        "package", "file", "path", "name", "class", "function", "property", "annotated", "extension", "context",
+        "visibility", "override", "suspend", "inline", "composable", "test",
+    )
+
+    fun parse(text: String, aliases: Map<String, String> = emptyMap()): ExcludePredicate = PredicateGrammar.parse(text, ATOMS, aliases)
 
     class ExcludeSyntaxException(message: String) : RuntimeException(message)
 
@@ -30,6 +36,7 @@ object ExcludeParser {
         not = ExcludePredicate::Not,
         and = ExcludePredicate::And,
         or = ExcludePredicate::Or,
+        alias = ExcludePredicate::Alias,
     )
 
     private fun atom(name: String, argument: String?, fail: (String) -> Nothing): ExcludePredicate {

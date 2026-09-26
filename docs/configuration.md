@@ -34,7 +34,7 @@ rules:
       - kotlin.io.println
       - kotlinx.coroutines.GlobalScope.launch
     calls:
-      blockingInCompose: fqn(kotlinx.coroutines.runBlocking) && composable
+      blocking: fqn(kotlinx.coroutines.runBlocking)
 
   requiredAnnotation:
     policies:
@@ -56,6 +56,7 @@ schema is generated from the same table the plugin validates against.
 | `note` | Text appended to every Kotrail message. See [Project notes](#project-notes). |
 | `exclude` | A predicate over locations; matching diagnostics of every rule are dropped. See [Excluding by pattern](#excluding-by-pattern). |
 | `fix` | `false` stops every rule from recording fixes for `kotrailFix`; the diagnostics are still reported. A rule's own `fix` wins. |
+| `predicates.<name>` | A predicate under a name of the project's own (`screen: composable && name(*Screen)`), which `exclude`, the policy rules and `forbiddenCall` then use by that name. See [Named predicates](#named-predicates). |
 | `generated.paths` | Globs over source file paths (`/` separated) of generated code, which every rule skips. Default `[*/build/generated/*]`; replaces the default. See [Generated code](#generated-code). |
 | `generated.annotations` | Fully qualified annotations that mark a file (`@file:Generated`) or a declaration as generated, which every rule skips. Default: `javax.annotation.processing.Generated`, `javax.annotation.Generated`, `jakarta.annotation.Generated`; replaces the default list. |
 | `test.annotations` | Fully qualified annotations that mark a function as a test; shared by the test rules and the `test` predicate. Replaces the default list. |
@@ -272,6 +273,51 @@ Globs match the whole value; `*` stands for any run of characters (dots included
 
 The predicates describe **where** a diagnostic is, never **what** it found. "Skip calls to
 functions from package X" is a rule-specific question, and lives in that rule's own settings.
+
+## Named predicates
+
+The same condition tends to recur across policies: what a screen is, what a preview is, what
+counts as blocking. The top-level `predicates` mapping names such conditions once, and every
+place that takes a predicate (`exclude`, `visibilityPolicy`, `requiredAnnotation`,
+`requiredSupertype`, `forbiddenCall`) then uses the name as if it were a built-in:
+
+```yaml
+predicates:
+  screen: composable && name(*Screen)
+  preview: composable && annotated(androidx.compose.ui.tooling.preview.Preview)
+  viewModel: class && name(*ViewModel)
+  blocking: fqn(kotlinx.coroutines.runBlocking)
+rules:
+  visibilityPolicy:
+    private: preview
+  requiredAnnotation:
+    policies:
+      screens: screen -> com.acme.ScreenRoute
+  requiredSupertype:
+    policies:
+      viewModels: viewModel -> com.acme.BaseViewModel
+  forbiddenCall:
+    calls:
+      noBlocking: blocking
+  functionLength:
+    exclude: preview
+```
+
+A name is letters only and stands for its text, substituted where it is used: a name may refer
+to other names, and the built-in `composable` is the same kind of thing, only predefined. A
+named predicate is parsed in the language of the place that uses it, so `screen` fits a
+declaration predicate and `blocking` a call predicate; using one where its atoms do not exist is
+an error at that place. There are no parameters: `screen(Home)` is an error, since a predicate
+with arguments would be a language of its own.
+
+Three things are refused when the configuration is read, each with its position: a name that is
+a built-in predicate (`composable`, `name`, `fqn`, ...), which would silently change every
+predicate that uses it; a cycle (`a: b`, `b: a`), reported as `a -> b -> a`; and a second
+definition of a name in a later configuration layer. A vocabulary is declared once, in the
+project's root file or a convention plugin, and shared by every module through
+[layering](#layering-and-test-source-sets); a layer may unset a name with `~` but not redefine
+it. Wherever a predicate is rendered, a name shows with its expansion, as
+`screen (= composable && name(*Screen))`, so the indirection never hides what matched.
 
 ## Layering and test source sets
 

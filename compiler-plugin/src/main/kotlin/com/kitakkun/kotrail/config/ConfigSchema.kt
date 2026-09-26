@@ -42,6 +42,9 @@ object ConfigSchema {
         Setting("fix", Kind.BOOLEAN, "Whether fixes are recorded for kotrailFix at all; false turns the task into a no-op until a rule says fix: true.", default = "true"),
     )
 
+    /** The top-level `predicates` mapping: names for predicates that policies and exclusions then use by name. */
+    const val PREDICATES_DESCRIPTION = "Named predicates: each entry names a predicate (composable && name(*Screen), fqn(kotlinx.coroutines.runBlocking)) that exclude, the policy rules and forbiddenCall then use by its name. A name is letters only, may not be a built-in predicate, and is declared once for the whole build."
+
     /** What counts as generated code, which every rule skips; under a `generated` mapping. */
     val GENERATED = listOf(
         Setting("paths", Kind.LIST, "Globs over source file paths (with / separators) of generated code, which every rule skips; replaces the default.", default = "*/build/generated/*"),
@@ -257,6 +260,7 @@ object ConfigSchema {
         sb.append("  \"title\": \"Kotrail configuration\",\n")
         sb.append("  \"type\": \"object\",\n  \"additionalProperties\": false,\n  \"properties\": {\n")
         sb.append(TOP_LEVEL.joinToString(",\n") { "    ${q(it.name)}: ${setting(it)}" })
+        sb.append(",\n    \"predicates\": {\"type\": \"object\", \"additionalProperties\": {\"type\": \"string\"}, \"description\": ${q(PREDICATES_DESCRIPTION)}}")
         sb.append(",\n    \"generated\": {\"type\": \"object\", \"additionalProperties\": false, \"properties\": {")
         sb.append(GENERATED.joinToString(", ") { "${q(it.name)}: ${setting(it)}" })
         sb.append("}},\n    \"test\": {\"type\": \"object\", \"additionalProperties\": false, \"properties\": {")

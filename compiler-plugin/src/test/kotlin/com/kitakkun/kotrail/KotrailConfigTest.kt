@@ -150,6 +150,49 @@ class KotrailConfigTest {
     }
 
     @Test
+    fun `named predicates are shared by every policy and declared once`() {
+        val config = load(
+            """
+            predicates:
+              screen: composable && name(*Screen)
+              preview: composable && annotated(com.acme.Preview)
+              blocking: fqn(kotlinx.coroutines.runBlocking)
+            rules:
+              visibilityPolicy:
+                private: preview
+              requiredAnnotation:
+                policies:
+                  screens: screen -> com.acme.Route
+              forbiddenCall:
+                calls:
+                  noBlocking: blocking
+            """,
+            """
+            predicates:
+              preview: ~
+            rules:
+              visibilityPolicy:
+                private: screen
+            """,
+        )
+        val screens = config.requiredAnnotations.single()
+        assertEquals("screens", screens.name)
+        assertTrue(screens.predicate.toString().startsWith("screen (= "), screens.predicate.toString())
+        assertTrue(config.visibilityPolicy.private.toString().startsWith("screen (= "), config.visibilityPolicy.private.toString())
+        assertTrue(config.forbiddenCall.entries.single().predicate.toString().startsWith("blocking (= "), config.forbiddenCall.entries.single().predicate.toString())
+
+        assertFails("predicates:\n  composable: annotated(androidx.compose.runtime.Composable)", "kotrail-0.yaml:2:3", "built-in predicate")
+        assertFails("predicates:\n  view_model: class", "kotrail-0.yaml:2:3", "letters only")
+        assertFails("predicates:\n  screen: composable && nam(*Screen)", "kotrail-0.yaml:2:11", "in the named predicate 'screen'")
+        assertFails("predicates:\n  a: b\n  b: a", "kotrail-0.yaml:2:6", "cycle: a -> b -> a")
+        assertFails("predicates:\n  screen: fqn(x)\nrules:\n  visibilityPolicy:\n    private: screen", "kotrail-0.yaml:5:14", "unknown predicate 'fqn'")
+        val redefined = assertThrows(CliOptionProcessingException::class.java) {
+            load(listOf("predicates:\n  screen: composable", "predicates:\n  screen: class"), emptyList())
+        }
+        assertTrue(redefined.message!!.contains("already defined at kotrail-0.yaml:2:3"), redefined.message)
+    }
+
+    @Test
     fun `unknown keys, wrong shapes, and bad values fail with a position`() {
         assertFails("rules:\n  functionLength:\n    maxLine: 60", "kotrail-0.yaml:3:5", "unknown key 'maxLine'")
         assertFails("rules:\n  compose:\n    nesting: off", "kotrail-0.yaml:2:3", "unknown rule 'compose'")

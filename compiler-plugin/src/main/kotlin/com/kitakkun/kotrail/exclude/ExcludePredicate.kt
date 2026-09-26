@@ -92,6 +92,12 @@ sealed class ExcludePredicate {
         override fun matches(site: ReportSite): Boolean = false
     }
 
+    /** A named predicate from the configuration's `predicates`, standing for [expansion]; rendered as `name (= expansion)`. */
+    data class Alias(val name: String, val expansion: ExcludePredicate) : ExcludePredicate() {
+        override fun matches(site: ReportSite): Boolean = expansion.matches(site)
+        override fun toString(): String = "$name (= $expansion)"
+    }
+
     data class Not(val operand: ExcludePredicate) : ExcludePredicate() {
         override fun matches(site: ReportSite): Boolean = !operand.matches(site)
     }

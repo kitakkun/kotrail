@@ -30,6 +30,41 @@ class ExcludeParserTest {
     }
 
     @Test
+    fun `a named predicate expands in place, through other names, and reports a cycle`() {
+        val aliases = mapOf(
+            "screen" to "composable && name(*Screen)",
+            "publicScreen" to "screen && visibility(public)",
+            "loopA" to "loopB || function",
+            "loopB" to "loopA",
+        )
+        val predicate = ExcludeParser.parse("publicScreen || class(Legacy*)", aliases)
+        assertEquals(
+            ExcludePredicate.Or(
+                ExcludePredicate.Alias(
+                    "publicScreen",
+                    ExcludePredicate.And(
+                        ExcludePredicate.Alias("screen", ExcludePredicate.And(ExcludePredicate.Composable, ExcludePredicate.NameIs(Glob("*Screen")))),
+                        ExcludePredicate.VisibilityIs("public"),
+                    ),
+                ),
+                ExcludePredicate.ClassIs(Glob("Legacy*")),
+            ),
+            predicate,
+        )
+        assertTrue(predicate.matches(site(name = "HomeScreen", composable = true, visibility = "public")))
+        assertFalse(predicate.matches(site(name = "HomeScreen", composable = true, visibility = "private")))
+        // A rendering shows the name and what it stands for, so the indirection does not hide anything.
+        val rendered = predicate.toString()
+        assertTrue(rendered.startsWith("Or(left=publicScreen (= And(left=screen (= And(left=Composable"), rendered)
+        val cycle = assertThrows(ExcludeParser.ExcludeSyntaxException::class.java) { ExcludeParser.parse("loopA", aliases) }
+        assertTrue(cycle.message!!.contains("cycle: loopA -> loopB -> loopA"), cycle.message)
+        val argument = assertThrows(ExcludeParser.ExcludeSyntaxException::class.java) { ExcludeParser.parse("screen(Home)", aliases) }
+        assertTrue(argument.message!!.contains("takes no argument"), argument.message)
+        val inner = assertThrows(ExcludeParser.ExcludeSyntaxException::class.java) { ExcludeParser.parse("broken", mapOf("broken" to "fqn(x)")) }
+        assertTrue(inner.message!!.contains("in the named predicate 'broken'") && inner.message!!.contains("unknown predicate 'fqn'"), inner.message)
+    }
+
+    @Test
     fun `globs match the whole value and treat star as any run of characters`() {
         assertTrue(Glob("com.acme.gen*").matches("com.acme.generated"))
         assertFalse(Glob("com.acme.gen*").matches("org.com.acme.generated"))
@@ -64,6 +99,7 @@ class ExcludeParserTest {
         visibility: String = "public",
         override: Boolean = false,
         kind: DeclarationKind = DeclarationKind.FUNCTION,
+        composable: Boolean = false,
     ) = ReportSite(
         kind = kind,
         packageName = "custom",
@@ -78,7 +114,7 @@ class ExcludeParserTest {
         isOverride = override,
         isSuspend = suspend,
         isInline = false,
-        isComposable = false,
+        isComposable = composable,
         isTest = false,
     )
 }

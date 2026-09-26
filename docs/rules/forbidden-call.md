@@ -60,7 +60,7 @@ rules:
       stringLog: fqn(com.acme.log) && extension(kotlin.String)
       bareRead: fqn(com.acme.io.read) && !context(com.acme.io.IoScope)
       legacyParse: fqn(com.acme.parse) && params(kotlin.String, kotlin.Int)
-      blockingInCompose: fqn(kotlinx.coroutines.runBlocking) && composable
+      blocking: fqn(kotlinx.coroutines.runBlocking)
 ```
 
 Entries are keyed by name, so a later configuration file can replace one, add one, or drop one

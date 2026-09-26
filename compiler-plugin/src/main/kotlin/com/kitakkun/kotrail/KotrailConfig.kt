@@ -630,6 +630,9 @@ data class KotrailConfig(
         /** What a user-chosen entry name may look like: letters, digits, dots, `_` and `-`, starting with a letter. */
         val ENTRY_NAME = Regex("[A-Za-z][A-Za-z0-9_.-]*")
 
+        /** A named predicate is read by the grammar as a bare identifier, which is letters only. */
+        private val PREDICATE_NAME = Regex("[A-Za-z]+")
+
         @OptIn(ExperimentalCompilerApi::class)
         fun from(configuration: CompilerConfiguration): KotrailConfig = try {
             val tree = loadTree(
@@ -659,6 +662,7 @@ data class KotrailConfig(
                 if (!file.isFile) throw ConfigException("config file not found: $path")
                 val parsed = KotrailYaml.parse(file.name, file.readText())
                 validate(parsed)
+                rejectRedefinedPredicates(tree as ConfigNode.Mapping, parsed)
                 tree = ConfigTree.merge(tree, desugar(parsed)) ?: tree
             }
             for (option in options) {
@@ -761,11 +765,35 @@ data class KotrailConfig(
             return ConfigNode.Mapping(top, tree.at)
         }
 
+        /**
+         * A named predicate is one vocabulary for the whole build: a later layer may take one away
+         * (`screen: ~`) but not give it another meaning, which would silently change every policy
+         * that uses it.
+         */
+        private fun rejectRedefinedPredicates(base: ConfigNode.Mapping, over: ConfigNode.Mapping) {
+            val existing = base["predicates"] as? ConfigNode.Mapping ?: return
+            val incoming = over["predicates"] as? ConfigNode.Mapping ?: return
+            for ((name, node) in incoming.entries) {
+                val earlier = existing[name] ?: continue
+                if (node is ConfigNode.Null || earlier is ConfigNode.Null) continue
+                throw ConfigException("${incoming.keyAt(name)}: the named predicate '$name' is already defined at ${existing.keyAt(name)}; a shared vocabulary is declared once, and a layer may only unset it with ~")
+            }
+        }
+
         /** Rejects unknown keys and wrong shapes with the offending position, before anything is merged. */
         private fun validate(tree: ConfigNode.Mapping) {
-            val topNames = ConfigSchema.TOP_LEVEL.map { it.name } + listOf("generated", "test", "rules")
+            val topNames = ConfigSchema.TOP_LEVEL.map { it.name } + listOf("predicates", "generated", "test", "rules")
             for (key in tree.entries.keys) {
                 if (key !in topNames) throw ConfigException("${tree.keyAt(key)}: unknown key '$key'; expected one of ${topNames.joinToString()}")
+            }
+            tree["predicates"]?.let { predicates ->
+                if (predicates is ConfigNode.Null) return@let
+                if (predicates !is ConfigNode.Mapping) throw ConfigException("${predicates.at}: predicates must be a mapping of names to predicates")
+                for ((name, node) in predicates.entries) {
+                    if (!PREDICATE_NAME.matches(name)) throw ConfigException("${predicates.keyAt(name)}: '$name' is not a valid predicate name: letters only, as in viewModel")
+                    if (name in ExcludeParser.ATOM_NAMES || name in CallPredicateParser.ATOM_NAMES) throw ConfigException("${predicates.keyAt(name)}: '$name' is a built-in predicate and cannot be redefined")
+                    if (node !is ConfigNode.Scalar && node !is ConfigNode.Null) throw ConfigException("${node.at}: the predicate '$name' must be one line, such as composable && name(*Screen)")
+                }
             }
             (tree["test"] as? ConfigNode.Mapping)?.let { test ->
                 for (key in test.entries.keys) {
@@ -821,6 +849,27 @@ data class KotrailConfig(
     /** Reads the merged tree into settings, converting and checking every value where it is used. */
     private class Reader(private val tree: ConfigNode.Mapping) {
         private val rules = tree["rules"] as? ConfigNode.Mapping
+
+        /** The project's named predicates, by name; each checked to parse in one of the two predicate languages before anything uses it. */
+        private val aliases: Map<String, String> = (tree["predicates"] as? ConfigNode.Mapping)?.entries.orEmpty()
+            .mapNotNull { (name, node) -> (node as? ConfigNode.Scalar)?.let { name to it } }
+            .also { entries ->
+                val texts = entries.associate { (name, node) -> name to node.value }
+                for ((name, node) in entries) {
+                    if (node.value.isBlank()) fail(node, "the predicate '$name' is empty")
+                    // Parsing the name itself expands it under its own name, so a cycle is reported from it.
+                    try {
+                        ExcludeParser.parse(name, texts)
+                    } catch (declaration: ExcludeParser.ExcludeSyntaxException) {
+                        try {
+                            CallPredicateParser.parse(name, texts)
+                        } catch (_: ExcludeParser.ExcludeSyntaxException) {
+                            fail(node, declaration.message.orEmpty())
+                        }
+                    }
+                }
+            }
+            .associate { (name, node) -> name to node.value }
 
         fun read(): KotrailConfig {
             val switches = KotrailRule.switchable.associateWith { rule -> boolean(ruleNode(rule), "enabled") ?: rule.defaultEnabled }
@@ -1050,7 +1099,7 @@ data class KotrailConfig(
         private fun predicate(mapping: ConfigNode.Mapping?, key: String): ExcludePredicate? = scalar(mapping, key)?.let {
             if (it.value.isBlank()) return null
             try {
-                ExcludeParser.parse(it.value)
+                ExcludeParser.parse(it.value, aliases)
             } catch (e: ExcludeParser.ExcludeSyntaxException) {
                 fail(it, e.message.orEmpty())
             }
@@ -1073,7 +1122,7 @@ data class KotrailConfig(
         private fun callPredicate(node: ConfigNode): CallPredicate {
             val scalar = node as? ConfigNode.Scalar ?: fail(node, "a forbidden call is a call predicate, for example fqn(kotlin.io.println)")
             return try {
-                CallPredicateParser.parse(scalar.value)
+                CallPredicateParser.parse(scalar.value, aliases)
             } catch (e: ExcludeParser.ExcludeSyntaxException) {
                 fail(node, e.message.orEmpty())
             }
@@ -1100,7 +1149,7 @@ data class KotrailConfig(
             }
             if (value.isEmpty() || value.any { it.isWhitespace() }) fail(node, "'$valueKey' of policy '$name' must be one name, got '$value'")
             val predicate = try {
-                ExcludeParser.parse(where)
+                ExcludeParser.parse(where, aliases)
             } catch (e: ExcludeParser.ExcludeSyntaxException) {
                 fail(node, e.message.orEmpty())
             }
@@ -1136,7 +1185,7 @@ data class KotrailConfig(
             }
             if (annotation.isEmpty() || annotation.any { it.isWhitespace() }) fail(node, "'annotation' must be one fully qualified name, got '$annotation'")
             val predicate = try {
-                ExcludeParser.parse(where)
+                ExcludeParser.parse(where, aliases)
             } catch (e: ExcludeParser.ExcludeSyntaxException) {
                 fail(node, e.message.orEmpty())
             }

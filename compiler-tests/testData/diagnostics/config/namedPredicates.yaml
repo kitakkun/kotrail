@@ -1,0 +1,13 @@
+predicates:
+  screen: composable && name(*Screen)
+  preview: composable && annotated(custom.Preview)
+  blocking: fqn(custom.runBlocking)
+rules:
+  visibilityPolicy:
+    private: preview
+  requiredAnnotation:
+    policies:
+      screens: screen -> custom.Route
+  forbiddenCall:
+    calls:
+      noBlocking: blocking
