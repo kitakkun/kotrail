@@ -60,6 +60,10 @@ rules:
 
 - The counts are within the limits, or the relevant limit is `0`.
 - The `?:` chain ends in `return` or `throw`, and the rest is within the limit.
+- The candidates are plain names or literals: `explicit ?: inherited ?: default ?: "none"` is a
+  priority list, and the chain is its clearest form. Only a computed candidate (a safe-call
+  path, a call) counts, since each of those hides a path of its own; naming such candidates
+  first is what turns a reported chain into a quiet one.
 - The chain is split across named locals or functions, which is what the rule asks for.
 
 ## Fixtures
