@@ -123,6 +123,27 @@ class Editor {
     }
 }
 
+class Factory {
+    // Not reported: an object this function has just built is still being configured.
+    fun build(): Counter = Counter().apply { count = 1 }
+
+    fun buildAlso(): Counter = Counter().also { it.count = 2 }
+
+    fun buildWith(): Scene = with(Scene()) { capturing.value = true; this }
+
+    fun buildLocal(): Counter {
+        val counter = Counter()
+        counter.count = 3
+        return counter
+    }
+
+    // Reported: a received object belongs to someone else.
+    fun reuse(counter: Counter): Counter {
+        <!KOTRAIL_STATE_WRITTEN_OUTSIDE_OWNER!>counter.count = 4<!>
+        return counter.apply { <!KOTRAIL_STATE_WRITTEN_OUTSIDE_OWNER!>count = 5<!> }
+    }
+}
+
 class SceneTest {
     // Not reported: a test reaches into what it checks.
     @Test

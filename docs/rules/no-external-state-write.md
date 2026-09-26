@@ -61,7 +61,7 @@ for the property it can see, because the class offers nothing better.
   `Session.active.value = true` from another class is reported.
 - An extension function declared outside the owner is outside it, even when it writes through
   its own receiver (`fun Scene.stop() { capturing.value = false }`), and so is a
-  `with(scene) { ... }` or `scene.apply { ... }` block.
+  `with(scene) { ... }` or `scene.apply { ... }` block on an object the function received.
 
 ## When it stays quiet
 
@@ -74,8 +74,15 @@ for the property it can see, because the class offers nothing better.
 - The owner is a bag of values: a data class, or a class with no functions of its own (only
   properties and a constructor, a `MutableState` constructor property included). There is no
   behavior to add a method to, and setting its fields is what it is for.
-- The owner comes from another module or a library: its API is what its authors chose, and
-  there is no method to add from here.
+- The object is one the function is still configuring: the receiver or parameter of `apply`,
+  `also`, `run`, `with` or `let` called directly on a call result
+  (`Config().apply { name = "x" }`, `Config().also { it.name = "x" }`), or a local initialized
+  by a constructor call (`val config = Config(); config.name = "x"`). Until it is handed out, the
+  object is the function's own; handing it out later does not change that.
+- A plain `var` of a class from another module or a library: its API is what its authors
+  chose, and `paint.color = x` is how it is meant to be used. A state holder of one of `types` is
+  reported whatever module declares it: a class that exposes a `MutableStateFlow` to the rest of
+  the project is the case that matters most, and libraries do not expose those.
 - The code is a test: a function annotated with one of `test.annotations`, or any file in a
   test source set (`src/test/`, `src/jvmTest/`, `src/androidUnitTest/` and the like). A test
   is expected to reach into what it checks.

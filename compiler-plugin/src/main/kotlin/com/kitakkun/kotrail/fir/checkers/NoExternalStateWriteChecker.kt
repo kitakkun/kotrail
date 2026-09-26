@@ -24,6 +24,7 @@ import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.declarations.utils.isData
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
+import org.jetbrains.kotlin.fir.expressions.FirAnonymousFunctionExpression
 import org.jetbrains.kotlin.fir.expressions.FirDesugaredAssignmentValueReferenceExpression
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
@@ -31,14 +32,19 @@ import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirSmartCastExpression
 import org.jetbrains.kotlin.fir.expressions.FirThisReceiverExpression
 import org.jetbrains.kotlin.fir.expressions.FirVariableAssignment
+import org.jetbrains.kotlin.fir.expressions.unwrapArgument
 import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
 import org.jetbrains.kotlin.fir.resolve.fullyExpandedType
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirAnonymousFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirReceiverParameterSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.ConeStarProjection
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
@@ -81,12 +87,18 @@ import org.jetbrains.kotlin.types.AbstractTypeChecker
  * and lambdas and local functions in them); a write through `this` of a class, which includes a
  * subclass changing what it inherited; locals and top-level properties (`compose.noGlobalMutableState`
  * covers global state); an owner that is a data class or has no functions of its own, a bag of
- * values with no behavior to add a method to; an owner from another module or a library, whose
- * API is what its authors chose; a test function and a file in a test source set. An extension
- * function declared outside the owner is outside it, even when it writes through its receiver.
+ * values with no behavior to add a method to; for a plain `var`, an owner from another module or
+ * a library, whose API is what its authors chose (a state holder of one of `types` is reported
+ * whatever module declares it: a class that exposes a `MutableStateFlow` to other modules is the
+ * case that matters most); a test function and a file in a test source set. An object the
+ * function is still configuring is its own, not someone else's state: the receiver of an
+ * `apply`, `also`, `run`, `with` or `let` on a call result (`Config().apply { name = "x" }`), and
+ * a local initialized by a constructor call. An extension function declared outside the owner is
+ * outside it, even when it writes through its receiver.
  */
 object NoExternalStateWriteChecker {
     private val UPDATE_CALLS = setOf("update", "emit", "tryEmit", "compareAndSet", "getAndUpdate", "updateAndGet")
+    private val SCOPE_FUNCTIONS = setOf("kotlin.apply", "kotlin.also", "kotlin.run", "kotlin.with", "kotlin.let")
 
     object Assignments : FirVariableAssignmentChecker(MppCheckerKind.Common) {
         context(context: CheckerContext, reporter: DiagnosticReporter)
@@ -105,7 +117,7 @@ object NoExternalStateWriteChecker {
             // `owner.state.value = x`: the write is to `state`, whatever declares `value`.
             val holder = lValue.explicitReceiver?.unwrapSmartCast() as? FirPropertyAccessExpression
             if (holder != null && holder.resolvedType.isStateHolder(session, settings)) {
-                reportIfOutside(expression.source ?: lValue.source, holder, session)
+                reportIfOutside(expression.source ?: lValue.source, holder, session, plainVar = false)
                 return
             }
             if (lValue.dispatchReceiver?.resolvedType?.isStateHolder(session, settings) == true) return
@@ -115,7 +127,7 @@ object NoExternalStateWriteChecker {
             if (!symbol.isVar) return
             val setterVisibility = symbol.setterSymbol?.visibility ?: symbol.visibility
             if (setterVisibility != Visibilities.Public && setterVisibility != Visibilities.Internal) return
-            reportIfOutside(expression.source ?: lValue.source, lValue, session)
+            reportIfOutside(expression.source ?: lValue.source, lValue, session, plainVar = !isStateDelegate)
         }
     }
 
@@ -128,19 +140,25 @@ object NoExternalStateWriteChecker {
             val holder = expression.explicitReceiver?.unwrapSmartCast() as? FirPropertyAccessExpression ?: return
             val session = context.session
             if (!holder.resolvedType.isStateHolder(session, config.noExternalStateWrite)) return
-            reportIfOutside(expression.source, holder, session)
+            reportIfOutside(expression.source, holder, session, plainVar = false)
         }
     }
 
-    /** Reports the write at [source] to the member [access] names unless the code at hand is inside its owner. */
+    /**
+     * Reports the write at [source] to the member [access] names unless the code at hand is inside
+     * its owner. [plainVar] is a write to a plain `var` rather than to a state holder: only those
+     * are limited to owners compiled in this module.
+     */
     context(context: CheckerContext, reporter: DiagnosticReporter)
-    private fun reportIfOutside(source: KtSourceElement?, access: FirPropertyAccessExpression, session: FirSession) {
+    private fun reportIfOutside(source: KtSourceElement?, access: FirPropertyAccessExpression, session: FirSession, plainVar: Boolean) {
         if (source == null) return
         val property = access.calleeReference.toResolvedCallableSymbol() as? FirPropertySymbol ?: return
         val owner = ownerOf(property, session) ?: return
-        if (owner.origin != FirDeclarationOrigin.Source) return
+        if (plainVar && owner.origin != FirDeclarationOrigin.Source) return
         if (owner.isBag()) return
-        if (access.dispatchReceiver?.unwrapSmartCast().isThisOfClass()) return
+        val receiver = access.dispatchReceiver?.unwrapSmartCast()
+        if (receiver.isThisOfClass()) return
+        if (receiver != null && isFreshObject(receiver)) return
         if (context.containingDeclarations.any { it is FirClassSymbol<*> && it.classId == owner.classId }) return
         if (isInTest(session)) return
         val name = access.source?.text?.toString() ?: property.name.asString()
@@ -161,6 +179,38 @@ object NoExternalStateWriteChecker {
         return declarationSymbols.none { member ->
             member is FirNamedFunctionSymbol && member.source?.kind !is KtFakeSourceElementKind
         }
+    }
+
+    /**
+     * Whether [receiver] is an object the function is still configuring: the receiver or parameter
+     * of a scope function called on a call result (`Config().apply { name = "x" }`,
+     * `with(Config()) { ... }`), or a local initialized by a constructor call.
+     */
+    context(context: CheckerContext)
+    private fun isFreshObject(receiver: FirExpression): Boolean {
+        val bound = when (receiver) {
+            is FirThisReceiverExpression -> receiver.calleeReference.boundSymbol
+            is FirPropertyAccessExpression -> receiver.calleeReference.toResolvedCallableSymbol()
+            else -> null
+        }
+        if (bound is FirPropertySymbol && bound.isLocal) {
+            val initializer = bound.resolvedInitializer?.unwrapSmartCast() as? FirFunctionCall ?: return false
+            return initializer.calleeReference.toResolvedCallableSymbol() is FirConstructorSymbol
+        }
+        val lambda = when (bound) {
+            is FirReceiverParameterSymbol -> bound.containingDeclarationSymbol as? FirAnonymousFunctionSymbol
+            is FirValueParameterSymbol -> bound.containingDeclarationSymbol as? FirAnonymousFunctionSymbol
+            else -> null
+        } ?: return false
+        val call = context.containingElements.lastOrNull { element ->
+            element is FirFunctionCall && element.argumentList.arguments.any {
+                (it.unwrapArgument() as? FirAnonymousFunctionExpression)?.anonymousFunction?.symbol == lambda
+            }
+        } as? FirFunctionCall ?: return false
+        val callee = call.calleeReference.toResolvedCallableSymbol()?.callableId?.asSingleFqName()?.asString()
+        if (callee !in SCOPE_FUNCTIONS) return false
+        val target = if (callee == "kotlin.with") call.argumentList.arguments.firstOrNull()?.unwrapArgument() else call.explicitReceiver
+        return target?.unwrapSmartCast() is FirFunctionCall
     }
 
     private fun FirExpression?.isThisOfClass(): Boolean =
