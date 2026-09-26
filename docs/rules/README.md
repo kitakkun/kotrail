@@ -99,7 +99,7 @@ Rules a project declares in its configuration: what may call, extend, depend on 
 | Visibility policy | on | `KOTRAIL_VISIBILITY_TOO_WIDE` | [visibility-policy.md](visibility-policy.md) |
 | Must be serializable | on | `KOTRAIL_TYPE_NOT_SERIALIZABLE` | [must-be-serializable.md](must-be-serializable.md) |
 
-## Compose (19)
+## Compose (20)
 
 | Rule | Default | Diagnostics | Page |
 |---|---|---|---|
@@ -120,6 +120,7 @@ Rules a project declares in its configuration: what may call, extend, depend on 
 | Preview parameter | on | `KOTRAIL_PREVIEW_MODEL_BUILT_INLINE` | [compose/preview-parameter.md](compose/preview-parameter.md) |
 | Remember keys | on | `KOTRAIL_EFFECT_KEY_MISSING` | [compose/remember-keys.md](compose/remember-keys.md) |
 | No global mutable state | on | `KOTRAIL_GLOBAL_VAR_READ_IN_COMPOSITION`, `KOTRAIL_GLOBAL_VAR_WRITTEN_IN_COMPOSABLE` | [compose/no-global-mutable-state.md](compose/no-global-mutable-state.md) |
+| Unwritten state | on | `KOTRAIL_STATE_NEVER_WRITTEN`, `KOTRAIL_STATE_NEVER_READ` | [compose/unwritten-state.md](compose/unwritten-state.md) |
 | No callback in model | on | `KOTRAIL_CALLBACK_IN_UI_MODEL` | [compose/no-callback-in-model.md](compose/no-callback-in-model.md) |
 | No unstable parameter | off: experimental, known noise | `KOTRAIL_COMPOSABLE_UNSTABLE_PARAMETER` | [compose/no-unstable-parameter.md](compose/no-unstable-parameter.md) |
 

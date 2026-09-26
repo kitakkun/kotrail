@@ -65,9 +65,10 @@ its diagnostic and whether it is on by default.
 - **Architecture policies** (6): [Forbidden call](docs/rules/forbidden-call.md), [Dependency rules](docs/rules/dependency-rules.md),
   [Required supertype](docs/rules/required-supertype.md), [Required annotation](docs/rules/required-annotation.md) and [Visibility policy](docs/rules/visibility-policy.md) turn a project's own
   conventions into predicates over receivers, packages, names and annotations.
-- **Compose** (19): [Remember keys](docs/rules/compose/remember-keys.md) for a `remember` or `LaunchedEffect` that freezes a value its keys
+- **Compose** (20): [Remember keys](docs/rules/compose/remember-keys.md) for a `remember` or `LaunchedEffect` that freezes a value its keys
   do not cover, checked through helpers in other modules; [No global mutable state](docs/rules/compose/no-global-mutable-state.md) for a
-  top-level or `object` `var` a composable reads and never recomposes on; [Complexity](docs/rules/compose/complexity.md) scores the state,
+  top-level or `object` `var` a composable reads and never recomposes on; [Unwritten state](docs/rules/compose/unwritten-state.md) for a
+  `mutableStateOf` that nothing writes or nothing reads; [Complexity](docs/rules/compose/complexity.md) scores the state,
   effects and branches a composable makes a reader hold at once and names the block to extract;
   [No side effect in composition](docs/rules/compose/no-side-effect-in-composition.md);
   [Window insets handling](docs/rules/compose/window-insets.md) and [Composition locals](docs/rules/compose/composition-locals.md) as contracts verified across modules; naming,

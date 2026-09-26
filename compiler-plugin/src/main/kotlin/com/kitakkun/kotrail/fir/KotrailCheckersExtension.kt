@@ -78,6 +78,7 @@ import com.kitakkun.kotrail.fir.compose.checkers.ComposableUnstableParameterChec
 import com.kitakkun.kotrail.fir.test.checkers.TestSleepChecker
 import com.kitakkun.kotrail.fir.checkers.MustBeSerializableChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposableTrailingCallbackChecker
+import com.kitakkun.kotrail.fir.compose.checkers.ComposableUnwrittenStateChecker
 import com.kitakkun.kotrail.fir.compose.checkers.PreferStateDelegationChecker
 import com.kitakkun.kotrail.fir.compose.insets.checkers.HandlesWindowInsetsContractChecker
 import com.kitakkun.kotrail.fir.compose.locals.checkers.CompositionLocalEntryPointChecker
@@ -157,6 +158,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
         NarrowLocalScopeChecker,
         PreferExplicitBackingFieldChecker,
         PreferStateDelegationChecker,
+        ComposableUnwrittenStateChecker,
     )
     override val namedFunctionCheckersCompat: Set<NamedFunctionChecker> = setOf(
         // First: every inferred fact is computed while bodies are available, for the metadata writer.

@@ -320,6 +320,12 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Arguments: the global var, where it is assigned; reported on an assignment to it in a composable. */
     val GLOBAL_VAR_WRITTEN_IN_COMPOSABLE = tunable2<KtElement, String, String>("GLOBAL_VAR_WRITTEN_IN_COMPOSABLE", KotrailRule.COMPOSE_NO_GLOBAL_MUTABLE_STATE, WHOLE)
 
+    /** Argument: the local's name; reported on a composable's local MutableState whose value nothing assigns. */
+    val STATE_NEVER_WRITTEN = tunable1<KtProperty, String>("STATE_NEVER_WRITTEN", KotrailRule.COMPOSE_UNWRITTEN_STATE, NAME)
+
+    /** Argument: the local's name; reported on a composable's local MutableState whose value is assigned but never read. */
+    val STATE_NEVER_READ = tunable1<KtProperty, String>("STATE_NEVER_READ", KotrailRule.COMPOSE_UNWRITTEN_STATE, NAME)
+
     /** Arguments: the parameter with its type (`items: List<Item>`), why the type is unstable; reported on the parameter. */
     val COMPOSABLE_UNSTABLE_PARAMETER = tunable2<KtParameter, String, String>("COMPOSABLE_UNSTABLE_PARAMETER", KotrailRule.COMPOSE_NO_UNSTABLE_PARAMETER, NAME)
 
@@ -595,6 +601,15 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             KotrailDiagnostics.GLOBAL_VAR_WRITTEN_IN_COMPOSABLE,
             "[Kotrail] ''{0}'' is assigned {1}: shared state written from a composable is invisible to Compose and to the " +
                 "rest of the app. Keep it in a state holder the composable receives, and change it through an event it raises.",
+        )
+        map.put1(
+            KotrailDiagnostics.STATE_NEVER_WRITTEN,
+            "[Kotrail] ''{0}'' is a mutable state that nothing writes: make it a val, and remember the value instead of a MutableState.",
+        )
+        map.put1(
+            KotrailDiagnostics.STATE_NEVER_READ,
+            "[Kotrail] ''{0}'' is a state that nothing reads: it triggers recompositions for nothing. " +
+                "Delete it, or read it where the UI should react.",
         )
         map.put2(
             KotrailDiagnostics.CALLBACK_IN_UI_MODEL,
