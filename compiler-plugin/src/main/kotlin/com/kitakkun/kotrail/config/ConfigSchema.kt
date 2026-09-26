@@ -87,6 +87,10 @@ object ConfigSchema {
             Setting("requiredFor", Kind.LIST, "Callables whose type arguments must be serializable; replaces the default list.",
                 default = "androidx.compose.runtime.saveable.rememberSerializable"),
         ),
+        KotrailRule.NAMED_CONDITION to listOf(
+            Setting("minOperators", Kind.INT, "Fewest && / || operators a condition needs before a second copy of its text elsewhere in the module is reported.", default = "2"),
+            Setting("maxOperators", Kind.INT, "Operators at which a lone inline condition in an if, when or while is reported; an && whose left side is a null comparison does not count. 0 for unlimited.", default = "3"),
+        ),
         KotrailRule.NO_LITERAL_LOOP to listOf(
             Setting("maxElements", Kind.INT, "Most elements a literal collection may have and still be reported when looped over with a body that branches on the element; a longer literal list is a table. Booleans are reported at any size.", default = "3"),
         ),

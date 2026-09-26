@@ -326,6 +326,14 @@ data class KotrailFileLength(
     val maxTopLevelDeclarations: Int,
 )
 
+/** Tunables for the named-condition rule. From `rules.namedCondition`. */
+data class KotrailNamedCondition(
+    /** Fewest `&&` / `||` operators a condition needs before a second copy of it elsewhere in the module is reported. */
+    val minOperators: Int,
+    /** Operators at which a lone inline condition is reported; an `&&` guarded by a null comparison does not count. 0 for unlimited. */
+    val maxOperators: Int,
+)
+
 /** Tunables for the no-literal-loop rule. From `rules.noLiteralLoop`. */
 data class KotrailLiteralLoop(
     /** Most elements a literal collection may have and still count as folded cases rather than a table; booleans count at any size. */
@@ -537,6 +545,7 @@ data class KotrailConfig(
     val functionLength: KotrailFunctionLength,
     val fileLength: KotrailFileLength,
     val literalLoop: KotrailLiteralLoop,
+    val namedCondition: KotrailNamedCondition,
     val noDataClassInPublicApi: KotrailNoDataClassInPublicApi,
     val visibilityPolicy: KotrailVisibilityPolicy,
     /** The `rules.requiredAnnotation.policies` entries, by name. */
@@ -606,6 +615,8 @@ data class KotrailConfig(
         const val DEFAULT_COMPLEXITY_HOTSPOT_SHARE = 40
         const val DEFAULT_COMPLEXITY_HOTSPOT_MIN = 10
         const val DEFAULT_LITERAL_LOOP_MAX_ELEMENTS = 3
+        const val DEFAULT_CONDITION_MIN_OPERATORS = 2
+        const val DEFAULT_CONDITION_MAX_OPERATORS = 3
         const val DEFAULT_FILE_MAX_TOP_LEVEL = 15
         val DEFAULT_NO_DATA_CLASS_SCOPE = PublicApiScope.EXPLICIT_API
         const val DEFAULT_COMPOSABLE_MAX_LINES = 80
@@ -1151,6 +1162,10 @@ data class KotrailConfig(
                     maxComposableLines = int(KotrailRule.FUNCTION_LENGTH, "maxComposableLines") ?: DEFAULT_COMPOSABLE_MAX_LINES,
                 ),
                 literalLoop = KotrailLiteralLoop(maxElements = int(KotrailRule.NO_LITERAL_LOOP, "maxElements") ?: DEFAULT_LITERAL_LOOP_MAX_ELEMENTS),
+                namedCondition = KotrailNamedCondition(
+                    minOperators = int(KotrailRule.NAMED_CONDITION, "minOperators") ?: DEFAULT_CONDITION_MIN_OPERATORS,
+                    maxOperators = int(KotrailRule.NAMED_CONDITION, "maxOperators") ?: DEFAULT_CONDITION_MAX_OPERATORS,
+                ),
                 fileLength = KotrailFileLength(
                     maxLines = int(KotrailRule.FILE_LENGTH, "maxLines") ?: DEFAULT_FILE_MAX_LINES,
                     maxTopLevelDeclarations = int(KotrailRule.FILE_LENGTH, "maxTopLevelDeclarations") ?: DEFAULT_FILE_MAX_TOP_LEVEL,

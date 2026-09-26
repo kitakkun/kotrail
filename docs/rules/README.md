@@ -9,7 +9,7 @@ reason to keep it off, and the **Default** column names that reason; an `off` ru
 per project, and an `experimental` rule may change shape.
 A rule can belong to two groups; it is listed once, under the one it serves first.
 
-## Readability and structure (13)
+## Readability and structure (14)
 
 How a body reads: its length, how much is in play at once, the order of what it declares.
 
@@ -28,6 +28,7 @@ How a body reads: its length, how much is in play at once, the order of what it 
 | Prefer val | on | `KOTRAIL_PREFER_VAL` | [prefer-val.md](prefer-val.md) |
 | No redundant else | on | `KOTRAIL_REDUNDANT_ELSE_IN_EXHAUSTIVE_WHEN` | [no-redundant-else.md](no-redundant-else.md) |
 | No literal loop | on | `KOTRAIL_LITERAL_LOOP` | [no-literal-loop.md](no-literal-loop.md) |
+| Named condition | on | `KOTRAIL_CONDITION_DUPLICATED`, `KOTRAIL_CONDITION_TOO_COMPOUND` | [named-condition.md](named-condition.md) |
 
 ## Naming and style (8)
 

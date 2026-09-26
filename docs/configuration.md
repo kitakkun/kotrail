@@ -106,6 +106,8 @@ own; a rule not listed has none.
 | | `calls` | `{}` | Named call predicates; matching calls are reported under the entry's name. See [Forbidden call](rules/forbidden-call.md). |
 | `namedArgumentsForRepeatedTypes` | `minArguments` | `3` | How many positional arguments of one type require names. |
 | `mustBeSerializable` | `requiredFor` | `[androidx.compose.runtime.saveable.rememberSerializable]` | Callables whose type arguments must be serializable. Replaces the default list. |
+| `namedCondition` | `minOperators` | `2` | Fewest `&&` / `\|\|` operators a condition needs before a second copy of its text elsewhere in the module is reported. |
+| | `maxOperators` | `3` | Operators at which a lone inline condition in an `if`, `when` or `while` is reported; an `&&` whose left side is a null comparison does not count. `0` for unlimited. |
 | `noLiteralLoop` | `maxElements` | `3` | Most elements a literal collection may have and still be reported when looped over with a body that branches on the element; a longer list is a table. Booleans are reported at any size. |
 | `fileLength` | `maxLines` | `500` | Most lines of code a file may have; blank, brace-only, comment, `package` and `import` lines do not count. `0` for unlimited. |
 | | `maxTopLevelDeclarations` | `15` | Most distinct top-level names a file may declare: classes, functions, public properties and type aliases, overloads once; `@Preview` functions, private properties, `actual` declarations and private implementations of a same-file interface do not count. `0` for unlimited. |

@@ -107,6 +107,12 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Arguments: the name's position (`12 of 14`), the limit; reported on each name past the limit. */
     val TOO_MANY_TOP_LEVEL_DECLARATIONS = tunable2<KtNamedDeclaration, String, String>("TOO_MANY_TOP_LEVEL_DECLARATIONS", KotrailRule.FILE_LENGTH, NAME)
 
+    /** Arguments: the condition's text, where else it is written (`Screen.kt:12`); reported on the condition. */
+    val CONDITION_DUPLICATED = tunable2<KtElement, String, String>("CONDITION_DUPLICATED", KotrailRule.NAMED_CONDITION, WHOLE)
+
+    /** Arguments: the condition's text, how many operators (`4`) or `mixed && and ||`; reported on the condition. */
+    val CONDITION_TOO_COMPOUND = tunable2<KtElement, String, String>("CONDITION_TOO_COMPOUND", KotrailRule.NAMED_CONDITION, WHOLE)
+
     /** Arguments: what is looped over (`loops over 2 literal elements`), the advice; reported on the looped expression. */
     val LITERAL_LOOP = tunable2<KtElement, String, String>("LITERAL_LOOP", KotrailRule.NO_LITERAL_LOOP, WHOLE)
 
@@ -786,6 +792,16 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         map.put1(
             KotrailDiagnostics.FUNCTION_TOO_LONG,
             "[Kotrail] This function is {0}. Split it so that each piece does one thing and has a name.",
+        )
+        map.put2(
+            KotrailDiagnostics.CONDITION_DUPLICATED,
+            "[Kotrail] This condition is also written at {1}: give it one name (`fun shouldSkip(...)`, or a property on the type " +
+                "it reads) so the decision has a single definition.",
+        )
+        map.put2(
+            KotrailDiagnostics.CONDITION_TOO_COMPOUND,
+            "[Kotrail] This condition has {1} boolean operators: bind it to a named val first (`val canSubmit = ...`) or make it " +
+                "a function, so the reader learns what it decides before how.",
         )
         map.put2(
             KotrailDiagnostics.LITERAL_LOOP,

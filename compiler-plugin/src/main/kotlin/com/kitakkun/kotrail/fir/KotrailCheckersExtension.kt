@@ -39,6 +39,7 @@ import com.kitakkun.kotrail.fir.checkers.MustCloseChecker
 import com.kitakkun.kotrail.fir.checkers.NoExternalMutationChecker
 import com.kitakkun.kotrail.fir.checkers.NativeAllocationInLoopChecker
 import com.kitakkun.kotrail.fir.inferred.InferredFactWarmup
+import com.kitakkun.kotrail.fir.checkers.NamedConditionChecker
 import com.kitakkun.kotrail.fir.checkers.NoLiteralLoopChecker
 import com.kitakkun.kotrail.fir.checkers.ParameterOrderChecker
 import com.kitakkun.kotrail.fir.checkers.RequiredSupertypeChecker
@@ -101,6 +102,7 @@ import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirElvisExpressionC
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirEqualityOperatorCallChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirSafeCallExpressionChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirBlockChecker
+import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirLoopExpressionChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirFunctionCallChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirQualifiedAccessExpressionChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirResolvedQualifierChecker
@@ -247,6 +249,10 @@ object KotrailExpressionCheckers : ExpressionCheckers() {
         RedundantElseChecker,
         SealedWhenBranchStyleChecker,
         ElvisIdiomChecker,
+        NamedConditionChecker.Whens,
+    )
+    override val loopExpressionCheckers: Set<FirLoopExpressionChecker> = setOf(
+        NamedConditionChecker.Loops,
     )
     override val checkNotNullCallCheckers: Set<FirCheckNotNullCallChecker> = setOf(
         NotNullAssertionChecker,

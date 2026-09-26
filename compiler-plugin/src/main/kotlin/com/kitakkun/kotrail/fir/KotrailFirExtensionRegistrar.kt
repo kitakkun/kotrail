@@ -1,6 +1,7 @@
 package com.kitakkun.kotrail.fir
 
 import com.kitakkun.kotrail.KotrailConfig
+import com.kitakkun.kotrail.fir.checkers.NamedConditionIndex
 import com.kitakkun.kotrail.fir.compose.effects.EffectCaptureService
 import com.kitakkun.kotrail.fir.concurrency.AsyncWorkService
 import com.kitakkun.kotrail.fir.compose.insets.WindowInsetsHandlingService
@@ -20,6 +21,7 @@ class KotrailFirExtensionRegistrar(private val config: KotrailConfig) : FirExten
         +::PreconditionService
         +::ThrowsService
         +::NativeAllocationService
+        +::NamedConditionIndex
         +::KotrailCheckersExtension
         registerDiagnosticContainers(KotrailDiagnostics)
     }
