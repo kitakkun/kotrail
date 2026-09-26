@@ -43,12 +43,22 @@ which it could be assigned:
 
 Compound assignments (`x += 1`) and increments (`x++`) count as assignments.
 
+A delegated `var` is checked the same way. When nothing assigns to it, the delegate's setter
+is never called, and `val` needs only its getter:
+
+```kotlin
+var shown by remember { mutableStateOf(initial) }   // reported when nothing assigns shown
+```
+
+For a Compose state that is what the compose.unwrittenState rule picks up next: once the
+property is a `val`, the `MutableState` behind it is a value nothing changes.
+
 ## When it stays quiet
 
 - The property is not private (anything with access could assign it), or is `open`,
   `override`, `expect`, or `actual`.
-- It has no initializer (assigned later, perhaps in branches), a custom getter or setter, a
-  delegate, or is `lateinit` or `const`.
+- It has no initializer and no delegate (assigned later, perhaps in branches), a custom
+  getter or setter, or is `lateinit` or `const`.
 - It is a component of a destructuring declaration.
 
 ## Fixtures

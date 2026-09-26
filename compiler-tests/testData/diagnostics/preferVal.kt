@@ -1,4 +1,10 @@
 // KOTRAIL_CONFIG: rules.preferVal=on
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+
 class Counter(seed: Int) {
     // Reported: a private property nothing assigns to after its initializer.
     private var <!KOTRAIL_PREFER_VAL!>base<!> = seed
@@ -10,17 +16,24 @@ class Counter(seed: Int) {
     var label = "counter"
     internal var tag = "t"
 
-    // Not reported: a setter, a delegate, lateinit, no initializer.
+    // Not reported: a setter, lateinit, no initializer.
     private var withSetter = 0
         set(value) { field = value * 2 }
     private var later: String
     private lateinit var name: String
+
+    // Reported: delegated, and nothing assigns to it, so the delegate's setter is never called.
+    private var <!KOTRAIL_PREFER_VAL!>seed<!> by Box(seed)
+
+    // Not reported: delegated and assigned by a member.
+    private var cursor by Box(0)
 
     init {
         later = "init"
     }
 
     fun increment() {
+        cursor = count
         count += 1
     }
 
@@ -62,6 +75,33 @@ fun bump() {
     fileCounter += fileConstant
 }
 
+class Box<T>(private var value: T) {
+    operator fun getValue(thisRef: Any?, property: kotlin.reflect.KProperty<*>): T = value
+    operator fun setValue(thisRef: Any?, property: kotlin.reflect.KProperty<*>, next: T) {
+        value = next
+    }
+}
+
+fun delegatedLocals(items: List<Int>) {
+    // Reported: a delegated local nothing assigns to.
+    var <!KOTRAIL_PREFER_VAL!>total<!> by Box(items.sum())
+    // Not reported: assigned inside a lambda of the body.
+    var seen by Box(0)
+    items.forEach { seen += it }
+    println(total + seen)
+}
+
+@Composable
+fun Toggle(initial: Boolean) {
+    // Reported: state that is only read; `val` is the first step, and a value instead of a MutableState the second.
+    var <!KOTRAIL_PREFER_VAL!>shown<!> by remember { mutableStateOf(initial) }
+    // Not reported: written from a handler.
+    var expanded by remember { mutableStateOf(false) }
+    val toggle = { expanded = !expanded }
+    println("$shown $expanded $toggle")
+}
+
 /* GENERATED_FIR_TAGS: additiveExpression, assignment, classDeclaration, comparisonExpression, destructuringDeclaration,
 functionDeclaration, ifExpression, incrementDecrementExpression, init, integerLiteral, lambdaLiteral, lateinit,
-localProperty, multiplicativeExpression, primaryConstructor, propertyDeclaration, setter, stringLiteral */
+localProperty, multiplicativeExpression, nullableType, operator, primaryConstructor, propertyDeclaration,
+propertyDelegate, setter, starProjection, stringLiteral, typeParameter */

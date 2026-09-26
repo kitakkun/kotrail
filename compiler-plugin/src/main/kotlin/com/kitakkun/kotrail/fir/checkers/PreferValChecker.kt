@@ -48,9 +48,12 @@ import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
  * with that in mind. When nothing assigns to it, `val` says so at the declaration. Locals are
  * checked against the body that declares them (lambdas inside included), private members
  * against their class, and private top-level properties against their file, which is exactly
- * the scope from which they can be assigned. A `var` without an initializer, with a custom
- * accessor, delegated, `lateinit`, `const`, `override`, `open`, `expect`, or `actual` is left
- * alone, as is a component of a destructuring declaration. The fix replaces the keyword.
+ * the scope from which they can be assigned. A delegated `var` (`var shown by remember {
+ * mutableStateOf(false) }`) is checked the same way: nothing assigns to it, so the delegate's
+ * setter is never called and `val` needs only its getter. A `var` without an initializer or
+ * delegate, with a custom accessor, `lateinit`, `const`, `override`, `open`, `expect`, or
+ * `actual` is left alone, as is a component of a destructuring declaration. The fix replaces
+ * the keyword.
  */
 object PreferValChecker : FirPropertyChecker(MppCheckerKind.Common) {
     context(context: CheckerContext, reporter: DiagnosticReporter)
@@ -59,10 +62,13 @@ object PreferValChecker : FirPropertyChecker(MppCheckerKind.Common) {
         val source = declaration.source ?: return
         if (source.kind is KtFakeSourceElementKind) return
         if (!declaration.isVar) return
-        if (declaration.initializer == null || declaration.initializer?.source?.kind is KtFakeSourceElementKind) return
-        if (declaration.delegate != null || declaration.isLateInit || declaration.isConst) return
+        val delegated = declaration.delegate != null
+        if (!delegated && (declaration.initializer == null || declaration.initializer?.source?.kind is KtFakeSourceElementKind)) return
+        if (declaration.isLateInit || declaration.isConst) return
         if (declaration.isOverride || declaration.isExpect || declaration.isActual) return
-        if (declaration.setter != null && declaration.setter !is FirDefaultPropertySetter) return
+        // A delegated property's accessors are synthesized with a fake source; a written setter is the author's.
+        val setter = declaration.setter
+        if (setter != null && setter !is FirDefaultPropertySetter && setter.source?.kind !is KtFakeSourceElementKind) return
         if (declaration.getter != null && declaration.getter?.source?.kind !is KtFakeSourceElementKind) return
         if (!declaration.isLocal) {
             if (declaration.visibility != Visibilities.Private) return
