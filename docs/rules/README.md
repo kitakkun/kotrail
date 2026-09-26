@@ -9,13 +9,14 @@ reason to keep it off, and the **Default** column names that reason; an `off` ru
 per project, and an `experimental` rule may change shape.
 A rule can belong to two groups; it is listed once, under the one it serves first.
 
-## Readability and structure (11)
+## Readability and structure (13)
 
 How a body reads: its length, how much is in play at once, the order of what it declares.
 
 | Rule | Default | Diagnostics | Page |
 |---|---|---|---|
 | Function length | on | `KOTRAIL_FUNCTION_TOO_LONG` | [function-length.md](function-length.md) |
+| File length | on | `KOTRAIL_FILE_TOO_LONG`, `KOTRAIL_FILE_TOO_FLAT`, `KOTRAIL_TOO_MANY_TOP_LEVEL_DECLARATIONS` | [file-length.md](file-length.md) |
 | Live variable budget | on | `KOTRAIL_TOO_MANY_LIVE_VARIABLES` | [live-variable-budget.md](live-variable-budget.md) |
 | Narrative order | on | `KOTRAIL_HELPER_BEFORE_FIRST_USE` | [narrative-order.md](narrative-order.md) |
 | Parameter order | on | `KOTRAIL_CALLBACK_BEFORE_DATA_PARAMETER` | [parameter-order.md](parameter-order.md) |
@@ -26,6 +27,7 @@ How a body reads: its length, how much is in play at once, the order of what it 
 | Narrow local scope | on | `KOTRAIL_NARROW_LOCAL_SCOPE` | [narrow-local-scope.md](narrow-local-scope.md) |
 | Prefer val | on | `KOTRAIL_PREFER_VAL` | [prefer-val.md](prefer-val.md) |
 | No redundant else | on | `KOTRAIL_REDUNDANT_ELSE_IN_EXHAUSTIVE_WHEN` | [no-redundant-else.md](no-redundant-else.md) |
+| No literal loop | on | `KOTRAIL_LITERAL_LOOP` | [no-literal-loop.md](no-literal-loop.md) |
 
 ## Naming and style (8)
 

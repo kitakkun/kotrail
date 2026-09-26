@@ -87,6 +87,13 @@ object ConfigSchema {
             Setting("requiredFor", Kind.LIST, "Callables whose type arguments must be serializable; replaces the default list.",
                 default = "androidx.compose.runtime.saveable.rememberSerializable"),
         ),
+        KotrailRule.NO_LITERAL_LOOP to listOf(
+            Setting("maxElements", Kind.INT, "Most elements a literal collection may have and still be reported when looped over with a body that branches on the element; a longer literal list is a table. Booleans are reported at any size.", default = "3"),
+        ),
+        KotrailRule.FILE_LENGTH to listOf(
+            Setting("maxLines", Kind.INT, "Most lines of code a file may have; blank, brace-only, comment, package and import lines do not count. 0 for unlimited.", default = "500"),
+            Setting("maxTopLevelDeclarations", Kind.INT, "Most distinct top-level names a file may declare: classes, functions, public properties and type aliases, overloads once; previews, private properties, actual declarations and private implementations of a same-file interface do not count. 0 for unlimited.", default = "15"),
+        ),
         KotrailRule.FUNCTION_LENGTH to listOf(
             Setting("maxLines", Kind.INT, "Most lines of code a function body may have; 0 for unlimited.", default = "50"),
             Setting("maxComposableLines", Kind.INT, "The same limit for @Composable functions.", default = "80"),

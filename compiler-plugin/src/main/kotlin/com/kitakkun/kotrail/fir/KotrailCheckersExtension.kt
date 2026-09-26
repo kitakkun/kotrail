@@ -3,6 +3,7 @@ package com.kitakkun.kotrail.fir
 import com.kitakkun.kotrail.fir.checkers.CommentLengthChecker
 import com.kitakkun.kotrail.fir.checkers.ParameterCommentChecker
 import com.kitakkun.kotrail.fir.checkers.ForbiddenCallChecker
+import com.kitakkun.kotrail.fir.checkers.FileLengthChecker
 import com.kitakkun.kotrail.fir.checkers.FunctionLengthChecker
 import com.kitakkun.kotrail.fir.preconditions.checkers.PreconditionChecker
 import com.kitakkun.kotrail.fir.preconditions.checkers.PreconditionWarmup
@@ -37,6 +38,7 @@ import com.kitakkun.kotrail.fir.checkers.DelayForCompletionChecker
 import com.kitakkun.kotrail.fir.checkers.DependencyRulesChecker
 import com.kitakkun.kotrail.fir.checkers.AsyncWorkRecorder
 import com.kitakkun.kotrail.fir.checkers.NativeAllocationInLoopChecker
+import com.kitakkun.kotrail.fir.checkers.NoLiteralLoopChecker
 import com.kitakkun.kotrail.fir.checkers.ParameterOrderChecker
 import com.kitakkun.kotrail.fir.checkers.RequiredSupertypeChecker
 import com.kitakkun.kotrail.fir.checkers.UnretainedChecker
@@ -97,6 +99,7 @@ import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirCheckNotNullCall
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirElvisExpressionChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirEqualityOperatorCallChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirSafeCallExpressionChecker
+import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirBlockChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirFunctionCallChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirQualifiedAccessExpressionChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirResolvedQualifierChecker
@@ -134,6 +137,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
         ComposablePreviewCoverageChecker,
         ComposablePreviewParameterChecker,
         ComposablesPerFileChecker,
+        FileLengthChecker,
     )
     override val regularClassCheckers: Set<FirRegularClassChecker> = setOf(
         PreconditionWarmup.ClassChecker,
@@ -194,7 +198,11 @@ object KotrailExpressionCheckers : ExpressionCheckers() {
     override val booleanOperatorExpressionCheckers: Set<FirBooleanOperatorExpressionChecker> = setOf(
         NullOrEmptyIdiomChecker,
     )
+    override val blockCheckers: Set<FirBlockChecker> = setOf(
+        NoLiteralLoopChecker.ForLoops,
+    )
     override val functionCallCheckers: Set<FirFunctionCallChecker> = setOf(
+        NoLiteralLoopChecker.Calls,
         ObjCWeakReferenceChecker,
         CompositionLocalEntryPointChecker,
         WindowInsetsHandledTwiceChecker,
