@@ -137,6 +137,10 @@ object ConfigSchema {
             Setting("annotations", Kind.LIST, "Fully qualified annotations that mark a parameter as not to be retained; replaces the default list.", default = "com.kitakkun.kotrail.lifetime.Unretained"),
             Setting("weakTypes", Kind.LIST, "Fully qualified weak reference types (subtypes included) through which such a parameter may be kept; replaces the default list.", default = "java.lang.ref.WeakReference, java.lang.ref.SoftReference, kotlin.native.ref.WeakReference"),
         ),
+        KotrailRule.DELAY_FOR_COMPLETION to listOf(
+            Setting("delays", Kind.LIST, "Fully qualified functions that wait a fixed time; replaces the default list.", default = "kotlinx.coroutines.delay, java.lang.Thread.sleep, android.os.SystemClock.sleep"),
+            Setting("starters", Kind.LIST, "Fully qualified functions that start work that outlives the call (coroutines, threads, posted runnables); shared with fireAndForgetLaunch; replaces the default list.", default = "kotlinx.coroutines.launch, kotlinx.coroutines.async, kotlinx.coroutines.flow.launchIn, java.lang.Thread.start, kotlin.concurrent.thread, android.os.Handler.post, android.os.Handler.postDelayed, java.util.concurrent.Executor.execute, java.util.concurrent.ExecutorService.submit, java.util.Timer.schedule"),
+        ),
         KotrailRule.REQUIRED_SUPERTYPE to listOf(
             Setting("policies", Kind.ENTRIES, "Named policies; matching classes must extend or implement the supertype.",
                 entryHint = "a mapping with where (a predicate) and supertype (a fully qualified name), or '<predicate> -> <fqn>'"),

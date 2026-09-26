@@ -148,6 +148,12 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Arguments: the callee and its parameter, the values the passed lambda reads; reported on the argument of a call to a composable that keeps that parameter in a long-lived effect. */
     val EFFECT_CAPTURED_BY_CALLEE = tunable2<KtElement, String, String>("EFFECT_CAPTURED_BY_CALLEE", KotrailRule.COMPOSE_REMEMBER_KEYS, WHOLE)
 
+    /** Arguments: the wait as written, the function whose work it waits for; reported on a fixed delay that follows a call starting asynchronous work. */
+    val DELAY_WAITS_FOR_ASYNC_WORK = tunable2<KtElement, String, String>("DELAY_WAITS_FOR_ASYNC_WORK", KotrailRule.DELAY_FOR_COMPLETION, WHOLE)
+
+    /** Arguments: the function, the starter it calls; reported on a non-suspending function that starts work and discards the handle. */
+    val FIRE_AND_FORGET_LAUNCH = tunable2<KtNamedFunction, String, String>("FIRE_AND_FORGET_LAUNCH", KotrailRule.FIRE_AND_FORGET_LAUNCH, NAME)
+
     /** Argument: the test's name; reported on a test function that asserts nothing. */
     val TEST_WITHOUT_ASSERTION = tunable1<KtNamedFunction, String>("TEST_WITHOUT_ASSERTION", KotrailRule.TEST_MUST_ASSERT, NAME)
 
@@ -651,6 +657,17 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             KotrailDiagnostics.EFFECT_CAPTURED_BY_CALLEE,
             "[Kotrail] {0} keeps this lambda for the life of its effect, and the lambda reads {1}: when that changes, the " +
                 "effect keeps the value it saw first. Keep it current with rememberUpdatedState.",
+        )
+        map.put2(
+            KotrailDiagnostics.DELAY_WAITS_FOR_ASYNC_WORK,
+            "[Kotrail] ''{0}'' waits a fixed time for what ''{1}'' started: too short and the code after it runs before the " +
+                "work is done, too long and it waits for nothing. Make ''{1}'' suspend, or have it return its Job or Deferred, " +
+                "and await that.",
+        )
+        map.put2(
+            KotrailDiagnostics.FIRE_AND_FORGET_LAUNCH,
+            "[Kotrail] ''{0}'' starts work with ''{1}'' and gives its caller nothing to wait for, so callers end up " +
+                "guessing with a delay. Return the Job or Deferred, or make the function suspend.",
         )
         map.put1(
             KotrailDiagnostics.TEST_WITHOUT_ASSERTION,

@@ -2,6 +2,7 @@ package com.kitakkun.kotrail.fir
 
 import com.kitakkun.kotrail.KotrailConfig
 import com.kitakkun.kotrail.fir.compose.effects.EffectCaptureService
+import com.kitakkun.kotrail.fir.concurrency.AsyncWorkService
 import com.kitakkun.kotrail.fir.compose.insets.WindowInsetsHandlingService
 import com.kitakkun.kotrail.fir.compose.locals.CompositionLocalService
 import com.kitakkun.kotrail.fir.preconditions.PreconditionService
@@ -12,6 +13,7 @@ class KotrailFirExtensionRegistrar(private val config: KotrailConfig) : FirExten
         +KotrailConfigComponent.getFactory(config)
         +::WindowInsetsHandlingService
         +::EffectCaptureService
+        +::AsyncWorkService
         +::CompositionLocalService
         +::PreconditionService
         +::KotrailCheckersExtension

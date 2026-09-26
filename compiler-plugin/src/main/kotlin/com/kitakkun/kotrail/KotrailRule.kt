@@ -60,6 +60,9 @@ enum class KotrailRule(
     UNRETAINED("unretained", Severity.ERROR),
     REQUIRED_SUPERTYPE("requiredSupertype", Severity.ERROR),
     DEPENDENCY_RULES("dependencyRules", Severity.ERROR),
+    DELAY_FOR_COMPLETION("delayForCompletion", Severity.ERROR),
+    /** Off by default: fire-and-forget is the ordinary shape of an event handler; on for the modules where it is not. */
+    FIRE_AND_FORGET_LAUNCH("fireAndForgetLaunch", Severity.ERROR, defaultEnabled = false),
     /** The class-shaped finding of the same rule, a warning: nothing can hide an internal class from Java. */
     JVM_SYNTHETIC_FOR_INTERNAL_CLASS("jvmSyntheticForInternalClass", Severity.WARNING, hasSwitch = false),
 

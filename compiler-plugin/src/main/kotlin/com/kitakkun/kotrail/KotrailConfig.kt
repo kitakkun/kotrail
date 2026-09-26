@@ -364,6 +364,14 @@ data class KotrailUnretained(
     val weakTypes: List<String>,
 )
 
+/** Tunables shared by the delay-for-completion and fire-and-forget rules. From `rules.delayForCompletion`. */
+data class KotrailAsyncWork(
+    /** Fully qualified functions that wait a fixed time: `delay`, `Thread.sleep`. */
+    val delays: List<String>,
+    /** Fully qualified functions that start work that outlives the call: `launch`, `async`, `Thread.start`, a posted runnable. */
+    val starters: List<String>,
+)
+
 /** One `requiredSupertype` policy: declarations matching [predicate] must extend or implement [supertype]. */
 data class KotrailSupertypePolicy(
     val name: String,
@@ -463,6 +471,7 @@ data class KotrailConfig(
     val catchTooBroad: KotrailCatchTooBroad,
     val unretained: KotrailUnretained,
     val requiredSupertypes: List<KotrailSupertypePolicy>,
+    val asyncWork: KotrailAsyncWork,
     val dependencyPolicies: List<KotrailDependencyPolicy>,
     val functionLength: KotrailFunctionLength,
     val noDataClassInPublicApi: KotrailNoDataClassInPublicApi,
@@ -531,6 +540,19 @@ data class KotrailConfig(
         const val DEFAULT_FUNCTION_MAX_LINES = 50
         val DEFAULT_NO_DATA_CLASS_SCOPE = PublicApiScope.EXPLICIT_API
         const val DEFAULT_COMPOSABLE_MAX_LINES = 80
+        val DEFAULT_DELAYS: List<String> = listOf("kotlinx.coroutines.delay", "java.lang.Thread.sleep", "android.os.SystemClock.sleep")
+        val DEFAULT_ASYNC_STARTERS: List<String> = listOf(
+            "kotlinx.coroutines.launch",
+            "kotlinx.coroutines.async",
+            "kotlinx.coroutines.flow.launchIn",
+            "java.lang.Thread.start",
+            "kotlin.concurrent.thread",
+            "android.os.Handler.post",
+            "android.os.Handler.postDelayed",
+            "java.util.concurrent.Executor.execute",
+            "java.util.concurrent.ExecutorService.submit",
+            "java.util.Timer.schedule",
+        )
         val DEFAULT_NATIVE_TYPES: List<String> = listOf("org.jetbrains.skia.impl.Managed", "java.awt.image.VolatileImage")
         val DEFAULT_NATIVE_FACTORIES: List<String> = listOf("java.nio.ByteBuffer.allocateDirect")
         val DEFAULT_PER_ITEM_CALLBACKS: List<String> = listOf(
@@ -931,6 +953,10 @@ data class KotrailConfig(
                 unretained = KotrailUnretained(
                     annotations = list(KotrailRule.UNRETAINED, "annotations") ?: DEFAULT_UNRETAINED_ANNOTATIONS,
                     weakTypes = list(KotrailRule.UNRETAINED, "weakTypes") ?: DEFAULT_WEAK_TYPES,
+                ),
+                asyncWork = KotrailAsyncWork(
+                    delays = list(KotrailRule.DELAY_FOR_COMPLETION, "delays") ?: DEFAULT_DELAYS,
+                    starters = list(KotrailRule.DELAY_FOR_COMPLETION, "starters") ?: DEFAULT_ASYNC_STARTERS,
                 ),
                 requiredSupertypes = entries(KotrailRule.REQUIRED_SUPERTYPE, "policies") { node -> node }
                     .map { (name, node) -> policy(name, node, "supertype", "a fully qualified class or interface name").let { (predicate, value) -> KotrailSupertypePolicy(name, predicate, value) } },

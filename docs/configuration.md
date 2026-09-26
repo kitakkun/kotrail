@@ -124,6 +124,8 @@ own; a rule not listed has none.
 | | `weakTypes` | `[java.lang.ref.WeakReference, ...]` | Weak reference types through which such a parameter may be kept. Replaces the default list. |
 | `requiredSupertype` | `policies` | `{}` | Named policies, `where -> supertype` or a mapping with `where` and `supertype`; matching classes must extend or implement it. |
 | `dependencyRules` | `policies` | `{}` | Named policies, each a mapping with `from` (a package glob), `deny` (package globs) and optionally `allow`. |
+| `delayForCompletion` | `delays` | `[kotlinx.coroutines.delay, java.lang.Thread.sleep, android.os.SystemClock.sleep]` | Functions that wait a fixed time. Replaces the default list. |
+| | `starters` | `launch`, `async`, `launchIn`, `Thread.start`, `thread`, `Handler.post*`, `Executor.execute`, `ExecutorService.submit`, `Timer.schedule` | Functions that start work that outlives the call; shared with `fireAndForgetLaunch`. Replaces the default list. |
 | `unloadableCode` (off by default) | `registrations` | JVM, AWT and IntelliJ hooks (see the rule page) | Globs over fully qualified functions that register something with the platform for the rest of its life; a call without a disposable argument is reported. Replaces the default list. |
 | | `disposableTypes` | `[com.intellij.openapi.Disposable]` | Fully qualified types an argument of which scopes a registration to a lifetime. Replaces the default list. |
 | `narrowLocalScope` | `maxDistance` | `5` | Lines allowed between a local's declaration and the statement that first uses it; `0` switches the distance check off. |
