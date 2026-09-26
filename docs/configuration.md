@@ -107,7 +107,7 @@ own; a rule not listed has none.
 | `namedArgumentsForRepeatedTypes` | `minArguments` | `3` | How many positional arguments of one type require names. |
 | `mustBeSerializable` | `requiredFor` | `[androidx.compose.runtime.saveable.rememberSerializable]` | Callables whose type arguments must be serializable. Replaces the default list. |
 | `fileLength` | `maxLines` | `500` | Most lines of code a file may have; blank, brace-only, comment, `package` and `import` lines do not count. `0` for unlimited. |
-| | `maxTopLevelDeclarations` | `10` | Most distinct top-level names a file may declare: classes, functions, properties and type aliases, overloads once, `@Preview` functions not at all. `0` for unlimited. |
+| | `maxTopLevelDeclarations` | `15` | Most distinct top-level names a file may declare: classes, functions, public properties and type aliases, overloads once; `@Preview` functions, private properties and `actual` declarations do not count. `0` for unlimited. |
 | `functionLength` | `maxLines` | `50` | Most lines of code a function body may have; `0` for unlimited. |
 | | `maxComposableLines` | `80` | The same limit for `@Composable` functions. |
 | `nullChainLength` | `maxElvis` | `2` | Maximum `?:` fallbacks in one expression, a trailing `?: return` / `?: throw` not counted; `0` disables. |

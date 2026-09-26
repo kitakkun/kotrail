@@ -101,7 +101,10 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: what was measured, e.g. `620 lines of code (limit 500)`; reported on the package directive. */
     val FILE_TOO_LONG = tunable1<KtElement, String>("FILE_TOO_LONG", KotrailRule.FILE_LENGTH, WHOLE)
 
-    /** Arguments: what the file declares (`14 top-level names (3 classes, 9 functions, 2 properties)`), the limit; reported on each name past the limit. */
+    /** Arguments: what the file declares (`14 top-level names (3 classes, 9 functions, 2 properties), limit 10`), the fix that fits; reported once on the package directive. */
+    val FILE_TOO_FLAT = tunable2<KtElement, String, String>("FILE_TOO_FLAT", KotrailRule.FILE_LENGTH, WHOLE)
+
+    /** Arguments: the name's position (`12 of 14`), the limit; reported on each name past the limit. */
     val TOO_MANY_TOP_LEVEL_DECLARATIONS = tunable2<KtNamedDeclaration, String, String>("TOO_MANY_TOP_LEVEL_DECLARATIONS", KotrailRule.FILE_LENGTH, NAME)
 
     /** Argument: how often, e.g. `3 times (limit 2)`. Reported on the outermost `?:` expression. */
@@ -737,9 +740,12 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             "[Kotrail] This file is {0}. Split it: one main type per file, with the helpers only it needs.",
         )
         map.put2(
+            KotrailDiagnostics.FILE_TOO_FLAT,
+            "[Kotrail] This file declares {0}. A flat list this long says nothing about what belongs together. {1}",
+        )
+        map.put2(
             KotrailDiagnostics.TOO_MANY_TOP_LEVEL_DECLARATIONS,
-            "[Kotrail] This file declares {0}; the limit is {1}. A flat list this long says nothing about what belongs " +
-                "together: move this one to the file of the type it serves, or give a group of them a class or object of their own.",
+            "[Kotrail] Top-level name {0} in this file, past the limit of {1}: move it out, with the names that belong with it.",
         )
         map.put2(
             KotrailDiagnostics.OBJC_IDENTITY_COMPARISON,

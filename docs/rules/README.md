@@ -16,7 +16,7 @@ How a body reads: its length, how much is in play at once, the order of what it 
 | Rule | Default | Diagnostics | Page |
 |---|---|---|---|
 | Function length | on | `KOTRAIL_FUNCTION_TOO_LONG` | [function-length.md](function-length.md) |
-| File length | on | `KOTRAIL_FILE_TOO_LONG`, `KOTRAIL_TOO_MANY_TOP_LEVEL_DECLARATIONS` | [file-length.md](file-length.md) |
+| File length | on | `KOTRAIL_FILE_TOO_LONG`, `KOTRAIL_FILE_TOO_FLAT`, `KOTRAIL_TOO_MANY_TOP_LEVEL_DECLARATIONS` | [file-length.md](file-length.md) |
 | Live variable budget | on | `KOTRAIL_TOO_MANY_LIVE_VARIABLES` | [live-variable-budget.md](live-variable-budget.md) |
 | Narrative order | on | `KOTRAIL_HELPER_BEFORE_FIRST_USE` | [narrative-order.md](narrative-order.md) |
 | Parameter order | on | `KOTRAIL_CALLBACK_BEFORE_DATA_PARAMETER` | [parameter-order.md](parameter-order.md) |

@@ -1,11 +1,14 @@
 // KOTRAIL_CONFIG: rules.fileLength=on, rules.fileLength.maxLines=0, rules.fileLength.maxTopLevelDeclarations=4
-package custom
+<!KOTRAIL_FILE_TOO_FLAT!>package custom<!>
 
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.tooling.preview.Preview
 
-// Four names fit: a class, a function with two overloads (one name), a property, a type alias.
+// Four names fit: a class, a function with two overloads (one name), a public property, a type alias.
+// A private property is a constant of the file and does not count.
+private val PADDING = 8
+
 class Config(val name: String)
 
 fun load(name: String): Config = Config(name)

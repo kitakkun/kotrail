@@ -320,7 +320,7 @@ data class KotrailFunctionLength(
 data class KotrailFileLength(
     /** Most lines of code a file may have (blank, brace-only, comment, package and import lines excluded); 0 for unlimited. */
     val maxLines: Int,
-    /** Most distinct top-level names a file may declare; 0 for unlimited. */
+    /** Most distinct top-level names a file may declare (private properties, previews and `actual` declarations aside); 0 for unlimited. */
     val maxTopLevelDeclarations: Int,
 )
 
@@ -561,7 +561,7 @@ data class KotrailConfig(
         const val DEFAULT_MIN_SAME_TYPE_ARGUMENTS = 3
         const val DEFAULT_FUNCTION_MAX_LINES = 50
         const val DEFAULT_FILE_MAX_LINES = 500
-        const val DEFAULT_FILE_MAX_TOP_LEVEL = 10
+        const val DEFAULT_FILE_MAX_TOP_LEVEL = 15
         val DEFAULT_NO_DATA_CLASS_SCOPE = PublicApiScope.EXPLICIT_API
         const val DEFAULT_COMPOSABLE_MAX_LINES = 80
         val DEFAULT_DELAYS: List<String> = listOf("kotlinx.coroutines.delay", "java.lang.Thread.sleep", "android.os.SystemClock.sleep")

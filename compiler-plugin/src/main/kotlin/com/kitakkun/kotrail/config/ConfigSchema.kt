@@ -89,7 +89,7 @@ object ConfigSchema {
         ),
         KotrailRule.FILE_LENGTH to listOf(
             Setting("maxLines", Kind.INT, "Most lines of code a file may have; blank, brace-only, comment, package and import lines do not count. 0 for unlimited.", default = "500"),
-            Setting("maxTopLevelDeclarations", Kind.INT, "Most distinct top-level names (classes, functions, properties, type aliases; overloads once, previews not at all) a file may declare. 0 for unlimited.", default = "10"),
+            Setting("maxTopLevelDeclarations", Kind.INT, "Most distinct top-level names a file may declare: classes, functions, public properties and type aliases, overloads once; previews, private properties and actual declarations do not count. 0 for unlimited.", default = "15"),
         ),
         KotrailRule.FUNCTION_LENGTH to listOf(
             Setting("maxLines", Kind.INT, "Most lines of code a function body may have; 0 for unlimited.", default = "50"),

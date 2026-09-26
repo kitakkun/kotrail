@@ -1,8 +1,8 @@
 # File length
 
-**Diagnostics:** `KOTRAIL_FILE_TOO_LONG` (error, on the package directive), `KOTRAIL_TOO_MANY_TOP_LEVEL_DECLARATIONS` (error, on each name past the limit)
+**Diagnostics:** `KOTRAIL_FILE_TOO_LONG` (error, on the package directive), `KOTRAIL_FILE_TOO_FLAT` (error, on the package directive) with `KOTRAIL_TOO_MANY_TOP_LEVEL_DECLARATIONS` (error, on each name past the limit)
 **Key:** `rules.fileLength` (on by default)
-**Settings:** `maxLines` (default `500`), `maxTopLevelDeclarations` (default `10`); `0` switches either check off
+**Settings:** `maxLines` (default `500`), `maxTopLevelDeclarations` (default `15`); `0` switches either check off
 
 ## What it rejects
 
@@ -21,7 +21,7 @@ fun fromJson(...)
 class JsonConfig(...)
 fun log(...)
 fun logError(...)
-fun measure(...)               // 11: reported, and every name after it
+fun measure(...)               // ... the 16th name and every one after it is reported
 ```
 
 ## What it asks for
@@ -49,9 +49,19 @@ catches the file that went flat, which can happen well under the line limit.
   but a brace, comment lines, and the `package` and `import` lines do not count. Reported once,
   on the package directive.
 - `maxTopLevelDeclarations`: the file declares more distinct top-level names than the limit.
-  Classes, interfaces, objects, functions, properties and type aliases count; overloads of one
-  function count once; `@Preview` functions belong to their component and do not count. Each
-  name past the limit is reported, in declaration order, so moving them out fixes the file.
+  Classes, interfaces, objects, functions, public properties and type aliases count; overloads
+  of one function count once. Not counted: `@Preview` functions and private properties, which
+  are the fixtures and constants of what the file already holds, and `actual` declarations,
+  whose shape the `expect` side fixed. The file gets one summary, on the package directive, with
+  the breakdown (`16 top-level names (3 classes, 11 functions, 2 properties), limit 15`) and the
+  fix that fits: when most of the names are composables, a pile of private pieces is a component
+  waiting for a file of its own; otherwise each name goes to the file of the type it serves, or a
+  group of them gets a class, an object or a file. Each name past the limit is then reported in
+  declaration order, so moving them out fixes the file.
+
+The default of 15 comes from measuring a real codebase: its genuinely flat files (a descriptor
+table with 29 private helpers, a `Main.kt` with 13 DTOs, a utility dump on one type) sat at 16
+to 31 names, while an ordinary screen with its private pieces and previews stayed under 15.
 
 ## When it stays quiet
 
