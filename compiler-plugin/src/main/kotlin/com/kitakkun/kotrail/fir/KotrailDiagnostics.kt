@@ -745,7 +745,7 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         )
         map.put2(
             KotrailDiagnostics.TOO_MANY_TOP_LEVEL_DECLARATIONS,
-            "[Kotrail] Top-level name {0} in this file, past the limit of {1}: move it out, with the names that belong with it.",
+            "[Kotrail] Top-level name {0} in this file, past the limit of {1}: move it, with what it needs, to a file of its own.",
         )
         map.put2(
             KotrailDiagnostics.OBJC_IDENTITY_COMPARISON,

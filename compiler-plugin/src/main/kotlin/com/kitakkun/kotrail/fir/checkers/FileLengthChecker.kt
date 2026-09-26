@@ -26,7 +26,10 @@ import org.jetbrains.kotlin.fir.declarations.toAnnotationClassLikeSymbol
 import org.jetbrains.kotlin.fir.declarations.utils.isActual
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.descriptors.Visibilities
+import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.fir.types.classId
+import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.text
 
 /**
@@ -75,7 +78,8 @@ object FileLengthChecker : FirFileChecker(MppCheckerKind.Common) {
     private fun checkNames(file: FirFile, limit: Int) {
         if (limit <= 0) return
         val session = context.session
-        val counted = file.declarations.filter { it.countsAsName(session) }
+        val fileClasses = file.declarations.filterIsInstance<FirRegularClass>().map { it.symbol.classId }.toSet()
+        val counted = file.declarations.filter { it.countsAsName(session) && !it.isImplementationOfSameFileInterface(fileClasses) }
         val firstOfName = LinkedHashMap<Name, Int>()
         var total = 0
         val positions = counted.map { firstOfName.getOrPut(it.declaredName()) { total++ } }
@@ -88,10 +92,12 @@ object FileLengthChecker : FirFileChecker(MppCheckerKind.Common) {
         val advice = if (composables * 2 >= distinct.size) {
             "A pile of private composables is a component waiting for a file: promote a group of them to an internal composable of its own."
         } else {
-            "Move each to the file of the type it serves, or give a group of them a class, an object or a file of their own."
+            "Move names to the file of the type they serve, or give a group of them a class, an object or a file of their own."
         }
         val at = file.packageDirective.source?.takeUnless { it.kind is KtFakeSourceElementKind } ?: counted.first().source
-        reportKotrail(at, KotrailDiagnostics.FILE_TOO_FLAT, "$total top-level names (${breakdown.joinToString(", ")}), limit $limit", advice)
+        val measured = "$total top-level names (${breakdown.joinToString(", ")}; private properties, previews, actual declarations and " +
+            "private implementations of a same-file interface not counted), limit $limit"
+        reportKotrail(at, KotrailDiagnostics.FILE_TOO_FLAT, measured, advice)
         for ((declaration, position) in counted.zip(positions)) {
             if (position < limit) continue
             val source = declaration.source ?: continue
@@ -116,6 +122,13 @@ object FileLengthChecker : FirFileChecker(MppCheckerKind.Common) {
             is FirNamedFunction -> !isPreview(session)
             else -> false
         }
+    }
+
+    /** A private or internal class whose supertype is declared in this file: the interface's own implementation, one name with it. */
+    private fun FirDeclaration.isImplementationOfSameFileInterface(fileClasses: Set<ClassId>): Boolean {
+        if (this !is FirRegularClass) return false
+        if (visibility != Visibilities.Private && visibility != Visibilities.Internal) return false
+        return superTypeRefs.any { it.coneType.classId in fileClasses }
     }
 
     private fun FirNamedFunction.isPreview(session: org.jetbrains.kotlin.fir.FirSession): Boolean =

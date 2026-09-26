@@ -51,8 +51,10 @@ catches the file that went flat, which can happen well under the line limit.
 - `maxTopLevelDeclarations`: the file declares more distinct top-level names than the limit.
   Classes, interfaces, objects, functions, public properties and type aliases count; overloads
   of one function count once. Not counted: `@Preview` functions and private properties, which
-  are the fixtures and constants of what the file already holds, and `actual` declarations,
-  whose shape the `expect` side fixed. The file gets one summary, on the package directive, with
+  are the fixtures and constants of what the file already holds; `actual` declarations, whose
+  shape the `expect` side fixed; and a private or internal class implementing an interface of
+  the same file, which is one name with its interface (a DSL's scope interfaces and their
+  implementations). The file gets one summary, on the package directive, with
   the breakdown (`16 top-level names (3 classes, 11 functions, 2 properties), limit 15`) and the
   fix that fits: when most of the names are composables, a pile of private pieces is a component
   waiting for a file of its own; otherwise each name goes to the file of the type it serves, or a

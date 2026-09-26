@@ -30,6 +30,15 @@ class <!KOTRAIL_TOO_MANY_TOP_LEVEL_DECLARATIONS!>Store<!> {
     fun add(config: Config) = items.add(config)
 }
 
+// Not counted: a private implementation of an interface declared here is one name with it.
+interface <!KOTRAIL_TOO_MANY_TOP_LEVEL_DECLARATIONS!>Scope<!> {
+    fun run()
+}
+
+private class ScopeImpl : Scope {
+    override fun run() {}
+}
+
 // Reported as the seventh name; its preview belongs to it and is not a name of its own.
 @Composable
 fun <!KOTRAIL_TOO_MANY_TOP_LEVEL_DECLARATIONS!>ConfigCard<!>(config: Config) {
