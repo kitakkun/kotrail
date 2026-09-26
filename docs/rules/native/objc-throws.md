@@ -41,7 +41,8 @@ declaration at the boundary, where the exception becomes an error the caller see
 - The function is public API (`public` in a public class, or top level), has a body, is not an
   `override`, is not `@HiddenFromObjC` itself or through its class, and is not an inline function
   with a reified type parameter, which Kotlin/Native never exports.
-- When `packages` is set, the function's package matches one of the globs. A framework rarely
+- When `packages` is set, the function's package matches one of the globs (`*` spans dots, so
+  `com.acme.sdk.*` covers `com.acme.sdk.messaging` too). A framework rarely
   exports every module it links; naming the packages Swift actually sees keeps the rule to the
   boundary:
 

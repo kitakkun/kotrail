@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.compose.noGlobalMutableState=on, rules.compose.noGlobalMutableState.handlerWrites=true
+// KOTRAIL_CONFIG: rules.compose.noGlobalMutableState=on, rules.compose.noGlobalMutableState.handlerWrites=false
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -24,16 +24,16 @@ var Receiver.selected: Boolean
 
 fun configure(block: Receiver.() -> Unit) = Receiver().block()
 
-// Reported with handlerWrites: an assignment from a handler or an effect too; the read in the handler is still fine.
+// Not reported with handlerWrites off: only assignments during composition count.
 @Composable
 fun Toggle() {
-    Action(onClick = { <!KOTRAIL_GLOBAL_VAR_WRITTEN_IN_COMPOSABLE!>isDarkTheme = !isDarkTheme<!> }) {
+    Action(onClick = { isDarkTheme = !isDarkTheme }) {
         Text("toggle")
     }
     LaunchedEffect(Unit) {
-        <!KOTRAIL_GLOBAL_VAR_WRITTEN_IN_COMPOSABLE!>Session.count<!> += 1
+        Session.count += 1
     }
-    // Not reported even with handlerWrites: an extension var's setter writes into its receiver.
+    // Not reported either way: an extension var's setter writes into its receiver.
     configure { selected = true }
 }
 

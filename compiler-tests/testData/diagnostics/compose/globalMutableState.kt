@@ -94,16 +94,17 @@ fun Counter() {
     Text("frames")
 }
 
-// Not reported by default: reads and writes in a handler or an effect see the value when they run;
-// writes there are reported with handlerWrites: true (see globalMutableStateHandlers.kt).
+// Reads in a handler or an effect see the value when they run and are not reported; writes there
+// are, since shared state written from one composable's handler is what another reads (handlerWrites,
+// on by default; see globalMutableStateHandlers.kt for switching it off).
 @Composable
 fun Toggle() {
-    Action(onClick = { isDarkTheme = !isDarkTheme }) {
+    Action(onClick = { <!KOTRAIL_GLOBAL_VAR_WRITTEN_IN_COMPOSABLE!>isDarkTheme = !isDarkTheme<!> }) {
         Text(if (<!KOTRAIL_GLOBAL_VAR_READ_IN_COMPOSITION!>isDarkTheme<!>) "on" else "off")
     }
     LaunchedEffect(Unit) {
-        Session.user = User("effect")
-        frames = 0
+        <!KOTRAIL_GLOBAL_VAR_WRITTEN_IN_COMPOSABLE!>Session.user = User("effect")<!>
+        <!KOTRAIL_GLOBAL_VAR_WRITTEN_IN_COMPOSABLE!>frames = 0<!>
     }
 }
 

@@ -2,7 +2,7 @@
 
 **Diagnostics:** `KOTRAIL_GLOBAL_VAR_READ_IN_COMPOSITION` (error, on the read), `KOTRAIL_GLOBAL_VAR_WRITTEN_IN_COMPOSABLE` (error, on the assignment)
 **Key:** `rules.compose.noGlobalMutableState` (on by default)
-**Settings:** `handlerWrites` (default `false`)
+**Settings:** `handlerWrites` (default `true`)
 
 ## What it rejects
 
@@ -50,7 +50,8 @@ of the app has no way to see the change. Both are what an assistant writes when 
 - A read counts when it runs during composition: in the body, in the lambda of an inline
   non-composable function (`let`, `forEach`), in a `remember { }`, or in a content slot (a
   `@Composable` lambda). An assignment counts in those places always, and in an event handler or
-  an effect when `handlerWrites` is on.
+  an effect while `handlerWrites` is on (the default): a var one composable's handler writes is
+  what another composable's handler reads, and neither side is observed.
 - One report per variable and kind of use in a function.
 
 ## When it stays quiet
@@ -67,12 +68,12 @@ of the app has no way to see the change. Both are what an assistant writes when 
 - A read sits in a lambda that runs after composition: an event handler, `LaunchedEffect`,
   `DisposableEffect`, a `Modifier.semantics { }` or `drawBehind { }` block, a callback stored in a
   local. Such code sees the current value when it runs.
-- An assignment in such a lambda, unless `handlerWrites: true`:
+- An assignment in such a lambda, once `handlerWrites` is switched off:
 
   ```yaml
   rules:
     compose.noGlobalMutableState:
-      handlerWrites: true    # onClick = { Session.user = null } is reported too
+      handlerWrites: false   # only assignments during composition are reported
   ```
 
 ## Related rules

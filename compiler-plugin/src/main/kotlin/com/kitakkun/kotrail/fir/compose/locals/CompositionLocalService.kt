@@ -8,6 +8,7 @@ import com.kitakkun.kotrail.fir.kotrailConfig
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirAnonymousFunction
+import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.declarations.processAllDeclarations
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.declarations.findArgumentByName
@@ -39,6 +40,8 @@ import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.symbols.lazyResolveToPhase
 import org.jetbrains.kotlin.fir.types.classId
+import org.jetbrains.kotlin.fir.types.coneType
+import org.jetbrains.kotlin.fir.types.isSomeFunctionType
 import org.jetbrains.kotlin.fir.types.isNothing
 import org.jetbrains.kotlin.fir.types.resolvedType
 import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
@@ -60,6 +63,12 @@ import org.jetbrains.kotlin.name.Name
 class LocalsAnalysis(
     val reads: Map<String, List<String>>,
     val provides: Map<String, Set<String>>,
+    /**
+     * The reads that are required as far as the code that read them can tell: decided where the
+     * local is visible, and carried with the read, so that a root in another module knows it
+     * even for a `private` local read through a public getter.
+     */
+    val required: Set<String> = emptySet(),
 ) {
     companion object {
         val EMPTY = LocalsAnalysis(emptyMap(), emptyMap())
@@ -79,6 +88,8 @@ class CompositionLocalService(session: FirSession) : FirExtensionSessionComponen
     private val settings get() = session.kotrailConfig.compose.compositionLocals
     private val cache = HashMap<FirNamedFunctionSymbol, LocalsAnalysis>()
     private val visiting = HashSet<FirNamedFunctionSymbol>()
+    private val getterCache = HashMap<FirPropertySymbol, LocalsAnalysis>()
+    private val visitingGetters = HashSet<FirPropertySymbol>()
     private val requiredCache = HashMap<FirPropertySymbol, Boolean>()
     private val sourceRequiredCache = HashMap<FirPropertySymbol, Boolean>()
 
@@ -94,6 +105,9 @@ class CompositionLocalService(session: FirSession) : FirExtensionSessionComponen
         if (fqName in settings.required) return true
         return resolveLocal(fqName)?.let { isRequired(it) } ?: false
     }
+
+    /** [isRequired] for a read that an analysis carried: what the reader knew, or what this compilation can tell. */
+    fun isRequired(fqName: String, analysis: LocalsAnalysis): Boolean = fqName in analysis.required || isRequired(fqName)
 
     /**
      * Whether [local] is required because of its own declaration, which is what the IR writer
@@ -117,10 +131,37 @@ class CompositionLocalService(session: FirSession) : FirExtensionSessionComponen
     }
 
     /** What [body] reads when nothing above it provides anything, for entry-point lambdas and roots. */
-    fun readsBelow(body: FirElement): Map<String, List<String>> {
+    fun readsBelow(body: FirElement): LocalsAnalysis {
         val collector = Collector(ownParameters = emptySet())
         body.accept(collector)
-        return collector.reads
+        return LocalsAnalysis(collector.reads, emptyMap(), collector.required)
+    }
+
+    /**
+     * The analysis of a composable property getter (`val colors: Colors @Composable get() = LocalColors.current`):
+     * a reader like any composable, so that a private local behind a public getter is still seen.
+     */
+    fun getterAnalysis(property: FirPropertySymbol): LocalsAnalysis {
+        getterCache[property]?.let { return it }
+        if (!visitingGetters.add(property)) return LocalsAnalysis.EMPTY
+        try {
+            val result = computeGetter(property)
+            getterCache[property] = result
+            return result
+        } finally {
+            visitingGetters.remove(property)
+        }
+    }
+
+    private fun computeGetter(property: FirPropertySymbol): LocalsAnalysis {
+        declaredMetadata(property.resolvedAnnotationsWithArguments)?.let { return it }
+        if (!property.origin.fromSource) return LocalsAnalysis.EMPTY
+        val getter = property.getterSymbol ?: return LocalsAnalysis.EMPTY
+        property.lazyResolveToPhase(FirResolvePhase.BODY_RESOLVE)
+        val body = getter.fir.body ?: return LocalsAnalysis.EMPTY
+        val collector = Collector(ownParameters = emptySet())
+        body.accept(collector)
+        return LocalsAnalysis(collector.reads, emptyMap(), collector.required)
     }
 
     /** A top-level or object-member property from its fully qualified name, or `null`. */
@@ -173,24 +214,28 @@ class CompositionLocalService(session: FirSession) : FirExtensionSessionComponen
         val body = symbol.fir.body ?: return LocalsAnalysis.EMPTY
         val collector = Collector(ownParameters = symbol.valueParameterSymbols.toSet())
         body.accept(collector)
-        return LocalsAnalysis(collector.reads, collector.provides.mapValues { it.value ?: emptySet() })
+        return LocalsAnalysis(collector.reads, collector.provides.mapValues { it.value ?: emptySet() }, collector.required)
     }
 
     private fun KotrailCompositionLocalKnowledge.toAnalysis(): LocalsAnalysis =
         LocalsAnalysis(reads.associateWith { emptyList() }, provides)
 
-    private fun declaredMetadata(symbol: FirNamedFunctionSymbol): LocalsAnalysis? {
-        val annotation = symbol.resolvedAnnotationsWithArguments
+    private fun declaredMetadata(symbol: FirNamedFunctionSymbol): LocalsAnalysis? = declaredMetadata(symbol.resolvedAnnotationsWithArguments)
+
+    /** The metadata the IR writer put on a function or a property: a read ending in `!` is one the reader found required. */
+    private fun declaredMetadata(annotations: List<FirAnnotation>): LocalsAnalysis? {
+        val annotation = annotations
             .firstOrNull { it.toAnnotationClassId(session) == CompositionLocalNames.INFERRED_COMPOSITION_LOCALS }
             ?: return null
         val reads = strings(annotation.findArgumentByName(CompositionLocalNames.READS_PARAM, returnFirstWhenNotFound = false))
         val provides = strings(annotation.findArgumentByName(CompositionLocalNames.PROVIDES_PARAM, returnFirstWhenNotFound = false))
         return LocalsAnalysis(
-            reads = reads.associateWith { emptyList() },
+            reads = reads.associate { it.removeSuffix(REQUIRED_MARK) to emptyList() },
             provides = provides.mapNotNull { entry ->
                 val parts = entry.split(':', limit = 2)
                 if (parts.size == 2) parts[0] to parts[1] else null
             }.groupBy({ it.first }, { it.second }).mapValues { it.value.toSet() },
+            required = reads.filter { it.endsWith(REQUIRED_MARK) }.map { it.removeSuffix(REQUIRED_MARK) }.toSet(),
         )
     }
 
@@ -214,6 +259,9 @@ class CompositionLocalService(session: FirSession) : FirExtensionSessionComponen
     private inner class Collector(private val ownParameters: Set<FirValueParameterSymbol>) : FirVisitorVoid() {
         val reads = LinkedHashMap<String, List<String>>()
 
+        /** The reads whose local this code can see is required. */
+        val required = HashSet<String>()
+
         /** Locals provided around every invocation of an own lambda parameter; `null` until the first invocation. */
         val provides = HashMap<String, Set<String>?>()
 
@@ -227,9 +275,26 @@ class CompositionLocalService(session: FirSession) : FirExtensionSessionComponen
             val local = propertyAccessExpression.readLocal()
             if (local != null) {
                 val fqName = local.localFqName()
-                if (fqName != null && fqName !in inScope) reads.putIfAbsent(fqName, emptyList())
+                if (fqName != null && fqName !in inScope) {
+                    reads.putIfAbsent(fqName, emptyList())
+                    if (isRequired(local)) required += fqName
+                }
+            }
+            // `Theme.colors`, a composable getter: what it reads is read here.
+            val property = propertyAccessExpression.calleeReference.toResolvedPropertySymbol()
+            if (property != null && local == null && property.getterSymbol?.isComposable(session) == true) {
+                merge(getterAnalysis(property), property.name.asString())
             }
             propertyAccessExpression.acceptChildren(this)
+        }
+
+        /** Brings a callee's reads (those not provided here) into this analysis, under [via] in the path. */
+        private fun merge(calleeAnalysis: LocalsAnalysis, via: String) {
+            for ((local, path) in calleeAnalysis.reads) {
+                if (local in inScope) continue
+                reads.putIfAbsent(local, listOf(via) + path)
+                if (local in calleeAnalysis.required) required += local
+            }
         }
 
         // FirVisitorVoid sends every node kind to visitElement unless its own method is overridden,
@@ -266,20 +331,23 @@ class CompositionLocalService(session: FirSession) : FirExtensionSessionComponen
                 for (element in elements) {
                     val lambda = (element.unwrapArgument() as? FirAnonymousFunctionExpression)?.anonymousFunction
                     val parameter = mapping?.get(argument)
+                    val passedThrough = (element.unwrapArgument() as? FirPropertyAccessExpression)
+                        ?.calleeReference?.toResolvedValueParameterSymbol()?.takeIf { it in ownParameters }
                     if (lambda != null && parameter != null) {
                         val extra = calleeAnalysis?.provides?.get(parameter.name.asString()).orEmpty()
                         withScope(inScope + extra) { lambda.accept(this) }
+                    } else if (passedThrough != null && parameter != null) {
+                        // `Theme(content = content)`: the callee invokes our parameter inside whatever it provides to its own.
+                        val extra = calleeAnalysis?.provides?.get(parameter.name.asString()).orEmpty()
+                        val name = passedThrough.name.asString()
+                        provides[name] = provides[name]?.intersect(inScope + extra) ?: (inScope + extra)
                     } else {
                         element.accept(this)
                     }
                 }
             }
 
-            if (calleeAnalysis != null && callee != null) {
-                for ((local, path) in calleeAnalysis.reads) {
-                    if (local !in inScope) reads.putIfAbsent(local, listOf(callee.name.asString()) + path)
-                }
-            }
+            if (calleeAnalysis != null && callee != null) merge(calleeAnalysis, callee.name.asString())
         }
 
         override fun visitAnonymousFunction(anonymousFunction: FirAnonymousFunction) {
@@ -322,11 +390,11 @@ class CompositionLocalService(session: FirSession) : FirExtensionSessionComponen
             return parameter.takeIf { it in ownParameters }
         }
 
-        /** The names of the lambda parameters of a `CompositionLocalProvider` call, normally just `content`. */
+        /** The names of the function-typed parameters of a `CompositionLocalProvider` call, normally just `content`, whether given a lambda or passed a parameter through. */
         private fun FirFunctionCall.contentParameters(): List<String> {
             val mapping = resolvedArgumentMapping ?: return emptyList()
             return mapping.entries
-                .filter { (argument, _) -> argument.unwrapArgument() is FirAnonymousFunctionExpression }
+                .filter { (_, parameter) -> parameter.returnTypeRef.coneType.isSomeFunctionType(session) }
                 .map { (_, parameter) -> parameter.name.asString() }
         }
 
@@ -347,6 +415,9 @@ class CompositionLocalService(session: FirSession) : FirExtensionSessionComponen
         }
     }
 }
+
+/** Appended to a read in the metadata when the reader found the local required. */
+internal const val REQUIRED_MARK = "!"
 
 val FirSession.compositionLocalService: CompositionLocalService by FirSession.sessionComponentAccessor()
 

@@ -925,7 +925,7 @@ data class KotrailConfig(
                     maxComposablesPerFile = int(KotrailRule.COMPOSE_COMPOSABLES_PER_FILE, "max") ?: DEFAULT_MAX_COMPOSABLES_PER_FILE,
                     countOverloadsSeparately = boolean(ruleNode(KotrailRule.COMPOSE_COMPOSABLES_PER_FILE), "countOverloadsSeparately") ?: false,
                     allowComposableSlots = boolean(ruleNode(KotrailRule.COMPOSE_NO_CALLBACK_IN_MODEL), "allowComposableSlots") ?: true,
-                    globalStateHandlerWrites = boolean(ruleNode(KotrailRule.COMPOSE_NO_GLOBAL_MUTABLE_STATE), "handlerWrites") ?: false,
+                    globalStateHandlerWrites = boolean(ruleNode(KotrailRule.COMPOSE_NO_GLOBAL_MUTABLE_STATE), "handlerWrites") ?: true,
                     previewParameterMinPreviews = int(KotrailRule.COMPOSE_PREVIEW_PARAMETER, "minPreviews") ?: 2,
                     rememberKeysFunctions = list(KotrailRule.COMPOSE_REMEMBER_KEYS, "functions") ?: DEFAULT_REMEMBER_KEYS_FUNCTIONS,
                     sideEffectTypes = list(KotrailRule.COMPOSE_NO_SIDE_EFFECT_IN_COMPOSITION, "types") ?: DEFAULT_SIDE_EFFECT_TYPES,

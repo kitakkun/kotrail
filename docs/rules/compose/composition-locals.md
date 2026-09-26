@@ -94,6 +94,12 @@ reported either.
   those locals to that parameter: `AppTheme(content)` wrapping `content()` in a provider means
   `AppTheme { LocalPalette.current }` is fine. If the parameter is invoked both inside and
   outside a provider, only what is provided around every invocation counts.
+- A composable that hands its lambda parameter straight on, `CompositionLocalProvider(...,
+  content = content)` or `AppTheme(content = content)`, provides to it whatever the callee
+  provides to that parameter: passing through counts as invoking inside.
+- A composable getter is a reader like a composable: `Theme.colors` declared as
+  `val colors: Colors @Composable get() = LocalColors.current` reads `LocalColors`, so a widget
+  that reads `Theme.colors` reads the local, through `colors` in the reported path.
 - Inline lambdas (`forEach`, `let`, ...) inherit the scope around them.
 
 ## Knowledge base
@@ -133,12 +139,16 @@ not throw. Every one of them is a comma-separated list of fully qualified names.
 
 ## Cross-module metadata
 
-For every non-private composable that reads or provides a local, the IR extension writes
+For every non-private composable, and every non-private property with a composable getter,
+that reads or provides a local, the IR extension writes
 `@InferredCompositionLocals(reads = [...], provides = [...])`, and for every non-private local
 whose default throws it writes `@InferredRequiredCompositionLocal`. Both go through
 `metadataDeclarationRegistrar.addMetadataVisibleAnnotationsToElement`, so consumers read them
 with no extra wiring. Every read is recorded, required or not: whether a read is an error is
-decided at the root, where the consuming project's settings apply.
+decided at the root, where the consuming project's settings apply. A read whose local the reader
+could see is required is recorded with a trailing `!` (`lib.theme.LocalColors!`), so that a
+`private` local behind a public getter is still required at a root in another module, which
+cannot resolve the local itself.
 
 ## Fixtures
 

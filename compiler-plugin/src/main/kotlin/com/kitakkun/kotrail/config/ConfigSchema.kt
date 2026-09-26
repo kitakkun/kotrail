@@ -196,7 +196,7 @@ object ConfigSchema {
             Setting("countOverloadsSeparately", Kind.BOOLEAN, "Whether overloads of one composable name count one each; by default they count as one component.", default = "false"),
         ),
         KotrailRule.COMPOSE_NO_GLOBAL_MUTABLE_STATE to listOf(
-            Setting("handlerWrites", Kind.BOOLEAN, "Whether an assignment to a global var from a composable's event handler (onClick = { Session.user = null }) is reported too; assignments during composition always are.", default = "false"),
+            Setting("handlerWrites", Kind.BOOLEAN, "Whether an assignment to a global var from a composable's event handler or effect (onClick = { Session.user = null }) is reported; assignments during composition always are. Off, only writes during composition count.", default = "true"),
         ),
         KotrailRule.COMPOSE_NO_SIDE_EFFECT_IN_COMPOSITION to listOf(
             Setting("types", Kind.LIST, "Fully qualified return types whose producers start work when called in a composable body; replaces the default list.", default = "kotlinx.coroutines.Job, kotlinx.coroutines.Deferred"),

@@ -50,7 +50,7 @@ FILE fqName:lib fileName:/Lib.kt
   FUN name:NavReader visibility:public modality:FINAL returnType:kotlin.Unit
     annotations:
       Composable
-      InferredCompositionLocals(reads = ["lib.LocalNav", "lib.LocalTitle"] type=kotlin.Array<kotlin.String> varargElementType=kotlin.String, provides = [] type=kotlin.Array<kotlin.String> varargElementType=kotlin.String)
+      InferredCompositionLocals(reads = ["lib.LocalNav!", "lib.LocalTitle"] type=kotlin.Array<kotlin.String> varargElementType=kotlin.String, provides = [] type=kotlin.Array<kotlin.String> varargElementType=kotlin.String)
     BLOCK_BODY
       CALL 'public final fun Text (text: kotlin.String, modifier: androidx.compose.ui.Modifier): kotlin.Unit declared in androidx.compose.material3' type=kotlin.Unit origin=null
         ARG text: CALL 'public final fun <get-current> (): T of androidx.compose.runtime.ProvidableCompositionLocal declared in androidx.compose.runtime.ProvidableCompositionLocal' type=kotlin.String origin=GET_PROPERTY

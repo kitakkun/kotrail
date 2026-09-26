@@ -7,6 +7,7 @@ import com.kitakkun.kotrail.fir.compose.isComposable
 import com.kitakkun.kotrail.fir.compose.isPreview
 import com.kitakkun.kotrail.fir.compose.locals.CompositionLocalNames
 import com.kitakkun.kotrail.fir.compose.locals.CompositionLocalService
+import com.kitakkun.kotrail.fir.compose.locals.LocalsAnalysis
 import com.kitakkun.kotrail.fir.compose.locals.compositionLocalService
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.reportKotrail
@@ -48,7 +49,7 @@ object CompositionLocalRootChecker : NamedFunctionChecker(MppCheckerKind.Common)
         val isRoot = symbol.hasAnnotation(CompositionLocalNames.COMPOSITION_LOCAL_ROOT, context.session) ||
             symbol.isPreview(context.session)
         if (!isRoot) return
-        reportMissing(source, service, analysis.reads)
+        reportMissing(source, service, analysis)
     }
 }
 
@@ -88,13 +89,13 @@ context(context: CheckerContext, reporter: DiagnosticReporter)
 private fun reportMissing(
     source: KtSourceElement,
     service: CompositionLocalService,
-    reads: Map<String, List<String>>,
+    analysis: LocalsAnalysis,
     diagnostic: com.kitakkun.kotrail.fir.TunableDiagnostic2<String, String> = KotrailDiagnostics.COMPOSITION_LOCAL_NOT_PROVIDED,
 ) {
     val platform = context.session.kotrailConfig.compose.compositionLocals.platform
-    for ((local, path) in reads) {
+    for ((local, path) in analysis.reads) {
         if (local in platform) continue
-        if (!service.isRequired(local)) continue
+        if (!service.isRequired(local, analysis)) continue
         val where = if (path.isEmpty()) "read here" else "read in " + path.joinToString(" > ")
         reportKotrail(source, diagnostic, local, where)
     }

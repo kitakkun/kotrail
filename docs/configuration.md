@@ -155,7 +155,7 @@ own; a rule not listed has none.
 | `compose.noCallbackInModel` | `allowComposableSlots` | `true` | Whether a `@Composable` function-typed property (a content slot such as a table column's cell renderer) in a model handed to a UI composable is allowed; other function types are always reported. |
 | `compose.composablesPerFile` | `max` | `3` | Maximum non-private UI composables in one file, previews excluded; `0` disables. |
 | | `countOverloadsSeparately` | `false` | Whether overloads of one composable name count one each; by default they count as one component. |
-| `compose.noGlobalMutableState` | `handlerWrites` | `false` | Whether an assignment to a global `var` from a composable's event handler or effect is reported too; assignments during composition always are. |
+| `compose.noGlobalMutableState` | `handlerWrites` | `true` | Whether an assignment to a global `var` from a composable's event handler or effect is reported; assignments during composition always are. |
 | `compose.noSideEffectInComposition` | `types` | `[kotlinx.coroutines.Job, kotlinx.coroutines.Deferred]` | Declared return types that mark a call as starting work. Replaces the default list. |
 | | `functions` | `[]` | Fully qualified functions reported by name whatever they return. |
 | `compose.noUnstableParameter` (experimental, off by default) | `stableTypes` | `[]` | Types the project declares stable, as fully qualified names with `*` / `**` wildcards and an optional `<*,_>` mask, like a Compose stability configuration file. |

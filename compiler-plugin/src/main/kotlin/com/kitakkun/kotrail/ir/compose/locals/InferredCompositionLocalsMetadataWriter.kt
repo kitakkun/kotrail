@@ -5,6 +5,8 @@ package com.kitakkun.kotrail.ir.compose.locals
 import com.kitakkun.kotrail.compat.addStringArraysMetadataAnnotation
 import com.kitakkun.kotrail.fir.compose.ComposeNames
 import com.kitakkun.kotrail.fir.compose.locals.CompositionLocalNames
+import com.kitakkun.kotrail.fir.compose.locals.LocalsAnalysis
+import com.kitakkun.kotrail.fir.compose.locals.REQUIRED_MARK
 import com.kitakkun.kotrail.fir.compose.locals.compositionLocalService
 import com.kitakkun.kotrail.ir.inferredAnnotationConstructor
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
@@ -58,7 +60,12 @@ class InferredCompositionLocalsMetadataWriter : IrGenerationExtension {
 
             val fir = (declaration.metadata as? FirMetadataSource.Function)?.fir as? FirNamedFunction ?: return
             val analysis = fir.moduleData.session.compositionLocalService.analysis(fir.symbol)
-            val reads = analysis.reads.keys.sorted()
+            writeAnalysis(declaration, analysis)
+        }
+
+        /** Reads (a required one marked with `!`, so that a reader of a private local carries the requirement) and provides. */
+        private fun writeAnalysis(declaration: org.jetbrains.kotlin.ir.declarations.IrDeclaration, analysis: LocalsAnalysis) {
+            val reads = analysis.reads.keys.sorted().map { if (it in analysis.required) it + REQUIRED_MARK else it }
             val provides = analysis.provides.entries
                 .flatMap { (parameter, locals) -> locals.map { "$parameter:$it" } }
                 .sorted()
@@ -68,12 +75,16 @@ class InferredCompositionLocalsMetadataWriter : IrGenerationExtension {
 
         override fun visitProperty(declaration: IrProperty) {
             declaration.acceptChildrenVoid(this)
-            if (declaration.hasAnnotation(CompositionLocalNames.INFERRED_REQUIRED_COMPOSITION_LOCAL)) return
             if (!declaration.isExported()) return
             val fir = (declaration.metadata as? FirMetadataSource.Property)?.fir ?: return
             val service = fir.moduleData.session.compositionLocalService
-            if (!service.isRequiredBySource(fir.symbol)) return
-            addStringArraysMetadataAnnotation(pluginContext, declaration, propertyConstructor, emptyList())
+            if (!declaration.hasAnnotation(CompositionLocalNames.INFERRED_REQUIRED_COMPOSITION_LOCAL) && service.isRequiredBySource(fir.symbol)) {
+                addStringArraysMetadataAnnotation(pluginContext, declaration, propertyConstructor, emptyList())
+            }
+            // A composable getter is a reader: `val colors: Colors @Composable get() = LocalColors.current`.
+            if (declaration.getter?.hasAnnotation(ComposeNames.COMPOSABLE) == true && !declaration.hasAnnotation(CompositionLocalNames.INFERRED_COMPOSITION_LOCALS)) {
+                writeAnalysis(declaration, service.getterAnalysis(fir.symbol))
+            }
         }
 
         private fun IrSimpleFunction.isExported(): Boolean =
