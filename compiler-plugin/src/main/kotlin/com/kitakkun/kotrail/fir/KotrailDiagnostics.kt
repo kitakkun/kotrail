@@ -658,8 +658,8 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         )
         map.put1(
             KotrailDiagnostics.RESOURCE_NOT_CLOSED,
-            "[Kotrail] This ''{0}'' is created here and neither closed nor handed on: the file handle, socket or buffer behind it " +
-                "stays open until a finalizer runs, if ever. Wrap it in use '{' '}', close it in a finally, or return it to a caller that will.",
+            "[Kotrail] This ''{0}'' is created here and neither closed nor handed on: whatever it holds stays held until a " +
+                "finalizer runs, if ever. Wrap it in use '{' '}', close it in a finally, or store or return it where its owner will close it.",
         )
         map.put1(
             KotrailDiagnostics.NATIVE_ALLOCATION_IN_LOOP,

@@ -69,8 +69,18 @@ object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
         ClassId(FqName("java.lang"), org.jetbrains.kotlin.name.Name.identifier("AutoCloseable")),
         ClassId(FqName("java.io"), org.jetbrains.kotlin.name.Name.identifier("Closeable")),
     )
-    private val USE = setOf("kotlin.use", "kotlin.io.use", "kotlin.AutoCloseable.use")
+    /** Closes the receiver when done: `use`, and the readers' consuming helpers (`readText` is not one; it leaves the reader open). */
+    private val USE = setOf(
+        "kotlin.use", "kotlin.io.use", "kotlin.AutoCloseable.use",
+        "kotlin.io.useLines", "kotlin.io.forEachLine", "kotlin.io.readLines", "kotlin.io.path.useLines", "kotlin.io.path.forEachLine",
+    )
     private val SCOPE_FUNCTIONS = setOf("kotlin.apply", "kotlin.also", "kotlin.let", "kotlin.run", "kotlin.takeIf", "kotlin.takeUnless")
+
+    /** Wraps the receiver in another resource whose closing closes it: settling the wrapper settles what it wraps. */
+    private val WRAPPERS = setOf(
+        "kotlin.io.buffered", "kotlin.io.bufferedReader", "kotlin.io.bufferedWriter", "kotlin.io.reader", "kotlin.io.writer",
+        "kotlin.io.printWriter", "okio.buffer",
+    )
     private val RESULT_OF_LAMBDA = USE + setOf("kotlin.let", "kotlin.run", "kotlin.with")
 
     context(context: CheckerContext, reporter: DiagnosticReporter)
@@ -80,7 +90,7 @@ object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
         val source = declaration.source ?: return
         if (source.kind is KtFakeSourceElementKind) return
         val body = declaration.body ?: return
-        val finder = Finder(context.session, config.mustClose.factories.toSet())
+        val finder = Finder(context.session, config.mustClose.factories.toSet(), config.mustClose.ignoredTypes)
         body.accept(finder)
         for ((call, type) in finder.leaked()) {
             val at = call.source ?: continue
@@ -90,7 +100,7 @@ object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
     }
 
     /** Finds the resources a body creates and which of them are closed or handed on. */
-    private class Finder(private val session: FirSession, private val factories: Set<String>) : FirVisitorVoid() {
+    private class Finder(private val session: FirSession, private val factories: Set<String>, private val ignoredTypes: List<String>) : FirVisitorVoid() {
         private val created = LinkedHashMap<FirFunctionCall, String>()
         private val settled = HashSet<FirFunctionCall>()
         private val locals = HashMap<FirBasedSymbol<*>, FirFunctionCall>()
@@ -130,6 +140,10 @@ object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
             if (functionCall.settlesReceiver()) {
                 functionCall.explicitReceiver?.localSymbol()?.let { settledLocals += it }
             }
+            // `sink.buffer().use { }`: the wrapper's closing closes the local it wraps.
+            if (functionCall.fqName() in WRAPPERS && isSettledAbove(functionCall)) {
+                functionCall.explicitReceiver?.localSymbol()?.let { settledLocals += it }
+            }
             // A resource handed to another call is that call's to close.
             for (argument in functionCall.argumentList.arguments) {
                 val expression = argument.unwrapArgument().unwrapped()
@@ -145,14 +159,32 @@ object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
             return (name == "close" && argumentList.arguments.isEmpty()) || fqName() in USE
         }
 
-        /** A constructor of an `AutoCloseable`, or a listed factory: a resource this body owns. */
+        /** A constructor of an `AutoCloseable`, or a listed factory: a resource this body owns; an in-memory type on the ignored list is not one. */
         private fun resourceType(call: FirFunctionCall): String? {
             val callee = call.calleeReference.toResolvedCallableSymbol() ?: return null
             val isResource = when (callee) {
                 is FirConstructorSymbol -> CLOSEABLE.any { call.resolvedType.isSubtypeOf(it) }
                 else -> callee.callableId?.asSingleFqName()?.asString() in factories
             }
-            return if (isResource) call.resolvedType.renderReadable() else null
+            if (!isResource) return null
+            if (ignoredTypes.any { call.resolvedType.isSubtypeOf(ClassId.topLevel(FqName(it))) }) return null
+            return call.resolvedType.renderReadable()
+        }
+
+        /** `also { installation = it }` / `apply { field = this }`: the lambda stores the receiver in a property. */
+        private fun FirFunctionCall.assignsToProperty(): Boolean {
+            var found = false
+            accept(object : FirVisitorVoid() {
+                override fun visitElement(element: FirElement) {
+                    if (found) return
+                    if (element is FirVariableAssignment) {
+                        val target = (element.lValue as? FirPropertyAccessExpression)?.calleeReference?.toResolvedCallableSymbol()
+                        if (target is FirPropertySymbol && !target.isLocal) found = true
+                    }
+                    element.acceptChildren(this)
+                }
+            })
+            return found
         }
 
         /**
@@ -171,13 +203,15 @@ object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
                         val selector = parent.selector as? FirFunctionCall ?: return false
                         val name = selector.fqName() ?: return false
                         if (name in USE) return true
-                        if (name !in SCOPE_FUNCTIONS) return false
+                        if (name !in SCOPE_FUNCTIONS && name !in WRAPPERS) return false
+                        if (name in SCOPE_FUNCTIONS && selector.assignsToProperty()) return true
                         current = parent
                     }
                     parent is FirFunctionCall && parent.explicitReceiver?.unwrapped() === current -> {
                         val name = parent.fqName() ?: return false
                         if (name in USE) return true
-                        if (name !in SCOPE_FUNCTIONS) return false
+                        if (name !in SCOPE_FUNCTIONS && name !in WRAPPERS) return false
+                        if (name in SCOPE_FUNCTIONS && parent.assignsToProperty()) return true
                         current = parent
                     }
                     parent is FirFunctionCall && parent.argumentList.arguments.any { it.unwrapArgument().unwrapped() === current } -> return true

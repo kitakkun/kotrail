@@ -2,7 +2,7 @@
 
 **Diagnostic:** `KOTRAIL_RESOURCE_NOT_CLOSED` (error, on the creation)
 **Key:** `rules.mustClose` (on by default)
-**Settings:** `factories` (default: the `kotlin.io` and `kotlin.io.path` stream, reader and writer factories, `java.nio.file.Files.new*`, `Files.lines`, `Files.walk`, `Files.list`, `FileChannel.open`, `ServerSocket.accept`)
+**Settings:** `factories` (default: the `kotlin.io` and `kotlin.io.path` stream, reader and writer factories, `java.nio.file.Files.new*`, `Files.lines`, `Files.walk`, `Files.list`, `FileChannel.open`, `ServerSocket.accept`), `ignoredTypes` (default: the in-memory `ByteArray*`, `String*` and `CharArray*` streams and `okio.Buffer`)
 
 ## What it rejects
 
@@ -31,15 +31,25 @@ because nothing in the code it is looking at says the object is a resource.
 
 - A call in a function body creates a resource: a constructor of a class that is an
   `AutoCloseable` (`java.io.Closeable` included), or a call to one of `factories`.
-- Nothing settles it: it is not the receiver of `use { }` (directly, through `apply` / `also` /
-  `let` / `run`, or through a `?.` chain), it is not a local that the body later closes with
-  `close()` or `use`, and it does not leave the function.
+- Nothing settles it: it is not the receiver of `use { }` or of a consuming helper that closes
+  (`useLines`, `forEachLine`, `readLines`; `readText` is not one), directly, through `apply` /
+  `also` / `let` / `run`, through a `?.` chain, or through a wrapper whose closing closes it
+  (`sink.buffer().use { }`, `stream.bufferedReader().readLines()`); it is not a local that the
+  body later closes with `close()` or `use`; and it does not leave the function.
 
 ## When it stays quiet
 
 - The resource leaves the function: returned (`fun open() = File(p).bufferedReader()`),
-  assigned to a property, or passed as an argument. Whoever receives it is the owner; the rule
-  does not follow it.
+  assigned to a property (also through `also { installed = it }`), or passed as an argument.
+  Whoever receives it is the owner; the rule does not follow it.
+- The type is on `ignoredTypes`: an in-memory buffer holds nothing a close would free, and a
+  project's `AutoCloseable` registration handles (an uninstall token) go there too:
+
+  ```yaml
+  rules:
+    mustClose:
+      ignoredTypes: [java.io.ByteArrayOutputStream, okio.Buffer, com.acme.probe.Installation]
+  ```
 - The result comes from a function that is not a constructor and not on the list: an
   `inputStream` property, a pooled connection, a cached client. The rule cannot tell whether the
   caller owns those, so it says nothing. Add a project's own factories to `factories`:
