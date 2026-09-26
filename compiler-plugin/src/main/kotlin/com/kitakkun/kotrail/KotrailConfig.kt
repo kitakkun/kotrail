@@ -364,6 +364,8 @@ data class KotrailComplexity(
     val maxScore: Int,
     /** Percent of a composable's points a block must carry to be named as the place to extract. */
     val hotspotShare: Int,
+    /** Fully qualified functions that produce a source of state besides the calls whose result is a `State`: a project's remember wrapper. */
+    val stateFactories: List<String>,
 )
 
 /** Tunables for the must-close rule. From `rules.mustClose`. */
@@ -998,6 +1000,7 @@ data class KotrailConfig(
                     complexity = KotrailComplexity(
                         maxScore = int(KotrailRule.COMPOSE_COMPLEXITY, "maxScore") ?: DEFAULT_COMPLEXITY_MAX_SCORE,
                         hotspotShare = int(KotrailRule.COMPOSE_COMPLEXITY, "hotspotShare") ?: DEFAULT_COMPLEXITY_HOTSPOT_SHARE,
+                        stateFactories = list(KotrailRule.COMPOSE_COMPLEXITY, "stateFactories").orEmpty(),
                     ),
                     globalStateHandlerWrites = boolean(ruleNode(KotrailRule.COMPOSE_NO_GLOBAL_MUTABLE_STATE), "handlerWrites") ?: true,
                     previewParameterMinPreviews = int(KotrailRule.COMPOSE_PREVIEW_PARAMETER, "minPreviews") ?: 2,

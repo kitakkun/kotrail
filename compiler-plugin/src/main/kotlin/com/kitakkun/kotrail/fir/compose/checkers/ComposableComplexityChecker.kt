@@ -24,8 +24,12 @@ import org.jetbrains.kotlin.fir.expressions.FirAnonymousFunctionExpression
 import org.jetbrains.kotlin.fir.expressions.FirBooleanOperatorExpression
 import org.jetbrains.kotlin.fir.expressions.FirDoWhileLoop
 import org.jetbrains.kotlin.fir.expressions.FirElvisExpression
+import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
+import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
 import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
+import org.jetbrains.kotlin.fir.expressions.FirResolvedQualifier
+import org.jetbrains.kotlin.fir.expressions.FirThisReceiverExpression
 import org.jetbrains.kotlin.fir.expressions.FirVariableAssignment
 import org.jetbrains.kotlin.fir.expressions.FirWhenExpression
 import org.jetbrains.kotlin.fir.expressions.FirWhileLoop
@@ -39,7 +43,6 @@ import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.ConeStarProjection
-import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.fir.types.isNullableNothing
@@ -50,7 +53,6 @@ import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
-import org.jetbrains.kotlin.text
 import org.jetbrains.kotlin.types.AbstractTypeChecker
 
 /**
@@ -59,30 +61,31 @@ import org.jetbrains.kotlin.types.AbstractTypeChecker
  *
  * | What | Points |
  * |---|---|
- * | A state source: `remember { mutableStateOf(...) }`, `rememberSaveable`, `derivedStateOf`, `collectAsState` | 1 each |
- * | An effect (`LaunchedEffect`, `DisposableEffect`, `produceState`, `SideEffect`) | 2, +1 per key, +2 when it writes a `State`, +1 when its body lives long |
+ * | A state source: a call that produces a `State` (`remember { mutableStateOf(...) }`, `rememberSaveable`, `derivedStateOf`, `collectAsState`), or a call listed in `stateFactories` | 1 each |
+ * | An effect (`LaunchedEffect`, `DisposableEffect`, `produceState`, `SideEffect`) | 1, +1 when it writes a `State`; its body's branches count as branches |
  * | A `launch` / `async` from a handler | 1 each |
- * | A branch (`if`, a `when` case, `?:`), a boolean `&&` / `||`, a loop | 1 each |
+ * | A branch (`if`, a `when` case, `?:` with a computed fallback), a boolean `&&` / `||`, a loop | 1 each |
  * | A `CompositionLocal.current` read | 1 each |
- * | A callback parameter beyond four | 1 each |
+ * | A callback parameter beyond four | 1 each, at most 4 |
  *
  * Neither line count nor call nesting counts: [FunctionLengthChecker] and [ComposableNestingChecker]
- * own those. Every lambda handed to a composable (`Column { }`, `items { }`) and every branch is a
- * subtree with a score of its own, so that a composable over the limit is told which block to
- * extract (the innermost subtree carrying at least `hotspotShare` percent of the total), or, when
- * the points are spread, which kind of thing dominates. Every composable's score and breakdown is
- * also written to a record for the `kotrailComplexity` report, under or over the limit.
+ * own those. Every lambda handed to a composable (`Column { }`, `items { }`), every effect and every
+ * branch is a subtree with a score of its own, so that a composable over the limit is told which
+ * block to extract (the innermost subtree carrying at least `hotspotShare` percent of the total)
+ * and what kind of extraction fits it, or, when the points are spread, which kinds dominate. Every
+ * composable's score and breakdown is also written to a record for the `kotrailComplexity`
+ * report, under or over the limit.
  */
 object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common) {
     private val EFFECTS = setOf("LaunchedEffect", "DisposableEffect", "produceState", "SideEffect")
-    private val STATE_SOURCES = setOf("mutableStateOf", "mutableIntStateOf", "mutableLongStateOf", "mutableFloatStateOf", "mutableDoubleStateOf", "mutableStateListOf", "mutableStateMapOf")
-    private val DERIVED = setOf("derivedStateOf", "collectAsState", "collectAsStateWithLifecycle", "observeAsState")
     private val LAUNCHERS = setOf("launch", "async")
     private val LOOP_CALLS = setOf("forEach", "forEachIndexed", "map", "items", "itemsIndexed", "repeat", "fastForEach")
-    private val LONG_LIVED = setOf("collect", "collectLatest", "onEach", "awaitCancellation", "awaitPointerEventScope", "withFrameNanos")
     private val STATE = ClassId(FqName("androidx.compose.runtime"), Name.identifier("State"))
     private const val FREE_CALLBACKS = 4
+    private const val MAX_CALLBACK_POINTS = 4
     private const val HOTSPOT_MIN = 5
+    /** A kind that carries at least this share of the total is named as dominating a spread score. */
+    private const val DOMINANT_SHARE = 30
 
     context(context: CheckerContext, reporter: DiagnosticReporter)
     override fun check(declaration: FirNamedFunction) {
@@ -93,14 +96,14 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
         val session = context.session
         if (!declaration.symbol.isComposable(session) || declaration.symbol.isPreview(session)) return
         val body = declaration.body ?: return
+        val settings = config.compose.complexity
 
-        val scorer = Scorer(session)
+        val scorer = Scorer(session, settings.stateFactories.toSet())
         val callbacks = declaration.valueParameters.count { it.returnTypeRef.coneType.isSomeFunctionType(session) }
-        scorer.root.add(Kind.COUPLING, (callbacks - FREE_CALLBACKS).coerceAtLeast(0))
+        scorer.root.add(Kind.COUPLING, (callbacks - FREE_CALLBACKS).coerceIn(0, MAX_CALLBACK_POINTS))
         body.accept(scorer)
         val root = scorer.root
         val total = root.total()
-        val settings = config.compose.complexity
 
         config.complexityDir?.let { directory ->
             val path = context.containingFileSymbol?.sourceFile?.path
@@ -110,15 +113,12 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
 
         val hotspot = scorer.hotspot(total, settings.hotspotShare)
         val advice = if (hotspot != null) {
-            "'${hotspot.label}' carries ${hotspot.total()} of them: extract it into a composable of its own"
+            "'${hotspot.label}' carries ${hotspot.total()} of them: ${hotspot.extraction()}"
         } else {
-            val (kind, points) = root.byKind().maxByOrNull { it.value }!!
-            when (kind) {
-                Kind.STATES -> "states are the largest share ($points): move them into a state holder the composable receives"
-                Kind.EFFECTS -> "effects are the largest share ($points): move the work behind them into a view model or a holder"
-                Kind.BRANCHES -> "branches are the largest share ($points): give each variant of the UI a composable of its own"
-                Kind.COUPLING -> "coupling is the largest share ($points): fold the callbacks into an actions interface, or take fewer locals"
-            }
+            val byKind = root.byKind().filterValues { it > 0 }.entries.sortedByDescending { it.value }
+            val dominant = byKind.filter { it.value * 100 >= total * DOMINANT_SHARE }.ifEmpty { byKind.take(1) }
+            val named = dominant.joinToString(" and ") { (kind, points) -> "${kind.label} ($points)" }
+            "the points are spread across the body with no single block to extract; $named ${if (dominant.size == 1) "dominates" else "dominate"}: ${dominant.first().key.advice}"
         }
         reportKotrail(source, KotrailDiagnostics.COMPOSABLE_TOO_COMPLEX, "$total (${root.breakdown()}), limit ${settings.maxScore}", advice)
         if (hotspot != null) {
@@ -126,10 +126,18 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
         }
     }
 
-    enum class Kind(val label: String) { STATES("states"), EFFECTS("effects"), BRANCHES("branches"), COUPLING("coupling") }
+    enum class Kind(val label: String, val advice: String) {
+        STATES("states", "move them into a state holder the composable receives"),
+        EFFECTS("effects", "move the work behind them into a view model or a holder"),
+        BRANCHES("branches", "give each variant of the UI a composable of its own"),
+        COUPLING("coupling", "fold the callbacks into an actions interface, or take fewer locals"),
+    }
+
+    /** What a block is: decides the advice for extracting it. */
+    enum class Block { COMPOSABLE_LAMBDA, REMEMBER, EFFECT, BRANCH }
 
     /** The points of one subtree: what it scored itself, and the subtrees below it. */
-    class Node(val label: String, val source: KtSourceElement?) {
+    class Node(val label: String, val source: KtSourceElement?, private val block: Block) {
         private val own = IntArray(Kind.entries.size)
         val children = ArrayList<Node>()
 
@@ -142,12 +150,22 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
         fun byKind(): Map<Kind, Int> = Kind.entries.associateWith { kind -> own[kind.ordinal] + children.sumOf { it.byKind()[kind] ?: 0 } }
 
         fun breakdown(): String = byKind().filterValues { it > 0 }.entries.joinToString(", ") { (kind, points) -> "${kind.label} $points" }
+
+        /** How to take this block out of the composable. */
+        fun extraction(): String = when (block) {
+            Block.COMPOSABLE_LAMBDA -> "extract it into a composable of its own"
+            Block.REMEMBER -> "move the computation into a plain function"
+            Block.EFFECT -> "move its body into a non-composable handler or an effect helper of its own"
+            Block.BRANCH -> "give this variant of the UI a composable of its own"
+        }
     }
 
-    /** Walks a body, scoring into the current [Node]; a lambda handed to a composable and a branch open a child. */
-    private class Scorer(private val session: FirSession) : FirVisitorVoid() {
-        val root = Node("body", null)
+    /** Walks a body, scoring into the current [Node]; a lambda handed to a composable, an effect and a branch open a child. */
+    private class Scorer(private val session: FirSession, private val stateFactories: Set<String>) : FirVisitorVoid() {
+        val root = Node("body", null, Block.COMPOSABLE_LAMBDA)
         private var current = root
+        /** Inside a call that already scored as a state source: the calls it wraps do not score again. */
+        private var insideStateSource = false
 
         /** The innermost subtree carrying at least [sharePercent] of [total] and [HOTSPOT_MIN] points, or null when the points are spread. */
         fun hotspot(total: Int, sharePercent: Int): Node? {
@@ -169,12 +187,12 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
             element.acceptChildren(this)
         }
 
-        private inline fun inChild(label: String, source: KtSourceElement?, block: () -> Unit) {
-            val child = Node(label, source)
+        private inline fun inChild(label: String, source: KtSourceElement?, block: Block, body: () -> Unit) {
+            val child = Node(label, source, block)
             current.children += child
             val saved = current
             current = child
-            block()
+            body()
             current = saved
         }
 
@@ -186,13 +204,23 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
                     current.add(Kind.BRANCHES, 1)
                     branch.condition.accept(this)
                 }
-                inChild(if (conditional) "branch" else "else branch", branch.result.source) { branch.result.accept(this) }
+                inChild(if (conditional) "branch" else "else branch", branch.result.source, Block.BRANCH) { branch.result.accept(this) }
             }
         }
 
         override fun visitElvisExpression(elvisExpression: FirElvisExpression) {
-            current.add(Kind.BRANCHES, 1)
+            // `?: Color.Unspecified`, `?: ""`: a constant fallback is a default, not a path the reader follows.
+            if (!elvisExpression.rhs.isConstantLike()) current.add(Kind.BRANCHES, 1)
             visitElement(elvisExpression)
+        }
+
+        private fun FirExpression.isConstantLike(): Boolean = when (this) {
+            is FirLiteralExpression -> true
+            is FirPropertyAccessExpression -> {
+                val receiver = explicitReceiver
+                receiver == null || receiver is FirResolvedQualifier || receiver is FirThisReceiverExpression
+            }
+            else -> false
         }
 
         override fun visitBooleanOperatorExpression(booleanOperatorExpression: FirBooleanOperatorExpression) {
@@ -226,39 +254,42 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
         override fun visitFunctionCall(functionCall: FirFunctionCall) {
             val callee = functionCall.calleeReference.toResolvedNamedFunctionSymbol()
             val name = callee?.name?.asString()
+            if (name in EFFECTS) {
+                scoreEffect(functionCall)
+                return
+            }
+            val producesState = !insideStateSource &&
+                (functionCall.resolvedType.isState(session) || callee?.callableId?.asSingleFqName()?.asString() in stateFactories)
             when {
-                name in STATE_SOURCES || name in DERIVED -> current.add(Kind.STATES, 1)
-                name in EFFECTS -> {
-                    scoreEffect(functionCall)
-                    return
-                }
+                producesState -> current.add(Kind.STATES, 1)
                 name in LAUNCHERS -> current.add(Kind.EFFECTS, 1)
                 name in LOOP_CALLS -> current.add(Kind.BRANCHES, 1)
             }
+            val savedInside = insideStateSource
+            if (producesState) insideStateSource = true
             functionCall.explicitReceiver?.accept(this)
             val composable = callee != null && callee.isComposable(session)
             for (argument in functionCall.argumentList.arguments) {
                 val lambda = argument.unwrapArgument() as? FirAnonymousFunctionExpression
                 if (lambda != null && (composable || name in LOOP_CALLS)) {
-                    inChild("${name ?: "lambda"} { }", functionCall.source) { lambda.anonymousFunction.body?.accept(this) }
+                    val block = if (name == "remember" || name == "rememberSaveable") Block.REMEMBER else Block.COMPOSABLE_LAMBDA
+                    inChild("${name ?: "lambda"} { }", functionCall.source, block) { lambda.anonymousFunction.body?.accept(this) }
                 } else {
                     argument.accept(this)
                 }
             }
+            insideStateSource = savedInside
         }
 
-        /** 2 for the effect, 1 per key, 2 when its body assigns a State, 1 when it lives long. */
+        /** 1 for the effect, 1 more when its body assigns a State; the body's own branches score as usual. */
         private fun scoreEffect(call: FirFunctionCall) {
-            val arguments = call.argumentList.arguments.map { it.unwrapArgument() }
-            val lambda = arguments.lastOrNull() as? FirAnonymousFunctionExpression
-            val keys = arguments.count { it !is FirAnonymousFunctionExpression && !(it.resolvedType.classId?.shortClassName?.asString() == "Unit") }
-            inChild("${call.calleeReference.toResolvedNamedFunctionSymbol()?.name} { }", call.source) {
-                current.add(Kind.EFFECTS, 2 + keys)
+            val lambda = call.argumentList.arguments.map { it.unwrapArgument() }.lastOrNull() as? FirAnonymousFunctionExpression
+            inChild("${call.calleeReference.toResolvedNamedFunctionSymbol()?.name} { }", call.source, Block.EFFECT) {
+                current.add(Kind.EFFECTS, 1)
                 val body = lambda?.anonymousFunction?.body ?: return@inChild
                 val probe = EffectProbe(session)
                 body.accept(probe)
-                if (probe.writesState) current.add(Kind.EFFECTS, 2)
-                if (probe.longLived) current.add(Kind.EFFECTS, 1)
+                if (probe.writesState) current.add(Kind.EFFECTS, 1)
                 body.accept(this)
             }
         }
@@ -268,10 +299,9 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
         }
     }
 
-    /** Whether an effect body assigns a `State` (`value = ...`, or a delegated var) or runs for as long as the effect lives. */
+    /** Whether an effect body assigns a `State` (`value = ...`, or a delegated var). */
     private class EffectProbe(private val session: FirSession) : FirVisitorVoid() {
         var writesState = false
-        var longLived = false
 
         override fun visitElement(element: FirElement) {
             element.acceptChildren(this)
@@ -281,27 +311,17 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
             val target = variableAssignment.lValue as? FirPropertyAccessExpression
             val symbol = target?.calleeReference?.toResolvedCallableSymbol() as? FirPropertySymbol
             if (symbol != null) {
-                val receiverIsState = target.explicitReceiver?.resolvedType?.isState() == true
-                if (symbol.hasDelegate || receiverIsState || symbol.resolvedReturnType.isState()) writesState = true
+                val receiverIsState = target.explicitReceiver?.resolvedType?.isState(session) == true
+                if (symbol.hasDelegate || receiverIsState || symbol.resolvedReturnType.isState(session)) writesState = true
             }
             visitElement(variableAssignment)
         }
+    }
 
-        override fun visitFunctionCall(functionCall: FirFunctionCall) {
-            if (functionCall.calleeReference.toResolvedCallableSymbol()?.name?.asString() in LONG_LIVED) longLived = true
-            visitElement(functionCall)
-        }
-
-        override fun visitWhileLoop(whileLoop: FirWhileLoop) {
-            longLived = true
-            visitElement(whileLoop)
-        }
-
-        private fun ConeKotlinType.isState(): Boolean {
-            val expanded = fullyExpandedType(session)
-            val symbol = session.symbolProvider.getClassLikeSymbolByClassId(STATE) ?: return false
-            val superType = STATE.constructClassLikeType(Array(symbol.typeParameterSymbols.size) { ConeStarProjection }, isMarkedNullable = true)
-            return !expanded.isNullableNothing && AbstractTypeChecker.isSubtypeOf(session.typeContext, expanded, superType)
-        }
+    private fun ConeKotlinType.isState(session: FirSession): Boolean {
+        val expanded = fullyExpandedType(session)
+        val symbol = session.symbolProvider.getClassLikeSymbolByClassId(STATE) ?: return false
+        val superType = STATE.constructClassLikeType(Array(symbol.typeParameterSymbols.size) { ConeStarProjection }, isMarkedNullable = true)
+        return !expanded.isNullableNothing && AbstractTypeChecker.isSubtypeOf(session.typeContext, expanded, superType)
     }
 }

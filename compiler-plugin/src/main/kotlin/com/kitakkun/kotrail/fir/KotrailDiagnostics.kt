@@ -504,7 +504,7 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         )
         map.put2(
             KotrailDiagnostics.COMPOSABLE_TOO_COMPLEX,
-            "[Kotrail] This composable scores {0}: more state, effects and branches than a reader can hold at once. {1}.",
+            "[Kotrail] This composable scores {0}: {1}.",
         )
         map.put2(
             KotrailDiagnostics.COMPOSABLE_COMPLEXITY_HOTSPOT,
