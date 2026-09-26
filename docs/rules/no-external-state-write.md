@@ -2,7 +2,7 @@
 
 **Diagnostic:** `KOTRAIL_STATE_WRITTEN_OUTSIDE_OWNER` (error, on the assignment or call)
 **Key:** `rules.noExternalStateWrite` (on by default)
-**Settings:** `types` (default: `androidx.compose.runtime.MutableState`, `kotlinx.coroutines.flow.MutableStateFlow`, `kotlinx.coroutines.flow.MutableSharedFlow`), `plainVars` (default: `true`)
+**Settings:** `types` (default: `androidx.compose.runtime.MutableState`, `kotlinx.coroutines.flow.MutableStateFlow`, `kotlinx.coroutines.flow.MutableSharedFlow`), `plainVars` (default: `false`)
 
 ## What it rejects
 
@@ -53,9 +53,19 @@ for the property it can see, because the class offers nothing better.
   `types` (subtypes included). `+=` and `++` on `value` count too.
 - A call of `update`, `emit`, `tryEmit`, `compareAndSet`, `getAndUpdate` or `updateAndGet` whose
   receiver is such a property: `repo.state.update { it.copy(x = 1) }`.
-- With `plainVars` on (the default), an assignment to a `var` member of another class whose
-  setter is public or internal: `owner.count = 3`, `owner.count += 1`, `owner.count++`. A
-  delegated `var x by mutableStateOf()` of another class counts whatever `plainVars` says.
+- An assignment to a delegated `var x by mutableStateOf()` of another class.
+- With `plainVars` on, an assignment to a plain `var` member of another class whose setter is
+  public or internal: `owner.count = 3`, `owner.count += 1`, `owner.count++`. It is off by
+  default: a plain `var` written from outside is usually a single writer's input (a form field,
+  a setting the one caller that owns it fills in), and the flags that two writers flip around
+  their own work are state holders, reported either way. Turn it on for a codebase that wants
+  every cross-object write reviewed.
+- A state holder is reported on every owner: a data class, a class with no functions of its
+  own, anything. `scene.flag.value = true` on a `data class Scene(val flag: MutableState<Boolean>)`
+  that also declares `fun render()` is the bug this rule exists for, however the class is
+  declared.
+- An `internal` owner is an owner like any other: the whole module sees it, not only the
+  writer's file.
 - The owner is the class or object that declares the property; a property of a companion
   object belongs to the class around it. A top-level `object` is an owner like any class, so
   `Session.active.value = true` from another class is reported.
@@ -71,9 +81,13 @@ for the property it can see, because the class offers nothing better.
   inherited.
 - The property is a local or a top-level property. Global state is
   [No global mutable state](compose/no-global-mutable-state.md)'s concern.
-- The owner is a bag of values: a data class, or a class with no functions of its own (only
-  properties and a constructor, a `MutableState` constructor property included). There is no
-  behavior to add a method to, and setting its fields is what it is for.
+- A plain `var` of a bag of values: a class with no functions of its own (only properties and a
+  constructor), data class or not. There is no behavior to add a method to, and setting its
+  fields is what it is for. A data class that declares a function is not a bag, and a state
+  holder property is never exempt this way.
+- The owner is a `private` top-level class. It is visible only in its own file, so every write
+  comes from that file, which owns it as much as the class does: a presenter feeding the
+  editing state it keeps in a file-private holder.
 - The object is one the function is still configuring: the receiver or parameter of `apply`,
   `also`, `run`, `with` or `let` called directly on a call result
   (`Config().apply { name = "x" }`, `Config().also { it.name = "x" }`), or a local initialized
@@ -89,13 +103,14 @@ for the property it can see, because the class offers nothing better.
 - A `var` with a `private set` cannot be written from outside at all; the compiler already
   refuses it.
 
-To count a project's own state holder, list it together with the defaults:
+To count a project's own state holder, list it together with the defaults (and, here, review
+plain `var` writes too):
 
 ```yaml
 rules:
   noExternalStateWrite:
     types: [androidx.compose.runtime.MutableState, kotlinx.coroutines.flow.MutableStateFlow, kotlinx.coroutines.flow.MutableSharedFlow, com.acme.state.Store]
-    plainVars: false
+    plainVars: true
 ```
 
 ## Related rules

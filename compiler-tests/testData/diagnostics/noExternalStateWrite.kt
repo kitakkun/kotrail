@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.noExternalStateWrite=on
+// KOTRAIL_CONFIG: rules.noExternalStateWrite=on, rules.noExternalStateWrite.plainVars=true
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -98,10 +98,10 @@ class Login {
     }
 }
 
-// Not reported: a data class is a bag of values.
+// A data class with no functions is a bag of values.
 data class Point(var x: Int, var y: Int)
 
-// Not reported: a class with no functions has no method to add.
+// A class with no functions has no method to add.
 class Settings {
     var volume = 0
     val muted = mutableStateOf(false)
@@ -109,12 +109,29 @@ class Settings {
 
 class Holder(val flag: MutableState<Boolean>)
 
+// A data class that declares a function has behavior of its own.
+data class Frame(var index: Int) {
+    fun render(): String = "frame $index"
+}
+
+data class Canvas(val flag: MutableState<Boolean>) {
+    fun render(): String = if (flag.value) "busy" else "idle"
+}
+
 class Editor {
-    fun edit(point: Point, settings: Settings, holder: Holder) {
+    fun edit(point: Point, settings: Settings, holder: Holder, frame: Frame, canvas: Canvas) {
+        // Not reported: a plain var of a bag of values, data class or not.
         point.x = 1
         settings.volume = 2
-        settings.muted.value = true
-        holder.flag.value = true
+        // Reported: a state holder is reported on every owner, a bag of values included.
+        <!KOTRAIL_STATE_WRITTEN_OUTSIDE_OWNER!>settings.muted.value = true<!>
+        <!KOTRAIL_STATE_WRITTEN_OUTSIDE_OWNER!>holder.flag.value = true<!>
+        // Reported: a data class with a function is not a bag.
+        <!KOTRAIL_STATE_WRITTEN_OUTSIDE_OWNER!>frame.index = 2<!>
+        // Reported: a data class's state flag flipped from outside, around the writer's own work.
+        <!KOTRAIL_STATE_WRITTEN_OUTSIDE_OWNER!>canvas.flag.value = true<!>
+        canvas.render()
+        <!KOTRAIL_STATE_WRITTEN_OUTSIDE_OWNER!>canvas.flag.value = false<!>
         // Not reported: a local.
         var local = 0
         local += 1
@@ -141,6 +158,37 @@ class Factory {
     fun reuse(counter: Counter): Counter {
         <!KOTRAIL_STATE_WRITTEN_OUTSIDE_OWNER!>counter.count = 4<!>
         return counter.apply { <!KOTRAIL_STATE_WRITTEN_OUTSIDE_OWNER!>count = 5<!> }
+    }
+}
+
+// A private top-level class is visible only in this file, so this file owns it.
+private class EditingState {
+    val draft = mutableStateOf("")
+    var cursor = 0
+
+    fun isEmpty(): Boolean = draft.value.isEmpty()
+}
+
+// Not reported: a presenter feeding its own file-private state holder.
+class EditingPresenter {
+    private val state = EditingState()
+
+    fun type(text: String) {
+        state.draft.value = text
+        state.cursor = text.length
+    }
+}
+
+internal class Draft {
+    val text = mutableStateOf("")
+
+    fun isEmpty(): Boolean = text.value.isEmpty()
+}
+
+// Reported: an internal owner is visible to the whole module, not only to this file.
+internal class DraftPresenter(private val draft: Draft) {
+    fun type(text: String) {
+        <!KOTRAIL_STATE_WRITTEN_OUTSIDE_OWNER!>draft.text.value = text<!>
     }
 }
 

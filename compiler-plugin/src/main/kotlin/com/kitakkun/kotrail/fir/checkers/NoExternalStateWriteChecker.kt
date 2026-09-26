@@ -22,7 +22,6 @@ import org.jetbrains.kotlin.fir.containingClassLookupTag
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
-import org.jetbrains.kotlin.fir.declarations.utils.isData
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.expressions.FirAnonymousFunctionExpression
 import org.jetbrains.kotlin.fir.expressions.FirDesugaredAssignmentValueReferenceExpression
@@ -78,23 +77,26 @@ import org.jetbrains.kotlin.types.AbstractTypeChecker
  * A write is `owner.state.value = x` on a property whose type is one of `types` (subtypes
  * included: `MutableState`, `MutableStateFlow`, `MutableSharedFlow` by default), a call of
  * `update`, `emit`, `tryEmit`, `compareAndSet`, `getAndUpdate` or `updateAndGet` on such a
- * property, and, unless `plainVars` is false, an assignment to a `var` member of another class
- * (`owner.count = 3`, `owner.count += 1`, `owner.count++`, a delegated `var x by mutableStateOf()`)
- * whose setter is public or internal. The owner is the class or object that declares the
- * property; a property of a companion object belongs to the class around it.
+ * property, an assignment to a delegated `var x by mutableStateOf()`, and, when `plainVars` is
+ * true (it is false by default), an assignment to a plain `var` member of another class
+ * (`owner.count = 3`, `owner.count += 1`, `owner.count++`) whose setter is public or internal.
+ * The owner is the class or object that declares the property; a property of a companion object
+ * belongs to the class around it.
  *
  * Quiet: a write lexically inside the owner (its members, companion, nested and inner classes,
  * and lambdas and local functions in them); a write through `this` of a class, which includes a
  * subclass changing what it inherited; locals and top-level properties (`compose.noGlobalMutableState`
- * covers global state); an owner that is a data class or has no functions of its own, a bag of
- * values with no behavior to add a method to; for a plain `var`, an owner from another module or
- * a library, whose API is what its authors chose (a state holder of one of `types` is reported
- * whatever module declares it: a class that exposes a `MutableStateFlow` to other modules is the
- * case that matters most); a test function and a file in a test source set. An object the
- * function is still configuring is its own, not someone else's state: the receiver of an
- * `apply`, `also`, `run`, `with` or `let` on a call result (`Config().apply { name = "x" }`), and
- * a local initialized by a constructor call. An extension function declared outside the owner is
- * outside it, even when it writes through its receiver.
+ * covers global state); an owner that is a `private` top-level class, visible only in the file
+ * that writes it; for a plain `var`, an owner with no functions of its own, data class or not, a
+ * bag of values with no behavior to add a method to (a state holder is reported on every owner:
+ * a flag flipped from outside is the bug whatever else the class declares); for a plain `var`, an
+ * owner from another module or a library, whose API is what its authors chose (a state holder of
+ * one of `types` is reported whatever module declares it: a class that exposes a
+ * `MutableStateFlow` to other modules is the case that matters most); a test function and a file
+ * in a test source set. An object the function is still configuring is its own, not someone
+ * else's state: the receiver of an `apply`, `also`, `run`, `with` or `let` on a call result
+ * (`Config().apply { name = "x" }`), and a local initialized by a constructor call. An extension
+ * function declared outside the owner is outside it, even when it writes through its receiver.
  */
 object NoExternalStateWriteChecker {
     private val UPDATE_CALLS = setOf("update", "emit", "tryEmit", "compareAndSet", "getAndUpdate", "updateAndGet")
@@ -155,7 +157,8 @@ object NoExternalStateWriteChecker {
         val property = access.calleeReference.toResolvedCallableSymbol() as? FirPropertySymbol ?: return
         val owner = ownerOf(property, session) ?: return
         if (plainVar && owner.origin != FirDeclarationOrigin.Source) return
-        if (owner.isBag()) return
+        if (plainVar && owner.isBag()) return
+        if (owner.isFilePrivate()) return
         val receiver = access.dispatchReceiver?.unwrapSmartCast()
         if (receiver.isThisOfClass()) return
         if (receiver != null && isFreshObject(receiver)) return
@@ -173,13 +176,20 @@ object NoExternalStateWriteChecker {
         return session.symbolProvider.getClassLikeSymbolByClassId(outer) as? FirRegularClassSymbol ?: declaring
     }
 
-    /** A data class, or a class with no functions of its own: a bag of values with no behavior to add a method to. */
-    private fun FirRegularClassSymbol.isBag(): Boolean {
-        if (isData) return true
-        return declarationSymbols.none { member ->
-            member is FirNamedFunctionSymbol && member.source?.kind !is KtFakeSourceElementKind
-        }
+    /**
+     * A class with no functions of its own, data class or not: a bag of values with no behavior to
+     * add a method to. The members generated for a data class are not its own.
+     */
+    private fun FirRegularClassSymbol.isBag(): Boolean = declarationSymbols.none { member ->
+        member is FirNamedFunctionSymbol && member.source?.kind !is KtFakeSourceElementKind
     }
+
+    /**
+     * A `private` top-level class: visible only in its own file, so every write to it comes from
+     * code in that file, which owns it as much as the class does.
+     */
+    private fun FirRegularClassSymbol.isFilePrivate(): Boolean =
+        visibility == Visibilities.Private && !classId.isLocal && classId.outerClassId == null
 
     /**
      * Whether [receiver] is an object the function is still configuring: the receiver or parameter

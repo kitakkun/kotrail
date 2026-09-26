@@ -1111,7 +1111,7 @@ data class KotrailConfig(
                 ),
                 noExternalStateWrite = KotrailNoExternalStateWrite(
                     types = list(KotrailRule.NO_EXTERNAL_STATE_WRITE, "types") ?: DEFAULT_STATE_HOLDER_TYPES,
-                    plainVars = boolean(ruleNode(KotrailRule.NO_EXTERNAL_STATE_WRITE), "plainVars") ?: true,
+                    plainVars = boolean(ruleNode(KotrailRule.NO_EXTERNAL_STATE_WRITE), "plainVars") ?: false,
                 ),
                 objcThrows = KotrailObjCThrows(packages = list(KotrailRule.NATIVE_OBJC_THROWS, "packages").orEmpty().map(::Glob)),
                 weakOnlyReference = KotrailWeakOnlyReference(

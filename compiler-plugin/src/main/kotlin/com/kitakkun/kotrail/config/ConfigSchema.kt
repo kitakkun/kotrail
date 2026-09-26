@@ -141,7 +141,7 @@ object ConfigSchema {
         ),
         KotrailRule.NO_EXTERNAL_STATE_WRITE to listOf(
             Setting("types", Kind.LIST, "Fully qualified types (subtypes included) whose instances hold mutable state, written through value, update or emit; replaces the default list.", default = "androidx.compose.runtime.MutableState, kotlinx.coroutines.flow.MutableStateFlow, kotlinx.coroutines.flow.MutableSharedFlow"),
-            Setting("plainVars", Kind.BOOLEAN, "Whether a write to a plain var member of another class is reported too.", default = "true"),
+            Setting("plainVars", Kind.BOOLEAN, "Whether a write to a plain var member of another class is reported too.", default = "false"),
         ),
         KotrailRule.NATIVE_ALLOCATION_IN_LOOP to listOf(
             Setting("types", Kind.LIST, "Fully qualified types (subtypes included) whose instances hold native memory that only a cleaner frees; replaces the default list.", default = "org.jetbrains.skia.impl.Managed, java.awt.image.VolatileImage"),
