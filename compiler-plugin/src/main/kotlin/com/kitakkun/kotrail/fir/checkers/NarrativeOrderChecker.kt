@@ -5,6 +5,7 @@ package com.kitakkun.kotrail.fir.checkers
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.FixEdit
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
+import com.kitakkun.kotrail.fir.fix.FixBuilder
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
@@ -27,7 +28,6 @@ import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
-import org.jetbrains.kotlin.text
 
 /**
  * Keeps a file or class readable from the top down: a private function is declared after the
@@ -105,27 +105,6 @@ object NarrativeOrderChecker {
     }
 
     /** Deletes the helper (its lines, and one blank line after it) and inserts it after the user, separated by a blank line and indented alike. */
-    private fun moveAfterFix(helper: KtSourceElement, user: KtSourceElement, container: KtSourceElement?): List<FixEdit> {
-        val containerSource = container ?: return emptyList()
-        val text = containerSource.text?.toString() ?: return emptyList()
-        val base = containerSource.startOffset
-        val helperText = helper.text?.toString() ?: return emptyList()
-
-        var lineStart = helper.startOffset - base
-        while (lineStart > 0 && text[lineStart - 1] != '\n' && text[lineStart - 1].isWhitespace()) lineStart--
-        var lineEnd = helper.endOffset - base
-        if (text.getOrNull(lineEnd) == '\n') {
-            lineEnd++
-            var blank = lineEnd
-            while (blank < text.length && text[blank] != '\n' && text[blank].isWhitespace()) blank++
-            if (text.getOrNull(blank) == '\n') lineEnd = blank + 1
-        }
-        val deletion = FixEdit(base + lineStart, base + lineEnd, "")
-
-        var indentStart = user.startOffset - base
-        while (indentStart > 0 && text[indentStart - 1] != '\n' && text[indentStart - 1].isWhitespace()) indentStart--
-        val indent = text.substring(indentStart, user.startOffset - base)
-        val insertion = FixEdit(user.endOffset, user.endOffset, "\n\n$indent$helperText")
-        return listOf(deletion, insertion)
-    }
+    private fun moveAfterFix(helper: KtSourceElement, user: KtSourceElement, container: KtSourceElement?): List<FixEdit> =
+        FixBuilder.over(container)?.moveAfter(helper, user) ?: emptyList()
 }

@@ -3,8 +3,8 @@
 package com.kitakkun.kotrail.fir.checkers
 
 import com.kitakkun.kotrail.KotrailRule
-import com.kitakkun.kotrail.fir.FixEdit
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
+import com.kitakkun.kotrail.fir.fix.FixBuilder
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
@@ -35,7 +35,6 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
-import org.jetbrains.kotlin.text
 
 /**
  * Reports a `var` that is never reassigned after its initializer:
@@ -75,11 +74,7 @@ object PreferValChecker : FirPropertyChecker(MppCheckerKind.Common) {
         scope.accept(finder)
         if (finder.found) return
 
-        val fix = source.text?.let { written ->
-            Regex("(?<![\\w.])var(?=\\s)").find(written)?.let { match ->
-                FixEdit(source.startOffset + match.range.first, source.startOffset + match.range.last + 1, "val")
-            }
-        }
+        val fix = FixBuilder.over(source)?.replaceFirst(Regex("(?<![\\w.])var(?=\\s)"), "val")
         reportKotrail(source, KotrailDiagnostics.PREFER_VAL, declaration.name.asString(), listOfNotNull(fix))
     }
 

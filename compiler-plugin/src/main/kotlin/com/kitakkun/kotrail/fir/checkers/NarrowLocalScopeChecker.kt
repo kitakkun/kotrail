@@ -3,6 +3,7 @@ package com.kitakkun.kotrail.fir.checkers
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.FixEdit
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
+import com.kitakkun.kotrail.fir.fix.FixBuilder
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
@@ -293,42 +294,14 @@ object NarrowLocalScopeChecker : FirPropertyChecker(MppCheckerKind.Common) {
     }
 
     /** Deletes the declaration's line and inserts the declaration, with the same indentation, before [statement] of the same block. */
-    private fun moveBeforeFix(declaration: KtSourceElement, block: FirBlock, statement: KtSourceElement): List<FixEdit> {
-        val blockSource = block.source ?: return emptyList()
-        val blockText = blockSource.text?.toString() ?: return emptyList()
-        val declarationText = declaration.text?.toString() ?: return emptyList()
-        var lineStart = declaration.startOffset - blockSource.startOffset
-        while (lineStart > 0 && blockText[lineStart - 1] != '\n' && blockText[lineStart - 1].isWhitespace()) lineStart--
-        var lineEnd = declaration.endOffset - blockSource.startOffset
-        if (blockText.getOrNull(lineEnd) == '\n') lineEnd++
-        val deletion = FixEdit(blockSource.startOffset + lineStart, blockSource.startOffset + lineEnd, "")
-        var indentStart = statement.startOffset - blockSource.startOffset
-        while (indentStart > 0 && blockText[indentStart - 1] != '\n' && blockText[indentStart - 1].isWhitespace()) indentStart--
-        val indent = blockText.substring(indentStart, statement.startOffset - blockSource.startOffset)
-        val insertion = FixEdit(statement.startOffset, statement.startOffset, "$declarationText\n$indent")
-        return listOf(deletion, insertion)
-    }
+    private fun moveBeforeFix(declaration: KtSourceElement, block: FirBlock, statement: KtSourceElement): List<FixEdit> =
+        FixBuilder.over(block.source)?.moveBefore(declaration, statement) ?: emptyList()
 
     /** Deletes the declaration's line and inserts the declaration before the branch's first statement, when the branch has braces. */
     private fun moveFix(declaration: KtSourceElement, block: FirBlock, target: FirBlock): List<FixEdit> {
-        val blockSource = block.source ?: return emptyList()
-        val blockText = blockSource.text?.toString() ?: return emptyList()
-        val targetSource = target.source ?: return emptyList()
-        val targetText = targetSource.text?.toString() ?: return emptyList()
+        val targetText = FixBuilder.textOf(target.source) ?: return emptyList()
         if (!targetText.trimStart().startsWith("{")) return emptyList()
         val first = target.statements.firstOrNull()?.source ?: return emptyList()
-
-        val declarationText = declaration.text?.toString() ?: return emptyList()
-        var lineStart = declaration.startOffset - blockSource.startOffset
-        while (lineStart > 0 && blockText[lineStart - 1] != '\n' && blockText[lineStart - 1].isWhitespace()) lineStart--
-        var lineEnd = declaration.endOffset - blockSource.startOffset
-        if (blockText.getOrNull(lineEnd) == '\n') lineEnd++
-        val deletion = FixEdit(blockSource.startOffset + lineStart, blockSource.startOffset + lineEnd, "")
-
-        var indentStart = first.startOffset - blockSource.startOffset
-        while (indentStart > 0 && blockText[indentStart - 1] != '\n' && blockText[indentStart - 1].isWhitespace()) indentStart--
-        val indent = blockText.substring(indentStart, first.startOffset - blockSource.startOffset)
-        val insertion = FixEdit(first.startOffset, first.startOffset, "$declarationText\n$indent")
-        return listOf(deletion, insertion)
+        return moveBeforeFix(declaration, block, first)
     }
 }

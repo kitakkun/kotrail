@@ -1,8 +1,8 @@
 package com.kitakkun.kotrail.fir.checkers
 
 import com.kitakkun.kotrail.KotrailRule
-import com.kitakkun.kotrail.fir.FixEdit
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
+import com.kitakkun.kotrail.fir.fix.FixBuilder
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
@@ -61,7 +61,7 @@ object RedundantElseChecker : FirWhenExpressionChecker(MppCheckerKind.Common) {
             if (branch.condition !is FirElseIfTrueCondition) continue
             val branchSource = branch.source ?: continue
             // The fix drops the branch; the formatter takes care of the blank line it leaves.
-            val fix = listOf(FixEdit(branchSource.startOffset, branchSource.endOffset, ""))
+            val fix = listOf(FixBuilder.delete(branchSource))
             reportKotrail(branchSource, KotrailDiagnostics.REDUNDANT_ELSE_IN_EXHAUSTIVE_WHEN, fix)
         }
     }

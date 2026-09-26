@@ -1,8 +1,8 @@
 package com.kitakkun.kotrail.fir.checkers
 
 import com.kitakkun.kotrail.KotrailRule
-import com.kitakkun.kotrail.fir.FixEdit
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
+import com.kitakkun.kotrail.fir.fix.FixBuilder
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
@@ -69,7 +69,7 @@ object JvmSyntheticForInternalChecker : FirBasicDeclarationChecker(MppCheckerKin
             is FirNamedFunction -> {
                 if (!declaration.isInternalOnJvm(session)) return
                 if (declaration.symbol.hasAnnotation(JVM_SYNTHETIC, session)) return
-                reportKotrail(source, KotrailDiagnostics.INTERNAL_VISIBLE_TO_JAVA, declaration.name.asString(), "@JvmSynthetic", listOf(FixEdit(source.startOffset, source.startOffset, "@JvmSynthetic ")))
+                reportKotrail(source, KotrailDiagnostics.INTERNAL_VISIBLE_TO_JAVA, declaration.name.asString(), "@JvmSynthetic", listOf(FixBuilder.insertBefore(source, "@JvmSynthetic ")))
             }
             is FirProperty -> {
                 if (declaration.isLocal || !declaration.isInternalOnJvm(session)) return
@@ -80,7 +80,7 @@ object JvmSyntheticForInternalChecker : FirBasicDeclarationChecker(MppCheckerKin
                 }
                 if (needed.isEmpty()) return
                 val wanted = needed.joinToString(" ")
-                reportKotrail(source, KotrailDiagnostics.INTERNAL_VISIBLE_TO_JAVA, declaration.name.asString(), wanted, listOf(FixEdit(source.startOffset, source.startOffset, "$wanted ")))
+                reportKotrail(source, KotrailDiagnostics.INTERNAL_VISIBLE_TO_JAVA, declaration.name.asString(), wanted, listOf(FixBuilder.insertBefore(source, "$wanted ")))
             }
             else -> {}
         }

@@ -1,8 +1,8 @@
 package com.kitakkun.kotrail.fir.checkers
 
 import com.kitakkun.kotrail.KotrailRule
-import com.kitakkun.kotrail.fir.FixEdit
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
+import com.kitakkun.kotrail.fir.fix.FixBuilder
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
@@ -103,7 +103,7 @@ private object IdiomSupport {
     /** `receiver.` for the replacement, or nothing when the receiver is implicit. */
     fun receiverPrefix(receiver: FirExpression?): String? {
         if (receiver == null) return ""
-        val written = receiver.source?.text?.toString() ?: return null
+        val written = FixBuilder.textOf(receiver.source) ?: return null
         return "$written."
     }
 
@@ -123,7 +123,7 @@ private object IdiomSupport {
             KotrailDiagnostics.PREFER_IDIOM,
             written,
             "$replacement ($idiom)",
-            listOf(FixEdit(source.startOffset, source.endOffset, replacement)),
+            listOf(FixBuilder.replace(source, replacement)),
         )
     }
 }
@@ -360,10 +360,10 @@ object ElvisIdiomChecker : FirWhenExpressionChecker(MppCheckerKind.Common) {
         if (returned.explicitReceiver != null) return
         if (returned.calleeReference.toResolvedCallableSymbol() != checked.calleeReference.toResolvedCallableSymbol()) return
         val fallback = elseBranch.result.statements.singleOrNull() as? FirExpression ?: return
-        val written = checked.source?.text?.toString() ?: return
-        val fallbackText = fallback.source?.text?.toString() ?: return
+        val written = FixBuilder.textOf(checked.source) ?: return
+        val fallbackText = FixBuilder.textOf(fallback.source) ?: return
         // Elvis binds tighter than the boolean operators and looser than the rest; parenthesize what could rebind.
-        val safeFallback = if (fallback is FirQualifiedAccessExpression || fallback is FirLiteralExpression || fallback is FirFunctionCall) fallbackText else "($fallbackText)"
+        val safeFallback = FixBuilder.parenthesizeIfNeeded(fallbackText, fallback)
         IdiomSupport.report(source, Idioms.ELVIS, source.text.toString(), "$written ?: $safeFallback")
     }
 }

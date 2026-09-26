@@ -5,7 +5,7 @@ import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.ReferenceForm
 import com.kitakkun.kotrail.fir.FixEdit
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
-import org.jetbrains.kotlin.text
+import com.kitakkun.kotrail.fir.fix.FixBuilder
 import com.kitakkun.kotrail.fir.compose.ComposeNames
 import com.kitakkun.kotrail.fir.compose.isComposable
 import com.kitakkun.kotrail.fir.kotrailConfig
@@ -118,24 +118,20 @@ object PreferFunctionReferenceChecker : FirAnonymousFunctionChecker(MppCheckerKi
         val call = context.containingElements.lastOrNull { it is FirFunctionCall } as? FirFunctionCall
         val callSource = call?.source
         if (callSource == null || lambda.startOffset < callSource.startOffset || lambda.endOffset > callSource.endOffset) {
-            return listOf(FixEdit(lambda.startOffset, lambda.endOffset, reference))
+            return listOf(FixBuilder.replace(lambda, reference))
         }
-        val text = callSource.text?.toString() ?: return listOf(FixEdit(lambda.startOffset, lambda.endOffset, reference))
-        val lambdaAt = lambda.startOffset - callSource.startOffset
-        var before = lambdaAt - 1
-        while (before >= 0 && text[before].isWhitespace()) before--
-        val previous = text.getOrNull(before)
-        return when (previous) {
-            '(', ',' -> listOf(FixEdit(lambda.startOffset, lambda.endOffset, reference))
+        val builder = FixBuilder.over(callSource) ?: return listOf(FixBuilder.replace(lambda, reference))
+        // The end of what precedes the lambda: an opening parenthesis or comma, a closing parenthesis, or the callee.
+        val precedingEnd = builder.previousSignificantEnd(lambda.startOffset)
+        return when (builder.charAt(precedingEnd - 1)) {
+            '(', ',' -> listOf(FixBuilder.replace(lambda, reference))
             ')' -> {
-                var inner = before - 1
-                while (inner >= 0 && text[inner].isWhitespace()) inner--
-                val closing = callSource.startOffset + before
-                if (text.getOrNull(inner) == '(') listOf(FixEdit(closing, lambda.endOffset, "$reference)"))
-                else listOf(FixEdit(closing, lambda.endOffset, ", $reference)"))
+                val closing = precedingEnd - 1
+                if (builder.previousSignificantChar(closing) == '(') listOf(builder.replaceRange(closing, lambda.endOffset, "$reference)"))
+                else listOf(builder.replaceRange(closing, lambda.endOffset, ", $reference)"))
             }
             // A trailing lambda after the callee: the parentheses take its place, whitespace included.
-            else -> listOf(FixEdit(callSource.startOffset + before + 1, lambda.endOffset, "($reference)"))
+            else -> listOf(builder.replaceRange(precedingEnd, lambda.endOffset, "($reference)"))
         }
     }
 

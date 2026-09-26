@@ -5,9 +5,8 @@ package com.kitakkun.kotrail.fir.checkers
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.WhenBranchStyle
 import com.kitakkun.kotrail.compat.qualifierClassId
-import com.kitakkun.kotrail.fir.FixEdit
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
-import org.jetbrains.kotlin.text
+import com.kitakkun.kotrail.fir.fix.FixBuilder
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
@@ -72,14 +71,14 @@ object SealedWhenBranchStyleChecker : FirWhenExpressionChecker(MppCheckerKind.Co
                     WhenBranchStyle.IS -> condition.objectCompared(session)?.let { objectClass ->
                         val name = objectClass.name.asString()
                         val conditionSource = condition.source ?: continue
-                        val fix = listOf(FixEdit(conditionSource.startOffset, conditionSource.startOffset, "is "))
+                        val fix = listOf(FixBuilder.insertBefore(conditionSource, "is "))
                         reportKotrail(conditionSource, KotrailDiagnostics.SEALED_WHEN_BRANCH_STYLE, name, "is $name", fix)
                     }
                     WhenBranchStyle.OBJECT -> condition.objectChecked(session)?.let { objectClass ->
                         val name = objectClass.name.asString()
                         val conditionSource = condition.source ?: continue
-                        val written = conditionSource.text?.toString() ?: continue
-                        val fix = listOf(FixEdit(conditionSource.startOffset, conditionSource.endOffset, written.removePrefix("is").trimStart()))
+                        val written = FixBuilder.textOf(conditionSource) ?: continue
+                        val fix = listOf(FixBuilder.replace(conditionSource, written.removePrefix("is").trimStart()))
                         reportKotrail(conditionSource, KotrailDiagnostics.SEALED_WHEN_BRANCH_STYLE, "is $name", name, fix)
                     }
                 }

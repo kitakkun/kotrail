@@ -1,8 +1,8 @@
 package com.kitakkun.kotrail.fir.checkers
 
 import com.kitakkun.kotrail.KotrailRule
-import com.kitakkun.kotrail.fir.FixEdit
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
+import com.kitakkun.kotrail.fir.fix.FixBuilder
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
@@ -63,6 +63,9 @@ object NamedArgumentsChecker : FirFunctionCallChecker(MppCheckerKind.Common) {
 
         val positional = positionalArguments(expression) ?: return
         val largestGroup = positional
+            .map { it.parameter }
+            // `key1`, `key2`, ... of remember and LaunchedEffect: an unordered set whose names say nothing, so naming them helps nobody.
+            .filterNot { PLACEHOLDER_NAME.matches(it.name.asString()) }
             .groupBy { it.returnTypeRef.coneType }
             .entries
             .filter { (_, parameters) -> parameters.size >= threshold }
@@ -71,21 +74,24 @@ object NamedArgumentsChecker : FirFunctionCallChecker(MppCheckerKind.Common) {
 
         val description = "${largestGroup.value.size} positional ${largestGroup.key.describe()} arguments"
         // Every positional argument gets its name, not only the repeated group: a partly named call reads worse.
-        val fix = positionalArgumentSources(expression).map { (argument, parameter) ->
-            FixEdit(argument.startOffset, argument.startOffset, "${parameter.name.asString()} = ")
+        val fix = positional.mapNotNull { (source, parameter) ->
+            source?.let { FixBuilder.insertBefore(it, "${parameter.name.asString()} = ") }
         }
         reportKotrail(source, KotrailDiagnostics.NAMED_ARGUMENTS_REQUIRED, description, fix)
     }
 
+    /** A positional, non-lambda argument as written, with the parameter it binds to. */
+    private data class PositionalArgument(val source: KtSourceElement?, val parameter: FirValueParameter)
+
     /**
-     * Parameters that receive a positional, non-lambda argument, or null when the argument list
+     * The positional, non-lambda arguments in source order, or null when the argument list
      * cannot be matched against what the user wrote.
      *
      * The resolved argument list drops the named-argument wrappers, so the original list is
      * consulted to tell named from positional arguments. Both lists follow source order, and
      * without a vararg parameter they have the same length, so they are matched by position.
      */
-    private fun positionalArguments(call: FirFunctionCall): List<FirValueParameter>? {
+    private fun positionalArguments(call: FirFunctionCall): List<PositionalArgument>? {
         val argumentList = call.argumentList as? FirResolvedArgumentList ?: return null
         val original = argumentList.originalArgumentList?.arguments ?: return null
         val mapping = argumentList.mapping
@@ -93,23 +99,10 @@ object NamedArgumentsChecker : FirFunctionCallChecker(MppCheckerKind.Common) {
 
         return original.zip(mapping.values)
             .filter { (argument, _) -> argument !is FirNamedArgumentExpression && !argument.isLambda() }
-            .map { (_, parameter) -> parameter }
-            // `key1`, `key2`, ... of remember and LaunchedEffect: an unordered set whose names say nothing, so naming them helps nobody.
-            .filterNot { PLACEHOLDER_NAME.matches(it.name.asString()) }
+            .map { (argument, parameter) -> PositionalArgument(argument.source, parameter) }
     }
 
     private val PLACEHOLDER_NAME = Regex("key[0-9]+")
-
-    /** The source of each positional, non-lambda argument with the parameter it binds to, in source order. */
-    private fun positionalArgumentSources(call: FirFunctionCall): List<Pair<KtSourceElement, FirValueParameter>> {
-        val argumentList = call.argumentList as? FirResolvedArgumentList ?: return emptyList()
-        val original = argumentList.originalArgumentList?.arguments ?: return emptyList()
-        val mapping = argumentList.mapping
-        if (original.size != mapping.size) return emptyList()
-        return original.zip(mapping.values)
-            .filter { (argument, _) -> argument !is FirNamedArgumentExpression && !argument.isLambda() }
-            .mapNotNull { (argument, parameter) -> argument.source?.let { it to parameter } }
-    }
 
     private fun FirExpression.isLambda(): Boolean = unwrapArgument() is FirAnonymousFunctionExpression
 

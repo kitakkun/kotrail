@@ -12,6 +12,7 @@ kotrail/
 ├── compiler-plugin/               # the compiler plugin
 │   └── src/main/kotlin/com/kitakkun/kotrail/
 │       ├── fir/checkers/          # general rules
+│       ├── fir/fix/               # the builder every rule produces its automatic fix with
 │       ├── fir/compose/checkers/  # Compose rules: nesting limit, state delegation
 │       ├── fir/compose/insets/    # insets analysis service, expression evaluator, checkers
 │       ├── compose/insets/        # insets algebra shared by FIR and IR

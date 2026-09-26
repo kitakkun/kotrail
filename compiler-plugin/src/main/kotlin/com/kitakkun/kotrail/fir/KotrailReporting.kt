@@ -6,6 +6,7 @@ import org.jetbrains.kotlin.KtLightSourceElement
 import org.jetbrains.kotlin.KtPsiSourceElement
 import org.jetbrains.kotlin.diagnostics.AbstractKtDiagnosticFactory
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
+import org.jetbrains.kotlin.diagnostics.KtDiagnostic
 import org.jetbrains.kotlin.diagnostics.KtLightDiagnosticWithParameters1
 import org.jetbrains.kotlin.diagnostics.KtLightDiagnosticWithParameters2
 import org.jetbrains.kotlin.diagnostics.KtLightDiagnosticWithParameters3
@@ -49,42 +50,24 @@ internal fun reportKotrail(source: KtSourceElement?, diagnostic: TunableDiagnost
  * `fixesDir`.
  */
 context(context: CheckerContext, reporter: DiagnosticReporter)
-internal fun reportKotrail(source: KtSourceElement?, diagnostic: TunableDiagnostic0, fix: List<FixEdit>) {
-    val config = context.session.kotrailConfig
-    if (!shouldReport(diagnostic.baseName, diagnostic.rule)) return
-    val element = source ?: return
-    val factory = diagnostic.at(config.severity(diagnostic.rule))
-    val severity = factory.effectiveSeverity() ?: return
-    val note = config.note(diagnostic.rule)
-    reporter.report(
+internal fun reportKotrail(source: KtSourceElement?, diagnostic: TunableDiagnostic0, fix: List<FixEdit>) =
+    report(source, diagnostic.rule, diagnostic.baseName, diagnostic::at, fix) { element, note, severity, factory ->
         when (element) {
             is KtPsiSourceElement -> KtPsiDiagnosticWithParameters1(element, note, severity, factory, factory.defaultPositioningStrategy, context)
             is KtLightSourceElement -> KtLightDiagnosticWithParameters1(element, note, severity, factory, factory.defaultPositioningStrategy, context)
             else -> KtOffsetsOnlyDiagnosticWithParameters1(element, note, severity, factory, factory.defaultPositioningStrategy, context)
-        },
-        context,
-    )
-    writeFix(diagnostic.rule, diagnostic.baseName, fix)
-}
+        }
+    }
 
 context(context: CheckerContext, reporter: DiagnosticReporter)
-internal fun reportKotrail(source: KtSourceElement?, diagnostic: TunableDiagnostic1<String>, a: String, fix: List<FixEdit>) {
-    val config = context.session.kotrailConfig
-    if (!shouldReport(diagnostic.baseName, diagnostic.rule)) return
-    val element = source ?: return
-    val factory = diagnostic.at(config.severity(diagnostic.rule))
-    val severity = factory.effectiveSeverity() ?: return
-    val note = config.note(diagnostic.rule)
-    reporter.report(
+internal fun reportKotrail(source: KtSourceElement?, diagnostic: TunableDiagnostic1<String>, a: String, fix: List<FixEdit>) =
+    report(source, diagnostic.rule, diagnostic.baseName, diagnostic::at, fix) { element, note, severity, factory ->
         when (element) {
             is KtPsiSourceElement -> KtPsiDiagnosticWithParameters2(element, a, note, severity, factory, factory.defaultPositioningStrategy, context)
             is KtLightSourceElement -> KtLightDiagnosticWithParameters2(element, a, note, severity, factory, factory.defaultPositioningStrategy, context)
             else -> KtOffsetsOnlyDiagnosticWithParameters2(element, a, note, severity, factory, factory.defaultPositioningStrategy, context)
-        },
-        context,
-    )
-    writeFix(diagnostic.rule, diagnostic.baseName, fix)
-}
+        }
+    }
 
 context(context: CheckerContext, reporter: DiagnosticReporter)
 internal fun reportKotrail(
@@ -93,22 +76,36 @@ internal fun reportKotrail(
     a: String,
     b: String,
     fix: List<FixEdit>,
+) = report(source, diagnostic.rule, diagnostic.baseName, diagnostic::at, fix) { element, note, severity, factory ->
+    when (element) {
+        is KtPsiSourceElement -> KtPsiDiagnosticWithParameters3(element, a, b, note, severity, factory, factory.defaultPositioningStrategy, context)
+        is KtLightSourceElement -> KtLightDiagnosticWithParameters3(element, a, b, note, severity, factory, factory.defaultPositioningStrategy, context)
+        else -> KtOffsetsOnlyDiagnosticWithParameters3(element, a, b, note, severity, factory, factory.defaultPositioningStrategy, context)
+    }
+}
+
+/**
+ * The steps every arity shares: the suppression and exclusion check, the factory of the
+ * configured severity, the project's note, the report itself and the fix record. [create]
+ * builds the diagnostic of the arity from the element, the note (the last message parameter),
+ * the effective severity and the factory.
+ */
+context(context: CheckerContext, reporter: DiagnosticReporter)
+private inline fun <F : AbstractKtDiagnosticFactory> report(
+    source: KtSourceElement?,
+    rule: KotrailRule,
+    baseName: String,
+    factoryAt: (Severity) -> F,
+    fix: List<FixEdit>,
+    create: (element: KtSourceElement, note: String, severity: Severity, factory: F) -> KtDiagnostic,
 ) {
     val config = context.session.kotrailConfig
-    if (!shouldReport(diagnostic.baseName, diagnostic.rule)) return
+    if (!shouldReport(baseName, rule)) return
     val element = source ?: return
-    val factory = diagnostic.at(config.severity(diagnostic.rule))
+    val factory = factoryAt(config.severity(rule))
     val severity = factory.effectiveSeverity() ?: return
-    val note = config.note(diagnostic.rule)
-    reporter.report(
-        when (element) {
-            is KtPsiSourceElement -> KtPsiDiagnosticWithParameters3(element, a, b, note, severity, factory, factory.defaultPositioningStrategy, context)
-            is KtLightSourceElement -> KtLightDiagnosticWithParameters3(element, a, b, note, severity, factory, factory.defaultPositioningStrategy, context)
-            else -> KtOffsetsOnlyDiagnosticWithParameters3(element, a, b, note, severity, factory, factory.defaultPositioningStrategy, context)
-        },
-        context,
-    )
-    writeFix(diagnostic.rule, diagnostic.baseName, fix)
+    reporter.report(create(element, config.note(rule), severity, factory), context)
+    writeFix(rule, baseName, fix)
 }
 
 /**
