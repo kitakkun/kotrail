@@ -12,23 +12,28 @@ import java.security.MessageDigest
  * files only, which no symbol provider enumerates.
  *
  * One record per source file, `<sha1 of the path>.jsonl`: a header line naming the file, then
- * one line per composable, `{"name": "com.acme.ui.Card", "package": "com.acme.ui", "visibility": "public"}`.
- * A file's record is rewritten whenever the file is compiled, so with incremental compilation
- * the records of untouched files keep what the build that last saw them found. A record whose
- * file no longer exists is ignored when read.
+ * one line per composable, `{"name": "com.acme.ui.Card", "package": "com.acme.ui", "visibility": "public"}`,
+ * and one line per composable the file's previews call, `{"callee": "com.acme.ui.Card"}`. A
+ * file's record is rewritten whenever the file is compiled, so with incremental compilation
+ * the records of untouched files keep what the build that last saw them found; that is what
+ * lets the preview-coverage rule count the previews of files an incremental build did not
+ * recompile. A record whose file no longer exists is ignored when read.
  */
 object ComposableManifest {
     class Entry(val name: String, val packageName: String, val visibility: String)
 
     private val lock = Any()
 
-    fun write(directory: String, file: String, entries: List<Entry>) {
+    fun write(directory: String, file: String, entries: List<Entry>, previewCallees: Collection<String> = emptyList()) {
         val text = buildString {
             append("{\"file\": ").append(quote(file)).append("}\n")
             for (entry in entries) {
                 append("{\"name\": ").append(quote(entry.name))
                 append(", \"package\": ").append(quote(entry.packageName))
                 append(", \"visibility\": ").append(quote(entry.visibility)).append("}\n")
+            }
+            for (callee in previewCallees.sorted()) {
+                append("{\"callee\": ").append(quote(callee)).append("}\n")
             }
         }
         synchronized(lock) {
@@ -38,17 +43,28 @@ object ComposableManifest {
 
     /** Every entry recorded under [directories], from records whose source file still exists. */
     fun read(directories: List<String>): List<Entry> = directories.flatMap { directory ->
-        val records = File(directory).listFiles { file -> file.isFile && file.extension == "jsonl" }.orEmpty().sortedBy { it.name }
-        records.flatMap { record ->
-            val lines = record.readLines().filter { it.isNotBlank() }
-            val header = lines.firstOrNull()?.let(::fields) ?: return@flatMap emptyList()
-            val source = header["file"] ?: return@flatMap emptyList()
-            if (!File(source).isFile) return@flatMap emptyList()
-            lines.drop(1).mapNotNull { line ->
-                val entry = fields(line)
+        records(directory).flatMap { (_, lines) ->
+            lines.mapNotNull { entry ->
                 val name = entry["name"] ?: return@mapNotNull null
                 Entry(name, entry["package"].orEmpty(), entry["visibility"] ?: "public")
             }
+        }
+    }
+
+    /** What the previews of each recorded file call, by source file path, from records whose file still exists. */
+    fun readPreviewCallees(directory: String?): Map<String, Set<String>> {
+        if (directory == null) return emptyMap()
+        return records(directory).associate { (file, lines) -> file to lines.mapNotNullTo(HashSet()) { it["callee"] } }
+    }
+
+    /** The records under [directory] whose source file still exists: the file's path and the parsed lines after the header. */
+    private fun records(directory: String): List<Pair<String, List<Map<String, String>>>> {
+        val records = File(directory).listFiles { file -> file.isFile && file.extension == "jsonl" }.orEmpty().sortedBy { it.name }
+        return records.mapNotNull { record ->
+            val lines = record.readLines().filter { it.isNotBlank() }
+            val source = lines.firstOrNull()?.let(::fields)?.get("file") ?: return@mapNotNull null
+            if (!File(source).isFile) return@mapNotNull null
+            source to lines.drop(1).map(::fields)
         }
     }
 

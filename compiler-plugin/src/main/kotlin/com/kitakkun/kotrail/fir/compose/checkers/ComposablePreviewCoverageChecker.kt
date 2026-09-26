@@ -54,9 +54,12 @@ import java.util.WeakHashMap
  * screenshot-test compilation reaches it as class files only, which no symbol provider
  * enumerates, so `main` writes what it declares; see [ComposableManifest]). Either way they are
  * found by package, so a package is named exactly rather than by pattern; a package in which
- * nothing is found is reported as such rather than counted as covered. Previews from every file of the compilation count. What is missing is reported
- * on the package directive of one file, the first by name among those that contain previews, so
- * that a compilation without any preview still fails at a definite place.
+ * nothing is found is reported as such rather than counted as covered. Previews from every file
+ * of the compilation count: those of the files being compiled from their bodies, and those of
+ * the files an incremental build left alone from the records the last build that saw them wrote
+ * (see [ComposableManifest]). What is missing is reported on the package directive of one file,
+ * the first by name among those that contain previews, so that a compilation without any
+ * preview still fails at a definite place.
  *
  * Off by default: it is the library and screenshot-test counterpart of
  * [ComposablePreviewRequiredChecker], enabled only in the compilation that carries previews.
@@ -77,7 +80,7 @@ object ComposablePreviewCoverageChecker : FirFileChecker(MppCheckerKind.Common) 
         val source = declaration.packageDirective.source ?: declaration.source ?: return
         if (source.kind is KtFakeSourceElementKind) return
         val excluded = settings.excludeNames.map(::Glob)
-        val previewed = index.previewed.mapTo(HashSet()) { it.asSingleFqName().asString() }
+        val previewed = index.previewed
         for (packageName in settings.packages) {
             val composables = session.composablesIn(FqName(packageName), settings.visibility).map { it.callableId.asSingleFqName().asString() } +
                 index.recorded.filter { it.packageName == packageName && it.counts(settings.visibility) }.map { it.name }
@@ -128,7 +131,7 @@ object ComposablePreviewCoverageChecker : FirFileChecker(MppCheckerKind.Common) 
      * associated compilations recorded (see [ComposableManifest]); computed once per session.
      */
     private class Index(session: FirSession) {
-        val previewed: Set<CallableId>
+        val previewed: Set<String>
         val anchorName: String?
         val recorded: List<ComposableManifest.Entry> = ComposableManifest.read(session.kotrailConfig.associatedComposablesDirs)
 
@@ -136,7 +139,7 @@ object ComposablePreviewCoverageChecker : FirFileChecker(MppCheckerKind.Common) 
             val provider = session.firProvider
             val packages = provider.symbolProvider.symbolNamesProvider.getPackageNames().orEmpty()
             val files = packages.flatMap { provider.getFirFilesByPackage(FqName(it)) }.distinct().sortedBy { it.name }
-            val callees = mutableSetOf<CallableId>()
+            val callees = mutableSetOf<String>()
             var anchor: String? = null
             for (file in files) {
                 val functions = mutableListOf<FirNamedFunction>()
@@ -145,11 +148,14 @@ object ComposablePreviewCoverageChecker : FirFileChecker(MppCheckerKind.Common) 
                 for (function in functions) {
                     if (!function.symbol.isPreview(session)) continue
                     hasPreview = true
-                    val collector = CalleeCollector()
-                    function.body?.accept(collector)
-                    callees += collector.callees
+                    callees += calleesOf(function).map { it.asSingleFqName().asString() }
                 }
                 if (hasPreview && anchor == null) anchor = file.name
+            }
+            // An incremental build compiles a subset of the files; the previews of the rest are in their records.
+            val compiled = files.mapNotNullTo(HashSet()) { it.sourceFile?.path }
+            for ((path, recordedCallees) in ComposableManifest.readPreviewCallees(session.kotrailConfig.composablesDir)) {
+                if (path !in compiled) callees += recordedCallees
             }
             previewed = callees
             anchorName = anchor ?: files.firstOrNull()?.name
@@ -164,6 +170,13 @@ object ComposablePreviewCoverageChecker : FirFileChecker(MppCheckerKind.Common) 
                 }
             }
         }
+    }
+
+    /** The functions a preview's body calls, by callable id. */
+    fun calleesOf(preview: FirNamedFunction): Set<CallableId> {
+        val collector = CalleeCollector()
+        preview.body?.accept(collector)
+        return collector.callees
     }
 
     private class CalleeCollector : FirVisitorVoid() {

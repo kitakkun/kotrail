@@ -49,7 +49,11 @@ object ComposableManifestChecker : FirFileChecker(MppCheckerKind.Common) {
             val callableId = function.symbol.callableId
             ComposableManifest.Entry(callableId.asSingleFqName().asString(), callableId.packageName.asString(), visibility)
         }
-        ComposableManifest.write(directory, path, entries)
+        // What this file's previews call, so that an incremental build that skips the file still counts them.
+        val previewCallees = functions.filter { it.symbol.isPreview(session) }.flatMapTo(HashSet()) { function ->
+            ComposablePreviewCoverageChecker.calleesOf(function).map { it.asSingleFqName().asString() }
+        }
+        ComposableManifest.write(directory, path, entries, previewCallees)
     }
 
     private fun collect(declarations: List<FirDeclaration>, into: MutableList<FirNamedFunction>) {

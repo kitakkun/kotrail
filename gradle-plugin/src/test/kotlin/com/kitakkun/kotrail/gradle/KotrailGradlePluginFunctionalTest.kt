@@ -189,7 +189,7 @@ class KotrailGradlePluginFunctionalTest {
     fun `a preview compilation checks the coverage of the main it is associated with`() {
         writeSettings()
         writeFile("kotrail.yaml", "severity: warning\nrules:\n  compose.previewRequired: off\n")
-        writeFile("kotrail-preview.yaml", "rules:\n  compose.previewCoverage:\n    enabled: true\n    severity: error\n    packages: [com.acme.ui]\n")
+        writeFile("kotrail-preview.yaml", "rules:\n  compose.previewCoverage:\n    enabled: true\n    severity: error\n    packages: [com.acme.ui]\n    excludeNames: [com.acme.ui.Text]\n")
         writeBuild(
             """
             kotlin {
@@ -232,6 +232,45 @@ class KotrailGradlePluginFunctionalTest {
         assertTrue(result.output.contains("'com.acme.ui.Missing' has no preview in this compilation"), result.output)
         assertFalse(result.output.contains("'com.acme.ui.Covered' has no preview"), result.output)
         assertFalse(result.output.contains("KOTRAIL_PREVIEW_COVERAGE_PACKAGE_EMPTY"), result.output)
+
+        // Cover the rest in a second file, then touch only the first: the incremental rebuild compiles one file,
+        // and the previews of the other still count, from its record.
+        writeFile(
+            "src/preview/kotlin/com/acme/ui/MorePreviews.kt",
+            """
+            package com.acme.ui
+
+            import androidx.compose.runtime.Composable
+            import androidx.compose.ui.tooling.preview.Preview
+
+            @Preview
+            @Composable
+            private fun MissingPreview() {
+                Missing()
+            }
+            """.trimIndent(),
+        )
+        val covered = runBuild("compilePreviewKotlin")
+        assertEquals(TaskOutcome.SUCCESS, covered.task(":compilePreviewKotlin")?.outcome, covered.output)
+        writeFile(
+            "src/preview/kotlin/com/acme/ui/Previews.kt",
+            """
+            package com.acme.ui
+
+            import androidx.compose.runtime.Composable
+            import androidx.compose.ui.tooling.preview.Preview
+
+            // Touched: only this file is recompiled.
+            @Preview
+            @Composable
+            private fun CoveredPreview() {
+                Covered("preview")
+            }
+            """.trimIndent(),
+        )
+        val incremental = runBuild("compilePreviewKotlin")
+        assertEquals(TaskOutcome.SUCCESS, incremental.task(":compilePreviewKotlin")?.outcome, incremental.output)
+        assertFalse(incremental.output.contains("has no preview in this compilation"), incremental.output)
     }
 
     @Test
