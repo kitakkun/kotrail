@@ -36,6 +36,7 @@ import com.kitakkun.kotrail.fir.checkers.CatchTooBroadChecker
 import com.kitakkun.kotrail.fir.checkers.DelayForCompletionChecker
 import com.kitakkun.kotrail.fir.checkers.DependencyRulesChecker
 import com.kitakkun.kotrail.fir.checkers.MustCloseChecker
+import com.kitakkun.kotrail.fir.checkers.NoExternalStateWriteChecker
 import com.kitakkun.kotrail.fir.checkers.NativeAllocationInLoopChecker
 import com.kitakkun.kotrail.fir.inferred.InferredFactWarmup
 import com.kitakkun.kotrail.fir.checkers.NoLiteralLoopChecker
@@ -104,6 +105,7 @@ import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirFunctionCallChec
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirQualifiedAccessExpressionChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirResolvedQualifierChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirTryExpressionChecker
+import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirVariableAssignmentChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirWhenExpressionChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.type.FirTypeRefChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.type.TypeCheckers
@@ -222,6 +224,10 @@ object KotrailExpressionCheckers : ExpressionCheckers() {
         MustBeSerializableChecker,
         NegationIdiomChecker,
         ConfiguredCallIdiomChecker,
+        NoExternalStateWriteChecker.Calls,
+    )
+    override val variableAssignmentCheckers: Set<FirVariableAssignmentChecker> = setOf(
+        NoExternalStateWriteChecker.Assignments,
     )
     override val resolvedQualifierCheckers: Set<FirResolvedQualifierChecker> = setOf(
         NoFqnReferences.QualifierChecker,

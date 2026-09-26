@@ -19,3 +19,12 @@ fun FirNamedFunctionSymbol.isTestFunction(session: FirSession, annotations: List
         annotation.toAnnotationClassId(session)?.asSingleFqName()?.asString() in annotations
     }
 }
+
+private val TEST_SOURCE_PATH = Regex("(^|/)src/(test[^/]*|[^/]*Test[^/]*)/")
+
+/**
+ * Whether [path] lies in a test source set by the Gradle layout: `src/test/`, `src/testFixtures/`,
+ * `src/jvmTest/`, `src/androidUnitTest/` and the like. For rules about production code only,
+ * where a test is expected to reach into what it checks.
+ */
+fun isTestSourcePath(path: String): Boolean = TEST_SOURCE_PATH.containsMatchIn(path.replace('\\', '/'))

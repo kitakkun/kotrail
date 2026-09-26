@@ -1,0 +1,191 @@
+@file:OptIn(DirectDeclarationsAccess::class)
+
+package com.kitakkun.kotrail.fir.checkers
+
+import com.kitakkun.kotrail.KotrailNoExternalStateWrite
+import com.kitakkun.kotrail.KotrailRule
+import com.kitakkun.kotrail.fir.KotrailDiagnostics
+import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.reportKotrail
+import com.kitakkun.kotrail.fir.test.isTestFunction
+import com.kitakkun.kotrail.fir.test.isTestSourcePath
+import org.jetbrains.kotlin.KtFakeSourceElementKind
+import org.jetbrains.kotlin.KtSourceElement
+import org.jetbrains.kotlin.descriptors.Visibilities
+import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
+import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
+import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
+import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirFunctionCallChecker
+import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirVariableAssignmentChecker
+import org.jetbrains.kotlin.fir.containingClassLookupTag
+import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
+import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
+import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
+import org.jetbrains.kotlin.fir.declarations.utils.isData
+import org.jetbrains.kotlin.fir.declarations.utils.visibility
+import org.jetbrains.kotlin.fir.expressions.FirDesugaredAssignmentValueReferenceExpression
+import org.jetbrains.kotlin.fir.expressions.FirExpression
+import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
+import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
+import org.jetbrains.kotlin.fir.expressions.FirSmartCastExpression
+import org.jetbrains.kotlin.fir.expressions.FirThisReceiverExpression
+import org.jetbrains.kotlin.fir.expressions.FirVariableAssignment
+import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
+import org.jetbrains.kotlin.fir.resolve.fullyExpandedType
+import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
+import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
+import org.jetbrains.kotlin.fir.types.ConeKotlinType
+import org.jetbrains.kotlin.fir.types.ConeStarProjection
+import org.jetbrains.kotlin.fir.types.constructClassLikeType
+import org.jetbrains.kotlin.fir.types.isNullableNothing
+import org.jetbrains.kotlin.fir.types.resolvedType
+import org.jetbrains.kotlin.fir.types.typeContext
+import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.FqName
+import org.jetbrains.kotlin.text
+import org.jetbrains.kotlin.types.AbstractTypeChecker
+
+/**
+ * Reports a write to a class's mutable state from code outside that class:
+ *
+ * ```kotlin
+ * class Scene { val capturing = mutableStateOf(false); fun render() { ... } }
+ *
+ * class CaptureTool(private val scene: Scene) {
+ *     fun capture() {
+ *         scene.capturing.value = true      // reported: Scene's state, changed by CaptureTool
+ *         try { ... } finally { scene.capturing.value = false }
+ *     }
+ * }
+ * ```
+ *
+ * When two callers each flip the same flag around their own work, nothing says which
+ * transitions are legal or what happens when they overlap; the answer is scattered over every
+ * caller. A method on the owner (`scene.captureWhile { ... }`) puts every transition in one
+ * place, where it can be guarded and tested.
+ *
+ * A write is `owner.state.value = x` on a property whose type is one of `types` (subtypes
+ * included: `MutableState`, `MutableStateFlow`, `MutableSharedFlow` by default), a call of
+ * `update`, `emit`, `tryEmit`, `compareAndSet`, `getAndUpdate` or `updateAndGet` on such a
+ * property, and, unless `plainVars` is false, an assignment to a `var` member of another class
+ * (`owner.count = 3`, `owner.count += 1`, `owner.count++`, a delegated `var x by mutableStateOf()`)
+ * whose setter is public or internal. The owner is the class or object that declares the
+ * property; a property of a companion object belongs to the class around it.
+ *
+ * Quiet: a write lexically inside the owner (its members, companion, nested and inner classes,
+ * and lambdas and local functions in them); a write through `this` of a class, which includes a
+ * subclass changing what it inherited; locals and top-level properties (`compose.noGlobalMutableState`
+ * covers global state); an owner that is a data class or has no functions of its own, a bag of
+ * values with no behavior to add a method to; an owner from another module or a library, whose
+ * API is what its authors chose; a test function and a file in a test source set. An extension
+ * function declared outside the owner is outside it, even when it writes through its receiver.
+ */
+object NoExternalStateWriteChecker {
+    private val UPDATE_CALLS = setOf("update", "emit", "tryEmit", "compareAndSet", "getAndUpdate", "updateAndGet")
+
+    object Assignments : FirVariableAssignmentChecker(MppCheckerKind.Common) {
+        context(context: CheckerContext, reporter: DiagnosticReporter)
+        override fun check(expression: FirVariableAssignment) {
+            val config = context.session.kotrailConfig
+            if (!config.isEnabled(KotrailRule.NO_EXTERNAL_STATE_WRITE)) return
+            val settings = config.noExternalStateWrite
+            // `x += 1` and `x++` assign through a reference to the original access.
+            val lValue = when (val value = expression.lValue) {
+                is FirDesugaredAssignmentValueReferenceExpression -> value.expressionRef.value
+                else -> value
+            } as? FirPropertyAccessExpression ?: return
+            val symbol = lValue.calleeReference.toResolvedCallableSymbol() as? FirPropertySymbol ?: return
+            val session = context.session
+
+            // `owner.state.value = x`: the write is to `state`, whatever declares `value`.
+            val holder = lValue.explicitReceiver?.unwrapSmartCast() as? FirPropertyAccessExpression
+            if (holder != null && holder.resolvedType.isStateHolder(session, settings)) {
+                reportIfOutside(expression.source ?: lValue.source, holder, session)
+                return
+            }
+            if (lValue.dispatchReceiver?.resolvedType?.isStateHolder(session, settings) == true) return
+            val isStateDelegate = symbol.hasDelegate &&
+                symbol.resolvedDelegateType()?.isStateHolder(session, settings) == true
+            if (!settings.plainVars && !isStateDelegate) return
+            if (!symbol.isVar) return
+            val setterVisibility = symbol.setterSymbol?.visibility ?: symbol.visibility
+            if (setterVisibility != Visibilities.Public && setterVisibility != Visibilities.Internal) return
+            reportIfOutside(expression.source ?: lValue.source, lValue, session)
+        }
+    }
+
+    object Calls : FirFunctionCallChecker(MppCheckerKind.Common) {
+        context(context: CheckerContext, reporter: DiagnosticReporter)
+        override fun check(expression: FirFunctionCall) {
+            val config = context.session.kotrailConfig
+            if (!config.isEnabled(KotrailRule.NO_EXTERNAL_STATE_WRITE)) return
+            if (expression.calleeReference.name.asString() !in UPDATE_CALLS) return
+            val holder = expression.explicitReceiver?.unwrapSmartCast() as? FirPropertyAccessExpression ?: return
+            val session = context.session
+            if (!holder.resolvedType.isStateHolder(session, config.noExternalStateWrite)) return
+            reportIfOutside(expression.source, holder, session)
+        }
+    }
+
+    /** Reports the write at [source] to the member [access] names unless the code at hand is inside its owner. */
+    context(context: CheckerContext, reporter: DiagnosticReporter)
+    private fun reportIfOutside(source: KtSourceElement?, access: FirPropertyAccessExpression, session: FirSession) {
+        if (source == null) return
+        val property = access.calleeReference.toResolvedCallableSymbol() as? FirPropertySymbol ?: return
+        val owner = ownerOf(property, session) ?: return
+        if (owner.origin != FirDeclarationOrigin.Source) return
+        if (owner.isBag()) return
+        if (access.dispatchReceiver?.unwrapSmartCast().isThisOfClass()) return
+        if (context.containingDeclarations.any { it is FirClassSymbol<*> && it.classId == owner.classId }) return
+        if (isInTest(session)) return
+        val name = access.source?.text?.toString() ?: property.name.asString()
+        reportKotrail(source, KotrailDiagnostics.STATE_WRITTEN_OUTSIDE_OWNER, name, owner.classId.shortClassName.asString())
+    }
+
+    /** The class or object that declares [property], a companion standing for the class around it; null for a local or top-level one. */
+    private fun ownerOf(property: FirPropertySymbol, session: FirSession): FirRegularClassSymbol? {
+        val declaring = property.containingClassLookupTag()?.toRegularClassSymbol(session) ?: return null
+        if (!declaring.isCompanion) return declaring
+        val outer = declaring.classId.outerClassId ?: return declaring
+        return session.symbolProvider.getClassLikeSymbolByClassId(outer) as? FirRegularClassSymbol ?: declaring
+    }
+
+    /** A data class, or a class with no functions of its own: a bag of values with no behavior to add a method to. */
+    private fun FirRegularClassSymbol.isBag(): Boolean {
+        if (isData) return true
+        return declarationSymbols.none { member ->
+            member is FirNamedFunctionSymbol && member.source?.kind !is KtFakeSourceElementKind
+        }
+    }
+
+    private fun FirExpression?.isThisOfClass(): Boolean =
+        this is FirThisReceiverExpression && calleeReference.boundSymbol is FirClassSymbol<*>
+
+    context(context: CheckerContext)
+    private fun isInTest(session: FirSession): Boolean {
+        val path = context.containingFileSymbol?.sourceFile?.path
+        if (path != null && isTestSourcePath(path)) return true
+        val annotations = session.kotrailConfig.test.annotations
+        return context.containingDeclarations.any { it is FirNamedFunctionSymbol && it.isTestFunction(session, annotations) }
+    }
+
+    private fun FirPropertySymbol.resolvedDelegateType(): ConeKotlinType? = delegate?.resolvedType
+
+    private fun FirExpression.unwrapSmartCast(): FirExpression = if (this is FirSmartCastExpression) originalExpression else this
+
+    private fun ConeKotlinType.isStateHolder(session: FirSession, settings: KotrailNoExternalStateWrite): Boolean {
+        val expanded = fullyExpandedType(session)
+        if (expanded.isNullableNothing) return false
+        return settings.types.any { name ->
+            val classId = ClassId.topLevel(FqName(name))
+            val symbol = session.symbolProvider.getClassLikeSymbolByClassId(classId) ?: return@any false
+            val superType = classId.constructClassLikeType(Array(symbol.typeParameterSymbols.size) { ConeStarProjection }, isMarkedNullable = true)
+            AbstractTypeChecker.isSubtypeOf(session.typeContext, expanded, superType)
+        }
+    }
+}

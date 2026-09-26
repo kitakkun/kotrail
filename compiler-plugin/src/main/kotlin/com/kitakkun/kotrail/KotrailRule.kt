@@ -60,6 +60,7 @@ enum class KotrailRule(
     WEAK_ONLY_REFERENCE("weakOnlyReference", Severity.ERROR),
     CATCH_TOO_BROAD("catchTooBroad", Severity.ERROR),
     MUST_CLOSE("mustClose", Severity.ERROR),
+    NO_EXTERNAL_STATE_WRITE("noExternalStateWrite", Severity.ERROR),
     UNRETAINED("unretained", Severity.ERROR),
     REQUIRED_SUPERTYPE("requiredSupertype", Severity.ERROR),
     DEPENDENCY_RULES("dependencyRules", Severity.ERROR),

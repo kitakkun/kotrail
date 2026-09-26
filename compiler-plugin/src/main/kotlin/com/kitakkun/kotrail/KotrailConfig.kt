@@ -378,6 +378,14 @@ data class KotrailMustClose(
     val ignoredTypes: List<String>,
 )
 
+/** Tunables for the no-external-state-write rule. From `rules.noExternalStateWrite`. */
+data class KotrailNoExternalStateWrite(
+    /** Fully qualified types (subtypes included) whose instances hold mutable state written through `value`, `update` or `emit`. */
+    val types: List<String>,
+    /** Whether a write to a plain `var` member of another class is reported too. */
+    val plainVars: Boolean,
+)
+
 /** Tunables for the native-allocation-in-loop rule. From `rules.nativeAllocationInLoop`. */
 data class KotrailNativeAllocation(
     /** Fully qualified types (subtypes included) whose instances hold native memory freed only by a cleaner. */
@@ -518,6 +526,7 @@ data class KotrailConfig(
     val generated: KotrailGenerated,
     val nativeAllocation: KotrailNativeAllocation,
     val mustClose: KotrailMustClose,
+    val noExternalStateWrite: KotrailNoExternalStateWrite,
     val objcThrows: KotrailObjCThrows,
     val weakOnlyReference: KotrailWeakOnlyReference,
     val catchTooBroad: KotrailCatchTooBroad,
@@ -622,6 +631,9 @@ data class KotrailConfig(
             "java.nio.file.Files.newBufferedWriter", "java.nio.file.Files.newDirectoryStream", "java.nio.file.Files.list",
             "java.nio.file.Files.walk", "java.nio.file.Files.lines",
             "java.nio.channels.FileChannel.open", "java.net.ServerSocket.accept",
+        )
+        val DEFAULT_STATE_HOLDER_TYPES: List<String> = listOf(
+            "androidx.compose.runtime.MutableState", "kotlinx.coroutines.flow.MutableStateFlow", "kotlinx.coroutines.flow.MutableSharedFlow",
         )
         /** `AutoCloseable` types that only hold heap memory: closing them frees nothing. */
         val DEFAULT_IN_MEMORY_RESOURCES: List<String> = listOf(
@@ -1096,6 +1108,10 @@ data class KotrailConfig(
                 mustClose = KotrailMustClose(
                     factories = list(KotrailRule.MUST_CLOSE, "factories") ?: DEFAULT_RESOURCE_FACTORIES,
                     ignoredTypes = list(KotrailRule.MUST_CLOSE, "ignoredTypes") ?: DEFAULT_IN_MEMORY_RESOURCES,
+                ),
+                noExternalStateWrite = KotrailNoExternalStateWrite(
+                    types = list(KotrailRule.NO_EXTERNAL_STATE_WRITE, "types") ?: DEFAULT_STATE_HOLDER_TYPES,
+                    plainVars = boolean(ruleNode(KotrailRule.NO_EXTERNAL_STATE_WRITE), "plainVars") ?: true,
                 ),
                 objcThrows = KotrailObjCThrows(packages = list(KotrailRule.NATIVE_OBJC_THROWS, "packages").orEmpty().map(::Glob)),
                 weakOnlyReference = KotrailWeakOnlyReference(
