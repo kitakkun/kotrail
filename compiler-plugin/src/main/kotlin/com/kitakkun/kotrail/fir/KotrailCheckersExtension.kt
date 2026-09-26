@@ -6,7 +6,6 @@ import com.kitakkun.kotrail.fir.checkers.ForbiddenCallChecker
 import com.kitakkun.kotrail.fir.checkers.FileLengthChecker
 import com.kitakkun.kotrail.fir.checkers.FunctionLengthChecker
 import com.kitakkun.kotrail.fir.preconditions.checkers.PreconditionChecker
-import com.kitakkun.kotrail.fir.preconditions.checkers.PreconditionWarmup
 import com.kitakkun.kotrail.fir.checkers.UnimplementedCodeChecker
 import com.kitakkun.kotrail.fir.checkers.RequiredAnnotationChecker
 import com.kitakkun.kotrail.fir.checkers.VisibilityPolicyChecker
@@ -36,8 +35,8 @@ import com.kitakkun.kotrail.fir.checkers.NarrativeOrderChecker
 import com.kitakkun.kotrail.fir.checkers.CatchTooBroadChecker
 import com.kitakkun.kotrail.fir.checkers.DelayForCompletionChecker
 import com.kitakkun.kotrail.fir.checkers.DependencyRulesChecker
-import com.kitakkun.kotrail.fir.checkers.AsyncWorkRecorder
 import com.kitakkun.kotrail.fir.checkers.NativeAllocationInLoopChecker
+import com.kitakkun.kotrail.fir.inferred.InferredFactWarmup
 import com.kitakkun.kotrail.fir.checkers.NoLiteralLoopChecker
 import com.kitakkun.kotrail.fir.checkers.ParameterOrderChecker
 import com.kitakkun.kotrail.fir.checkers.RequiredSupertypeChecker
@@ -78,7 +77,6 @@ import com.kitakkun.kotrail.fir.compose.checkers.ComposableTrailingCallbackCheck
 import com.kitakkun.kotrail.fir.compose.checkers.PreferStateDelegationChecker
 import com.kitakkun.kotrail.fir.compose.insets.checkers.HandlesWindowInsetsContractChecker
 import com.kitakkun.kotrail.fir.compose.locals.checkers.CompositionLocalEntryPointChecker
-import com.kitakkun.kotrail.fir.compose.locals.checkers.CompositionLocalPropertyWarmup
 import com.kitakkun.kotrail.fir.compose.locals.checkers.CompositionLocalRootChecker
 import com.kitakkun.kotrail.fir.test.checkers.TestNamingChecker
 import com.kitakkun.kotrail.fir.compose.insets.checkers.WindowInsetsHandledTwiceChecker
@@ -140,22 +138,23 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
         FileLengthChecker,
     )
     override val regularClassCheckers: Set<FirRegularClassChecker> = setOf(
-        PreconditionWarmup.ClassChecker,
+        InferredFactWarmup.ClassChecker,
         NarrativeOrderChecker.ClassChecker,
         RequiredSupertypeChecker,
         PreferValueClassChecker,
         NoDataClassInPublicApiChecker,
     )
     override val propertyCheckers: Set<FirPropertyChecker> = setOf(
+        InferredFactWarmup.PropertyChecker,
         PreferValChecker,
         UnloadableCodeChecker.ThreadLocalChecker,
         NarrowLocalScopeChecker,
         PreferExplicitBackingFieldChecker,
         PreferStateDelegationChecker,
-        CompositionLocalPropertyWarmup,
     )
     override val namedFunctionCheckersCompat: Set<NamedFunctionChecker> = setOf(
-        PreconditionWarmup.FunctionChecker,
+        // First: every inferred fact is computed while bodies are available, for the metadata writer.
+        InferredFactWarmup.FunctionChecker,
         HandlesWindowInsetsContractChecker,
         CompositionLocalRootChecker,
         ComposableNestingChecker,
@@ -172,11 +171,9 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
         TestMustAssertChecker,
         FunctionLengthChecker,
         LiveVariableBudgetChecker,
-        AsyncWorkRecorder,
         ComposableSideEffectChecker,
         ComposableGlobalMutableStateChecker,
         ObjCThrowsChecker,
-        NativeAllocationInLoopChecker.Recorder,
         ComposableUnstableParameterChecker,
     )
     override val callableDeclarationCheckers: Set<FirCallableDeclarationChecker> = setOf(

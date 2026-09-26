@@ -2,13 +2,9 @@ package com.kitakkun.kotrail.fir.checkers
 
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
-import com.kitakkun.kotrail.compat.NamedFunctionChecker
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.memory.NativeAllocationService
 import com.kitakkun.kotrail.fir.memory.nativeAllocationService
-import org.jetbrains.kotlin.descriptors.Visibilities
-import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
-import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -73,16 +69,6 @@ object NativeAllocationInLoopChecker : FirFunctionCallChecker(MppCheckerKind.Com
             reportKotrail(source, KotrailDiagnostics.NATIVE_ALLOCATION_IN_LOOP, allocation.type)
         } else {
             reportKotrail(source, KotrailDiagnostics.NATIVE_ALLOCATION_THROUGH_CALL_IN_LOOP, "'${allocation.renderPath()}' creates a '${allocation.type}'", allocation.fate)
-        }
-    }
-
-    /** Warms the allocation analysis for every non-private function, so that the IR metadata writer only reads cached results. */
-    object Recorder : NamedFunctionChecker(MppCheckerKind.Common) {
-        context(context: CheckerContext, reporter: DiagnosticReporter)
-        override fun check(declaration: FirNamedFunction) {
-            if (!context.session.kotrailConfig.isEnabled(KotrailRule.NATIVE_ALLOCATION_IN_LOOP)) return
-            if (declaration.body == null || declaration.visibility == Visibilities.Private) return
-            context.session.nativeAllocationService.allocates(declaration.symbol)
         }
     }
 

@@ -16,10 +16,8 @@ import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
-import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirPropertyChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirFunctionCallChecker
 import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
-import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.hasAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirAnonymousFunctionExpression
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
@@ -73,15 +71,6 @@ object CompositionLocalEntryPointChecker : FirFunctionCallChecker(MppCheckerKind
             val body = lambda.body ?: continue
             reportMissing(source, service, service.readsBelow(body), KotrailDiagnostics.COMPOSITION_LOCAL_NOT_PROVIDED_AT_ENTRY_POINT)
         }
-    }
-}
-
-/** Caches which source locals have a throwing default, for the IR writer. Reports nothing. */
-object CompositionLocalPropertyWarmup : FirPropertyChecker(MppCheckerKind.Common) {
-    context(context: CheckerContext, reporter: DiagnosticReporter)
-    override fun check(declaration: FirProperty) {
-        if (!context.session.kotrailConfig.isEnabled(KotrailRule.COMPOSE_COMPOSITION_LOCALS)) return
-        context.session.compositionLocalService.isRequiredBySource(declaration.symbol)
     }
 }
 

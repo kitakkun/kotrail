@@ -161,9 +161,10 @@ both plugins are passed by the Kotlin Gradle plugin the same way.
 
 ## Implementation notes
 
-`fir/compose/insets/`: `WindowInsetsHandlingService` (session component with the cache),
-`WindowInsetsExpressionEvaluator`, `WindowInsetsNames` (names and knowledge base), and the two
-checkers. `compose/insets/InsetsModel.kt` holds the algebra shared with
-`ir/compose/insets/InferredWindowInsetsMetadataWriter.kt`.
+`fir/compose/insets/`: `WindowInsetsHandlingService` (an inferred fact on the shared base
+described in [Inferred metadata](../../inferred-metadata.md): a declared contract wins, then the
+metadata, then the knowledge base, then the body), `WindowInsetsExpressionEvaluator`,
+`WindowInsetsNames` (names and knowledge base), and the two checkers.
+`compose/insets/InsetsModel.kt` holds the algebra the fact encodes and decodes with.
 
 Not covered yet: IDE highlighting, which needs the K2 IDE to load third-party checkers.

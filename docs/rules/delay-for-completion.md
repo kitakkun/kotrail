@@ -72,5 +72,6 @@ not starting work.
 ## Implementation notes
 
 `fir/checkers/DelayForCompletionChecker.kt`, a `FirFunctionCallChecker`; the "starts work"
-question is answered by `fir/concurrency/AsyncWorkService.kt`, a session component memoized per
-symbol, and written to metadata by `ir/concurrency/InferredStartsAsyncWorkMetadataWriter.kt`.
+question is answered by `fir/concurrency/AsyncWorkService.kt`, an inferred fact on the shared
+base described in [Inferred metadata](../inferred-metadata.md), written to metadata as the
+`@InferredStartsAsyncWork` marker by the shared writer.

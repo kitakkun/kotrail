@@ -96,7 +96,9 @@ Not covered: producers that never stop.
 
 ## Implementation notes
 
-`fir/checkers/NativeAllocationInLoopChecker.kt`, a `FirFunctionCallChecker`. The loop test walks
+`fir/checkers/NativeAllocationInLoopChecker.kt`, a `FirFunctionCallChecker`, over
+`fir/memory/NativeAllocationService.kt`, an inferred fact on the shared base described in
+[Inferred metadata](../inferred-metadata.md). The loop test walks
 the checker context's containing elements for a loop or for a lambda whose enclosing call is a
 listed callback; the `use` test walks them in the other direction while each parent is a call
 whose explicit receiver is the previous element.

@@ -160,8 +160,10 @@ cannot resolve the local itself.
 
 ## Implementation notes
 
-`fir/compose/locals/`: `CompositionLocalService` (session component with the caches and the
-scope-tracking walker), `CompositionLocalNames`, and the checkers: the root checker, the
-entry-point checker, and a property warm-up that caches which locals throw while initializers
-are still available. `ir/compose/locals/InferredCompositionLocalsMetadataWriter.kt` writes the
-metadata.
+`fir/compose/locals/`: `CompositionLocalService` (an inferred fact per composable, with a
+sibling fact per composable getter, on the shared base described in
+[Inferred metadata](../../inferred-metadata.md), plus the required-local caches and the
+scope-tracking walker), `CompositionLocalNames`, and the checkers: the root checker and the
+entry-point checker. The shared warm-up computes every fact and which locals throw while
+initializers are still available; the shared writer puts `@InferredCompositionLocals` on
+functions and getters and `@InferredRequiredCompositionLocal` on properties.
