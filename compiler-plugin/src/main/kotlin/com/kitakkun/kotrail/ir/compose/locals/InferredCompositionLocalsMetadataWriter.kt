@@ -6,6 +6,7 @@ import com.kitakkun.kotrail.compat.addStringArraysMetadataAnnotation
 import com.kitakkun.kotrail.fir.compose.ComposeNames
 import com.kitakkun.kotrail.fir.compose.locals.CompositionLocalNames
 import com.kitakkun.kotrail.fir.compose.locals.compositionLocalService
+import com.kitakkun.kotrail.ir.inferredAnnotationConstructor
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
@@ -19,7 +20,6 @@ import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
-import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.visitors.IrVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
@@ -35,11 +35,8 @@ import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
 class InferredCompositionLocalsMetadataWriter : IrGenerationExtension {
     override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
         if (!pluginContext.afterK2) return
-        val finder = pluginContext.finderForBuiltins()
-        val functionConstructor = finder.findClass(CompositionLocalNames.INFERRED_COMPOSITION_LOCALS)
-            ?.owner?.constructors?.singleOrNull()?.symbol ?: return
-        val propertyConstructor = finder.findClass(CompositionLocalNames.INFERRED_REQUIRED_COMPOSITION_LOCAL)
-            ?.owner?.constructors?.singleOrNull()?.symbol ?: return
+        val functionConstructor = pluginContext.inferredAnnotationConstructor(CompositionLocalNames.INFERRED_COMPOSITION_LOCALS, listOf("reads", "provides"))
+        val propertyConstructor = pluginContext.inferredAnnotationConstructor(CompositionLocalNames.INFERRED_REQUIRED_COMPOSITION_LOCAL, emptyList())
         val writer = Writer(pluginContext, functionConstructor, propertyConstructor)
         moduleFragment.files.forEach { it.acceptChildrenVoid(writer) }
     }

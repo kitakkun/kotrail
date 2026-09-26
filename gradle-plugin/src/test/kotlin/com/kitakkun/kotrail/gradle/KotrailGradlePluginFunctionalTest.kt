@@ -329,7 +329,7 @@ class KotrailGradlePluginFunctionalTest {
 
     @Test
     fun `a multiplatform library's helper is seen through the metadata by a consumer in another module`() {
-        writeSettings(include = listOf("lib"))
+        writeSettings(include = listOf("lib", "jsapp"))
         writeFile("kotrail.yaml", "severity: warning\n")
         writeBuild(
             """
@@ -366,10 +366,54 @@ class KotrailGradlePluginFunctionalTest {
                     }
                 }
             }
+
+            // A published library keeps Kotrail out of its dependencies; the metadata is written all the same.
+            kotrail {
+                annotations = false
+            }
             """.trimIndent(),
         )
-        // The helper lives in commonMain: the annotations artifact must reach every target for the plugin to
-        // write @InferredStartsAsyncWork onto it, since the metadata is what the consumer's check reads.
+        writeFile(
+            "jsapp/build.gradle.kts",
+            """
+            plugins {
+                kotlin("multiplatform")
+                id("com.kitakkun.kotrail")
+            }
+
+            repositories {
+                maven { url = uri("$repository") }
+                mavenCentral()
+            }
+
+            kotlin {
+                js { nodejs() }
+                sourceSets {
+                    commonMain.dependencies {
+                        implementation(project(":lib"))
+                        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$COROUTINES_VERSION")
+                    }
+                }
+            }
+
+            kotrail {
+                configFile = rootProject.file("kotrail.yaml")
+            }
+            """.trimIndent(),
+        )
+        // The helper lives in commonMain and the library has no annotations artifact: the plugin writes
+        // @InferredStartsAsyncWork against a stub on every target, and the consumers read it by name.
+        val client = """
+            import kotlinx.coroutines.delay
+
+            class Client(private val reconnector: Reconnector) {
+                suspend fun switch() {
+                    reconnector.reconnect()
+                    delay(500)
+                }
+            }
+        """.trimIndent()
+        writeFile("jsapp/src/commonMain/kotlin/Client.kt", client)
         writeFile(
             "lib/src/commonMain/kotlin/Reconnector.kt",
             """
@@ -383,26 +427,24 @@ class KotrailGradlePluginFunctionalTest {
             }
             """.trimIndent(),
         )
-        writeFile(
-            "src/main/kotlin/Client.kt",
-            """
-            import kotlinx.coroutines.delay
+        writeFile("src/main/kotlin/Client.kt", client)
 
-            class Client(private val reconnector: Reconnector) {
-                suspend fun switch() {
-                    reconnector.reconnect()
-                    delay(500)
-                }
-            }
-            """.trimIndent(),
-        )
-
-        val result = runBuild("compileKotlin")
+        val result = runBuild("compileKotlin", ":jsapp:compileKotlinJs")
 
         assertEquals(TaskOutcome.SUCCESS, result.task(":lib:compileKotlinJvm")?.outcome, result.output)
+        assertEquals(TaskOutcome.SUCCESS, result.task(":lib:compileKotlinJs")?.outcome, result.output)
         assertEquals(TaskOutcome.SUCCESS, result.task(":compileKotlin")?.outcome, result.output)
-        assertTrue(result.output.contains("KOTRAIL_DELAY_WAITS_FOR_ASYNC_WORK"), result.output)
+        assertEquals(TaskOutcome.SUCCESS, result.task(":jsapp:compileKotlinJs")?.outcome, result.output)
+        // Both consumers report the wait: the JVM one from the class file's annotation, the JS one from the klib's metadata.
+        val findings = result.output.lines().filter { "KOTRAIL_DELAY_WAITS_FOR_ASYNC_WORK" in it }
+        assertTrue(findings.any { "/src/main/kotlin/Client.kt:6:9" in it }, result.output)
+        assertTrue(findings.any { "jsapp/src/commonMain/kotlin/Client.kt:6:9" in it }, result.output)
         assertTrue(result.output.contains("'reconnect' started"), result.output)
+        // The library's klib depends on nothing of Kotrail's: the stub is not a dependency.
+        val manifest = File(projectDir, "lib/build/classes/kotlin/js/main/default/manifest")
+        assertTrue(manifest.isFile, "no klib manifest at ${'$'}manifest\n" + result.output)
+        assertFalse(manifest.readText().contains("kotrail"), manifest.readText())
+        assertFalse(result.output.contains("Unsupported `compileOnly`"), result.output)
     }
 
     private fun writeSettings(include: List<String> = emptyList()) {

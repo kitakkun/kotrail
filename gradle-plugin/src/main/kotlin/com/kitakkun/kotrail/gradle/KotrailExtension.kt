@@ -26,7 +26,9 @@ abstract class KotrailExtension @Inject constructor(private val objects: ObjectF
      * Whether `com.kitakkun.kotrail:kotrail-annotations` is added to the project's
      * `compileOnly` dependencies, so that `@HandlesWindowInsets` and `@MustBeSerializable`
      * can be written in source without the artifact reaching the project's published
-     * dependencies (`commonMainCompileOnly` in a multiplatform project). Default `true`.
+     * dependencies. Default `true`. Kotlin/JVM and Kotlin/Android only: a multiplatform project
+     * adds the artifact to the source sets that write these annotations itself. The metadata the
+     * compiler plugin writes for other modules does not need the artifact.
      */
     abstract val annotations: Property<Boolean>
 

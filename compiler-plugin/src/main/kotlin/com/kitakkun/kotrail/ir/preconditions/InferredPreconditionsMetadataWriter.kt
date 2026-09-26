@@ -5,6 +5,7 @@ package com.kitakkun.kotrail.ir.preconditions
 import com.kitakkun.kotrail.compat.addStringVarargMetadataAnnotation
 import com.kitakkun.kotrail.fir.preconditions.PreconditionNames
 import com.kitakkun.kotrail.fir.preconditions.preconditionService
+import com.kitakkun.kotrail.ir.inferredAnnotationConstructor
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
@@ -19,7 +20,6 @@ import org.jetbrains.kotlin.ir.declarations.IrMutableAnnotationContainer
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
-import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.visitors.IrVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
@@ -33,9 +33,7 @@ import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
 class InferredPreconditionsMetadataWriter : IrGenerationExtension {
     override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
         if (!pluginContext.afterK2) return
-        val annotationClass = pluginContext.finderForBuiltins()
-            .findClass(PreconditionNames.INFERRED_PRECONDITIONS) ?: return
-        val constructor = annotationClass.owner.constructors.singleOrNull()?.symbol ?: return
+        val constructor = pluginContext.inferredAnnotationConstructor(PreconditionNames.INFERRED_PRECONDITIONS, listOf("conditions"))
         val writer = Writer(pluginContext, constructor)
         moduleFragment.files.forEach { it.acceptChildrenVoid(writer) }
     }

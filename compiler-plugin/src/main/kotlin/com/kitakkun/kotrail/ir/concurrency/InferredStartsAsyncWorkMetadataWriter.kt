@@ -5,6 +5,7 @@ package com.kitakkun.kotrail.ir.concurrency
 import com.kitakkun.kotrail.compat.addStringArraysMetadataAnnotation
 import com.kitakkun.kotrail.fir.concurrency.AsyncWorkService
 import com.kitakkun.kotrail.fir.concurrency.asyncWorkService
+import com.kitakkun.kotrail.ir.inferredAnnotationConstructor
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
@@ -17,7 +18,6 @@ import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
-import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.visitors.IrVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
@@ -31,8 +31,7 @@ import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
 class InferredStartsAsyncWorkMetadataWriter : IrGenerationExtension {
     override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
         if (!pluginContext.afterK2) return
-        val annotationClass = pluginContext.finderForBuiltins().findClass(AsyncWorkService.INFERRED_STARTS_ASYNC_WORK) ?: return
-        val constructor = annotationClass.owner.constructors.singleOrNull()?.symbol ?: return
+        val constructor = pluginContext.inferredAnnotationConstructor(AsyncWorkService.INFERRED_STARTS_ASYNC_WORK, emptyList())
         val writer = Writer(pluginContext, constructor)
         moduleFragment.files.forEach { it.acceptChildrenVoid(writer) }
     }

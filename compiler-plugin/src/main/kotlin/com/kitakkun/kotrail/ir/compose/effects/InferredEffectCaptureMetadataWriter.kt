@@ -5,6 +5,7 @@ package com.kitakkun.kotrail.ir.compose.effects
 import com.kitakkun.kotrail.compat.addStringVarargMetadataAnnotation
 import com.kitakkun.kotrail.fir.compose.ComposeNames
 import com.kitakkun.kotrail.fir.compose.effects.effectCaptureService
+import com.kitakkun.kotrail.ir.inferredAnnotationConstructor
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
@@ -16,7 +17,6 @@ import org.jetbrains.kotlin.ir.declarations.IrModuleFragment
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
 import org.jetbrains.kotlin.ir.symbols.IrConstructorSymbol
 import org.jetbrains.kotlin.ir.symbols.UnsafeDuringIrConstructionAPI
-import org.jetbrains.kotlin.ir.util.constructors
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.ir.visitors.IrVisitorVoid
 import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
@@ -30,8 +30,7 @@ import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
 class InferredEffectCaptureMetadataWriter : IrGenerationExtension {
     override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
         if (!pluginContext.afterK2) return
-        val annotationClass = pluginContext.finderForBuiltins().findClass(ComposeNames.INFERRED_EFFECT_CAPTURE) ?: return
-        val constructor = annotationClass.owner.constructors.singleOrNull()?.symbol ?: return
+        val constructor = pluginContext.inferredAnnotationConstructor(ComposeNames.INFERRED_EFFECT_CAPTURE, listOf("captured"))
         val writer = Writer(pluginContext, constructor)
         moduleFragment.files.forEach { it.acceptChildrenVoid(writer) }
     }
