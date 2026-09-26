@@ -46,6 +46,7 @@ fixtures that pin its behavior.
 | Unretained | `KOTRAIL_UNRETAINED_PARAMETER_RETAINED` | [unretained.md](unretained.md) |
 | Required supertype | `KOTRAIL_SUPERTYPE_REQUIRED` | [required-supertype.md](required-supertype.md) |
 | Dependency rules | `KOTRAIL_DEPENDENCY_NOT_ALLOWED` | [dependency-rules.md](dependency-rules.md) |
+| Delay for completion | `KOTRAIL_DELAY_WAITS_FOR_ASYNC_WORK` | [delay-for-completion.md](delay-for-completion.md) |
 | Unloadable code (off by default) | `KOTRAIL_THREAD_LOCAL_IN_UNLOADABLE_CODE`, `KOTRAIL_UNSCOPED_REGISTRATION_IN_UNLOADABLE_CODE`, `KOTRAIL_OUTBOUND_REFERENCE_IN_BUNDLED_CODE` | [unloadable-code.md](unloadable-code.md) |
 | No data class in public API | `KOTRAIL_DATA_CLASS_IN_PUBLIC_API` | [no-data-class-in-public-api.md](no-data-class-in-public-api.md) |
 | Visibility policy | `KOTRAIL_VISIBILITY_TOO_WIDE` | [visibility-policy.md](visibility-policy.md) |

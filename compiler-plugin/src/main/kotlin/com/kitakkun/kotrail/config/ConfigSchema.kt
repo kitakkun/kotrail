@@ -132,10 +132,16 @@ object ConfigSchema {
         ),
         KotrailRule.CATCH_TOO_BROAD to listOf(
             Setting("types", Kind.LIST, "Fully qualified exception types a catch clause must not name; replaces the default list.", default = "kotlin.Throwable, kotlin.Exception, kotlin.RuntimeException, java.lang.Throwable, java.lang.Exception, java.lang.RuntimeException, java.lang.Error"),
+            Setting("report", Kind.ENUM, "swallowed: only clauses that let the failure go no further than a log line (the exception is unused, or handed to a logger alone); all: every broad clause.", values = listOf("swallowed", "all"), default = "swallowed"),
+            Setting("loggers", Kind.LIST, "Globs over fully qualified functions that only log; a failure handed to them alone is swallowed. Replaces the default list.", default = "kotlin.io.println, printStackTrace, android.util.Log.*, java.util.logging.Logger.*, org.slf4j.Logger.*, io.github.oshai.kotlinlogging.*, co.touchlab.kermit.*, timber.log.Timber.*, com.intellij.openapi.diagnostic.Logger.*"),
         ),
         KotrailRule.UNRETAINED to listOf(
             Setting("annotations", Kind.LIST, "Fully qualified annotations that mark a parameter as not to be retained; replaces the default list.", default = "com.kitakkun.kotrail.lifetime.Unretained"),
             Setting("weakTypes", Kind.LIST, "Fully qualified weak reference types (subtypes included) through which such a parameter may be kept; replaces the default list.", default = "java.lang.ref.WeakReference, java.lang.ref.SoftReference, kotlin.native.ref.WeakReference"),
+        ),
+        KotrailRule.DELAY_FOR_COMPLETION to listOf(
+            Setting("delays", Kind.LIST, "Fully qualified functions that wait a fixed time; replaces the default list.", default = "kotlinx.coroutines.delay, java.lang.Thread.sleep, android.os.SystemClock.sleep"),
+            Setting("starters", Kind.LIST, "Fully qualified functions that start work that outlives the call (coroutines, threads, posted runnables); replaces the default list.", default = "kotlinx.coroutines.launch, kotlinx.coroutines.async, kotlinx.coroutines.flow.launchIn, java.lang.Thread.start, kotlin.concurrent.thread, android.os.Handler.post, android.os.Handler.postDelayed, java.util.concurrent.Executor.execute, java.util.concurrent.ExecutorService.submit, java.util.Timer.schedule"),
         ),
         KotrailRule.REQUIRED_SUPERTYPE to listOf(
             Setting("policies", Kind.ENTRIES, "Named policies; matching classes must extend or implement the supertype.",

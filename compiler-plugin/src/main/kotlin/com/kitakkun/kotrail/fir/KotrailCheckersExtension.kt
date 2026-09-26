@@ -32,7 +32,9 @@ import com.kitakkun.kotrail.fir.checkers.JvmSyntheticForInternalChecker
 import com.kitakkun.kotrail.fir.checkers.LiveVariableBudgetChecker
 import com.kitakkun.kotrail.fir.checkers.NarrativeOrderChecker
 import com.kitakkun.kotrail.fir.checkers.CatchTooBroadChecker
+import com.kitakkun.kotrail.fir.checkers.DelayForCompletionChecker
 import com.kitakkun.kotrail.fir.checkers.DependencyRulesChecker
+import com.kitakkun.kotrail.fir.checkers.AsyncWorkRecorder
 import com.kitakkun.kotrail.fir.checkers.NativeAllocationInLoopChecker
 import com.kitakkun.kotrail.fir.checkers.ParameterOrderChecker
 import com.kitakkun.kotrail.fir.checkers.RequiredSupertypeChecker
@@ -164,6 +166,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
         TestMustAssertChecker,
         FunctionLengthChecker,
         LiveVariableBudgetChecker,
+        AsyncWorkRecorder,
         ComposableSideEffectChecker,
         ComposableUnstableParameterChecker,
     )
@@ -194,6 +197,7 @@ object KotrailExpressionCheckers : ExpressionCheckers() {
         ForbiddenCallChecker,
         UnloadableCodeChecker.RegistrationChecker,
         NativeAllocationInLoopChecker,
+        DelayForCompletionChecker,
         WeakOnlyReferenceChecker,
         ComposableRememberKeysChecker,
         PreconditionChecker,

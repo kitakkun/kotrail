@@ -2,6 +2,7 @@ package com.kitakkun.kotrail.fir.checkers
 
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
+import com.kitakkun.kotrail.exclude.Glob
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
@@ -11,6 +12,8 @@ import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirTryExpressionChecker
 import org.jetbrains.kotlin.fir.expressions.FirCatch
+import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
+import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirQualifiedAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirSmartCastExpression
 import org.jetbrains.kotlin.fir.expressions.FirThrowExpression
@@ -69,9 +72,50 @@ object CatchTooBroadChecker : FirTryExpressionChecker(MppCheckerKind.Common) {
                         .any { it.asSingleFqName().asString() in CANCELLATION_TYPES }
                 } && earlier.rethrows()
             }
-            val swallows = if (cancellationHandled) "bugs included" else "bugs and cancellations included"
-            reportKotrail(source, KotrailDiagnostics.CATCH_TOO_BROAD, classId.shortClassName.asString(), swallows)
+            val loggers = config.catchTooBroad.loggers.map(::Glob)
+            val swallowed = catch.swallows(loggers)
+            if (config.catchTooBroad.report == "swallowed" && !swallowed) continue
+            val included = if (cancellationHandled) "bugs included" else "bugs and cancellations included"
+            val rest = if (swallowed) {
+                "$included, and the failure goes no further than this clause. Let it out as a result, an error state or a " +
+                    "rethrow, or catch what this code can recover from."
+            } else {
+                "$included. Catch the exceptions this code can recover from, or rethrow what it cannot."
+            }
+            reportKotrail(source, KotrailDiagnostics.CATCH_TOO_BROAD, classId.shortClassName.asString(), rest)
         }
+    }
+
+    /**
+     * Whether the failure goes no further than the clause: the parameter is never read, or every
+     * read of it (as a receiver or an argument, `e.message` included) ends up in a logging call
+     * and nowhere else. A read that reaches a return, an assignment, a throw, or a call outside
+     * the logger list hands the failure on.
+     */
+    private fun FirCatch.swallows(loggers: List<Glob>): Boolean {
+        val target = parameter.symbol
+        var handedOn = false
+        val ancestors = ArrayDeque<FirElement>()
+        block.accept(object : FirVisitorVoid() {
+            override fun visitElement(element: FirElement) {
+                if (handedOn) return
+                ancestors.addLast(element)
+                element.acceptChildren(this)
+                ancestors.removeLast()
+            }
+
+            override fun visitPropertyAccessExpression(propertyAccessExpression: FirPropertyAccessExpression) {
+                if (propertyAccessExpression.calleeReference.toResolvedCallableSymbol() == target) {
+                    // The innermost call the read feeds, through receivers and member accesses such as e.message.
+                    val call = ancestors.asReversed().firstOrNull { it is FirFunctionCall && it !is FirPropertyAccessExpression } as? FirFunctionCall
+                    val callee = call?.calleeReference?.toResolvedCallableSymbol()?.callableId?.asSingleFqName()?.asString()
+                    val logged = callee != null && loggers.any { it.matches(callee) }
+                    if (!logged) handedOn = true
+                }
+                visitElement(propertyAccessExpression)
+            }
+        })
+        return !handedOn
     }
 
     /** Whether the clause throws its parameter anywhere, or ends in a throw of anything. */

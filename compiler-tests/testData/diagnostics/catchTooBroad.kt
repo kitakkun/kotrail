@@ -14,11 +14,43 @@ fun broad(item: String) {
         showError()
     }
 
-    // Reported: RuntimeException is on the list too.
+    // Reported: RuntimeException is on the list too, and a log line is where the failure ends.
     try {
         save(item)
     } catch (<!KOTRAIL_CATCH_TOO_BROAD!>e: RuntimeException<!>) {
-        log(e)
+        println(e)
+    }
+
+    // Reported: printStackTrace is a log line too.
+    try {
+        save(item)
+    } catch (<!KOTRAIL_CATCH_TOO_BROAD!>e: Exception<!>) {
+        e.printStackTrace()
+    }
+}
+
+class Loader {
+    var error: String? = null
+
+    // Not reported (report: swallowed): the failure is handed on as a result, as state, or to a function that is not a logger.
+    fun load(item: String): Result<Unit> = try {
+        save(item)
+        Result.success(Unit)
+    } catch (e: Exception) {
+        Result.failure(e)
+    }
+
+    fun loadInto(item: String) {
+        try {
+            save(item)
+        } catch (e: Exception) {
+            error = e.message
+        }
+        try {
+            save(item)
+        } catch (e: Exception) {
+            log(e)
+        }
     }
 }
 

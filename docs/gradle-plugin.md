@@ -139,10 +139,11 @@ of the configurations named under `bundledConfigurations`.
 
 ## Multiplatform
 
-Rules apply to every compilation of every target. The annotations artifact is added automatically
-(as `compileOnly`) only for Kotlin/JVM and Kotlin/Android; a multiplatform build adds
-`com.kitakkun.kotrail:kotrail-annotations` to the source sets that need it, or sets
-`annotations = false` and leaves it out.
+Rules apply to every compilation of every target. The annotations artifact is multiplatform and
+is added automatically: as `compileOnly` for Kotlin/JVM and Kotlin/Android, and as
+`commonMainCompileOnly` for a multiplatform project, so that the metadata the plugin writes for
+other modules (`@InferredEffectCapture`, `@InferredStartsAsyncWork`) exists on every target.
+`annotations = false` leaves it out.
 
 ## Without the Gradle plugin
 

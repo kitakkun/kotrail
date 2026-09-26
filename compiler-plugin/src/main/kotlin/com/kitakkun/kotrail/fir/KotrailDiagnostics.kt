@@ -130,7 +130,7 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: what was wrapped; reported on a weak reference built from an object nothing else holds. */
     val WEAK_REFERENCE_TO_FRESH_OBJECT = tunable1<KtElement, String>("WEAK_REFERENCE_TO_FRESH_OBJECT", KotrailRule.WEAK_ONLY_REFERENCE, WHOLE)
 
-    /** Arguments: the caught type, what the clause swallows ("bugs and cancellations included" or "bugs included"); reported on the catch parameter. */
+    /** Arguments: the caught type, the rest of the sentence (what the clause swallows, and what to do); reported on the catch parameter. */
     val CATCH_TOO_BROAD = tunable2<KtElement, String, String>("CATCH_TOO_BROAD", KotrailRule.CATCH_TOO_BROAD, WHOLE)
 
     /** Arguments: the parameter, how it escapes; reported on the expression through which an unretained parameter is retained. */
@@ -147,6 +147,9 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
 
     /** Arguments: the callee and its parameter, the values the passed lambda reads; reported on the argument of a call to a composable that keeps that parameter in a long-lived effect. */
     val EFFECT_CAPTURED_BY_CALLEE = tunable2<KtElement, String, String>("EFFECT_CAPTURED_BY_CALLEE", KotrailRule.COMPOSE_REMEMBER_KEYS, WHOLE)
+
+    /** Arguments: the wait as written, what started the work and how to wait for it properly; reported on a fixed delay that follows a call starting asynchronous work. */
+    val DELAY_WAITS_FOR_ASYNC_WORK = tunable2<KtElement, String, String>("DELAY_WAITS_FOR_ASYNC_WORK", KotrailRule.DELAY_FOR_COMPLETION, WHOLE)
 
     /** Argument: the test's name; reported on a test function that asserts nothing. */
     val TEST_WITHOUT_ASSERTION = tunable1<KtNamedFunction, String>("TEST_WITHOUT_ASSERTION", KotrailRule.TEST_MUST_ASSERT, NAME)
@@ -627,8 +630,7 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         )
         map.put2(
             KotrailDiagnostics.CATCH_TOO_BROAD,
-            "[Kotrail] Catching ''{0}'' handles every failure alike, {1}. Catch the exceptions this code can recover " +
-                "from, or rethrow what it cannot.",
+            "[Kotrail] Catching ''{0}'' handles every failure alike, {1}",
         )
         map.put2(
             KotrailDiagnostics.UNRETAINED_PARAMETER_RETAINED,
@@ -651,6 +653,11 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             KotrailDiagnostics.EFFECT_CAPTURED_BY_CALLEE,
             "[Kotrail] {0} keeps this lambda for the life of its effect, and the lambda reads {1}: when that changes, the " +
                 "effect keeps the value it saw first. Keep it current with rememberUpdatedState.",
+        )
+        map.put2(
+            KotrailDiagnostics.DELAY_WAITS_FOR_ASYNC_WORK,
+            "[Kotrail] ''{0}'' waits a fixed time for what {1}. Too short and the code after it runs before the work is " +
+                "done; too long and it waits for nothing.",
         )
         map.put1(
             KotrailDiagnostics.TEST_WITHOUT_ASSERTION,

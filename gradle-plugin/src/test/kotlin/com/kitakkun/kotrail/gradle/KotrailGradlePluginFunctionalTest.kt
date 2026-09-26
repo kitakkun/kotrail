@@ -327,6 +327,84 @@ class KotrailGradlePluginFunctionalTest {
         assertTrue(result.output.contains("KOTRAIL_UNSCOPED_REGISTRATION_IN_UNLOADABLE_CODE"), result.output)
     }
 
+    @Test
+    fun `a multiplatform library's helper is seen through the metadata by a consumer in another module`() {
+        writeSettings(include = listOf("lib"))
+        writeFile("kotrail.yaml", "severity: warning\n")
+        writeBuild(
+            """
+            dependencies {
+                implementation(project(":lib"))
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$COROUTINES_VERSION")
+            }
+
+            kotrail {
+                configFile = file("kotrail.yaml")
+            }
+            """.trimIndent(),
+        )
+        writeFile(
+            "lib/build.gradle.kts",
+            """
+            plugins {
+                kotlin("multiplatform")
+                id("com.kitakkun.kotrail")
+            }
+
+            repositories {
+                maven { url = uri("$repository") }
+                mavenCentral()
+            }
+
+            kotlin {
+                jvmToolchain(21)
+                jvm()
+                js { nodejs() }
+                sourceSets {
+                    commonMain.dependencies {
+                        implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$COROUTINES_VERSION")
+                    }
+                }
+            }
+            """.trimIndent(),
+        )
+        // The helper lives in commonMain: the annotations artifact must reach every target for the plugin to
+        // write @InferredStartsAsyncWork onto it, since the metadata is what the consumer's check reads.
+        writeFile(
+            "lib/src/commonMain/kotlin/Reconnector.kt",
+            """
+            import kotlinx.coroutines.CoroutineScope
+            import kotlinx.coroutines.launch
+
+            class Reconnector(private val scope: CoroutineScope) {
+                fun reconnect() {
+                    scope.launch { }
+                }
+            }
+            """.trimIndent(),
+        )
+        writeFile(
+            "src/main/kotlin/Client.kt",
+            """
+            import kotlinx.coroutines.delay
+
+            class Client(private val reconnector: Reconnector) {
+                suspend fun switch() {
+                    reconnector.reconnect()
+                    delay(500)
+                }
+            }
+            """.trimIndent(),
+        )
+
+        val result = runBuild("compileKotlin")
+
+        assertEquals(TaskOutcome.SUCCESS, result.task(":lib:compileKotlinJvm")?.outcome, result.output)
+        assertEquals(TaskOutcome.SUCCESS, result.task(":compileKotlin")?.outcome, result.output)
+        assertTrue(result.output.contains("KOTRAIL_DELAY_WAITS_FOR_ASYNC_WORK"), result.output)
+        assertTrue(result.output.contains("'reconnect' started"), result.output)
+    }
+
     private fun writeSettings(include: List<String> = emptyList()) {
         writeFile(
             "settings.gradle.kts",
@@ -386,6 +464,8 @@ class KotrailGradlePluginFunctionalTest {
     }
 
     private companion object {
+        const val COROUTINES_VERSION = "1.11.0"
+
         // A violation of a rule that behaves the same on every supported Kotlin version, so that
         // these tests are about the Gradle wiring rather than about a language feature.
         val NOT_NULL_ASSERTION_VIOLATION = """

@@ -122,9 +122,11 @@ internal object EffectCaptureAnalysis {
     fun counts(call: KeyedCall, missing: Missing): Boolean = missing.isFunctionTyped || !call.isEffect || missing.longLived
 
     /**
-     * The values of [function] that a lambda handed to another composable's captured parameter
-     * would freeze: what it reads, with the whole lambda taken as long-lived and no keys to cover
-     * anything. For a direct read of a flagged value, that value.
+     * The callbacks of [function] that a lambda handed to another composable's captured parameter
+     * would freeze: the function-typed values it reads, with the whole lambda taken as long-lived
+     * and no keys to cover anything. For a direct read of a flagged callback, that callback. Data
+     * values are left out: a back stack or a channel handed down keeps its identity in practice,
+     * and reporting it repeated the helper's finding once per caller.
      */
     fun handedValues(session: FirSession, keyedFunctions: List<String>, function: FirNamedFunction, argument: FirExpression, at: Int): List<String> {
         val expression = argument.unwrapArgument().unwrapped()
@@ -134,9 +136,10 @@ internal object EffectCaptureAnalysis {
             val reads = ReadCollector(flagged, Coverage.NONE, isEffect = true, syncPrefixEnd = Int.MIN_VALUE)
             reads.everythingLongLived = true
             lambda.body?.accept(reads)
-            return reads.found.values.sortedBy { it.offset }.map { it.name }
+            return reads.found.values.filter { flagged.isFunctionTyped(it.symbol) }.sortedBy { it.offset }.map { it.name }
         }
         val symbol = expression.readSymbol() ?: return emptyList()
+        if (!flagged.isFunctionTyped(symbol)) return emptyList()
         return listOfNotNull(flagged.nameOf(symbol))
     }
 

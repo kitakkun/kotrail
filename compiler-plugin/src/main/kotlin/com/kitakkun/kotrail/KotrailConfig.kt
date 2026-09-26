@@ -354,6 +354,10 @@ data class KotrailWeakOnlyReference(
 data class KotrailCatchTooBroad(
     /** Fully qualified exception types a catch clause must not name. */
     val types: List<String>,
+    /** `swallowed`: only clauses that let the failure go no further than a log line; `all`: every broad clause. */
+    val report: String,
+    /** Globs over fully qualified functions that only log; a failure handed to them alone counts as swallowed. */
+    val loggers: List<String>,
 )
 
 /** Tunables for the unretained rule. From `rules.unretained`. */
@@ -362,6 +366,14 @@ data class KotrailUnretained(
     val annotations: List<String>,
     /** Fully qualified weak reference types (subtypes included), through which a parameter may be kept. */
     val weakTypes: List<String>,
+)
+
+/** Tunables of the delay-for-completion rule. From `rules.delayForCompletion`. */
+data class KotrailAsyncWork(
+    /** Fully qualified functions that wait a fixed time: `delay`, `Thread.sleep`. */
+    val delays: List<String>,
+    /** Fully qualified functions that start work that outlives the call: `launch`, `async`, `Thread.start`, a posted runnable. */
+    val starters: List<String>,
 )
 
 /** One `requiredSupertype` policy: declarations matching [predicate] must extend or implement [supertype]. */
@@ -463,6 +475,7 @@ data class KotrailConfig(
     val catchTooBroad: KotrailCatchTooBroad,
     val unretained: KotrailUnretained,
     val requiredSupertypes: List<KotrailSupertypePolicy>,
+    val asyncWork: KotrailAsyncWork,
     val dependencyPolicies: List<KotrailDependencyPolicy>,
     val functionLength: KotrailFunctionLength,
     val noDataClassInPublicApi: KotrailNoDataClassInPublicApi,
@@ -531,6 +544,19 @@ data class KotrailConfig(
         const val DEFAULT_FUNCTION_MAX_LINES = 50
         val DEFAULT_NO_DATA_CLASS_SCOPE = PublicApiScope.EXPLICIT_API
         const val DEFAULT_COMPOSABLE_MAX_LINES = 80
+        val DEFAULT_DELAYS: List<String> = listOf("kotlinx.coroutines.delay", "java.lang.Thread.sleep", "android.os.SystemClock.sleep")
+        val DEFAULT_ASYNC_STARTERS: List<String> = listOf(
+            "kotlinx.coroutines.launch",
+            "kotlinx.coroutines.async",
+            "kotlinx.coroutines.flow.launchIn",
+            "java.lang.Thread.start",
+            "kotlin.concurrent.thread",
+            "android.os.Handler.post",
+            "android.os.Handler.postDelayed",
+            "java.util.concurrent.Executor.execute",
+            "java.util.concurrent.ExecutorService.submit",
+            "java.util.Timer.schedule",
+        )
         val DEFAULT_NATIVE_TYPES: List<String> = listOf("org.jetbrains.skia.impl.Managed", "java.awt.image.VolatileImage")
         val DEFAULT_NATIVE_FACTORIES: List<String> = listOf("java.nio.ByteBuffer.allocateDirect")
         val DEFAULT_PER_ITEM_CALLBACKS: List<String> = listOf(
@@ -551,6 +577,11 @@ data class KotrailConfig(
         val DEFAULT_BROAD_CATCH_TYPES: List<String> = listOf(
             "kotlin.Throwable", "kotlin.Exception", "kotlin.RuntimeException",
             "java.lang.Throwable", "java.lang.Exception", "java.lang.RuntimeException", "java.lang.Error",
+        )
+        val DEFAULT_LOG_FUNCTIONS: List<String> = listOf(
+            "kotlin.io.println", "kotlin.io.print", "kotlin.printStackTrace", "kotlin.Throwable.printStackTrace", "java.lang.Throwable.printStackTrace",
+            "android.util.Log.*", "java.util.logging.Logger.*", "org.slf4j.Logger.*",
+            "io.github.oshai.kotlinlogging.*", "co.touchlab.kermit.*", "timber.log.Timber.*", "com.intellij.openapi.diagnostic.Logger.*",
         )
         val DEFAULT_UNRETAINED_ANNOTATIONS: List<String> = listOf("com.kitakkun.kotrail.lifetime.Unretained")
         val DEFAULT_REMEMBER_KEYS_FUNCTIONS: List<String> = listOf(
@@ -927,10 +958,16 @@ data class KotrailConfig(
                 ),
                 catchTooBroad = KotrailCatchTooBroad(
                     types = list(KotrailRule.CATCH_TOO_BROAD, "types") ?: DEFAULT_BROAD_CATCH_TYPES,
+                    report = enumValue(KotrailRule.CATCH_TOO_BROAD, "report", listOf("swallowed", "all")) ?: "swallowed",
+                    loggers = list(KotrailRule.CATCH_TOO_BROAD, "loggers") ?: DEFAULT_LOG_FUNCTIONS,
                 ),
                 unretained = KotrailUnretained(
                     annotations = list(KotrailRule.UNRETAINED, "annotations") ?: DEFAULT_UNRETAINED_ANNOTATIONS,
                     weakTypes = list(KotrailRule.UNRETAINED, "weakTypes") ?: DEFAULT_WEAK_TYPES,
+                ),
+                asyncWork = KotrailAsyncWork(
+                    delays = list(KotrailRule.DELAY_FOR_COMPLETION, "delays") ?: DEFAULT_DELAYS,
+                    starters = list(KotrailRule.DELAY_FOR_COMPLETION, "starters") ?: DEFAULT_ASYNC_STARTERS,
                 ),
                 requiredSupertypes = entries(KotrailRule.REQUIRED_SUPERTYPE, "policies") { node -> node }
                     .map { (name, node) -> policy(name, node, "supertype", "a fully qualified class or interface name").let { (predicate, value) -> KotrailSupertypePolicy(name, predicate, value) } },

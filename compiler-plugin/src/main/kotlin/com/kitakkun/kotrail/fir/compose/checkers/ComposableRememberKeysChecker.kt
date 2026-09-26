@@ -47,10 +47,13 @@ import org.jetbrains.kotlin.fir.references.toResolvedNamedFunctionSymbol
  * ```
  *
  * `ActionEffect` keeps `block` for the life of its effect (reported inside it as above), so the
- * lambda a caller passes is kept too, and what it reads goes stale. A composable's captured
- * parameters are computed from its body in this module and written as `@InferredEffectCapture`
- * metadata for callers in other modules; a call that hands a lambda, or a callback parameter,
- * for a captured parameter is reported at the argument.
+ * lambda a caller passes is kept too, and the callbacks it reads go stale. A composable's
+ * captured parameters are computed from its body and written as `@InferredEffectCapture`
+ * metadata; a call into another module that hands a lambda reading a callback, or a callback
+ * parameter itself, for a captured parameter is reported at the argument. Inside the module the
+ * helper's own report is the one to act on, so its callers stay quiet. Only callbacks count at
+ * the call site: a data object handed along (a back stack, a channel) keeps its identity across
+ * recompositions in practice, and reporting it repeated one helper finding per caller.
  */
 object ComposableRememberKeysChecker : FirFunctionCallChecker(MppCheckerKind.Common) {
     private const val ADVICE_KEYS = "add it to the keys"
@@ -87,6 +90,8 @@ object ComposableRememberKeysChecker : FirFunctionCallChecker(MppCheckerKind.Com
         }
 
         val callee = expression.calleeReference.toResolvedNamedFunctionSymbol() ?: return
+        // A helper of this module is reported at its own effect; the call is where the fix belongs only for a helper compiled elsewhere.
+        if (callee.origin.fromSource) return
         if (callee.callableId.asSingleFqName().asString() in keyedFunctions) return
         if (!callee.isComposable(session)) return
         val captured = service.capturedParameters(callee)

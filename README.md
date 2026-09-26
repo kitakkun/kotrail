@@ -81,6 +81,7 @@ Full pages, with every condition and fixture, live under [`docs/rules/`](docs/ru
 | [Unretained](docs/rules/unretained.md) | `fun register(@Unretained job: Job)` storing `job` in a map | Keeping it through a `WeakReference`, or not at all |
 | [Required supertype](docs/rules/required-supertype.md) | `class SettingsViewModel : ViewModel()` where the policy says `BaseViewModel` | The project's base class |
 | [Dependency rules](docs/rules/dependency-rules.md) | `com.acme.ui` importing `com.acme.data.db` | Layers that only see what the policy allows |
+| [Delay for completion](docs/rules/delay-for-completion.md) | `manager.reconnect(); delay(500); send(hello)`, a fixed wait for work a call started | `reconnect` as `suspend`, or returning its `Job` to await |
 | [Unloadable code](docs/rules/unloadable-code.md) (off by default) | A `ThreadLocal`, or a shutdown hook / platform listener with no disposable, in a plugin that is unloaded | Values passed along; registrations scoped to a disposable that goes with the plugin |
 | [Window insets handling](docs/rules/compose/window-insets.md) (Compose) | A `@HandlesWindowInsets` contract that the body does not satisfy; insets applied twice | Contracts verified across modules through inferred metadata |
 | [Composition locals](docs/rules/compose/composition-locals.md) | A `@CompositionLocalRoot`, preview, or `setContent { }` below which a required local (`compositionLocalOf { error(...) }`) is read and never provided | A `CompositionLocalProvider` on the way, or a default |

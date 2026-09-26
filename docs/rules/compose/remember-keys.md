@@ -79,16 +79,21 @@ fun Screen(actions: Flow<Action>, onNavigate: (Route) -> Unit) {
 
 The rule summarizes each composable: the parameters its body keeps for the life of an effect
 without keeping them current, following calls into other composables, so that a helper that only
-hands its `block` on to a helper that keeps it counts too. In the module that declares the
-helper the summary comes from its body; for callers in other modules it is written into the
-class file as `@InferredEffectCapture(captured = ["block"])` metadata (the
-`kotrail-annotations` artifact declares the annotation; the plugin writes it, nobody writes it
-by hand). A call that hands a lambda, or a callback parameter, for a captured parameter is
-reported at the argument as `KOTRAIL_EFFECT_CAPTURED_BY_CALLEE`, naming what the lambda reads.
-The fix is the caller's: keep the values current, or hand a lambda that reads nothing that can
-go stale. A helper that reads its lambda through `rememberUpdatedState` records nothing, and its
-callers are quiet. A library compiled without Kotrail carries no metadata and is taken as
-keeping its lambdas current.
+hands its `block` on to a helper that keeps it counts too. The summary is written into the class
+file as `@InferredEffectCapture(captured = ["block"])` metadata (the `kotrail-annotations`
+artifact declares the annotation; the plugin writes it, nobody writes it by hand), and a call
+from another module that hands a lambda reading a callback, or a callback parameter itself, for
+a captured parameter is reported at the argument as `KOTRAIL_EFFECT_CAPTURED_BY_CALLEE`, naming
+the callbacks the lambda reads. The fix is the caller's: keep them current, or hand a lambda
+that reads nothing that can go stale.
+
+Inside the module that declares the helper, its callers stay quiet: the helper's own effect is
+reported, and that is the one place to fix (or to suppress, when the helper is meant to keep the
+first lambda). Only callbacks count at a call site: a lambda that reads a data object of the
+caller, a back stack or a channel handed down as a parameter, is not reported, since such objects
+keep their identity across recompositions in practice. A helper that reads its lambda through
+`rememberUpdatedState` records nothing, and its callers are quiet. A library compiled without
+Kotrail carries no metadata and is taken as keeping its lambdas current.
 
 ## When it fires
 

@@ -47,6 +47,12 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+      - name: Use the runner's JDK for Gradle
+        # gradle.properties pins org.gradle.java.home to a local path; the user-level property wins
+        # over it, for the build and for the cache cleanup setup-gradle runs afterwards alike.
+        run: |
+          mkdir -p ~/.gradle
+          echo "org.gradle.java.home=$JAVA_HOME" >> ~/.gradle/gradle.properties
       - uses: gradle/actions/setup-gradle@v4
       - name: Build and test
         run: >-
@@ -78,6 +84,12 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+      - name: Use the runner's JDK for Gradle
+        # gradle.properties pins org.gradle.java.home to a local path; the user-level property wins
+        # over it, for the build and for the cache cleanup setup-gradle runs afterwards alike.
+        run: |
+          mkdir -p ~/.gradle
+          echo "org.gradle.java.home=$JAVA_HOME" >> ~/.gradle/gradle.properties
       - uses: gradle/actions/setup-gradle@v4
       - name: Publish kotrail-annotations and kotrail-gradle-plugin to Maven Central
         run: >-

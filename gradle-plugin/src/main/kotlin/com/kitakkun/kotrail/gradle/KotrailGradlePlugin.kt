@@ -282,11 +282,17 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
      * add the artifact to the source sets that need it themselves.
      */
     private fun addAnnotationsDependency(target: Project) {
-        for (pluginId in listOf("org.jetbrains.kotlin.jvm", "org.jetbrains.kotlin.android")) {
+        // The artifact is multiplatform: a JVM or Android project takes it on compileOnly, a multiplatform
+        // project on commonMain's, so that the contracts and the metadata the plugin writes exist on every target.
+        for ((pluginId, configuration) in listOf(
+            "org.jetbrains.kotlin.jvm" to "compileOnly",
+            "org.jetbrains.kotlin.android" to "compileOnly",
+            "org.jetbrains.kotlin.multiplatform" to "commonMainCompileOnly",
+        )) {
             target.pluginManager.withPlugin(pluginId) {
                 target.afterEvaluate {
                     if (extension.annotations.get()) {
-                        target.dependencies.add("compileOnly", "$GROUP:$ANNOTATIONS_ARTIFACT:$KOTRAIL_VERSION")
+                        target.dependencies.add(configuration, "$GROUP:$ANNOTATIONS_ARTIFACT:$KOTRAIL_VERSION")
                     }
                 }
             }

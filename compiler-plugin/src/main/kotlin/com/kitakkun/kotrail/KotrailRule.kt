@@ -60,6 +60,7 @@ enum class KotrailRule(
     UNRETAINED("unretained", Severity.ERROR),
     REQUIRED_SUPERTYPE("requiredSupertype", Severity.ERROR),
     DEPENDENCY_RULES("dependencyRules", Severity.ERROR),
+    DELAY_FOR_COMPLETION("delayForCompletion", Severity.ERROR),
     /** The class-shaped finding of the same rule, a warning: nothing can hide an internal class from Java. */
     JVM_SYNTHETIC_FOR_INTERNAL_CLASS("jvmSyntheticForInternalClass", Severity.WARNING, hasSwitch = false),
 

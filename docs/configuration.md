@@ -120,10 +120,14 @@ own; a rule not listed has none.
 | | `callbacks` | `collect`, `onEach`, `withFrameNanos`, `repeat`, `forEach`, ... | Functions whose lambda runs once per item or frame, counted like a loop body. Replaces the default list. |
 | `weakOnlyReference` | `types` | `[java.lang.ref.WeakReference, java.lang.ref.SoftReference, kotlin.native.ref.WeakReference]` | Weak or soft reference types (subtypes included). Replaces the default list. |
 | `catchTooBroad` | `types` | `kotlin.Throwable`, `kotlin.Exception`, `kotlin.RuntimeException` and their `java.lang` classes, `java.lang.Error` | Exception types a catch clause must not name. Replaces the default list. |
+| | `report` | `swallowed` | `swallowed`: only clauses that let the failure go no further than a log line; `all`: every broad clause. |
+| | `loggers` | `println`, `printStackTrace`, `android.util.Log.*`, SLF4J, kotlin-logging, Kermit, Timber, IntelliJ `Logger.*` | Functions that only log; a failure handed to them alone counts as swallowed. Replaces the default list. |
 | `unretained` | `annotations` | `[com.kitakkun.kotrail.lifetime.Unretained]` | Annotations that mark a parameter as not to be retained. Replaces the default list. |
 | | `weakTypes` | `[java.lang.ref.WeakReference, ...]` | Weak reference types through which such a parameter may be kept. Replaces the default list. |
 | `requiredSupertype` | `policies` | `{}` | Named policies, `where -> supertype` or a mapping with `where` and `supertype`; matching classes must extend or implement it. |
 | `dependencyRules` | `policies` | `{}` | Named policies, each a mapping with `from` (a package glob), `deny` (package globs) and optionally `allow`. |
+| `delayForCompletion` | `delays` | `[kotlinx.coroutines.delay, java.lang.Thread.sleep, android.os.SystemClock.sleep]` | Functions that wait a fixed time. Replaces the default list. |
+| | `starters` | `launch`, `async`, `launchIn`, `Thread.start`, `thread`, `Handler.post*`, `Executor.execute`, `ExecutorService.submit`, `Timer.schedule` | Functions that start work that outlives the call. Replaces the default list. |
 | `unloadableCode` (off by default) | `registrations` | JVM, AWT and IntelliJ hooks (see the rule page) | Globs over fully qualified functions that register something with the platform for the rest of its life; a call without a disposable argument is reported. Replaces the default list. |
 | | `disposableTypes` | `[com.intellij.openapi.Disposable]` | Fully qualified types an argument of which scopes a registration to a lifetime. Replaces the default list. |
 | `narrowLocalScope` | `maxDistance` | `5` | Lines allowed between a local's declaration and the statement that first uses it; `0` switches the distance check off. |

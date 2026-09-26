@@ -211,16 +211,12 @@ fun CurrentActionEffect(events: Observable<String>, block: (String) -> Unit) {
     LaunchedEffect(Unit) { events.collect { current(it) } }
 }
 
-// Reported on the argument: the lambda handed to ActionEffect is kept by its effect, and it reads onNavigate.
+// Not reported here: ActionEffect is a helper of this module, and its own effect is reported above;
+// a caller is reported only for a helper compiled in another module (see rememberKeysAcrossModules.kt).
 @Composable
 fun Screen(events: Observable<String>, onNavigate: (String) -> Unit) {
-    ActionEffect(events, <!KOTRAIL_EFFECT_CAPTURED_BY_CALLEE!>{ onNavigate(it) }<!>)
-}
-
-// Reported on the argument: a callback parameter handed directly is kept the same way.
-@Composable
-fun DirectScreen(events: Observable<String>, onNavigate: (String) -> Unit) {
-    ActionEffect(events, <!KOTRAIL_EFFECT_CAPTURED_BY_CALLEE!>onNavigate<!>)
+    ActionEffect(events, { onNavigate(it) })
+    ActionEffect(events, onNavigate)
 }
 
 // Not reported: the caller keeps the callback current itself, reads nothing that can go stale, or
@@ -233,8 +229,8 @@ fun SafeScreen(events: Observable<String>, onNavigate: (String) -> Unit) {
     CurrentActionEffect(events) { onNavigate(it) }
 }
 
-// Reported: Outer hands its block to Inner, which keeps it, so Outer keeps it too; the caller of
-// Outer is reported at its argument like a caller of Inner.
+// Reported inside Inner; Outer hands its block on, so Outer records block as captured for its own
+// callers in other modules, and is quiet here.
 @Composable
 fun Inner(events: Observable<String>, block: (String) -> Unit) {
     <!KOTRAIL_EFFECT_KEY_MISSING!>LaunchedEffect(Unit) { events.collect { block(it) } }<!>
@@ -242,12 +238,7 @@ fun Inner(events: Observable<String>, block: (String) -> Unit) {
 
 @Composable
 fun Outer(events: Observable<String>, block: (String) -> Unit) {
-    Inner(events, <!KOTRAIL_EFFECT_CAPTURED_BY_CALLEE!>block<!>)
-}
-
-@Composable
-fun OuterScreen(events: Observable<String>, onNavigate: (String) -> Unit) {
-    Outer(events, <!KOTRAIL_EFFECT_CAPTURED_BY_CALLEE!>{ onNavigate(it) }<!>)
+    Inner(events, block)
 }
 
 /* GENERATED_FIR_TAGS: additiveExpression, assignment, classDeclaration, comparisonExpression, functionDeclaration,
