@@ -313,6 +313,9 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: the Objective-C class or protocol the weak reference points to. Reported on the constructor call. */
     val OBJC_WEAK_REFERENCE = tunable1<KtElement, String>("OBJC_WEAK_REFERENCE", KotrailRule.NATIVE_OBJC_IDENTITY, WHOLE)
 
+    /** Arguments: the function, what it lets out and how (`IllegalArgumentException (require)`); reported on an exported function's name. */
+    val OBJC_EXPORT_MISSING_THROWS = tunable2<KtNamedFunction, String, String>("OBJC_EXPORT_MISSING_THROWS", KotrailRule.NATIVE_OBJC_THROWS, NAME)
+
     private inline fun <reified P : KtElement> tunable0(
         name: String,
         rule: KotrailRule,
@@ -733,6 +736,11 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             "[Kotrail] A WeakReference to {0} tracks the Kotlin wrapper, which is collected while the Objective-C " +
                 "object lives on, so it answers null for a live object. Hold the object strongly, or hold its " +
                 "objcPtr() address.",
+        )
+        map.put2(
+            KotrailDiagnostics.OBJC_EXPORT_MISSING_THROWS,
+            "[Kotrail] ''{0}'' can throw {1} and declares no `@Throws`: an exception that reaches Swift or Objective-C " +
+                "undeclared terminates the app. Declare it with `@Throws(...::class)` so that it arrives as an NSError, or handle it here.",
         )
         map.put2(
             KotrailDiagnostics.TEST_NAME_NOT_DESCRIPTIVE,

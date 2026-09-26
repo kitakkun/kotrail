@@ -92,7 +92,8 @@ enum class KotrailRule(
     TEST_NO_SLEEP("test.noSleep", Severity.ERROR),
     TEST_MUST_ASSERT("test.mustAssert", Severity.ERROR),
 
-    NATIVE_OBJC_IDENTITY("native.objcIdentity", Severity.ERROR);
+    NATIVE_OBJC_IDENTITY("native.objcIdentity", Severity.ERROR),
+    NATIVE_OBJC_THROWS("native.objcThrows", Severity.ERROR);
 
     val switchKey: String get() = "rules.$key"
     val severityKey: String get() = "severity.$key"

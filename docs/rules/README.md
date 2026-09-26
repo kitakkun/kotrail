@@ -124,11 +124,12 @@ Rules a project declares in its configuration: what may call, extend, depend on 
 | Test must assert | on | `KOTRAIL_TEST_WITHOUT_ASSERTION` | [test/must-assert.md](test/must-assert.md) |
 | No sleep in tests | on | `KOTRAIL_TEST_REAL_TIME_WAIT` | [test/no-sleep.md](test/no-sleep.md) |
 
-## Kotlin/Native (1)
+## Kotlin/Native (2)
 
 | Rule | Default | Diagnostics | Page |
 |---|---|---|---|
 | Objective-C identity | on | `KOTRAIL_OBJC_IDENTITY_COMPARISON`, `KOTRAIL_OBJC_WEAK_REFERENCE` | [native/objc-identity.md](native/objc-identity.md) |
+| Objective-C throws | on | `KOTRAIL_OBJC_EXPORT_MISSING_THROWS` | [native/objc-throws.md](native/objc-throws.md) |
 
 Settings, precedence, per-source-set configuration, and suppression are described in
 [../configuration.md](../configuration.md).
