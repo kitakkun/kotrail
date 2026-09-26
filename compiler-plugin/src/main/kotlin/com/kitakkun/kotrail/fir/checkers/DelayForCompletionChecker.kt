@@ -2,6 +2,7 @@ package com.kitakkun.kotrail.fir.checkers
 
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
+import com.kitakkun.kotrail.fir.concurrency.AsyncWorkService
 import com.kitakkun.kotrail.fir.concurrency.asyncWorkService
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.reportKotrail
@@ -89,12 +90,24 @@ object DelayForCompletionChecker : FirFunctionCallChecker(MppCheckerKind.Common)
             for (earlier in block.statements.subList(0, index).asReversed()) {
                 val started = service.startingCallee(earlier)
                 if (started != null) {
-                    reportKotrail(source, KotrailDiagnostics.DELAY_WAITS_FOR_ASYNC_WORK, source.text.toString(), started)
+                    reportKotrail(source, KotrailDiagnostics.DELAY_WAITS_FOR_ASYNC_WORK, source.text.toString(), howToWait(started))
                     return
                 }
                 // A suspending call, or another wait, between the start and this wait: the wait is about something else.
                 if (earlier.suspends(delays)) return
             }
+        }
+    }
+
+    /** What started the work and the proper way to wait for it: join the handle a starter returns, or await what a function should hand back. */
+    private fun howToWait(started: AsyncWorkService.Started): String {
+        val name = started.name
+        return when (started.starter) {
+            null -> "'$name' started; make it suspend, or have it return its Job or Deferred, and await that"
+            "kotlinx.coroutines.launch", "kotlinx.coroutines.flow.launchIn" -> "'$name' started; keep the Job and join it"
+            "kotlinx.coroutines.async" -> "'$name' started; keep the Deferred and await it"
+            "java.lang.Thread.start", "kotlin.concurrent.thread" -> "'$name' started; keep the Thread and join it"
+            else -> "'$name' started; keep what it returns and wait on that, or do the work here"
         }
     }
 

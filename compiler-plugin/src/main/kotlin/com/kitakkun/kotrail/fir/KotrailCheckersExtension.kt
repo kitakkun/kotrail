@@ -34,7 +34,7 @@ import com.kitakkun.kotrail.fir.checkers.NarrativeOrderChecker
 import com.kitakkun.kotrail.fir.checkers.CatchTooBroadChecker
 import com.kitakkun.kotrail.fir.checkers.DelayForCompletionChecker
 import com.kitakkun.kotrail.fir.checkers.DependencyRulesChecker
-import com.kitakkun.kotrail.fir.checkers.FireAndForgetLaunchChecker
+import com.kitakkun.kotrail.fir.checkers.AsyncWorkRecorder
 import com.kitakkun.kotrail.fir.checkers.NativeAllocationInLoopChecker
 import com.kitakkun.kotrail.fir.checkers.ParameterOrderChecker
 import com.kitakkun.kotrail.fir.checkers.RequiredSupertypeChecker
@@ -166,7 +166,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
         TestMustAssertChecker,
         FunctionLengthChecker,
         LiveVariableBudgetChecker,
-        FireAndForgetLaunchChecker,
+        AsyncWorkRecorder,
         ComposableSideEffectChecker,
         ComposableUnstableParameterChecker,
     )

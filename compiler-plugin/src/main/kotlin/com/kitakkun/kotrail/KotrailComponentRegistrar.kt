@@ -36,7 +36,7 @@ class KotrailComponentRegistrar : CompilerPluginRegistrar() {
         if (config.isEnabled(KotrailRule.COMPOSE_REMEMBER_KEYS)) {
             IrGenerationExtension.registerExtension(InferredEffectCaptureMetadataWriter())
         }
-        if (config.isEnabled(KotrailRule.DELAY_FOR_COMPLETION) || config.isEnabled(KotrailRule.FIRE_AND_FORGET_LAUNCH)) {
+        if (config.isEnabled(KotrailRule.DELAY_FOR_COMPLETION)) {
             IrGenerationExtension.registerExtension(InferredStartsAsyncWorkMetadataWriter())
         }
     }

@@ -34,7 +34,7 @@ Too short and the code after the wait runs before the work is done; too long and
 nothing. Either way the number is a guess about another machine's speed, and it is the number
 that gets bumped when the bug shows up again. The fix is always the same: make the function
 `suspend`, or return its `Job` or `Deferred`, and `await` or `join` it. [Fire-and-forget
-launch](fire-and-forget-launch.md) reports the producer side of the same pattern.
+launch]() reports the producer side of the same pattern.
 
 ## When it fires
 

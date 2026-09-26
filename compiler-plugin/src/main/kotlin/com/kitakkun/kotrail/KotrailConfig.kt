@@ -354,6 +354,10 @@ data class KotrailWeakOnlyReference(
 data class KotrailCatchTooBroad(
     /** Fully qualified exception types a catch clause must not name. */
     val types: List<String>,
+    /** `swallowed`: only clauses that let the failure go no further than a log line; `all`: every broad clause. */
+    val report: String,
+    /** Globs over fully qualified functions that only log; a failure handed to them alone counts as swallowed. */
+    val loggers: List<String>,
 )
 
 /** Tunables for the unretained rule. From `rules.unretained`. */
@@ -364,7 +368,7 @@ data class KotrailUnretained(
     val weakTypes: List<String>,
 )
 
-/** Tunables shared by the delay-for-completion and fire-and-forget rules. From `rules.delayForCompletion`. */
+/** Tunables of the delay-for-completion rule. From `rules.delayForCompletion`. */
 data class KotrailAsyncWork(
     /** Fully qualified functions that wait a fixed time: `delay`, `Thread.sleep`. */
     val delays: List<String>,
@@ -573,6 +577,11 @@ data class KotrailConfig(
         val DEFAULT_BROAD_CATCH_TYPES: List<String> = listOf(
             "kotlin.Throwable", "kotlin.Exception", "kotlin.RuntimeException",
             "java.lang.Throwable", "java.lang.Exception", "java.lang.RuntimeException", "java.lang.Error",
+        )
+        val DEFAULT_LOG_FUNCTIONS: List<String> = listOf(
+            "kotlin.io.println", "kotlin.io.print", "kotlin.printStackTrace", "kotlin.Throwable.printStackTrace", "java.lang.Throwable.printStackTrace",
+            "android.util.Log.*", "java.util.logging.Logger.*", "org.slf4j.Logger.*",
+            "io.github.oshai.kotlinlogging.*", "co.touchlab.kermit.*", "timber.log.Timber.*", "com.intellij.openapi.diagnostic.Logger.*",
         )
         val DEFAULT_UNRETAINED_ANNOTATIONS: List<String> = listOf("com.kitakkun.kotrail.lifetime.Unretained")
         val DEFAULT_REMEMBER_KEYS_FUNCTIONS: List<String> = listOf(
@@ -949,6 +958,8 @@ data class KotrailConfig(
                 ),
                 catchTooBroad = KotrailCatchTooBroad(
                     types = list(KotrailRule.CATCH_TOO_BROAD, "types") ?: DEFAULT_BROAD_CATCH_TYPES,
+                    report = enumValue(KotrailRule.CATCH_TOO_BROAD, "report", listOf("swallowed", "all")) ?: "swallowed",
+                    loggers = list(KotrailRule.CATCH_TOO_BROAD, "loggers") ?: DEFAULT_LOG_FUNCTIONS,
                 ),
                 unretained = KotrailUnretained(
                     annotations = list(KotrailRule.UNRETAINED, "annotations") ?: DEFAULT_UNRETAINED_ANNOTATIONS,

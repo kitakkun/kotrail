@@ -130,7 +130,7 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: what was wrapped; reported on a weak reference built from an object nothing else holds. */
     val WEAK_REFERENCE_TO_FRESH_OBJECT = tunable1<KtElement, String>("WEAK_REFERENCE_TO_FRESH_OBJECT", KotrailRule.WEAK_ONLY_REFERENCE, WHOLE)
 
-    /** Arguments: the caught type, what the clause swallows ("bugs and cancellations included" or "bugs included"); reported on the catch parameter. */
+    /** Arguments: the caught type, the rest of the sentence (what the clause swallows, and what to do); reported on the catch parameter. */
     val CATCH_TOO_BROAD = tunable2<KtElement, String, String>("CATCH_TOO_BROAD", KotrailRule.CATCH_TOO_BROAD, WHOLE)
 
     /** Arguments: the parameter, how it escapes; reported on the expression through which an unretained parameter is retained. */
@@ -148,11 +148,8 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Arguments: the callee and its parameter, the values the passed lambda reads; reported on the argument of a call to a composable that keeps that parameter in a long-lived effect. */
     val EFFECT_CAPTURED_BY_CALLEE = tunable2<KtElement, String, String>("EFFECT_CAPTURED_BY_CALLEE", KotrailRule.COMPOSE_REMEMBER_KEYS, WHOLE)
 
-    /** Arguments: the wait as written, the function whose work it waits for; reported on a fixed delay that follows a call starting asynchronous work. */
+    /** Arguments: the wait as written, what started the work and how to wait for it properly; reported on a fixed delay that follows a call starting asynchronous work. */
     val DELAY_WAITS_FOR_ASYNC_WORK = tunable2<KtElement, String, String>("DELAY_WAITS_FOR_ASYNC_WORK", KotrailRule.DELAY_FOR_COMPLETION, WHOLE)
-
-    /** Arguments: the function, the starter it calls; reported on a non-suspending function that starts work and discards the handle. */
-    val FIRE_AND_FORGET_LAUNCH = tunable2<KtNamedFunction, String, String>("FIRE_AND_FORGET_LAUNCH", KotrailRule.FIRE_AND_FORGET_LAUNCH, NAME)
 
     /** Argument: the test's name; reported on a test function that asserts nothing. */
     val TEST_WITHOUT_ASSERTION = tunable1<KtNamedFunction, String>("TEST_WITHOUT_ASSERTION", KotrailRule.TEST_MUST_ASSERT, NAME)
@@ -633,8 +630,7 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         )
         map.put2(
             KotrailDiagnostics.CATCH_TOO_BROAD,
-            "[Kotrail] Catching ''{0}'' handles every failure alike, {1}. Catch the exceptions this code can recover " +
-                "from, or rethrow what it cannot.",
+            "[Kotrail] Catching ''{0}'' handles every failure alike, {1}",
         )
         map.put2(
             KotrailDiagnostics.UNRETAINED_PARAMETER_RETAINED,
@@ -660,14 +656,8 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         )
         map.put2(
             KotrailDiagnostics.DELAY_WAITS_FOR_ASYNC_WORK,
-            "[Kotrail] ''{0}'' waits a fixed time for what ''{1}'' started: too short and the code after it runs before the " +
-                "work is done, too long and it waits for nothing. Make ''{1}'' suspend, or have it return its Job or Deferred, " +
-                "and await that.",
-        )
-        map.put2(
-            KotrailDiagnostics.FIRE_AND_FORGET_LAUNCH,
-            "[Kotrail] ''{0}'' starts work with ''{1}'' and gives its caller nothing to wait for, so callers end up " +
-                "guessing with a delay. Return the Job or Deferred, or make the function suspend.",
+            "[Kotrail] ''{0}'' waits a fixed time for what {1}. Too short and the code after it runs before the work is " +
+                "done; too long and it waits for nothing.",
         )
         map.put1(
             KotrailDiagnostics.TEST_WITHOUT_ASSERTION,

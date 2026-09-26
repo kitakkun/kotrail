@@ -62,15 +62,18 @@ class AsyncWorkService(session: FirSession) : FirExtensionSessionComponent(sessi
         if (!symbol.origin.fromSource || symbol.isSuspend) return null
         symbol.lazyResolveToPhase(FirResolvePhase.BODY_RESOLVE)
         val body = symbol.fir.body ?: return null
-        return firstStartingStatement(body, transitive = false)?.second
+        return firstStartingStatement(body, transitive = false)?.second?.name
     }
 
     /**
      * What [statement] starts, at statement level (through `if`, `when`, `try` and nested blocks,
-     * but not through lambdas): the name of a discarded starter call, or of a called function that
-     * starts work; null when nothing does.
+     * but not through lambdas): a discarded starter call, or a called function that starts work;
+     * null when nothing does.
      */
-    fun startingCallee(statement: FirStatement): String? = firstStartingStatement(statement, transitive = true)?.second
+    fun startingCallee(statement: FirStatement): Started? = firstStartingStatement(statement, transitive = true)?.second
+
+    /** What a statement starts: [name] as called, and the configured starter it is when the call is the starter itself. */
+    class Started(val name: String, val starter: String?)
 
     private fun compute(symbol: FirNamedFunctionSymbol): Boolean {
         if (symbol.isSuspend) return false
@@ -81,9 +84,9 @@ class AsyncWorkService(session: FirSession) : FirExtensionSessionComponent(sessi
     }
 
     /** The first statement under [root] that starts work, with the name of what it calls. */
-    private fun firstStartingStatement(root: FirElement, transitive: Boolean): Pair<FirStatement, String>? {
+    private fun firstStartingStatement(root: FirElement, transitive: Boolean): Pair<FirStatement, Started>? {
         val starters = session.kotrailConfig.asyncWork.starters
-        var found: Pair<FirStatement, String>? = null
+        var found: Pair<FirStatement, Started>? = null
 
         fun visitStatement(statement: FirStatement) {
             if (found != null) return
@@ -92,9 +95,9 @@ class AsyncWorkService(session: FirSession) : FirExtensionSessionComponent(sessi
                     val callee = statement.calleeReference.toResolvedCallableSymbol() ?: return
                     val name = callee.fqName()
                     if (name != null && name in starters) {
-                        found = statement to callee.name.asString()
+                        found = statement to Started(callee.name.asString(), name)
                     } else if (transitive && callee is FirNamedFunctionSymbol && startsAsyncWork(callee)) {
-                        found = statement to callee.name.asString()
+                        found = statement to Started(callee.name.asString(), null)
                     }
                 }
                 is FirBlock -> statement.statements.forEach(::visitStatement)
