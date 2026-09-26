@@ -2,7 +2,7 @@
 
 **Diagnostic:** `KOTRAIL_NATIVE_ALLOCATION_IN_LOOP` (error, on the construction or factory call)
 **Key:** `rules.nativeAllocationInLoop` (on by default)
-**Settings:** `types` (default `[org.jetbrains.skia.impl.Managed, java.awt.image.VolatileImage]`), `factories` (default `[java.nio.ByteBuffer.allocateDirect]`), `callbacks` (default: `collect`, `onEach`, `withFrameNanos`, `repeat`, `forEach` and their kin)
+**Settings:** `types` (default `[org.jetbrains.skia.impl.Managed, java.awt.image.VolatileImage]`), `factories` (default `java.nio.ByteBuffer.allocateDirect` and the Skia companion factories `Image.makeFromEncoded`, `Image.makeRaster`, `Surface.makeRaster` and their kin), `callbacks` (default: `collect`, `onEach`, `withFrameNanos`, `repeat`, `forEach` and their kin)
 
 ## What it rejects
 
@@ -80,9 +80,11 @@ neither the receiver of `use { }` nor a local the body closes with `close()`. A 
 such a function is reported at the call, with the path to the allocation (`decode > newBitmap`),
 unless the result is itself the receiver of `use { }`. In this module the summary comes from
 the body; for callers in other modules it is written into the class file as
-`@InferredNativeAllocation(types = ["Bitmap"])` metadata, on every target and with no artifact
-needed. A library compiled without Kotrail carries no metadata and is taken as not allocating.
-Lambdas inside the helper are not followed. A function that returns an instance it keeps
+`@InferredNativeAllocation(types = ["Bitmap"], path = ["newBitmap"])` metadata, on every
+target and with no artifact needed, so the path shown crosses the module boundary. A library
+compiled without Kotrail carries no metadata and is taken as not allocating. Inside the helper,
+the lambdas of inline functions (`synchronized`, `withLock`, `run`, `apply`) run in place and
+are followed; any other lambda is not. A function that returns an instance it keeps
 (`cached ?: Bitmap().also { cached = it }`) creates it once, not per call, and is not counted.
 
 Not covered: producers that never stop.

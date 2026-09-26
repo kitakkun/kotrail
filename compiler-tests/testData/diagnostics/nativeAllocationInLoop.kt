@@ -53,6 +53,7 @@ class Decoder(private val frames: List<Frame>) {
         for (frame in frames) {
             publish(<!KOTRAIL_NATIVE_ALLOCATION_THROUGH_CALL_IN_LOOP!>decode(frame)<!>)
             publish(<!KOTRAIL_NATIVE_ALLOCATION_THROUGH_CALL_IN_LOOP!>decodeTwice(frame)<!>)
+            publish(<!KOTRAIL_NATIVE_ALLOCATION_THROUGH_CALL_IN_LOOP!>decodeLocked(frame)<!>)
         }
         frames.forEach { publish(<!KOTRAIL_NATIVE_ALLOCATION_THROUGH_CALL_IN_LOOP!>decode(it)<!>) }
 
@@ -69,6 +70,10 @@ class Decoder(private val frames: List<Frame>) {
     fun decode(frame: Frame): Bitmap = Bitmap().apply { allocPixels() }
 
     fun decodeTwice(frame: Frame): Bitmap = decode(frame)
+
+    // An allocation under an inline lambda runs in place: `synchronized`, `run`, `apply` are followed.
+    private val lock = Any()
+    fun decodeLocked(frame: Frame): Bitmap = synchronized(lock) { Bitmap().apply { allocPixels() } }
 
     fun drawDecoded(frame: Frame) {
         Bitmap().use { draw(it) }

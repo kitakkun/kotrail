@@ -658,7 +658,7 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         )
         map.put2(
             KotrailDiagnostics.NATIVE_ALLOCATION_THROUGH_CALL_IN_LOOP,
-            "[Kotrail] ''{0}'' creates a ''{1}'' each time it is called and lets it out unclosed, and this calls it once per " +
+            "[Kotrail] ''{0}'' creates a ''{1}'' each time it is called and keeps or returns it unclosed, and this calls it once per " +
                 "iteration: its native memory is freed only when a cleaner runs, the heap stays small, and native memory grows " +
                 "unbounded. Reuse one instance across iterations, close each result with use '{' '}', or have it fill an instance it is given.",
         )

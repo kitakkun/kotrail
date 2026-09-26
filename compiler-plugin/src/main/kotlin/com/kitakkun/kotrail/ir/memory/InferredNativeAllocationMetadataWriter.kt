@@ -31,7 +31,7 @@ import org.jetbrains.kotlin.ir.visitors.acceptChildrenVoid
 class InferredNativeAllocationMetadataWriter : IrGenerationExtension {
     override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
         if (!pluginContext.afterK2) return
-        val constructor = pluginContext.inferredAnnotationConstructor(NativeAllocationService.INFERRED_NATIVE_ALLOCATION, listOf("types"))
+        val constructor = pluginContext.inferredAnnotationConstructor(NativeAllocationService.INFERRED_NATIVE_ALLOCATION, listOf("types", "path"))
         val writer = Writer(pluginContext, constructor)
         moduleFragment.files.forEach { it.acceptChildrenVoid(writer) }
     }
@@ -54,7 +54,7 @@ class InferredNativeAllocationMetadataWriter : IrGenerationExtension {
 
             val fir = (declaration.metadata as? FirMetadataSource.Function)?.fir as? FirNamedFunction ?: return
             val allocation = fir.moduleData.session.nativeAllocationService.allocates(fir.symbol) ?: return
-            addStringArraysMetadataAnnotation(pluginContext, declaration, constructor, listOf(listOf(allocation.type)))
+            addStringArraysMetadataAnnotation(pluginContext, declaration, constructor, listOf(listOf(allocation.type), allocation.path))
         }
     }
 }

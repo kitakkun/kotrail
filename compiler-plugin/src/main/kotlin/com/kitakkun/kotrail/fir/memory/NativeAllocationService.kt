@@ -11,6 +11,8 @@ import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.declarations.findArgumentByName
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
+import org.jetbrains.kotlin.fir.declarations.utils.isInline
+import org.jetbrains.kotlin.fir.expressions.resolvedArgumentMapping
 import org.jetbrains.kotlin.fir.expressions.FirAnonymousFunctionExpression
 import org.jetbrains.kotlin.fir.expressions.FirAnonymousObjectExpression
 import org.jetbrains.kotlin.fir.expressions.FirCall
@@ -51,7 +53,8 @@ import org.jetbrains.kotlin.types.AbstractTypeChecker
  * allocates per call as surely as the constructor does, and a loop that calls it is the same leak
  * one function away.
  *
- * A function allocates when its body (lambdas aside) creates one of `nativeAllocation.types`
+ * A function allocates when its body (the lambdas of inline functions such as `synchronized`
+ * and `run` included, since they run in place; every other lambda aside) creates one of `nativeAllocation.types`
  * or calls one of its `factories`, or calls a function that allocates, and the object is
  * neither the receiver of `use { }` (through scope functions), nor a local that the body closes
  * with `close()`, nor the memo of `cached ?: Bitmap().also { cached = it }`, which is created
@@ -110,7 +113,15 @@ class NativeAllocationService(session: FirSession) : FirExtensionSessionComponen
             else -> listOf(argument)
         }
         val type = elements.firstNotNullOfOrNull { (it.unwrapArgument() as? FirLiteralExpression)?.value as? String } ?: return null
-        return Allocation(type, emptyList())
+        val path = annotation.findArgumentByName(PATH, returnFirstWhenNotFound = false)?.let { argument ->
+            val items = when (argument) {
+                is FirVarargArgumentsExpression -> argument.arguments
+                is FirCall -> argument.argumentList.arguments
+                else -> listOf(argument)
+            }
+            items.mapNotNull { (it.unwrapArgument() as? FirLiteralExpression)?.value as? String }
+        }.orEmpty()
+        return Allocation(type, path)
     }
 
     /** Finds the allocations of a body and which of them are closed there. */
@@ -131,9 +142,16 @@ class NativeAllocationService(session: FirSession) : FirExtensionSessionComponen
             ancestors.removeAt(ancestors.lastIndex)
         }
 
-        override fun visitAnonymousFunctionExpression(anonymousFunctionExpression: FirAnonymousFunctionExpression) {}
+        /** Lambdas the enclosing call runs in place (`synchronized`, `withLock`, `run`, `apply`); every other lambda runs later or never. */
+        private val inPlace = HashSet<FirAnonymousFunction>()
 
-        override fun visitAnonymousFunction(anonymousFunction: FirAnonymousFunction) {}
+        override fun visitAnonymousFunctionExpression(anonymousFunctionExpression: FirAnonymousFunctionExpression) {
+            if (anonymousFunctionExpression.anonymousFunction in inPlace) visitElement(anonymousFunctionExpression)
+        }
+
+        override fun visitAnonymousFunction(anonymousFunction: FirAnonymousFunction) {
+            if (anonymousFunction in inPlace) visitElement(anonymousFunction)
+        }
 
         override fun visitAnonymousObjectExpression(anonymousObjectExpression: FirAnonymousObjectExpression) {}
 
@@ -158,6 +176,15 @@ class NativeAllocationService(session: FirSession) : FirExtensionSessionComponen
             if (allocation != null) {
                 allocations[functionCall] = allocation
                 if (isClosedByUse(functionCall)) closed += functionCall
+            }
+            val callee = functionCall.calleeReference.toResolvedNamedFunctionSymbol()
+            if (callee != null && callee.isInline) {
+                val mapping = functionCall.resolvedArgumentMapping
+                for (argument in functionCall.argumentList.arguments) {
+                    val lambda = (argument.unwrapArgument() as? FirAnonymousFunctionExpression)?.anonymousFunction ?: continue
+                    val parameter = mapping?.get(argument.unwrapArgument()) ?: mapping?.get(argument)
+                    if (parameter?.isNoinline != true) inPlace += lambda
+                }
             }
             val name = functionCall.calleeReference.toResolvedCallableSymbol()?.name?.asString()
             if (name == "close" && functionCall.argumentList.arguments.isEmpty()) {
@@ -205,6 +232,7 @@ class NativeAllocationService(session: FirSession) : FirExtensionSessionComponen
     companion object {
         val INFERRED_NATIVE_ALLOCATION = ClassId(FqName("com.kitakkun.kotrail.memory"), Name.identifier("InferredNativeAllocation"))
         private val TYPES = Name.identifier("types")
+        private val PATH = Name.identifier("path")
         val USE = setOf("kotlin.use", "kotlin.io.use", "kotlin.AutoCloseable.use")
         val SCOPE_FUNCTIONS = setOf("kotlin.apply", "kotlin.also", "kotlin.let", "kotlin.run", "kotlin.takeIf", "kotlin.takeUnless")
     }

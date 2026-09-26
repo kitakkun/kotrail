@@ -578,7 +578,16 @@ data class KotrailConfig(
             "java.util.Timer.schedule",
         )
         val DEFAULT_NATIVE_TYPES: List<String> = listOf("org.jetbrains.skia.impl.Managed", "java.awt.image.VolatileImage")
-        val DEFAULT_NATIVE_FACTORIES: List<String> = listOf("java.nio.ByteBuffer.allocateDirect")
+        val DEFAULT_NATIVE_FACTORIES: List<String> = listOf(
+            "java.nio.ByteBuffer.allocateDirect",
+            "org.jetbrains.skia.Image.Companion.makeFromEncoded",
+            "org.jetbrains.skia.Image.Companion.makeFromBitmap",
+            "org.jetbrains.skia.Image.Companion.makeRaster",
+            "org.jetbrains.skia.Image.Companion.makeFromPixmap",
+            "org.jetbrains.skia.Surface.Companion.makeRaster",
+            "org.jetbrains.skia.Surface.Companion.makeRasterN32Premul",
+            "org.jetbrains.skia.Bitmap.Companion.makeFromImage",
+        )
         val DEFAULT_PER_ITEM_CALLBACKS: List<String> = listOf(
             "kotlinx.coroutines.flow.collect",
             "kotlinx.coroutines.flow.Flow.collect",
