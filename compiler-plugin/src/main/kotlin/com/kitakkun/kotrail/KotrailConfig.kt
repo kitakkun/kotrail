@@ -316,6 +316,14 @@ data class KotrailFunctionLength(
     val maxComposableLines: Int,
 )
 
+/** Tunables for the file-length rule. From `rules.fileLength`. */
+data class KotrailFileLength(
+    /** Most lines of code a file may have (blank, brace-only, comment, package and import lines excluded); 0 for unlimited. */
+    val maxLines: Int,
+    /** Most distinct top-level names a file may declare; 0 for unlimited. */
+    val maxTopLevelDeclarations: Int,
+)
+
 /** Tunables for the named-arguments rule. From `rules.namedArgumentsForRepeatedTypes`. */
 data class KotrailNamedArguments(
     /** When at least this many positional arguments share a type, they must be named. */
@@ -487,6 +495,7 @@ data class KotrailConfig(
     val asyncWork: KotrailAsyncWork,
     val dependencyPolicies: List<KotrailDependencyPolicy>,
     val functionLength: KotrailFunctionLength,
+    val fileLength: KotrailFileLength,
     val noDataClassInPublicApi: KotrailNoDataClassInPublicApi,
     val visibilityPolicy: KotrailVisibilityPolicy,
     /** The `rules.requiredAnnotation.policies` entries, by name. */
@@ -551,6 +560,8 @@ data class KotrailConfig(
         const val DEFAULT_KDOC_MAX_LINES = 0
         const val DEFAULT_MIN_SAME_TYPE_ARGUMENTS = 3
         const val DEFAULT_FUNCTION_MAX_LINES = 50
+        const val DEFAULT_FILE_MAX_LINES = 500
+        const val DEFAULT_FILE_MAX_TOP_LEVEL = 10
         val DEFAULT_NO_DATA_CLASS_SCOPE = PublicApiScope.EXPLICIT_API
         const val DEFAULT_COMPOSABLE_MAX_LINES = 80
         val DEFAULT_DELAYS: List<String> = listOf("kotlinx.coroutines.delay", "java.lang.Thread.sleep", "android.os.SystemClock.sleep")
@@ -1048,6 +1059,10 @@ data class KotrailConfig(
                 functionLength = KotrailFunctionLength(
                     maxLines = int(KotrailRule.FUNCTION_LENGTH, "maxLines") ?: DEFAULT_FUNCTION_MAX_LINES,
                     maxComposableLines = int(KotrailRule.FUNCTION_LENGTH, "maxComposableLines") ?: DEFAULT_COMPOSABLE_MAX_LINES,
+                ),
+                fileLength = KotrailFileLength(
+                    maxLines = int(KotrailRule.FILE_LENGTH, "maxLines") ?: DEFAULT_FILE_MAX_LINES,
+                    maxTopLevelDeclarations = int(KotrailRule.FILE_LENGTH, "maxTopLevelDeclarations") ?: DEFAULT_FILE_MAX_TOP_LEVEL,
                 ),
                 noDataClassInPublicApi = KotrailNoDataClassInPublicApi(
                     scope = enumValue(KotrailRule.NO_DATA_CLASS_IN_PUBLIC_API, "scope", PublicApiScope.entries.map { it.key })?.let { PublicApiScope.fromKey(it)!! } ?: DEFAULT_NO_DATA_CLASS_SCOPE,

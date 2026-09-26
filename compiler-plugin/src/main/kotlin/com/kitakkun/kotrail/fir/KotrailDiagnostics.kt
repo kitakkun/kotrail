@@ -15,6 +15,7 @@ import org.jetbrains.kotlin.diagnostics.rendering.DiagnosticParameterRenderer
 import org.jetbrains.kotlin.psi.KtClass
 import org.jetbrains.kotlin.psi.KtClassOrObject
 import org.jetbrains.kotlin.psi.KtElement
+import org.jetbrains.kotlin.psi.KtNamedDeclaration
 import org.jetbrains.kotlin.psi.KtNamedFunction
 import org.jetbrains.kotlin.psi.KtParameter
 import org.jetbrains.kotlin.psi.KtProperty
@@ -96,6 +97,12 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
 
     /** Argument: what was measured, e.g. `72 lines of code (limit 50)`. */
     val FUNCTION_TOO_LONG = tunable1<KtNamedFunction, String>("FUNCTION_TOO_LONG", KotrailRule.FUNCTION_LENGTH, NAME)
+
+    /** Argument: what was measured, e.g. `620 lines of code (limit 500)`; reported on the package directive. */
+    val FILE_TOO_LONG = tunable1<KtElement, String>("FILE_TOO_LONG", KotrailRule.FILE_LENGTH, WHOLE)
+
+    /** Arguments: what the file declares (`14 top-level names (3 classes, 9 functions, 2 properties)`), the limit; reported on each name past the limit. */
+    val TOO_MANY_TOP_LEVEL_DECLARATIONS = tunable2<KtNamedDeclaration, String, String>("TOO_MANY_TOP_LEVEL_DECLARATIONS", KotrailRule.FILE_LENGTH, NAME)
 
     /** Argument: how often, e.g. `3 times (limit 2)`. Reported on the outermost `?:` expression. */
     val ELVIS_CHAIN_TOO_LONG = tunable1<KtElement, String>("ELVIS_CHAIN_TOO_LONG", KotrailRule.NULL_CHAIN_LENGTH, WHOLE)
@@ -724,6 +731,15 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         map.put1(
             KotrailDiagnostics.FUNCTION_TOO_LONG,
             "[Kotrail] This function is {0}. Split it so that each piece does one thing and has a name.",
+        )
+        map.put1(
+            KotrailDiagnostics.FILE_TOO_LONG,
+            "[Kotrail] This file is {0}. Split it: one main type per file, with the helpers only it needs.",
+        )
+        map.put2(
+            KotrailDiagnostics.TOO_MANY_TOP_LEVEL_DECLARATIONS,
+            "[Kotrail] This file declares {0}; the limit is {1}. A flat list this long says nothing about what belongs " +
+                "together: move this one to the file of the type it serves, or give a group of them a class or object of their own.",
         )
         map.put2(
             KotrailDiagnostics.OBJC_IDENTITY_COMPARISON,

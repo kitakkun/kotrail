@@ -37,12 +37,13 @@ The compiler is the one gate every line of code has to pass. Kotrail puts your c
 
 ## Rules
 
-66 rules ship today, grouped by what they protect. Full pages, with every condition and
+67 rules ship today, grouped by what they protect. Full pages, with every condition and
 fixture, live under [`docs/rules/`](docs/rules/README.md); the index there lists each rule with
 its diagnostic and whether it is on by default.
 
-- **Readability and structure** (11): [Function length](docs/rules/function-length.md) and a [Live variable budget](docs/rules/live-variable-budget.md) keep a
-  body small enough to hold in mind; [Narrative order](docs/rules/narrative-order.md) and [Parameter order](docs/rules/parameter-order.md) put helpers after
+- **Readability and structure** (12): [Function length](docs/rules/function-length.md) and a [Live variable budget](docs/rules/live-variable-budget.md) keep a
+  body small enough to hold in mind, and [File length](docs/rules/file-length.md) keeps a file from becoming a flat list of
+  unrelated names; [Narrative order](docs/rules/narrative-order.md) and [Parameter order](docs/rules/parameter-order.md) put helpers after
   their first caller and data before callbacks; [Narrow local scope](docs/rules/narrow-local-scope.md), [Prefer val](docs/rules/prefer-val.md) and
   [Prefer idiom](docs/rules/prefer-idiom.md) tidy what is left.
 - **Naming and style** (8): [Prefer function references](docs/rules/prefer-function-references.md) over `{ transform(it) }`,
