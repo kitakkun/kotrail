@@ -710,8 +710,11 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         )
         map.put2(
             KotrailDiagnostics.EFFECT_KEY_MISSING,
-            "[Kotrail] The lambda of ''{0}'' captures {1}: when that changes, the lambda keeps the value it saw first. " +
-                "Add it to the keys, or keep it current with rememberUpdatedState (per value, or one lambda that does the work).",
+            "[Kotrail] The lambda of ''{0}'' reads {1}, which its keys do not cover: when that changes, the lambda keeps " +
+                "the value it saw first. If ''{0}'' should run again when it changes, add it to the keys; if only the latest " +
+                "value matters while it runs, read it through rememberUpdatedState (per value, or one lambda that does the " +
+                "work); if it never changes, say so with a stable holder (a remembered object or a member val) and the rule " +
+                "stays quiet.",
         )
         map.put2(
             KotrailDiagnostics.EFFECT_CAPTURED_BY_CALLEE,

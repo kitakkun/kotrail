@@ -12,6 +12,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberSaveable
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
@@ -239,6 +240,59 @@ fun Inner(events: Observable<String>, block: (String) -> Unit) {
 @Composable
 fun Outer(events: Observable<String>, block: (String) -> Unit) {
     Inner(events, block)
+}
+
+// Stable captures need no key: a value whose identity never changes cannot go stale, so the rule
+// asks for nothing, neither a key nor rememberUpdatedState.
+class Navigator {
+    fun go(url: String) {}
+}
+
+object Registry {
+    val navigator = Navigator()
+    fun handle(url: String) {}
+}
+
+// Not reported: a val member of the enclosing class (a val constructor parameter included), read
+// through this implicitly or explicitly, a val of an object, and the object or companion itself.
+class DetailScreen(val requests: Observable<String>) {
+    private val navigator = Navigator()
+
+    @Composable
+    fun Content() {
+        LaunchedEffect(Unit) { requests.collect { navigator.go(it) } }
+        LaunchedEffect(Unit) { this@DetailScreen.requests.collect { this@DetailScreen.navigator.go(it) } }
+        LaunchedEffect(Unit) { requests.collect { Registry.navigator.go(it); Registry.handle(it); fallback.go(it) } }
+        val text = remember { requests.value + Registry.navigator }
+        Text(text)
+    }
+
+    companion object {
+        val fallback = Navigator()
+    }
+}
+
+// Not reported: an object remembered with no keys keeps its identity across recompositions, a
+// remembered callback included, and so does one from rememberSaveable.
+@Composable
+fun RememberedNavigator(events: Observable<String>) {
+    val navigator = remember { Navigator() }
+    val saved = rememberSaveable { Navigator() }
+    val handler = remember { { url: String -> track(url) } }
+    LaunchedEffect(Unit) {
+        events.collect {
+            navigator.go(it)
+            saved.go(it)
+            handler(it)
+        }
+    }
+}
+
+// Reported: a parameter of the composable is not stable, whatever it holds; the caller may pass a
+// different object on the next composition.
+@Composable
+fun HandedNavigator(events: Observable<String>, navigator: Navigator) {
+    <!KOTRAIL_EFFECT_KEY_MISSING!>LaunchedEffect(Unit) { events.collect { navigator.go(it) } }<!>
 }
 
 /* GENERATED_FIR_TAGS: additiveExpression, assignment, classDeclaration, comparisonExpression, functionDeclaration,

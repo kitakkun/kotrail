@@ -52,7 +52,9 @@ import org.jetbrains.kotlin.types.AbstractTypeChecker
  * checked too).
  *
  * What counts as captured is what belongs to the enclosing composable and can go stale: its
- * parameters and the locals computed from them, transitively. Not counted: a `State` (a
+ * parameters and the locals computed from them, transitively. Not counted: a member `val` of the
+ * enclosing class, a `val` of an `object`, and an `object` or companion, whose identity never
+ * changes; a `State` (a
  * delegated local, a `State`-typed value), which is always current when read; a local from
  * `rememberUpdatedState`, any other `remember*` call, or a keyed call under check, and
  * `CompositionLocal.current`, all stable for the composition; a local derived only from values
@@ -198,7 +200,14 @@ internal object EffectCaptureAnalysis {
         return flagged
     }
 
-    /** The values of the enclosing composable that a keyless lambda would freeze: parameters and the locals computed from them. */
+    /**
+     * The values of the enclosing composable that a keyless lambda would freeze: parameters and the
+     * locals computed from them. Nothing else is ever flagged, so a stable capture needs no key: a
+     * `val` member of the enclosing class read through `this` (a `val` constructor parameter
+     * included), a `val` of an `object`, an `object` or companion itself, and a local from
+     * `remember { }` or another call [isStable] names all keep their identity across
+     * recompositions.
+     */
     private class Flagged(private val session: FirSession, private val keyedFunctions: List<String>) {
         private class Info(val name: String, val isFunctionTyped: Boolean, val dependsOn: Set<FirBasedSymbol<*>>)
 
@@ -233,16 +242,17 @@ internal object EffectCaptureAnalysis {
         /**
          * Whether a local's initializer makes it stable for the composition rather than a captured
          * value: any `remember*` call (`rememberUpdatedState`, `rememberCoroutineScope`, a keyed
-         * `remember`, and a keyless one, which is reported where it is), a keyed call under check,
-         * or a `CompositionLocal.current` read.
+         * `remember`, and a keyless one, which is reported where it is), any call under check,
+         * keyed or not (a remembered object keeps its identity across recompositions; a remembered
+         * `State` is read through `.value` and is current anyway), or a `CompositionLocal.current`
+         * read.
          */
         fun isStable(expression: FirExpression): Boolean {
             val call = expression as? FirFunctionCall
             if (call != null) {
                 val callee = call.calleeReference.toResolvedNamedFunctionSymbol() ?: return false
                 if (callee.name.asString().startsWith("remember")) return true
-                val fqName = callee.callableId.asSingleFqName().asString()
-                return fqName in keyedFunctions && call.argumentList.arguments.size > 1
+                return callee.callableId.asSingleFqName().asString() in keyedFunctions
             }
             val access = expression as? FirPropertyAccessExpression ?: return false
             return access.calleeReference.toResolvedCallableSymbol()?.name?.asString() == "current"

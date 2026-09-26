@@ -19,17 +19,22 @@ fun Price(amount: Long, events: Flow<Event>, onEvent: (Event) -> Unit) {
 
 ## What it asks for
 
-Each value the lambda reads without a key can be fixed two ways, and the message says which
-applies to it; between the shapes below, none is preferred.
+Each value the lambda reads without a key has three answers, and which one is right depends on
+what the value is. The message lays out all three; where one is the usual answer for a value (a
+callback in an effect, a data value in a `remember { }`), the value carries it.
 
-A data value a `remember { }` computes from belongs in the keys:
+**The work should run again when the value changes: add it to the keys.** A data value a
+`remember { }` computes from belongs here, and so does a data value a long-lived effect body
+works with when a new value means new work:
 
 ```kotlin
 val text = remember(amount) { format(amount) }
+LaunchedEffect(userId) { repository.updates(userId).collect { show(it) } }
 ```
 
-A callback captured by an effect is kept current rather than keyed: restarting the collection
-because a lambda changed identity is itself the classic bug. Either wrap the value:
+**Only the latest value matters while the work runs: read it through `rememberUpdatedState`.**
+A callback captured by an effect belongs here: restarting the collection because a lambda
+changed identity is itself the classic bug. Either wrap the value:
 
 ```kotlin
 val currentOnEvent by rememberUpdatedState(onEvent)
@@ -50,9 +55,23 @@ val handle by rememberUpdatedState<(Request) -> Unit> { request ->
 LaunchedEffect(channel) { channel.requests.collect { handle(it) } }
 ```
 
-A data value read by a long-lived effect body (a `collect`, a loop, `onDispose`, a body that
-waits for cancellation) goes in the keys if the work should restart when it changes, and is kept
-current otherwise; the message offers both.
+`rememberUpdatedState` is the answer for this case only. It is not a way to silence the rule:
+wrapping a value that never changes adds code that does nothing.
+
+**The value never changes: hold it where its identity is stable.** A `val` member of the class
+the composable belongs to, a `val` of an `object`, or an object made once with `remember { }`
+keeps its identity across recompositions, and the rule does not report it (see "When it stays quiet"). When a
+parameter only ever receives one object, the fix is to read that object from where it lives
+rather than to wrap the parameter:
+
+```kotlin
+class DetailScreen(private val navigator: Navigator) {
+    @Composable
+    fun Content(events: Flow<Event>) {
+        LaunchedEffect(Unit) { events.collect { navigator.go(it) } }     // not reported: a member val
+    }
+}
+```
 
 A lambda keyed on nothing runs once and keeps the first value of whatever it captured: the
 composable shows the old price, the handler stored in a remembered holder calls the old callback,
@@ -109,18 +128,24 @@ Kotrail carries no metadata and is taken as keeping its lambdas current.
   `collect`, `collectLatest`, `onEach`, `onDispose`, `awaitPointerEventScope`, `withFrameNanos`,
   a `while`/`do`/`for` loop, or a body that reaches `awaitCancellation()`).
 
-One finding per call, naming the missing values in source order with the advice for each:
-`onEvent (read it through rememberUpdatedState); tag (add it to the keys if the work should
-restart when it changes, otherwise read it through rememberUpdatedState)`.
+One finding per call, naming the missing values in source order, each with its usual answer
+where it has one: `onEvent (read it through rememberUpdatedState); tag`. The message then lays
+out the three choices above.
 
 ## When it stays quiet
 
+- The value is stable, and its identity never changes across recompositions: a `val` member of
+  the enclosing class read through `this`, implicitly or explicitly (a `val` constructor parameter
+  included), a `val` of an `object`, an `object` or a companion itself, or a local from
+  `remember { }`, `rememberSaveable { }` or another call in `functions` (a remembered object,
+  a remembered callback). A parameter of the composable is not stable, whatever it holds: the
+  caller may pass a different value on the next composition.
 - Every value the lambda reads is covered by a key, or derived only from covered values.
 - The value is a `State`: a delegated local (`by remember { mutableStateOf(...) }`,
   `by flow.collectAsState()`) or a `State`-typed parameter. A `State` is always current when
   read, and writing to one (`visible = true`) is not a read.
 - The value is a local from `rememberUpdatedState(...)`, from any other `remember*` call
-  (`rememberCoroutineScope()`, a keyed `remember`), from a keyed call under check, or from
+  (`rememberCoroutineScope()`, a keyed `remember`), from any call under check, keyed or not, or from
   `CompositionLocal.current`: stable for the composition.
 - The read is the initial value handed to `mutableStateOf(...)` and its typed variants, or an
   argument of a constructor call inside `remember { }` (`remember { SplitState(initialFraction) }`):

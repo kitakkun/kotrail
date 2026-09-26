@@ -30,13 +30,14 @@ import org.jetbrains.kotlin.fir.references.toResolvedNamedFunctionSymbol
  * }
  * ```
  *
- * A lambda keyed on nothing runs once and keeps the first value of whatever it captured. There
- * are two right fixes, and the message says which applies to each value: a callback captured by
- * an effect is read through `rememberUpdatedState`, since restarting the effect because a lambda
- * changed identity is itself the classic bug; a data value a `remember { }` computes from
- * belongs in the keys; a data value read by a long-lived effect body (a `collect`, a loop,
- * `onDispose`) goes in the keys if the work should restart when it changes, and through
- * `rememberUpdatedState` otherwise. What counts as captured, and what does not, is decided by
+ * A lambda keyed on nothing runs once and keeps the first value of whatever it captured. The
+ * message lays out the three choices: a key when the work should run again as the value changes,
+ * `rememberUpdatedState` when only the latest value matters while it runs, and a stable holder
+ * (a remembered object, a member `val`) when the value never changes, which the rule does not
+ * report at all. Where one choice is the usual answer, the value carries it: a callback captured
+ * by an effect is read through `rememberUpdatedState`, since restarting the effect because a
+ * lambda changed identity is itself the classic bug; a data value a `remember { }` computes from
+ * belongs in the keys. What counts as captured, and what does not, is decided by
  * [EffectCaptureAnalysis].
  *
  * The same applies through a helper that hides the effect:
@@ -58,7 +59,6 @@ import org.jetbrains.kotlin.fir.references.toResolvedNamedFunctionSymbol
 object ComposableRememberKeysChecker : FirFunctionCallChecker(MppCheckerKind.Common) {
     private const val ADVICE_KEYS = "add it to the keys"
     private const val ADVICE_UPDATED_STATE = "read it through rememberUpdatedState"
-    private const val ADVICE_EITHER = "add it to the keys if the work should restart when it changes, otherwise read it through rememberUpdatedState"
 
     context(context: CheckerContext, reporter: DiagnosticReporter)
     override fun check(expression: FirFunctionCall) {
@@ -77,12 +77,12 @@ object ComposableRememberKeysChecker : FirFunctionCallChecker(MppCheckerKind.Com
         val keyed = EffectCaptureAnalysis.keyedCall(session, keyedFunctions, function, expression)
         if (keyed != null) {
             val missing = keyed.missing.filter { EffectCaptureAnalysis.counts(keyed, it) }.map { value ->
-                val advice = when {
-                    value.isFunctionTyped -> ADVICE_UPDATED_STATE
-                    !keyed.isEffect -> ADVICE_KEYS
-                    else -> ADVICE_EITHER
+                // A data value in a long-lived effect body takes either fix; the message lays out both.
+                when {
+                    value.isFunctionTyped -> "${value.name} ($ADVICE_UPDATED_STATE)"
+                    !keyed.isEffect -> "${value.name} ($ADVICE_KEYS)"
+                    else -> value.name
                 }
-                "${value.name} ($advice)"
             }
             if (missing.isEmpty()) return
             reportKotrail(source, KotrailDiagnostics.EFFECT_KEY_MISSING, keyed.callee.name.asString(), missing.joinToString("; "))
