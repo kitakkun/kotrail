@@ -35,6 +35,30 @@ class Holder {
     var value = 0
 }
 
+class Receiver {
+    val values = HashMap<String, Boolean>()
+}
+
+var Receiver.selected: Boolean
+    get() = values["selected"] == true
+    set(value) { values["selected"] = value }
+
+fun configure(block: Receiver.() -> Unit) = Receiver().block()
+
+object Locale {
+    private var default: String? = null
+    private var fallback: String? = null
+
+    // Not reported: the lazy-init idiom writes once and reads what it wrote, as one memo. A plain
+    // read of the same var elsewhere is a read like any other.
+    @Composable
+    fun current(): String {
+        val value = default ?: "en".also { default = it }
+        if (fallback == null) fallback = value
+        return value + <!KOTRAIL_GLOBAL_VAR_READ_IN_COMPOSITION!>fallback<!>
+    }
+}
+
 @Composable
 fun Action(onClick: () -> Unit, content: @Composable () -> Unit) {
     content()
@@ -81,6 +105,13 @@ fun Toggle() {
         Session.user = User("effect")
         frames = 0
     }
+}
+
+// Not reported: an extension var writes into its receiver, wherever the lambda runs.
+@Composable
+fun Selectable() {
+    configure { selected = true }
+    Text("selectable")
 }
 
 // Not reported: not a composable.

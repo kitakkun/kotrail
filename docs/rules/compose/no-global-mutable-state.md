@@ -56,12 +56,17 @@ of the app has no way to see the change. Both are what an assistant writes when 
 ## When it stays quiet
 
 - The property is a `val`, a `const`, a `lateinit var` (set once, before any composition), a
-  delegated `var` (`by mutableStateOf(...)`, `by Delegates.observable(...)`), or a `var` whose
-  type is a `State`.
+  delegated `var` (`by mutableStateOf(...)`, `by Delegates.observable(...)`), a `var` whose
+  type is a `State`, or an extension `var` (`var SemanticsPropertyReceiver.selected`), whose
+  setter writes into its receiver: `Modifier.semantics { selected = true }` is not shared state.
+- The read and the write are the lazy-init idiom, which writes once and reads what it wrote:
+  `default ?: Locale.getDefault().also { default = it }`, or `if (default == null) default = ...`.
+  That is a memo, not state that changes under the composable.
 - The property is a member of a class instance (`holder.value`): that is the parameter's
   stability, covered by [No unstable parameter](no-unstable-parameter.md).
-- A read sits in a lambda that runs later: an event handler, `LaunchedEffect`, `DisposableEffect`,
-  a callback stored in a local. Such code sees the current value when it runs.
+- A read sits in a lambda that runs after composition: an event handler, `LaunchedEffect`,
+  `DisposableEffect`, a `Modifier.semantics { }` or `drawBehind { }` block, a callback stored in a
+  local. Such code sees the current value when it runs.
 - An assignment in such a lambda, unless `handlerWrites: true`:
 
   ```yaml

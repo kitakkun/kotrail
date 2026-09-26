@@ -24,6 +24,10 @@ import org.jetbrains.kotlin.fir.declarations.utils.isLateInit
 import org.jetbrains.kotlin.fir.expressions.FirAnonymousFunctionExpression
 import org.jetbrains.kotlin.fir.expressions.FirAnonymousObjectExpression
 import org.jetbrains.kotlin.fir.expressions.FirDesugaredAssignmentValueReferenceExpression
+import org.jetbrains.kotlin.fir.expressions.FirElvisExpression
+import org.jetbrains.kotlin.fir.expressions.FirEqualityOperatorCall
+import org.jetbrains.kotlin.fir.expressions.FirOperation
+import org.jetbrains.kotlin.fir.expressions.FirWhenExpression
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirVariableAssignment
@@ -41,6 +45,7 @@ import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.customAnnotations
+import org.jetbrains.kotlin.fir.types.isNullLiteral
 import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
@@ -68,10 +73,12 @@ import org.jetbrains.kotlin.name.Name
  * recomposition, at times nobody chose. A value shared across the app belongs in a holder Compose
  * observes (`mutableStateOf`, a `StateFlow` collected as state) and reaches the composable as a
  * parameter. Not reported: a `val`, a `const`, a `lateinit var` (set once, before any
- * composition), a delegated `var` (`by mutableStateOf(...)`, `by Delegates.observable`) and a
- * `var` whose type is a `State`, since those are observed or fixed; and reads in a lambda that
- * does not run during composition (an event handler, an effect), which see the current value when
- * they run. Writes in such lambdas are reported when `handlerWrites` is on.
+ * composition), a delegated `var` (`by mutableStateOf(...)`, `by Delegates.observable`), a `var`
+ * whose type is a `State`, and an extension `var` (`var SemanticsPropertyReceiver.selected`),
+ * whose setter writes into its receiver; the lazy-init idiom `cache ?: compute().also { cache = it }`
+ * or `if (cache == null) cache = compute()`, which writes once and reads what it wrote; and reads
+ * in a lambda that does not run during composition (an event handler, an effect), which see the
+ * current value when they run. Writes in such lambdas are reported when `handlerWrites` is on.
  */
 object ComposableGlobalMutableStateChecker : NamedFunctionChecker(MppCheckerKind.Common) {
     private val STATE = ClassId(FqName("androidx.compose.runtime"), Name.identifier("State"))
@@ -94,7 +101,7 @@ object ComposableGlobalMutableStateChecker : NamedFunctionChecker(MppCheckerKind
                 if (owner != null) "$owner.$short" else short
             } ?: symbol.name.asString()
             if (write) {
-                val where = if (inComposition) "during composition, which runs whenever Compose decides to recompose" else "from an event handler"
+                val where = if (inComposition) "during composition, which runs whenever Compose decides to recompose" else "from a lambda that runs after composition (a handler, an effect)"
                 reportKotrail(expression.source, KotrailDiagnostics.GLOBAL_VAR_WRITTEN_IN_COMPOSABLE, name, where)
             } else {
                 reportKotrail(expression.source, KotrailDiagnostics.GLOBAL_VAR_READ_IN_COMPOSITION, name)
@@ -113,6 +120,9 @@ object ComposableGlobalMutableStateChecker : NamedFunctionChecker(MppCheckerKind
         private val report: (FirElement, FirPropertySymbol, write: Boolean, inComposition: Boolean) -> Unit,
     ) : FirVisitorVoid() {
         private var inComposition = true
+
+        /** The vars a lazy-init idiom is initializing around the current element: their read and their single write are one memo. */
+        private val memoized = ArrayList<FirPropertySymbol>()
 
         override fun visitElement(element: FirElement) {
             element.acceptChildren(this)
@@ -135,6 +145,66 @@ object ComposableGlobalMutableStateChecker : NamedFunctionChecker(MppCheckerKind
             // The `x` of `x += 1` and `x++`: the assignment reports it as a write.
         }
 
+        override fun visitElvisExpression(elvisExpression: FirElvisExpression) {
+            // `cache ?: compute().also { cache = it }`: the read and the write are one lazy initialization.
+            val memo = (elvisExpression.lhs as? FirPropertyAccessExpression)?.globalVar()?.takeIf { elvisExpression.rhs.assigns(it) }
+            if (memo == null) {
+                visitElement(elvisExpression)
+                return
+            }
+            memoized += memo
+            (elvisExpression.lhs as? FirPropertyAccessExpression)?.explicitReceiver?.accept(this)
+            elvisExpression.rhs.accept(this)
+            memoized.removeAt(memoized.lastIndex)
+        }
+
+        override fun visitWhenExpression(whenExpression: FirWhenExpression) {
+            // `if (cache == null) cache = compute()`: the same idiom as a statement.
+            whenExpression.subjectVariable?.accept(this)
+            for (branch in whenExpression.branches) {
+                val memo = branch.condition.nullCheckedVar()?.takeIf { branch.result.assigns(it) }
+                if (memo == null) {
+                    branch.condition.accept(this)
+                    branch.result.accept(this)
+                    continue
+                }
+                memoized += memo
+                branch.condition.accept(this)
+                branch.result.accept(this)
+                memoized.removeAt(memoized.lastIndex)
+            }
+        }
+
+        /** The global var of `x == null`, either way round. */
+        private fun FirElement.nullCheckedVar(): FirPropertySymbol? {
+            val call = this as? FirEqualityOperatorCall ?: return null
+            if (call.operation != FirOperation.EQ) return null
+            val arguments = call.argumentList.arguments.map { it.unwrapArgument() }
+            if (arguments.size != 2) return null
+            val checked = when {
+                arguments[1].isNullLiteral -> arguments[0]
+                arguments[0].isNullLiteral -> arguments[1]
+                else -> return null
+            }
+            return (checked as? FirPropertyAccessExpression)?.globalVar()
+        }
+
+        /** Whether [symbol] is assigned somewhere under this element, lambdas included (`also { x = it }`). */
+        private fun FirElement.assigns(symbol: FirPropertySymbol): Boolean {
+            var found = false
+            accept(object : FirVisitorVoid() {
+                override fun visitElement(element: FirElement) {
+                    if (!found) element.acceptChildren(this)
+                }
+
+                override fun visitVariableAssignment(variableAssignment: FirVariableAssignment) {
+                    val target = variableAssignment.lValue as? FirPropertyAccessExpression
+                    if (target?.calleeReference?.toResolvedCallableSymbol() == symbol) found = true else visitElement(variableAssignment)
+                }
+            })
+            return found
+        }
+
         override fun visitVariableAssignment(variableAssignment: FirVariableAssignment) {
             // `x += 1` and `x++` assign through a reference to the access; the desugared right-hand side reads x again, which is the same use.
             val desugared = variableAssignment.source?.kind is KtFakeSourceElementKind
@@ -143,7 +213,7 @@ object ComposableGlobalMutableStateChecker : NamedFunctionChecker(MppCheckerKind
                 is FirDesugaredAssignmentValueReferenceExpression -> lValue.expressionRef.value as? FirPropertyAccessExpression
                 else -> null
             }
-            val symbol = target?.globalVar()
+            val symbol = target?.globalVar()?.takeIf { it !in memoized }
             if (symbol != null && (inComposition || handlerWrites)) {
                 val at = if (desugared) target else variableAssignment
                 report(at, symbol, true, inComposition)
@@ -153,7 +223,7 @@ object ComposableGlobalMutableStateChecker : NamedFunctionChecker(MppCheckerKind
         }
 
         override fun visitPropertyAccessExpression(propertyAccessExpression: FirPropertyAccessExpression) {
-            val symbol = propertyAccessExpression.globalVar()
+            val symbol = propertyAccessExpression.globalVar()?.takeIf { it !in memoized }
             if (symbol != null && inComposition) report(propertyAccessExpression, symbol, false, true)
             propertyAccessExpression.explicitReceiver?.accept(this)
         }
@@ -206,6 +276,8 @@ object ComposableGlobalMutableStateChecker : NamedFunctionChecker(MppCheckerKind
         private fun FirPropertyAccessExpression.globalVar(): FirPropertySymbol? {
             val symbol = calleeReference.toResolvedCallableSymbol() as? FirPropertySymbol ?: return null
             if (!symbol.isVar || symbol.isLocal || symbol.isConst || symbol.isLateInit || symbol.hasDelegate) return null
+            // An extension var's setter writes into its receiver (`Modifier.semantics { selected = true }`), not into shared state.
+            if (symbol.receiverParameterSymbol != null) return null
             val callableId = symbol.callableId ?: return null
             val owner = callableId.classId
             if (owner != null) {
