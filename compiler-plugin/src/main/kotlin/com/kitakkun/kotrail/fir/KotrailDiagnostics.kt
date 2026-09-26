@@ -277,6 +277,12 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: the callee's name; reported on the callee of a call that starts work directly in a composable body. */
     val COMPOSABLE_SIDE_EFFECT_IN_COMPOSITION = tunable1<KtElement, String>("COMPOSABLE_SIDE_EFFECT_IN_COMPOSITION", KotrailRule.COMPOSE_NO_SIDE_EFFECT_IN_COMPOSITION, WHOLE)
 
+    /** Argument: the global var (`Session.user`); reported on a read of it during composition. */
+    val GLOBAL_VAR_READ_IN_COMPOSITION = tunable1<KtElement, String>("GLOBAL_VAR_READ_IN_COMPOSITION", KotrailRule.COMPOSE_NO_GLOBAL_MUTABLE_STATE, WHOLE)
+
+    /** Arguments: the global var, where it is assigned; reported on an assignment to it in a composable. */
+    val GLOBAL_VAR_WRITTEN_IN_COMPOSABLE = tunable2<KtElement, String, String>("GLOBAL_VAR_WRITTEN_IN_COMPOSABLE", KotrailRule.COMPOSE_NO_GLOBAL_MUTABLE_STATE, WHOLE)
+
     /** Arguments: the parameter with its type (`items: List<Item>`), why the type is unstable; reported on the parameter. */
     val COMPOSABLE_UNSTABLE_PARAMETER = tunable2<KtParameter, String, String>("COMPOSABLE_UNSTABLE_PARAMETER", KotrailRule.COMPOSE_NO_UNSTABLE_PARAMETER, NAME)
 
@@ -526,6 +532,17 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             KotrailDiagnostics.COMPOSABLE_SIDE_EFFECT_IN_COMPOSITION,
             "[Kotrail] ''{0}'' starts work during composition, which runs again on every recomposition. " +
                 "Move it into LaunchedEffect (or another effect), or call it from an event handler.",
+        )
+        map.put1(
+            KotrailDiagnostics.GLOBAL_VAR_READ_IN_COMPOSITION,
+            "[Kotrail] ''{0}'' is a plain var outside the composition: Compose does not observe it, so this composable " +
+                "shows the value it read first and is never recomposed when it changes. Hold it in a MutableState or a " +
+                "StateFlow collected as state, and hand it in as a parameter.",
+        )
+        map.put2(
+            KotrailDiagnostics.GLOBAL_VAR_WRITTEN_IN_COMPOSABLE,
+            "[Kotrail] ''{0}'' is assigned {1}: shared state written from a composable is invisible to Compose and to the " +
+                "rest of the app. Keep it in a state holder the composable receives, and change it through an event it raises.",
         )
         map.put2(
             KotrailDiagnostics.CALLBACK_IN_UI_MODEL,

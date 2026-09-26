@@ -192,6 +192,9 @@ object ConfigSchema {
             Setting("max", Kind.INT, "Maximum non-private UI composables in one file, previews excluded; 0 disables.", default = "3"),
             Setting("countOverloadsSeparately", Kind.BOOLEAN, "Whether overloads of one composable name count one each; by default they count as one component.", default = "false"),
         ),
+        KotrailRule.COMPOSE_NO_GLOBAL_MUTABLE_STATE to listOf(
+            Setting("handlerWrites", Kind.BOOLEAN, "Whether an assignment to a global var from a composable's event handler (onClick = { Session.user = null }) is reported too; assignments during composition always are.", default = "false"),
+        ),
         KotrailRule.COMPOSE_NO_SIDE_EFFECT_IN_COMPOSITION to listOf(
             Setting("types", Kind.LIST, "Fully qualified return types whose producers start work when called in a composable body; replaces the default list.", default = "kotlinx.coroutines.Job, kotlinx.coroutines.Deferred"),
             Setting("functions", Kind.LIST, "Fully qualified functions that start work when called in a composable body, in addition to those recognized by type."),
