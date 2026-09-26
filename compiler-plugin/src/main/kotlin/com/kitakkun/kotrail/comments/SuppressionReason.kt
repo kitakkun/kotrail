@@ -19,6 +19,10 @@ package com.kitakkun.kotrail.comments
  * [MAX_BLANK_LINES_BEFORE_COMMENT] blank lines above the annotation, or above the first member
  * of its group, with nothing but blank lines between, counts too: a section comment is often
  * set off by a blank line. A comment further away is out of reach, so it does not count.
+ *
+ * A file annotation (`@file:`) takes only a comment on its own line or on the line directly
+ * above, so a license or file header followed by a blank line is not its reason; it is never a
+ * group member, and the walk from a declaration stops at it.
  */
 object SuppressionReason {
     private const val MAX_GROUP_LINES = 60
@@ -34,6 +38,9 @@ object SuppressionReason {
         val last = lineIndexOf(lines, maxOf(annotationStart, annotationEnd - 1))
         for (index in first..last) if (hasComment(lines[index])) return true
 
+        // A file annotation is never a group member, and a file header set off by a blank line is not its reason.
+        if (text.startsWith("@file:", annotationStart)) return first > 0 && isCommentLine(lines[first - 1])
+
         val level = indentOf(lines[first])
         var current = first - 1
         var steps = 0
@@ -42,6 +49,7 @@ object SuppressionReason {
             val trimmed = line.trim()
             when {
                 isCommentLine(line) -> return true
+                trimmed.startsWith("@file:") -> return false
                 trimmed.isEmpty() -> {
                     var above = current - 1
                     while (above >= 0 && lines[above].isBlank()) above--

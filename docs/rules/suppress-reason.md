@@ -49,6 +49,9 @@ there is none and fixes the code.
   above, or a comment block that ends within two blank lines above the annotation (or the
   first member of a group of suppressed declarations, below); the line above may be a `//`
   line, or the line a block comment or KDoc ends on.
+- A file annotation (`@file:Suppress(...)`) takes only a comment on its own line or on the
+  line directly above: a license or file header followed by a blank line is not its reason,
+  and a file annotation is never part of a group.
 - Any comment text counts; the rule does not judge it. Three or more blank lines between a
   comment and the annotation break the link, and so does any other line: the comment is about
   something else.

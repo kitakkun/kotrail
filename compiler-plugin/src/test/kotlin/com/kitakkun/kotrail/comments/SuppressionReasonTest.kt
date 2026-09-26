@@ -98,6 +98,26 @@ class SuppressionReasonTest {
     }
 
     @Test
+    fun `a file header set off by a blank line is not the reason for a file annotation`() {
+        val written = "@file:Suppress(\"KOTRAIL_X\")"
+        val header = "// Copyright header\n\n"
+        assertFalse(SuppressionReason.hasReason("$header$written\n", header.length, header.length + written.length) { line -> "@file:Suppress" in line })
+    }
+
+    @Test
+    fun `a comment directly above a file annotation counts`() {
+        val written = "@file:Suppress(\"KOTRAIL_X\")"
+        val comment = "// the generated parser is long by design\n"
+        assertTrue(SuppressionReason.hasReason("$comment$written\n", comment.length, comment.length + written.length) { line -> "@file:Suppress" in line })
+    }
+
+    @Test
+    fun `a file annotation is not a group member`() {
+        val text = "// the generated parser is long by design\n@file:Suppress(\"KOTRAIL_X\")\n\n$annotation\nfun f() {}"
+        assertFalse(hasReason(text))
+    }
+
+    @Test
     fun `a comment inside a string argument is not a reason`() {
         val written = "@Suppress(\"KOTRAIL_X\", \"// not a comment\")"
         assertFalse(SuppressionReason.hasReason("$written\nfun f() {}", 0, written.length) { line -> "@Suppress" in line })
