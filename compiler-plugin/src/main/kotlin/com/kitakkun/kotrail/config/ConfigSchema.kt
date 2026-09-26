@@ -135,6 +135,10 @@ object ConfigSchema {
         KotrailRule.NATIVE_OBJC_THROWS to listOf(
             Setting("packages", Kind.LIST, "Package globs of the API the framework exports to Swift (com.acme.sdk.*); when set, only public functions in these packages are checked. Empty: every public function of an Apple compilation."),
         ),
+        KotrailRule.MUST_CLOSE to listOf(
+            Setting("factories", Kind.LIST, "Fully qualified functions whose result is a resource the caller must close, besides constructors of AutoCloseable classes; replaces the default list.", default = "kotlin.io.inputStream, kotlin.io.bufferedReader, kotlin.io.bufferedWriter, java.nio.file.Files.newBufferedReader, java.nio.file.Files.lines, ..."),
+            Setting("ignoredTypes", Kind.LIST, "AutoCloseable types (subtypes included) that hold nothing worth closing, such as in-memory buffers or a project's registration handles; replaces the default list.", default = "java.io.ByteArrayInputStream, java.io.ByteArrayOutputStream, java.io.StringReader, java.io.StringWriter, java.io.CharArrayReader, java.io.CharArrayWriter, okio.Buffer"),
+        ),
         KotrailRule.NATIVE_ALLOCATION_IN_LOOP to listOf(
             Setting("types", Kind.LIST, "Fully qualified types (subtypes included) whose instances hold native memory that only a cleaner frees; replaces the default list.", default = "org.jetbrains.skia.impl.Managed, java.awt.image.VolatileImage"),
             Setting("factories", Kind.LIST, "Fully qualified factory functions that return such an instance; replaces the default list.", default = "java.nio.ByteBuffer.allocateDirect, org.jetbrains.skia.Image.Companion.makeFromEncoded, org.jetbrains.skia.Image.Companion.makeRaster, org.jetbrains.skia.Surface.Companion.makeRaster, ..."),
@@ -194,6 +198,10 @@ object ConfigSchema {
         ),
         KotrailRule.COMPOSE_REMEMBER_KEYS to listOf(
             Setting("functions", Kind.LIST, "Fully qualified functions whose trailing lambda is keyed by their other arguments; replaces the default list.", default = "androidx.compose.runtime.remember, androidx.compose.runtime.saveable.rememberSaveable, androidx.compose.runtime.LaunchedEffect, androidx.compose.runtime.DisposableEffect, androidx.compose.runtime.produceState"),
+        ),
+        KotrailRule.COMPOSE_COMPLEXITY to listOf(
+            Setting("maxScore", Kind.INT, "Most points a composable may score (state sources, effects, branches, coupling); 0 switches the limit off while the records for kotrailComplexity are still written.", default = "15"),
+            Setting("hotspotShare", Kind.INT, "Percent of a composable's points a block (a lambda handed to a composable, a branch) must carry to be named as the place to extract.", default = "40"),
         ),
         KotrailRule.COMPOSE_NO_CALLBACK_IN_MODEL to listOf(
             Setting("allowComposableSlots", Kind.BOOLEAN, "Whether a @Composable function-typed property (a content slot such as a table column's cell renderer) in a model handed to a UI composable is allowed; other function types are always reported.", default = "true"),

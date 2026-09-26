@@ -35,6 +35,7 @@ import com.kitakkun.kotrail.fir.checkers.NarrativeOrderChecker
 import com.kitakkun.kotrail.fir.checkers.CatchTooBroadChecker
 import com.kitakkun.kotrail.fir.checkers.DelayForCompletionChecker
 import com.kitakkun.kotrail.fir.checkers.DependencyRulesChecker
+import com.kitakkun.kotrail.fir.checkers.MustCloseChecker
 import com.kitakkun.kotrail.fir.checkers.NativeAllocationInLoopChecker
 import com.kitakkun.kotrail.fir.inferred.InferredFactWarmup
 import com.kitakkun.kotrail.fir.checkers.NoLiteralLoopChecker
@@ -63,6 +64,7 @@ import com.kitakkun.kotrail.fir.compose.checkers.ComposableNamingChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposableNestingChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposableManifestChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposableCallbackInModelChecker
+import com.kitakkun.kotrail.fir.compose.checkers.ComposableComplexityChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposableGlobalMutableStateChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposablePreviewCoverageChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposablePreviewParameterChecker
@@ -173,7 +175,9 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
         LiveVariableBudgetChecker,
         ComposableSideEffectChecker,
         ComposableGlobalMutableStateChecker,
+        ComposableComplexityChecker,
         ObjCThrowsChecker,
+        MustCloseChecker,
         ComposableUnstableParameterChecker,
     )
     override val callableDeclarationCheckers: Set<FirCallableDeclarationChecker> = setOf(

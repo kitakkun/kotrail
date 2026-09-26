@@ -124,6 +124,8 @@ own; a rule not listed has none.
 | | `factories` | `java.nio.ByteBuffer.allocateDirect`, Skia `Image.makeFromEncoded`, `Image.makeRaster`, `Surface.makeRaster` and their kin | Factory functions that return such an instance, by fully qualified name (`org.jetbrains.skia.Image.Companion.makeFromEncoded`). Replaces the default list. |
 | | `callbacks` | `collect`, `onEach`, `withFrameNanos`, `repeat`, `forEach`, ... | Functions whose lambda runs once per item or frame, counted like a loop body. Replaces the default list. |
 | `weakOnlyReference` | `types` | `[java.lang.ref.WeakReference, java.lang.ref.SoftReference, kotlin.native.ref.WeakReference]` | Weak or soft reference types (subtypes included). Replaces the default list. |
+| `mustClose` | `ignoredTypes` | `ByteArrayInputStream`, `ByteArrayOutputStream`, `StringReader`, `StringWriter`, `CharArrayReader`, `CharArrayWriter`, `okio.Buffer` | `AutoCloseable` types (subtypes included) that hold nothing worth closing: in-memory buffers, a project's registration handles. Replaces the default list. |
+| `mustClose` | `factories` | the `kotlin.io` stream, reader and writer factories, `Files.new*`, `Files.lines` and their kin | Fully qualified functions whose result is a resource the caller must close, besides constructors of `AutoCloseable` classes. Replaces the default list. |
 | `catchTooBroad` | `types` | `kotlin.Throwable`, `kotlin.Exception`, `kotlin.RuntimeException` and their `java.lang` classes, `java.lang.Error` | Exception types a catch clause must not name. Replaces the default list. |
 | | `report` | `swallowed` | `swallowed`: only clauses that let the failure go no further than a log line; `all`: every broad clause. |
 | | `loggers` | `println`, `printStackTrace`, `android.util.Log.*`, SLF4J, kotlin-logging, Kermit, Timber, IntelliJ `Logger.*` | Functions that only log; a failure handed to them alone counts as swallowed. Replaces the default list. |
@@ -146,6 +148,8 @@ own; a rule not listed has none.
 | | `required` | `[]` | Locals to treat as required although their default does not throw. |
 | | `roots` | `[setContent, Window, application, ...]` | Functions whose composable lambda is a root of composition. Replaces the default list. |
 | | `known` | `{}` | What a library composable reads and provides, keyed by its fully qualified name. See [Composition locals](rules/compose/composition-locals.md#knowledge-base). |
+| `compose.complexity` | `maxScore` | `15` | Most points a composable may score: state sources, effects, branches and coupling. `0` switches the limit off; the records for the report are still written. |
+| | `hotspotShare` | `40` | Percent of a composable's points a block (a lambda handed to a composable, a branch) must carry to be named as the place to extract. |
 | `compose.nesting` | `maxDepth` | `5` | Nesting limit for composable calls; `0` disables the rule. |
 | `compose.noTrailingCallback` | `allowedPackages` | `[androidx.compose.runtime]` | Packages whose composables may still take a callback as a trailing lambda. |
 | `compose.previewRequired` | `scope` | `internal` | Which UI composables need a `@Preview` in their file: `public`, `internal` (public and internal), or `all`. |

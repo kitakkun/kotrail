@@ -13,6 +13,9 @@ import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirElvisExpressionC
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirSafeCallExpressionChecker
 import org.jetbrains.kotlin.fir.expressions.FirElvisExpression
 import org.jetbrains.kotlin.fir.expressions.FirExpression
+import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
+import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
+import org.jetbrains.kotlin.fir.expressions.FirThisReceiverExpression
 import org.jetbrains.kotlin.fir.expressions.FirReturnExpression
 import org.jetbrains.kotlin.fir.expressions.FirSafeCallExpression
 import org.jetbrains.kotlin.fir.expressions.FirSmartCastExpression
@@ -28,9 +31,12 @@ import org.jetbrains.kotlin.fir.expressions.FirThrowExpression
  * ```
  *
  * Each `?:` is another case the reader evaluates in order to learn which value wins. A trailing
- * `?: return` or `?: throw` is an exit, not a candidate, and is not counted. Only the outermost
- * expression of a chain is reported, once, whichever way the chain is associated; a chain inside
- * a lambda or a parenthesized argument is its own expression.
+ * `?: return` or `?: throw` is an exit, not a candidate, and is not counted. Nor is a candidate
+ * that is just a name or a literal: `explicit ?: inherited ?: default ?: "none"` is a priority
+ * list, and the chain is its clearest form; what the rule caps is candidates that are themselves
+ * computed (`user?.profile?.displayName`, `lookup(key)`), where each `?:` hides a path of its
+ * own. Only the outermost expression of a chain is reported, once, whichever way the chain is
+ * associated; a chain inside a lambda or a parenthesized argument is its own expression.
  */
 object ElvisChainChecker : FirElvisExpressionChecker(MppCheckerKind.Common) {
     context(context: CheckerContext, reporter: DiagnosticReporter)
@@ -48,14 +54,26 @@ object ElvisChainChecker : FirElvisExpressionChecker(MppCheckerKind.Common) {
         reportKotrail(source, KotrailDiagnostics.ELVIS_CHAIN_TOO_LONG, "$fallbacks times (limit $limit)")
     }
 
-    /** The `?:` operators of the connected chain, minus the one whose right side leaves the function. */
+    /**
+     * The `?:` operators of the connected chain whose candidate (the left side) is computed, minus
+     * the one whose right side leaves the function.
+     */
     private fun FirElvisExpression.countFallbacks(): Int {
+        val lhs = lhs.unwrapSmartCast()
         val rhs = rhs.unwrapSmartCast()
-        val own = if (rhs is FirReturnExpression || rhs is FirThrowExpression) 0 else 1
-        return own + lhs.unwrapSmartCast().nestedFallbacks() + rhs.nestedFallbacks()
+        val exits = rhs is FirReturnExpression || rhs is FirThrowExpression
+        val own = if (exits || lhs.isPlainCandidate()) 0 else 1
+        return own + lhs.nestedFallbacks() + rhs.nestedFallbacks()
     }
 
     private fun FirExpression.nestedFallbacks(): Int = if (this is FirElvisExpression) countFallbacks() else 0
+
+    /** A name, `this.name`, or a literal: a candidate with no path of its own to follow. */
+    private fun FirExpression.isPlainCandidate(): Boolean = when (this) {
+        is FirLiteralExpression -> true
+        is FirPropertyAccessExpression -> explicitReceiver.let { it == null || it is FirThisReceiverExpression }
+        else -> false
+    }
 }
 
 /**

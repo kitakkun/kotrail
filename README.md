@@ -37,7 +37,7 @@ The compiler is the one gate every line of code has to pass. Kotrail puts your c
 
 ## Rules
 
-68 rules ship today, grouped by what they protect. Full pages, with every condition and
+70 rules ship today, grouped by what they protect. Full pages, with every condition and
 fixture, live under [`docs/rules/`](docs/rules/README.md); the index there lists each rule with
 its diagnostic and whether it is on by default.
 
@@ -53,7 +53,8 @@ its diagnostic and whether it is on by default.
 - **API design** (7): [Prefer explicit backing fields](docs/rules/prefer-explicit-backing-field.md) instead of `_items`,
   [Prefer value class](docs/rules/prefer-value-class.md) over a one-field data class, no mutable collection or data class in a
   public API.
-- **Errors and concurrency** (7): [Catch too broad](docs/rules/catch-too-broad.md) and [No swallowed cancellation](docs/rules/no-swallowed-cancellation.md) for
+- **Errors and concurrency** (8): [Must close](docs/rules/must-close.md) for a reader or stream created and never closed;
+  [Catch too broad](docs/rules/catch-too-broad.md) and [No swallowed cancellation](docs/rules/no-swallowed-cancellation.md) for
   the `catch (e: Exception)` reflex, [Delay for completion](docs/rules/delay-for-completion.md) for `reconnect(); delay(500)`,
   [Preconditions](docs/rules/preconditions.md) for arguments that violate the callee's own `require`, checked across modules.
 - **Memory and lifetime** (4): [Native allocation in loop](docs/rules/native-allocation-in-loop.md) for a Skia `Bitmap` created per frame,
@@ -62,9 +63,11 @@ its diagnostic and whether it is on by default.
 - **Architecture policies** (6): [Forbidden call](docs/rules/forbidden-call.md), [Dependency rules](docs/rules/dependency-rules.md),
   [Required supertype](docs/rules/required-supertype.md), [Required annotation](docs/rules/required-annotation.md) and [Visibility policy](docs/rules/visibility-policy.md) turn a project's own
   conventions into predicates over receivers, packages, names and annotations.
-- **Compose** (18): [Remember keys](docs/rules/compose/remember-keys.md) for a `remember` or `LaunchedEffect` that freezes a value its keys
+- **Compose** (19): [Remember keys](docs/rules/compose/remember-keys.md) for a `remember` or `LaunchedEffect` that freezes a value its keys
   do not cover, checked through helpers in other modules; [No global mutable state](docs/rules/compose/no-global-mutable-state.md) for a
-  top-level or `object` `var` a composable reads and never recomposes on; [No side effect in composition](docs/rules/compose/no-side-effect-in-composition.md);
+  top-level or `object` `var` a composable reads and never recomposes on; [Complexity](docs/rules/compose/complexity.md) scores the state,
+  effects and branches a composable makes a reader hold at once and names the block to extract;
+  [No side effect in composition](docs/rules/compose/no-side-effect-in-composition.md);
   [Window insets handling](docs/rules/compose/window-insets.md) and [Composition locals](docs/rules/compose/composition-locals.md) as contracts verified across modules; naming,
   modifier, callback and preview conventions.
 - **Test** (3): [Test must assert](docs/rules/test/must-assert.md), [No sleep in tests](docs/rules/test/no-sleep.md), [Test naming](docs/rules/test/naming.md).

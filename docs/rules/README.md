@@ -58,7 +58,7 @@ What a declaration exposes, and how.
 | No data class in public API | on | `KOTRAIL_DATA_CLASS_IN_PUBLIC_API` | [no-data-class-in-public-api.md](no-data-class-in-public-api.md) |
 | JvmSynthetic for internal | off: only a JVM library with Java consumers needs it | `KOTRAIL_INTERNAL_VISIBLE_TO_JAVA`, `KOTRAIL_INTERNAL_CLASS_VISIBLE_TO_JAVA` | [jvm-synthetic-for-internal.md](jvm-synthetic-for-internal.md) |
 
-## Errors and concurrency (7)
+## Errors and concurrency (8)
 
 Failures that get hidden, and waits that guess.
 
@@ -68,6 +68,7 @@ Failures that get hidden, and waits that guess.
 | No swallowed cancellation | on | `KOTRAIL_SWALLOWED_CANCELLATION` | [no-swallowed-cancellation.md](no-swallowed-cancellation.md) |
 | No ignored exception | on | `KOTRAIL_IGNORED_EXCEPTION` | [no-ignored-exception.md](no-ignored-exception.md) |
 | Catch too broad | on | `KOTRAIL_CATCH_TOO_BROAD` | [catch-too-broad.md](catch-too-broad.md) |
+| Must close | on | `KOTRAIL_RESOURCE_NOT_CLOSED` | [must-close.md](must-close.md) |
 | Delay for completion | on | `KOTRAIL_DELAY_WAITS_FOR_ASYNC_WORK` | [delay-for-completion.md](delay-for-completion.md) |
 | Preconditions | on | `KOTRAIL_PRECONDITION_VIOLATED` | [preconditions.md](preconditions.md) |
 | No unimplemented code | on | `KOTRAIL_UNIMPLEMENTED_CODE` | [no-unimplemented.md](no-unimplemented.md) |
@@ -96,7 +97,7 @@ Rules a project declares in its configuration: what may call, extend, depend on 
 | Visibility policy | on | `KOTRAIL_VISIBILITY_TOO_WIDE` | [visibility-policy.md](visibility-policy.md) |
 | Must be serializable | on | `KOTRAIL_TYPE_NOT_SERIALIZABLE` | [must-be-serializable.md](must-be-serializable.md) |
 
-## Compose (18)
+## Compose (19)
 
 | Rule | Default | Diagnostics | Page |
 |---|---|---|---|
@@ -104,6 +105,7 @@ Rules a project declares in its configuration: what may call, extend, depend on 
 | Composition locals | on | `KOTRAIL_COMPOSITION_LOCAL_NOT_PROVIDED`, `KOTRAIL_COMPOSITION_LOCAL_NOT_PROVIDED_AT_ENTRY_POINT` | [compose/composition-locals.md](compose/composition-locals.md) |
 | State delegation | on | `KOTRAIL_PREFER_STATE_DELEGATION` | [compose/state-delegation.md](compose/state-delegation.md) |
 | Nesting limit | on | `KOTRAIL_COMPOSABLE_NESTING_TOO_DEEP` | [compose/nesting.md](compose/nesting.md) |
+| Complexity | on | `KOTRAIL_COMPOSABLE_TOO_COMPLEX`, `KOTRAIL_COMPOSABLE_COMPLEXITY_HOTSPOT` | [compose/complexity.md](compose/complexity.md) |
 | No trailing callback | on | `KOTRAIL_COMPOSABLE_TRAILING_CALLBACK` | [compose/no-trailing-callback.md](compose/no-trailing-callback.md) |
 | Composable naming | on | `KOTRAIL_COMPOSABLE_NAMING` | [compose/naming.md](compose/naming.md) |
 | Modifier parameter | on | `KOTRAIL_COMPOSABLE_MODIFIER_PARAMETER` | [compose/modifier-parameter.md](compose/modifier-parameter.md) |
