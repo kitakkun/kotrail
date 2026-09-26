@@ -38,6 +38,7 @@ import com.kitakkun.kotrail.fir.checkers.DelayForCompletionChecker
 import com.kitakkun.kotrail.fir.checkers.DependencyRulesChecker
 import com.kitakkun.kotrail.fir.checkers.AsyncWorkRecorder
 import com.kitakkun.kotrail.fir.checkers.NativeAllocationInLoopChecker
+import com.kitakkun.kotrail.fir.checkers.NoLiteralLoopChecker
 import com.kitakkun.kotrail.fir.checkers.ParameterOrderChecker
 import com.kitakkun.kotrail.fir.checkers.RequiredSupertypeChecker
 import com.kitakkun.kotrail.fir.checkers.UnretainedChecker
@@ -98,6 +99,7 @@ import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirCheckNotNullCall
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirElvisExpressionChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirEqualityOperatorCallChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirSafeCallExpressionChecker
+import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirBlockChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirFunctionCallChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirQualifiedAccessExpressionChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirResolvedQualifierChecker
@@ -196,7 +198,11 @@ object KotrailExpressionCheckers : ExpressionCheckers() {
     override val booleanOperatorExpressionCheckers: Set<FirBooleanOperatorExpressionChecker> = setOf(
         NullOrEmptyIdiomChecker,
     )
+    override val blockCheckers: Set<FirBlockChecker> = setOf(
+        NoLiteralLoopChecker.ForLoops,
+    )
     override val functionCallCheckers: Set<FirFunctionCallChecker> = setOf(
+        NoLiteralLoopChecker.Calls,
         ObjCWeakReferenceChecker,
         CompositionLocalEntryPointChecker,
         WindowInsetsHandledTwiceChecker,

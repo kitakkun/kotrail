@@ -324,6 +324,12 @@ data class KotrailFileLength(
     val maxTopLevelDeclarations: Int,
 )
 
+/** Tunables for the no-literal-loop rule. From `rules.noLiteralLoop`. */
+data class KotrailLiteralLoop(
+    /** Most elements a literal collection may have and still count as folded cases rather than a table; booleans count at any size. */
+    val maxElements: Int,
+)
+
 /** Tunables for the named-arguments rule. From `rules.namedArgumentsForRepeatedTypes`. */
 data class KotrailNamedArguments(
     /** When at least this many positional arguments share a type, they must be named. */
@@ -496,6 +502,7 @@ data class KotrailConfig(
     val dependencyPolicies: List<KotrailDependencyPolicy>,
     val functionLength: KotrailFunctionLength,
     val fileLength: KotrailFileLength,
+    val literalLoop: KotrailLiteralLoop,
     val noDataClassInPublicApi: KotrailNoDataClassInPublicApi,
     val visibilityPolicy: KotrailVisibilityPolicy,
     /** The `rules.requiredAnnotation.policies` entries, by name. */
@@ -561,6 +568,7 @@ data class KotrailConfig(
         const val DEFAULT_MIN_SAME_TYPE_ARGUMENTS = 3
         const val DEFAULT_FUNCTION_MAX_LINES = 50
         const val DEFAULT_FILE_MAX_LINES = 500
+        const val DEFAULT_LITERAL_LOOP_MAX_ELEMENTS = 3
         const val DEFAULT_FILE_MAX_TOP_LEVEL = 15
         val DEFAULT_NO_DATA_CLASS_SCOPE = PublicApiScope.EXPLICIT_API
         const val DEFAULT_COMPOSABLE_MAX_LINES = 80
@@ -1060,6 +1068,7 @@ data class KotrailConfig(
                     maxLines = int(KotrailRule.FUNCTION_LENGTH, "maxLines") ?: DEFAULT_FUNCTION_MAX_LINES,
                     maxComposableLines = int(KotrailRule.FUNCTION_LENGTH, "maxComposableLines") ?: DEFAULT_COMPOSABLE_MAX_LINES,
                 ),
+                literalLoop = KotrailLiteralLoop(maxElements = int(KotrailRule.NO_LITERAL_LOOP, "maxElements") ?: DEFAULT_LITERAL_LOOP_MAX_ELEMENTS),
                 fileLength = KotrailFileLength(
                     maxLines = int(KotrailRule.FILE_LENGTH, "maxLines") ?: DEFAULT_FILE_MAX_LINES,
                     maxTopLevelDeclarations = int(KotrailRule.FILE_LENGTH, "maxTopLevelDeclarations") ?: DEFAULT_FILE_MAX_TOP_LEVEL,

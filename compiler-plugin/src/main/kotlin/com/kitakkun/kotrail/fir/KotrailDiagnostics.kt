@@ -107,6 +107,9 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Arguments: the name's position (`12 of 14`), the limit; reported on each name past the limit. */
     val TOO_MANY_TOP_LEVEL_DECLARATIONS = tunable2<KtNamedDeclaration, String, String>("TOO_MANY_TOP_LEVEL_DECLARATIONS", KotrailRule.FILE_LENGTH, NAME)
 
+    /** Arguments: what is looped over (`loops over 2 literal elements`), the advice; reported on the looped expression. */
+    val LITERAL_LOOP = tunable2<KtElement, String, String>("LITERAL_LOOP", KotrailRule.NO_LITERAL_LOOP, WHOLE)
+
     /** Argument: how often, e.g. `3 times (limit 2)`. Reported on the outermost `?:` expression. */
     val ELVIS_CHAIN_TOO_LONG = tunable1<KtElement, String>("ELVIS_CHAIN_TOO_LONG", KotrailRule.NULL_CHAIN_LENGTH, WHOLE)
 
@@ -734,6 +737,11 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         map.put1(
             KotrailDiagnostics.FUNCTION_TOO_LONG,
             "[Kotrail] This function is {0}. Split it so that each piece does one thing and has a name.",
+        )
+        map.put2(
+            KotrailDiagnostics.LITERAL_LOOP,
+            "[Kotrail] This {0} and the body branches on the element: cases the author already knows, folded into a loop " +
+                "the reader has to unfold. Instead, {1}.",
         )
         map.put1(
             KotrailDiagnostics.FILE_TOO_LONG,
