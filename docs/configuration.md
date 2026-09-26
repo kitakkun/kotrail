@@ -116,6 +116,7 @@ own; a rule not listed has none.
 | `preferIdiom` | `disabled` | `[]` | Idioms not asked for: `emptiness`, `negation`, `nullOrEmpty`, `chain`, `elvis`. |
 | | `chains` | `[]` | The project's own chain idioms, each `<inner fqn> then <outer fqn> -> <replacement fqn>`. |
 | | `calls` | `[]` | The project's own call idioms, each `<fqn>(<literal>) -> <replacement fqn>`. |
+| `native.objcThrows` | `packages` | `[]` | Package globs of the API the framework exports to Swift; when set, only public functions in these packages are checked. Empty: every public function of an Apple compilation. |
 | `nativeAllocationInLoop` | `types` | `[org.jetbrains.skia.impl.Managed, java.awt.image.VolatileImage]` | Types (subtypes included) whose instances hold native memory that only a cleaner frees. Replaces the default list. |
 | | `factories` | `[java.nio.ByteBuffer.allocateDirect]` | Factory functions that return such an instance. Replaces the default list. |
 | | `callbacks` | `collect`, `onEach`, `withFrameNanos`, `repeat`, `forEach`, ... | Functions whose lambda runs once per item or frame, counted like a loop body. Replaces the default list. |

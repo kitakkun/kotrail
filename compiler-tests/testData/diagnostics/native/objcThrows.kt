@@ -75,6 +75,22 @@ fun catchesIt(text: String): Config = try {
     Config("fallback")
 }
 
+// Not reported: an inline function with a reified type parameter has no Objective-C entry point.
+inline fun <reified T> reifiedThrows(text: String): T {
+    check(text.isNotEmpty())
+    throw ParseException(T::class.simpleName ?: text)
+}
+
+// Not reported: passing cancellation on from a catch clause is not a new failure.
+class CancellationException(message: String) : Exception(message)
+
+fun guarded(block: () -> Config): Config? = try {
+    block()
+} catch (e: Throwable) {
+    if (e is CancellationException) throw e
+    null
+}
+
 // Not reported: the exception stays behind a lambda that runs later, and a caller of a quiet function.
 fun deferred(text: String): () -> Config = { throws(text) }
 
@@ -83,7 +99,8 @@ fun callsQuiet(text: String): Config = quiet(text)
 fun main() {
     declared(""); quiet(""); throws(""); requires(""); callsDeclared(""); callsThrowing(""); throwsInInlineLambda(emptyList())
     Parser().parse(""); declaredCaller(""); hidden(""); HiddenParser().parse(""); internalCaller(""); privateCaller("")
-    ThrowingReader().read(""); catchesAll(""); catchesIt(""); deferred("")(); callsQuiet("")
+    ThrowingReader().read(""); catchesAll(""); catchesIt(""); deferred("")(); callsQuiet(""); guarded { quiet("") }
+    reifiedThrows<String>("")
 }
 
 /* GENERATED_FIR_TAGS: classDeclaration, classReference, functionDeclaration, functionalType, ifExpression,

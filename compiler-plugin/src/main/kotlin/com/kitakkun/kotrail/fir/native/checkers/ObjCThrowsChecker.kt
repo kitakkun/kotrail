@@ -40,7 +40,9 @@ import org.jetbrains.kotlin.name.Name
  * `throw`, a precondition, a call to a `@Throws` function, or a call to a function of this module
  * that lets one out, none of them under a `try` that catches it. Only Apple native compilations
  * are checked (where `kotlinx.cinterop.ObjCObject` resolves), and only what the framework
- * exports: public API, not `@HiddenFromObjC`, not an override (its signature is fixed elsewhere).
+ * exports: public API, not `@HiddenFromObjC`, not an override (its signature is fixed elsewhere),
+ * not an inline function with a reified type parameter (which has no Objective-C entry point).
+ * `native.objcThrows.packages` narrows it to the packages a framework actually exports.
  */
 object ObjCThrowsChecker : NamedFunctionChecker(MppCheckerKind.Common) {
     private val HIDDEN_FROM_OBJC = ClassId(FqName("kotlin.native"), Name.identifier("HiddenFromObjC"))
@@ -54,6 +56,13 @@ object ObjCThrowsChecker : NamedFunctionChecker(MppCheckerKind.Common) {
         if (session.symbolProvider.getClassLikeSymbolByClassId(ObjCNames.OBJC_OBJECT) == null) return
         if (!declaration.effectiveVisibility.publicApi || declaration.isOverride || declaration.body == null) return
         if (declaration.name.asString() == "main") return
+        // An inline function with a reified type parameter has no Objective-C entry point at all.
+        if (declaration.typeParameters.any { it.isReified }) return
+        val packages = session.kotrailConfig.objcThrows.packages
+        if (packages.isNotEmpty()) {
+            val packageName = declaration.symbol.callableId.packageName.asString()
+            if (packages.none { it.matches(packageName) }) return
+        }
         val service = session.throwsService
         if (service.declaredThrows(declaration.symbol) != null) return
         if (declaration.symbol.hasAnnotation(HIDDEN_FROM_OBJC, session)) return

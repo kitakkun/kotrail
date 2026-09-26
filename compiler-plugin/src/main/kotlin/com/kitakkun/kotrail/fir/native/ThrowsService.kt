@@ -122,7 +122,8 @@ class ThrowsService(session: FirSession) : FirExtensionSessionComponent(session)
 
         override fun visitThrowExpression(throwExpression: FirThrowExpression) {
             val name = throwExpression.exception.resolvedType.fullyExpandedType(session).classId?.shortClassName?.asString()
-            record(name, Thrown("${name ?: "an exception"} (thrown here)", name))
+            // `if (e is CancellationException) throw e` in a catch clause passes cancellation on; a suspend caller expects it.
+            if (name != "CancellationException") record(name, Thrown("${name ?: "an exception"} (thrown here)", name))
             visitElement(throwExpression)
         }
 

@@ -2,7 +2,7 @@
 
 **Diagnostic:** `KOTRAIL_OBJC_EXPORT_MISSING_THROWS` (error, on the function name)
 **Key:** `rules.native.objcThrows` (on by default)
-**Settings:** none
+**Settings:** `packages` (default empty: every public function of an Apple compilation)
 
 ## What it rejects
 
@@ -39,7 +39,17 @@ declaration at the boundary, where the exception becomes an error the caller see
 - The compilation is an Apple native one (`kotlinx.cinterop.ObjCObject` resolves); everywhere
   else the rule is silent.
 - The function is public API (`public` in a public class, or top level), has a body, is not an
-  `override`, and is not `@HiddenFromObjC` itself or through its class.
+  `override`, is not `@HiddenFromObjC` itself or through its class, and is not an inline function
+  with a reified type parameter, which Kotlin/Native never exports.
+- When `packages` is set, the function's package matches one of the globs. A framework rarely
+  exports every module it links; naming the packages Swift actually sees keeps the rule to the
+  boundary:
+
+  ```yaml
+  rules:
+    native.objcThrows:
+      packages: [com.acme.sdk.*]
+  ```
 - Its body can let an exception out: a `throw`; a call to `require`, `requireNotNull`, `check`,
   `checkNotNull` or `error`; a call to a function that declares `@Throws`; or a call to a function
   of this module that lets one out itself, transitively. The lambda of an inline function
@@ -54,6 +64,8 @@ declaration at the boundary, where the exception becomes an error the caller see
 - The function declares `@Throws`, whatever it lists.
 - The function is internal, private, protected, an override, or hidden from Objective-C.
 - The throw sits in a lambda that runs later (a callback, a coroutine), behind its own boundary.
+- The throw passes a `CancellationException` on (`if (e is CancellationException) throw e` in a
+  catch clause): cancellation transparency, which a suspending caller expects, not a failure.
 - The function calls only functions of other modules without `@Throws`: what a library throws
   without declaring it is unknown to the rule.
 
