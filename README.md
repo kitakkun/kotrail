@@ -36,7 +36,7 @@ The compiler is the one gate every line of code has to pass. Kotrail puts your c
 
 ## Rules
 
-64 rules ship today, grouped by what they protect. Full pages, with every condition and
+65 rules ship today, grouped by what they protect. Full pages, with every condition and
 fixture, live under [`docs/rules/`](docs/rules/README.md); the index there lists each rule with
 its diagnostic and whether it is on by default.
 
@@ -59,8 +59,9 @@ its diagnostic and whether it is on by default.
 - **Architecture policies** (6): [Forbidden call](docs/rules/forbidden-call.md), [Dependency rules](docs/rules/dependency-rules.md),
   [Required supertype](docs/rules/required-supertype.md), [Required annotation](docs/rules/required-annotation.md) and [Visibility policy](docs/rules/visibility-policy.md) turn a project's own
   conventions into predicates over receivers, packages, names and annotations.
-- **Compose** (17): [Remember keys](docs/rules/compose/remember-keys.md) for a `remember` or `LaunchedEffect` that freezes a value its keys
-  do not cover, checked through helpers in other modules; [No side effect in composition](docs/rules/compose/no-side-effect-in-composition.md);
+- **Compose** (18): [Remember keys](docs/rules/compose/remember-keys.md) for a `remember` or `LaunchedEffect` that freezes a value its keys
+  do not cover, checked through helpers in other modules; [No global mutable state](docs/rules/compose/no-global-mutable-state.md) for a
+  top-level or `object` `var` a composable reads and never recomposes on; [No side effect in composition](docs/rules/compose/no-side-effect-in-composition.md);
   [Window insets handling](docs/rules/compose/window-insets.md) and [Composition locals](docs/rules/compose/composition-locals.md) as contracts verified across modules; naming,
   modifier, callback and preview conventions.
 - **Test** (3): [Test must assert](docs/rules/test/must-assert.md), [No sleep in tests](docs/rules/test/no-sleep.md), [Test naming](docs/rules/test/naming.md).

@@ -61,6 +61,7 @@ import com.kitakkun.kotrail.fir.compose.checkers.ComposableNamingChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposableNestingChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposableManifestChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposableCallbackInModelChecker
+import com.kitakkun.kotrail.fir.compose.checkers.ComposableGlobalMutableStateChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposablePreviewCoverageChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposablePreviewParameterChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposablePreviewRequiredChecker
@@ -168,6 +169,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
         LiveVariableBudgetChecker,
         AsyncWorkRecorder,
         ComposableSideEffectChecker,
+        ComposableGlobalMutableStateChecker,
         ComposableUnstableParameterChecker,
     )
     override val callableDeclarationCheckers: Set<FirCallableDeclarationChecker> = setOf(

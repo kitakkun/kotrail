@@ -44,6 +44,8 @@ data class KotrailComposeSettings(
     val stableTypes: List<String>,
     /** Whether a `@Composable` function-typed property of a model handed to a UI composable is allowed. */
     val allowComposableSlots: Boolean,
+    /** Whether an assignment to a global `var` inside a composable's event handler is reported, besides those made during composition. */
+    val globalStateHandlerWrites: Boolean,
     /** How many previews of one file must build the same model inline before they are reported. */
     val previewParameterMinPreviews: Int,
     /** Fully qualified functions whose trailing lambda is keyed by their other arguments: remember, LaunchedEffect and the like. */
@@ -916,6 +918,7 @@ data class KotrailConfig(
                     maxComposablesPerFile = int(KotrailRule.COMPOSE_COMPOSABLES_PER_FILE, "max") ?: DEFAULT_MAX_COMPOSABLES_PER_FILE,
                     countOverloadsSeparately = boolean(ruleNode(KotrailRule.COMPOSE_COMPOSABLES_PER_FILE), "countOverloadsSeparately") ?: false,
                     allowComposableSlots = boolean(ruleNode(KotrailRule.COMPOSE_NO_CALLBACK_IN_MODEL), "allowComposableSlots") ?: true,
+                    globalStateHandlerWrites = boolean(ruleNode(KotrailRule.COMPOSE_NO_GLOBAL_MUTABLE_STATE), "handlerWrites") ?: false,
                     previewParameterMinPreviews = int(KotrailRule.COMPOSE_PREVIEW_PARAMETER, "minPreviews") ?: 2,
                     rememberKeysFunctions = list(KotrailRule.COMPOSE_REMEMBER_KEYS, "functions") ?: DEFAULT_REMEMBER_KEYS_FUNCTIONS,
                     sideEffectTypes = list(KotrailRule.COMPOSE_NO_SIDE_EFFECT_IN_COMPOSITION, "types") ?: DEFAULT_SIDE_EFFECT_TYPES,

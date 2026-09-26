@@ -86,6 +86,7 @@ enum class KotrailRule(
     COMPOSE_PREVIEW_PARAMETER("compose.previewParameter", Severity.ERROR, defaultEnabled = false),
     COMPOSE_NO_CALLBACK_IN_MODEL("compose.noCallbackInModel", Severity.ERROR),
     COMPOSE_REMEMBER_KEYS("compose.rememberKeys", Severity.ERROR),
+    COMPOSE_NO_GLOBAL_MUTABLE_STATE("compose.noGlobalMutableState", Severity.ERROR),
 
     TEST_NAMING("test.naming", Severity.ERROR),
     TEST_NO_SLEEP("test.noSleep", Severity.ERROR),
