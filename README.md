@@ -9,9 +9,10 @@ needed) that adds checks the standard compiler does not provide. It turns the co
 team already agrees on into compile errors, so code written by AI assistants stays on the rails
 instead of drifting a little further with every generation.
 
-> **Status: early development.** The rules are applied through a Gradle plugin.
-> Every rule can be switched off or demoted to a warning, per project and per compilation.
-> Nothing is published yet. Feedback on the direction is very welcome.
+> **Status: early development.** No release yet; snapshots of every artifact are published to
+> the Central Portal snapshot repository on each push to `main` (see
+> [Trying a snapshot](#trying-a-snapshot)). Every rule can be switched off or demoted to a
+> warning, per project and per compilation. Feedback on the direction is very welcome.
 
 ## Why
 
@@ -89,9 +90,9 @@ kotrail {
 }
 ```
 
-Every rule is on at error severity with no configuration at all, except the ones marked off by
-default in the table above. Everything else is one
-`kotrail.yaml`, with a JSON Schema for editor completion:
+Every rule is on at error severity with no configuration at all, except the few the
+[rules index](docs/rules/README.md) marks off by default, each with its reason. Everything else
+is one `kotrail.yaml`, with a JSON Schema for editor completion:
 
 ```yaml
 rules:
@@ -106,6 +107,36 @@ rules:
 
 See [`docs/gradle-plugin.md`](docs/gradle-plugin.md) for the whole DSL and the artifact scheme, and
 [`docs/configuration.md`](docs/configuration.md) for every key, layering, and suppression.
+
+## Trying a snapshot
+
+Until the first release, the artifacts are snapshots under `0.1.0-SNAPSHOT` on the Central
+Portal snapshot repository. Add it for plugins and dependencies, and use the snapshot version:
+
+```kotlin
+// settings.gradle.kts
+pluginManagement {
+    repositories {
+        maven("https://central.sonatype.com/repository/maven-snapshots/")
+        gradlePluginPortal()
+    }
+}
+dependencyResolutionManagement {
+    repositories {
+        maven("https://central.sonatype.com/repository/maven-snapshots/")
+        mavenCentral()
+    }
+}
+
+// build.gradle.kts
+plugins {
+    kotlin("jvm") version "2.4.20"
+    id("com.kitakkun.kotrail") version "0.1.0-SNAPSHOT"
+}
+```
+
+The compiler plugin is published once per supported Kotlin version and the Gradle plugin picks
+the matching one; see [docs/publishing.md](docs/publishing.md) for the artifact scheme.
 
 ## Contributing
 

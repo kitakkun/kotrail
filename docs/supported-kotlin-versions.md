@@ -118,5 +118,7 @@ Prefer sharing. Only add an overlay file when the difference is genuinely in the
 - `gradle.properties` sets `kotlin.compiler.execution.strategy=in-process`. Flipping
   `kotlin.compiler` between builds otherwise leaves one Kotlin daemon per version behind and Gradle
   warns about multiple daemon sessions.
-- `gradle.properties` also pins `org.gradle.java.home` to a local JDK 21. CI overrides it with
-  `-Dorg.gradle.java.home="$JAVA_HOME"`.
+- The build needs JDK 21: the Kotlin compiler bundled in Gradle cannot parse Java 25's version
+  string. A machine whose default JDK is newer pins the launcher in its own
+  `~/.gradle/gradle.properties` (`org.gradle.java.home=<path to a JDK 21>`), never in the
+  repository's; CI writes the same line from `$JAVA_HOME`.

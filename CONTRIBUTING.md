@@ -35,6 +35,8 @@ kotrail/
 ## Building and testing
 
 Requirements: one of the supported Kotlin versions (2.3.21, 2.4.0, 2.4.10, 2.4.20), JDK 21 and Gradle 9.5 (the wrapper is included).
+If your default JDK is newer than 21, point the Gradle launcher at a JDK 21 in your own
+`~/.gradle/gradle.properties` (`org.gradle.java.home=<path>`); the repository does not pin one.
 
 ```bash
 ./gradlew build                                  # builds everything and runs the compiler tests
