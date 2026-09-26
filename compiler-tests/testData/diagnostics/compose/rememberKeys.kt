@@ -198,6 +198,58 @@ fun KeyedLabel(user: User) {
 // Not reported: not a composable (the Compose compiler is not applied here, so the call compiles).
 fun plain(amount: Long): String = remember { format(amount) }
 
+// Reported inside the helper, as any keyless effect: block is kept for the life of the collection.
+@Composable
+fun ActionEffect(events: Observable<String>, block: (String) -> Unit) {
+    <!KOTRAIL_EFFECT_KEY_MISSING!>LaunchedEffect(Unit) { events.collect { block(it) } }<!>
+}
+
+// Not reported: a helper that keeps its lambda current.
+@Composable
+fun CurrentActionEffect(events: Observable<String>, block: (String) -> Unit) {
+    val current by rememberUpdatedState(block)
+    LaunchedEffect(Unit) { events.collect { current(it) } }
+}
+
+// Reported on the argument: the lambda handed to ActionEffect is kept by its effect, and it reads onNavigate.
+@Composable
+fun Screen(events: Observable<String>, onNavigate: (String) -> Unit) {
+    ActionEffect(events, <!KOTRAIL_EFFECT_CAPTURED_BY_CALLEE!>{ onNavigate(it) }<!>)
+}
+
+// Reported on the argument: a callback parameter handed directly is kept the same way.
+@Composable
+fun DirectScreen(events: Observable<String>, onNavigate: (String) -> Unit) {
+    ActionEffect(events, <!KOTRAIL_EFFECT_CAPTURED_BY_CALLEE!>onNavigate<!>)
+}
+
+// Not reported: the caller keeps the callback current itself, reads nothing that can go stale, or
+// hands the lambda to a helper that keeps it current.
+@Composable
+fun SafeScreen(events: Observable<String>, onNavigate: (String) -> Unit) {
+    val currentOnNavigate by rememberUpdatedState(onNavigate)
+    ActionEffect(events) { currentOnNavigate(it) }
+    ActionEffect(events) { track("constant") }
+    CurrentActionEffect(events) { onNavigate(it) }
+}
+
+// Reported: Outer hands its block to Inner, which keeps it, so Outer keeps it too; the caller of
+// Outer is reported at its argument like a caller of Inner.
+@Composable
+fun Inner(events: Observable<String>, block: (String) -> Unit) {
+    <!KOTRAIL_EFFECT_KEY_MISSING!>LaunchedEffect(Unit) { events.collect { block(it) } }<!>
+}
+
+@Composable
+fun Outer(events: Observable<String>, block: (String) -> Unit) {
+    Inner(events, <!KOTRAIL_EFFECT_CAPTURED_BY_CALLEE!>block<!>)
+}
+
+@Composable
+fun OuterScreen(events: Observable<String>, onNavigate: (String) -> Unit) {
+    Outer(events, <!KOTRAIL_EFFECT_CAPTURED_BY_CALLEE!>{ onNavigate(it) }<!>)
+}
+
 /* GENERATED_FIR_TAGS: additiveExpression, assignment, classDeclaration, comparisonExpression, functionDeclaration,
 functionalType, ifExpression, incrementDecrementExpression, integerLiteral, lambdaLiteral, localProperty, nullableType,
 primaryConstructor, propertyDeclaration, propertyDelegate, setter, stringLiteral, suspend, whileLoop */

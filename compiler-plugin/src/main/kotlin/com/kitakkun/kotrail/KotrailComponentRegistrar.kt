@@ -4,6 +4,7 @@ package com.kitakkun.kotrail
 
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailFirExtensionRegistrar
+import com.kitakkun.kotrail.ir.compose.effects.InferredEffectCaptureMetadataWriter
 import com.kitakkun.kotrail.ir.compose.insets.InferredWindowInsetsMetadataWriter
 import com.kitakkun.kotrail.ir.compose.locals.InferredCompositionLocalsMetadataWriter
 import com.kitakkun.kotrail.ir.preconditions.InferredPreconditionsMetadataWriter
@@ -30,6 +31,9 @@ class KotrailComponentRegistrar : CompilerPluginRegistrar() {
         }
         if (config.isEnabled(KotrailRule.PRECONDITIONS)) {
             IrGenerationExtension.registerExtension(InferredPreconditionsMetadataWriter())
+        }
+        if (config.isEnabled(KotrailRule.COMPOSE_REMEMBER_KEYS)) {
+            IrGenerationExtension.registerExtension(InferredEffectCaptureMetadataWriter())
         }
     }
 }

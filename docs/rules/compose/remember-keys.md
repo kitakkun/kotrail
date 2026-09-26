@@ -1,6 +1,6 @@
 # Remember keys (Compose)
 
-**Diagnostic:** `KOTRAIL_EFFECT_KEY_MISSING` (error, on the call)
+**Diagnostics:** `KOTRAIL_EFFECT_KEY_MISSING` (error, on the call), `KOTRAIL_EFFECT_CAPTURED_BY_CALLEE` (error, on the argument handed to a helper that keeps it)
 **Key:** `rules.compose.rememberKeys` (on by default)
 **Settings:** `functions` (default `remember`, `rememberSaveable`, `LaunchedEffect`, `DisposableEffect`, `produceState`)
 
@@ -19,7 +19,8 @@ fun Price(amount: Long, events: Flow<Event>, onEvent: (Event) -> Unit) {
 
 ## What it asks for
 
-There are two right fixes, and the message says which one applies to each name.
+Each value the lambda reads without a key can be fixed two ways, and the message says which
+applies to it; between the shapes below, none is preferred.
 
 A data value a `remember { }` computes from belongs in the keys:
 
@@ -27,22 +28,17 @@ A data value a `remember { }` computes from belongs in the keys:
 val text = remember(amount) { format(amount) }
 ```
 
-A callback captured by an effect is read through `rememberUpdatedState`: restarting the
-collection because a lambda changed identity is itself the classic bug.
+A callback captured by an effect is kept current rather than keyed: restarting the collection
+because a lambda changed identity is itself the classic bug. Either wrap the value:
 
 ```kotlin
 val currentOnEvent by rememberUpdatedState(onEvent)
 LaunchedEffect(Unit) { events.collect { currentOnEvent(it) } }
 ```
 
-A data value read by a long-lived effect body (a `collect`, a loop, `onDispose`, a body that
-waits for cancellation) goes in the keys if the work should restart when it changes, and
-through `rememberUpdatedState` otherwise; the message offers both.
-
-When an effect reads several values, wrapping each one is more ceremony than the effect
-deserves. One lambda that does the work captures them all, and only that lambda needs
-`rememberUpdatedState`: the lambda is recreated on every recomposition with the current
-values, and the effect reads the latest lambda.
+or wrap what the body does with it. One lambda recreated on every recomposition captures the
+current values, and only that lambda needs `rememberUpdatedState`; with several values this is
+the same fix written once:
 
 ```kotlin
 val handle by rememberUpdatedState<(Request) -> Unit> { request ->
@@ -54,12 +50,45 @@ val handle by rememberUpdatedState<(Request) -> Unit> { request ->
 LaunchedEffect(channel) { channel.requests.collect { handle(it) } }
 ```
 
-The message suggests this form whenever two or more values are missing from one effect.
+A data value read by a long-lived effect body (a `collect`, a loop, `onDispose`, a body that
+waits for cancellation) goes in the keys if the work should restart when it changes, and is kept
+current otherwise; the message offers both.
 
 A lambda keyed on nothing runs once and keeps the first value of whatever it captured: the
 composable shows the old price, the handler stored in a remembered holder calls the old callback,
 the collector calls the first composition's `onEvent` forever. Nothing at the call site says so,
 which is why this survives review and why generated code does it constantly.
+
+## Helpers that hide the effect
+
+A project's `ActionEffect(block)` or `ErrorEffect(block)` wraps the effect once for every
+screen. Its callers pass lambdas that read their own parameters, and nothing at the call site
+looks like an effect:
+
+```kotlin
+@Composable
+fun ActionEffect(actions: Flow<Action>, block: (Action) -> Unit) {
+    LaunchedEffect(Unit) { actions.collect { block(it) } }        // reported here: block
+}
+
+@Composable
+fun Screen(actions: Flow<Action>, onNavigate: (Route) -> Unit) {
+    ActionEffect(actions) { onNavigate(it.route) }                 // reported on the lambda: onNavigate
+}
+```
+
+The rule summarizes each composable: the parameters its body keeps for the life of an effect
+without keeping them current, following calls into other composables, so that a helper that only
+hands its `block` on to a helper that keeps it counts too. In the module that declares the
+helper the summary comes from its body; for callers in other modules it is written into the
+class file as `@InferredEffectCapture(captured = ["block"])` metadata (the
+`kotrail-annotations` artifact declares the annotation; the plugin writes it, nobody writes it
+by hand). A call that hands a lambda, or a callback parameter, for a captured parameter is
+reported at the argument as `KOTRAIL_EFFECT_CAPTURED_BY_CALLEE`, naming what the lambda reads.
+The fix is the caller's: keep the values current, or hand a lambda that reads nothing that can
+go stale. A helper that reads its lambda through `rememberUpdatedState` records nothing, and its
+callers are quiet. A library compiled without Kotrail carries no metadata and is taken as
+keeping its lambdas current.
 
 ## When it fires
 
@@ -106,15 +135,16 @@ restart when it changes, otherwise read it through rememberUpdatedState)`.
 
 ## Fixtures
 
-`compiler-tests/testData/diagnostics/compose/rememberKeys.kt`
+`compiler-tests/testData/diagnostics/compose/rememberKeys.kt`, and
+`compiler-tests/testData/diagnostics/compose/rememberKeysAcrossModules.kt` for the metadata
+between a library and its caller.
 
 ## Implementation notes
 
-`fir/compose/checkers/ComposableRememberKeysChecker.kt`, a `FirFunctionCallChecker`. The
-enclosing composable's non-`State` parameters are flagged, then its plain locals declared before
-the call whose initializer reads something flagged, each with what it depends on; a second
-visitor walks the lambda body with an ancestor stack, skipping assignment targets, seed
-arguments and observing lambdas, marking reads under long-lived lambdas and loops, and
-dropping reads a key covers by symbol, by dependency, or by the text of the property path the
-read roots. The advice per name follows from the value's type (function or data), the call
-(remember or effect) and whether a read sits in a long-lived body.
+`fir/compose/checkers/ComposableRememberKeysChecker.kt`, a `FirFunctionCallChecker`, reports a
+keyed call from the analysis in `fir/compose/effects/EffectCaptureAnalysis.kt` (flagged values,
+coverage by symbol and property path, long-lived bodies, seeds, the one-shot prefix), and a call
+into a composable whose captured parameters, from `EffectCaptureService` (a session component:
+source bodies, or `@InferredEffectCapture` on the classpath, memoized, transitive), receive a
+lambda or a callback. `ir/compose/effects/InferredEffectCaptureMetadataWriter.kt` writes the
+metadata onto non-private composables after Fir2Ir, from the cache the checker warmed.

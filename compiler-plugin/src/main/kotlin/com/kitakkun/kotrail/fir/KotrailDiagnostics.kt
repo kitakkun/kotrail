@@ -145,6 +145,9 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Arguments: the call, the names read in its lambda but missing from its keys; reported on the call. */
     val EFFECT_KEY_MISSING = tunable2<KtElement, String, String>("EFFECT_KEY_MISSING", KotrailRule.COMPOSE_REMEMBER_KEYS, WHOLE)
 
+    /** Arguments: the callee and its parameter, the values the passed lambda reads; reported on the argument of a call to a composable that keeps that parameter in a long-lived effect. */
+    val EFFECT_CAPTURED_BY_CALLEE = tunable2<KtElement, String, String>("EFFECT_CAPTURED_BY_CALLEE", KotrailRule.COMPOSE_REMEMBER_KEYS, WHOLE)
+
     /** Argument: the test's name; reported on a test function that asserts nothing. */
     val TEST_WITHOUT_ASSERTION = tunable1<KtNamedFunction, String>("TEST_WITHOUT_ASSERTION", KotrailRule.TEST_MUST_ASSERT, NAME)
 
@@ -641,7 +644,13 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         )
         map.put2(
             KotrailDiagnostics.EFFECT_KEY_MISSING,
-            "[Kotrail] The lambda of ''{0}'' captures {1}. When that value changes, the lambda keeps the one it saw first.",
+            "[Kotrail] The lambda of ''{0}'' captures {1}: when that changes, the lambda keeps the value it saw first. " +
+                "Add it to the keys, or keep it current with rememberUpdatedState (per value, or one lambda that does the work).",
+        )
+        map.put2(
+            KotrailDiagnostics.EFFECT_CAPTURED_BY_CALLEE,
+            "[Kotrail] {0} keeps this lambda for the life of its effect, and the lambda reads {1}: when that changes, the " +
+                "effect keeps the value it saw first. Keep it current with rememberUpdatedState.",
         )
         map.put1(
             KotrailDiagnostics.TEST_WITHOUT_ASSERTION,
