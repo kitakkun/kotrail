@@ -1,11 +1,11 @@
 // KOTRAIL_CONFIG: rules.noExternalStateWrite=on, rules.noExternalStateWrite.plainVars=true
+// FILE: Owners.kt
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.update
-import org.junit.jupiter.api.Test
 
 class Scene {
     val capturing: MutableState<Boolean> = mutableStateOf(false)
@@ -53,6 +53,59 @@ class Counter {
     fun describe(): String = "count $count"
 }
 
+object Session {
+    val active = mutableStateOf(false)
+
+    fun isActive(): Boolean = active.value
+}
+
+// A data class with no functions is a bag of values.
+data class Point(var x: Int, var y: Int)
+
+// A class with no functions has no method to add.
+class Settings {
+    var volume = 0
+    val muted = mutableStateOf(false)
+}
+
+class Holder(val flag: MutableState<Boolean>)
+
+// A data class that declares a function has behavior of its own.
+data class Frame(var index: Int) {
+    fun render(): String = "frame $index"
+}
+
+data class Canvas(val flag: MutableState<Boolean>) {
+    fun render(): String = if (flag.value) "busy" else "idle"
+}
+
+internal class Draft {
+    val text = mutableStateOf("")
+
+    fun isEmpty(): Boolean = text.value.isEmpty()
+}
+
+// A public holder and the component that drives it, declared in one file.
+class PaneState {
+    val fraction: MutableState<Float> = mutableStateOf(0f)
+}
+
+fun draggable(onDelta: (Float) -> Unit) {
+    onDelta(0f)
+}
+
+// Not reported: the owner is declared in the writer's file, so the two are one unit.
+fun Pane(state: PaneState) {
+    state.fraction.value = 0.5f
+    draggable(onDelta = { state.fraction.value = it })
+}
+
+// FILE: Writers.kt
+import androidx.compose.runtime.mutableStateOf
+import kotlinx.coroutines.flow.update
+import org.junit.jupiter.api.Test
+
+// The owners live in Owners.kt, so every write below comes from another file.
 class CaptureTool(private val scene: Scene, private val repo: Repository, private val counter: Counter) {
     // Reported: another class flips the scene's flag.
     fun capture() {
@@ -85,37 +138,11 @@ fun stopCapture(scene: Scene) {
     <!KOTRAIL_STATE_WRITTEN_OUTSIDE_OWNER!>scene.capturing.value = false<!>
 }
 
-object Session {
-    val active = mutableStateOf(false)
-
-    fun isActive(): Boolean = active.value
-}
-
 // Reported: an object's state written from another class.
 class Login {
     fun signIn() {
         <!KOTRAIL_STATE_WRITTEN_OUTSIDE_OWNER!>Session.active.value = true<!>
     }
-}
-
-// A data class with no functions is a bag of values.
-data class Point(var x: Int, var y: Int)
-
-// A class with no functions has no method to add.
-class Settings {
-    var volume = 0
-    val muted = mutableStateOf(false)
-}
-
-class Holder(val flag: MutableState<Boolean>)
-
-// A data class that declares a function has behavior of its own.
-data class Frame(var index: Int) {
-    fun render(): String = "frame $index"
-}
-
-data class Canvas(val flag: MutableState<Boolean>) {
-    fun render(): String = if (flag.value) "busy" else "idle"
 }
 
 class Editor {
@@ -179,13 +206,7 @@ class EditingPresenter {
     }
 }
 
-internal class Draft {
-    val text = mutableStateOf("")
-
-    fun isEmpty(): Boolean = text.value.isEmpty()
-}
-
-// Reported: an internal owner is visible to the whole module, not only to this file.
+// Reported: an internal owner declared in another file is visible to the whole module.
 internal class DraftPresenter(private val draft: Draft) {
     fun type(text: String) {
         <!KOTRAIL_STATE_WRITTEN_OUTSIDE_OWNER!>draft.text.value = text<!>

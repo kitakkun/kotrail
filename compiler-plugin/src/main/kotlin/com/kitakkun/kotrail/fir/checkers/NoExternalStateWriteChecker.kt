@@ -34,6 +34,7 @@ import org.jetbrains.kotlin.fir.expressions.FirVariableAssignment
 import org.jetbrains.kotlin.fir.expressions.unwrapArgument
 import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
 import org.jetbrains.kotlin.fir.resolve.fullyExpandedType
+import org.jetbrains.kotlin.fir.resolve.providers.firProvider
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirAnonymousFunctionSymbol
@@ -86,8 +87,8 @@ import org.jetbrains.kotlin.types.AbstractTypeChecker
  * Quiet: a write lexically inside the owner (its members, companion, nested and inner classes,
  * and lambdas and local functions in them); a write through `this` of a class, which includes a
  * subclass changing what it inherited; locals and top-level properties (`compose.noGlobalMutableState`
- * covers global state); an owner that is a `private` top-level class, visible only in the file
- * that writes it; for a plain `var`, an owner with no functions of its own, data class or not, a
+ * covers global state); an owner declared in the same source file as the write (a component
+ * writing its own state holder; a `private` top-level class is always this case); for a plain `var`, an owner with no functions of its own, data class or not, a
  * bag of values with no behavior to add a method to (a state holder is reported on every owner:
  * a flag flipped from outside is the bug whatever else the class declares); for a plain `var`, an
  * owner from another module or a library, whose API is what its authors chose (a state holder of
@@ -158,7 +159,7 @@ object NoExternalStateWriteChecker {
         val owner = ownerOf(property, session) ?: return
         if (plainVar && owner.origin != FirDeclarationOrigin.Source) return
         if (plainVar && owner.isBag()) return
-        if (owner.isFilePrivate()) return
+        if (owner.isDeclaredInWriterFile(session)) return
         val receiver = access.dispatchReceiver?.unwrapSmartCast()
         if (receiver.isThisOfClass()) return
         if (receiver != null && isFreshObject(receiver)) return
@@ -185,11 +186,17 @@ object NoExternalStateWriteChecker {
     }
 
     /**
-     * A `private` top-level class: visible only in its own file, so every write to it comes from
-     * code in that file, which owns it as much as the class does.
+     * Whether this class is declared in the file the write is in. A holder and the code that drives
+     * it (a component writing its own state holder, a presenter feeding a file-private one) are one
+     * unit when they share a file: the reader sees both. A `private` top-level class is always this
+     * case, since only its own file can write it.
      */
-    private fun FirRegularClassSymbol.isFilePrivate(): Boolean =
-        visibility == Visibilities.Private && !classId.isLocal && classId.outerClassId == null
+    context(context: CheckerContext)
+    private fun FirRegularClassSymbol.isDeclaredInWriterFile(session: FirSession): Boolean {
+        if (origin != FirDeclarationOrigin.Source || classId.isLocal) return false
+        val writerFile = context.containingFileSymbol ?: return false
+        return session.firProvider.getFirClassifierContainerFileIfAny(this)?.symbol == writerFile
+    }
 
     /**
      * Whether [receiver] is an object the function is still configuring: the receiver or parameter

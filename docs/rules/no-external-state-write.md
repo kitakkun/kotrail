@@ -64,8 +64,8 @@ for the property it can see, because the class offers nothing better.
   own, anything. `scene.flag.value = true` on a `data class Scene(val flag: MutableState<Boolean>)`
   that also declares `fun render()` is the bug this rule exists for, however the class is
   declared.
-- An `internal` owner is an owner like any other: the whole module sees it, not only the
-  writer's file.
+- An owner declared in another file of the module, `internal` or public, is an owner like any
+  other: the whole module sees it, not only the file that declares it.
 - The owner is the class or object that declares the property; a property of a companion
   object belongs to the class around it. A top-level `object` is an owner like any class, so
   `Session.active.value = true` from another class is reported.
@@ -85,9 +85,12 @@ for the property it can see, because the class offers nothing better.
   constructor), data class or not. There is no behavior to add a method to, and setting its
   fields is what it is for. A data class that declares a function is not a bag, and a state
   holder property is never exempt this way.
-- The owner is a `private` top-level class. It is visible only in its own file, so every write
-  comes from that file, which owns it as much as the class does: a presenter feeding the
-  editing state it keeps in a file-private holder.
+- The owner is declared in the same source file as the write, public or not. A holder and the
+  component that drives it are one unit when they share a file, and the reader sees both: a
+  composable writing the public state holder declared next to it
+  (`onDelta = { state.fraction.value = it }`), or a presenter feeding the editing state it keeps
+  in a file-private holder. A `private` top-level class is always this case, since only its own
+  file can write it.
 - The object is one the function is still configuring: the receiver or parameter of `apply`,
   `also`, `run`, `with` or `let` called directly on a call result
   (`Config().apply { name = "x" }`, `Config().also { it.name = "x" }`), or a local initialized
