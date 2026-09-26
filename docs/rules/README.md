@@ -78,7 +78,7 @@ Objects kept too long, or not long enough.
 
 | Rule | Default | Diagnostics | Page |
 |---|---|---|---|
-| Native allocation in loop | on | `KOTRAIL_NATIVE_ALLOCATION_IN_LOOP` | [native-allocation-in-loop.md](native-allocation-in-loop.md) |
+| Native allocation in loop | on | `KOTRAIL_NATIVE_ALLOCATION_IN_LOOP`, `KOTRAIL_NATIVE_ALLOCATION_THROUGH_CALL_IN_LOOP` | [native-allocation-in-loop.md](native-allocation-in-loop.md) |
 | Weak-only reference | on | `KOTRAIL_WEAK_REFERENCE_TO_FRESH_OBJECT` | [weak-only-reference.md](weak-only-reference.md) |
 | Unretained | on | `KOTRAIL_UNRETAINED_PARAMETER_RETAINED` | [unretained.md](unretained.md) |
 | Unloadable code | off: only for a compilation that is unloaded later (a host or IDE plugin) | `KOTRAIL_THREAD_LOCAL_IN_UNLOADABLE_CODE`, `KOTRAIL_UNSCOPED_REGISTRATION_IN_UNLOADABLE_CODE`, `KOTRAIL_OUTBOUND_REFERENCE_IN_BUNDLED_CODE` | [unloadable-code.md](unloadable-code.md) |

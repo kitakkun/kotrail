@@ -5,6 +5,7 @@ import com.kitakkun.kotrail.fir.compose.effects.EffectCaptureService
 import com.kitakkun.kotrail.fir.concurrency.AsyncWorkService
 import com.kitakkun.kotrail.fir.compose.insets.WindowInsetsHandlingService
 import com.kitakkun.kotrail.fir.compose.locals.CompositionLocalService
+import com.kitakkun.kotrail.fir.memory.NativeAllocationService
 import com.kitakkun.kotrail.fir.native.ThrowsService
 import com.kitakkun.kotrail.fir.preconditions.PreconditionService
 import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrar
@@ -18,6 +19,7 @@ class KotrailFirExtensionRegistrar(private val config: KotrailConfig) : FirExten
         +::CompositionLocalService
         +::PreconditionService
         +::ThrowsService
+        +::NativeAllocationService
         +::KotrailCheckersExtension
         registerDiagnosticContainers(KotrailDiagnostics)
     }

@@ -137,7 +137,7 @@ object ConfigSchema {
         ),
         KotrailRule.NATIVE_ALLOCATION_IN_LOOP to listOf(
             Setting("types", Kind.LIST, "Fully qualified types (subtypes included) whose instances hold native memory that only a cleaner frees; replaces the default list.", default = "org.jetbrains.skia.impl.Managed, java.awt.image.VolatileImage"),
-            Setting("factories", Kind.LIST, "Fully qualified factory functions that return such an instance; replaces the default list.", default = "java.nio.ByteBuffer.allocateDirect"),
+            Setting("factories", Kind.LIST, "Fully qualified factory functions that return such an instance; replaces the default list.", default = "java.nio.ByteBuffer.allocateDirect, org.jetbrains.skia.Image.Companion.makeFromEncoded, org.jetbrains.skia.Image.Companion.makeRaster, org.jetbrains.skia.Surface.Companion.makeRaster, ..."),
             Setting("callbacks", Kind.LIST, "Fully qualified functions whose lambda runs once per item or frame, counted like a loop body; replaces the default list.", default = "kotlinx.coroutines.flow.collect, kotlinx.coroutines.flow.onEach, androidx.compose.runtime.withFrameNanos, kotlin.repeat, kotlin.collections.forEach, ..."),
         ),
         KotrailRule.WEAK_ONLY_REFERENCE to listOf(

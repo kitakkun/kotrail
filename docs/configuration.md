@@ -121,7 +121,7 @@ own; a rule not listed has none.
 | | `calls` | `[]` | The project's own call idioms, each `<fqn>(<literal>) -> <replacement fqn>`. |
 | `native.objcThrows` | `packages` | `[]` | Package globs of the API the framework exports to Swift; when set, only public functions in these packages are checked. Empty: every public function of an Apple compilation. |
 | `nativeAllocationInLoop` | `types` | `[org.jetbrains.skia.impl.Managed, java.awt.image.VolatileImage]` | Types (subtypes included) whose instances hold native memory that only a cleaner frees. Replaces the default list. |
-| | `factories` | `[java.nio.ByteBuffer.allocateDirect]` | Factory functions that return such an instance. Replaces the default list. |
+| | `factories` | `java.nio.ByteBuffer.allocateDirect`, Skia `Image.makeFromEncoded`, `Image.makeRaster`, `Surface.makeRaster` and their kin | Factory functions that return such an instance, by fully qualified name (`org.jetbrains.skia.Image.Companion.makeFromEncoded`). Replaces the default list. |
 | | `callbacks` | `collect`, `onEach`, `withFrameNanos`, `repeat`, `forEach`, ... | Functions whose lambda runs once per item or frame, counted like a loop body. Replaces the default list. |
 | `weakOnlyReference` | `types` | `[java.lang.ref.WeakReference, java.lang.ref.SoftReference, kotlin.native.ref.WeakReference]` | Weak or soft reference types (subtypes included). Replaces the default list. |
 | `catchTooBroad` | `types` | `kotlin.Throwable`, `kotlin.Exception`, `kotlin.RuntimeException` and their `java.lang` classes, `java.lang.Error` | Exception types a catch clause must not name. Replaces the default list. |

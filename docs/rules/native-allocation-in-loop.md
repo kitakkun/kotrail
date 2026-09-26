@@ -2,7 +2,7 @@
 
 **Diagnostic:** `KOTRAIL_NATIVE_ALLOCATION_IN_LOOP` (error, on the construction or factory call)
 **Key:** `rules.nativeAllocationInLoop` (on by default)
-**Settings:** `types` (default `[org.jetbrains.skia.impl.Managed, java.awt.image.VolatileImage]`), `factories` (default `[java.nio.ByteBuffer.allocateDirect]`), `callbacks` (default: `collect`, `onEach`, `withFrameNanos`, `repeat`, `forEach` and their kin)
+**Settings:** `types` (default `[org.jetbrains.skia.impl.Managed, java.awt.image.VolatileImage]`), `factories` (default `java.nio.ByteBuffer.allocateDirect` and the Skia companion factories `Image.makeFromEncoded`, `Image.makeRaster`, `Surface.makeRaster` and their kin), `callbacks` (default: `collect`, `onEach`, `withFrameNanos`, `repeat`, `forEach` and their kin)
 
 ## What it rejects
 
@@ -62,12 +62,37 @@ previous instance is dropped unclosed just the same.
 - The type is not on the list; a project adds its own native-backed types under `types`, and
   its own frame callbacks under `callbacks`. All three lists replace the defaults.
 
-Not covered: an object created outside the loop but replaced inside it through a function call
-(`buffer = allocate()` where `allocate` is the project's own), and producers that never stop.
+## Through a function
+
+The allocation is often one call away, in a helper the loop calls:
+
+```kotlin
+fun decode(frame: Frame): Bitmap = Bitmap().apply { installPixels(frame) }
+
+for (frame in frames) {
+    publish(decode(frame))                   // reported: 'decode' creates a 'Bitmap' each call
+}
+```
+
+The rule summarizes what each function lets out: a function allocates when its body creates one
+of the listed types or calls a factory, or calls a function that allocates, and the object is
+neither the receiver of `use { }` nor a local the body closes with `close()`. A call in a loop to
+such a function is reported at the call, with the path to the allocation (`decode > newBitmap`),
+unless the result is itself the receiver of `use { }`. In this module the summary comes from
+the body; for callers in other modules it is written into the class file as
+`@InferredNativeAllocation(types = ["Bitmap"], path = ["newBitmap"])` metadata, on every
+target and with no artifact needed, so the path shown crosses the module boundary. A library
+compiled without Kotrail carries no metadata and is taken as not allocating. Inside the helper,
+the lambdas of inline functions (`synchronized`, `withLock`, `run`, `apply`) run in place and
+are followed; any other lambda is not. A function that returns an instance it keeps
+(`cached ?: Bitmap().also { cached = it }`) creates it once, not per call, and is not counted.
+
+Not covered: producers that never stop.
 
 ## Fixtures
 
-`compiler-tests/testData/diagnostics/nativeAllocationInLoop.kt`
+`compiler-tests/testData/diagnostics/nativeAllocationInLoop.kt`,
+`compiler-tests/testData/diagnostics/nativeAllocationAcrossModules.kt`
 
 ## Implementation notes
 
