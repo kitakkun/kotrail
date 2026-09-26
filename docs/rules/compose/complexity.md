@@ -66,6 +66,12 @@ The advice follows the kind of block: a `remember { }` hotspot is a computation 
 function, an effect hotspot wants its body in a non-composable handler or an effect helper of its
 own, and a branch wants a composable for that variant of the UI.
 
+When branches dominate a spread score, the advice says where they are. If one block holds at
+least half of them, it is named with the advice for its kind ("most of them sit in
+'LaunchedEffect { }', move its body into a non-composable handler or an effect helper of its
+own"). A composable that returns a value instead of emitting UI (a presenter) has no variant to
+split off, so it is asked to move the mapping into a plain function.
+
 When the points are spread and no block stands out, the message says so and names the kinds
 that dominate (those carrying at least 30 percent of the total) with the advice for the largest:
 move the states into a state holder the composable receives, move the work behind the effects
@@ -87,10 +93,11 @@ fine on its own; the score is what accumulates.
 
 | What | Points |
 |---|---|
-| A state source: a call that produces a `State` (`remember { mutableStateOf(...) }`, `rememberSaveable { mutableStateOf(...) }`, `derivedStateOf`, `collectAsState`), or a call listed in `stateFactories` | 1 each |
+| A state source: a call that produces a `State` (`remember { mutableStateOf(...) }`, `rememberSaveable { mutableStateOf(...) }`, `derivedStateOf`, `collectAsState`), or a call listed in `stateFactories`; not `rememberUpdatedState` | 1 each |
 | An effect (`LaunchedEffect`, `DisposableEffect`, `produceState`, `SideEffect`) | 1, +1 when it writes a `State`; the branches in its body count as branches |
 | A `launch` / `async` from a handler | 1 each |
-| A branch (`if`, a `when` case, `?:` with a computed fallback), a boolean `&&` / `||`, a loop | 1 each |
+| A branch (`if`, a `when` case, `?:` with a computed fallback), a boolean `&&` / `||` inside such a condition, a loop | 1 each |
+| An `if` / `when` whose every result is a literal or a constant: a lookup | 1 in all |
 | A `CompositionLocal.current` read | 1 each |
 | A callback parameter beyond four | 1 each, at most 4 |
 
@@ -111,6 +118,13 @@ What does not count:
   default, not a path the reader follows; a mapping of twenty tokens with a default each scores
   nothing. An elvis whose fallback is computed (`filter ?: item.name`, `cached ?: load()`)
   counts.
+- The rows of a lookup. `when { hovered && selected -> Color.A; hovered -> Color.B; else ->
+  Color.C }` is one thing to read, so it scores one branch in all, and the `&&` in its rows
+  nothing. A `when` with a computed result in any row scores per row as usual.
+- A boolean written as a value: `enabled = a && b`, `val active = hovered && !disabled`. Only
+  an `&&` / `||` inside the condition of a counted `if`, `when` row or loop is a path.
+- `rememberUpdatedState`: it returns a `State`, but holds a fresh callback for an effect, not
+  a source of change.
 - How long an effect runs, or how many keys it has. Six `LaunchedEffect(key) { flow.collect { } }`
   collectors in a row score six points, not twenty-four; what an effect does in its body scores
   as branches.
@@ -188,8 +202,10 @@ outside. This rule counts how much of all that there is.
 
 `compiler-tests/testData/diagnostics/compose/complexity.kt` pins: a one-branch item row
 accepted, `Search` at the limit accepted, `Defaults` with constant fallbacks accepted,
-`Overview` reported with the `Column { }` hotspot, `Dashboard` reported with spread points and
-no hotspot.
+`Styled` with a lookup, a boolean value and a `rememberUpdatedState` accepted, `Overview`
+reported with the `Column { }` hotspot, `Dashboard` reported with spread points and no hotspot,
+`presenter` (returns a value) asked for a plain function, `Router` told its branches sit in the
+effect.
 
 ## Implementation notes
 

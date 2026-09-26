@@ -21,6 +21,7 @@ import org.jetbrains.kotlin.fir.declarations.FirAnonymousFunction
 import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
 import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.expressions.FirAnonymousFunctionExpression
+import org.jetbrains.kotlin.fir.expressions.FirBlock
 import org.jetbrains.kotlin.fir.expressions.FirBooleanOperatorExpression
 import org.jetbrains.kotlin.fir.expressions.FirDoWhileLoop
 import org.jetbrains.kotlin.fir.expressions.FirElvisExpression
@@ -47,6 +48,7 @@ import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.fir.types.isNullableNothing
 import org.jetbrains.kotlin.fir.types.isSomeFunctionType
+import org.jetbrains.kotlin.fir.types.isUnit
 import org.jetbrains.kotlin.fir.types.resolvedType
 import org.jetbrains.kotlin.fir.types.typeContext
 import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
@@ -61,10 +63,10 @@ import org.jetbrains.kotlin.types.AbstractTypeChecker
  *
  * | What | Points |
  * |---|---|
- * | A state source: a call that produces a `State` (`remember { mutableStateOf(...) }`, `rememberSaveable`, `derivedStateOf`, `collectAsState`), or a call listed in `stateFactories` | 1 each |
+ * | A state source: a call that produces a `State` (`remember { mutableStateOf(...) }`, `rememberSaveable`, `derivedStateOf`, `collectAsState`), or a call listed in `stateFactories`; not `rememberUpdatedState` | 1 each |
  * | An effect (`LaunchedEffect`, `DisposableEffect`, `produceState`, `SideEffect`) | 1, +1 when it writes a `State`; its body's branches count as branches |
  * | A `launch` / `async` from a handler | 1 each |
- * | A branch (`if`, a `when` case, `?:` with a computed fallback), a boolean `&&` / `||`, a loop | 1 each |
+ * | A branch (`if`, a `when` case, `?:` with a computed fallback), a boolean `&&` / `||` in such a condition, a loop | 1 each; an `if` / `when` whose every result is a constant is a lookup and scores 1 in all |
  * | A `CompositionLocal.current` read | 1 each |
  * | A callback parameter beyond four | 1 each, at most 4 |
  *
@@ -80,6 +82,8 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
     private val EFFECTS = setOf("LaunchedEffect", "DisposableEffect", "produceState", "SideEffect")
     private val LAUNCHERS = setOf("launch", "async")
     private val LOOP_CALLS = setOf("forEach", "forEachIndexed", "map", "items", "itemsIndexed", "repeat", "fastForEach")
+    /** Produces a `State` but holds a fresh callback rather than UI state: the freshness idiom, not a source of change. */
+    private val NOT_STATE_SOURCES = setOf("rememberUpdatedState")
     private val STATE = ClassId(FqName("androidx.compose.runtime"), Name.identifier("State"))
     private const val FREE_CALLBACKS = 4
     private const val MAX_CALLBACK_POINTS = 4
@@ -118,7 +122,9 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
             val byKind = root.byKind().filterValues { it > 0 }.entries.sortedByDescending { it.value }
             val dominant = byKind.filter { it.value * 100 >= total * DOMINANT_SHARE }.ifEmpty { byKind.take(1) }
             val named = dominant.joinToString(" and ") { (kind, points) -> "${kind.label} ($points)" }
-            "the points are spread across the body with no single block to extract; $named ${if (dominant.size == 1) "dominates" else "dominate"}: ${dominant.first().key.advice}"
+            val verb = if (dominant.size == 1 && dominant.first().key == Kind.COUPLING) "dominates" else "dominate"
+            val returnsValue = !declaration.returnTypeRef.coneType.isUnit
+            "the points are spread across the body with no single block to extract; $named $verb: ${root.adviceFor(dominant.first().key, returnsValue)}"
         }
         reportKotrail(source, KotrailDiagnostics.COMPOSABLE_TOO_COMPLEX, "$total (${root.breakdown()}), limit ${settings.maxScore}", advice)
         if (hotspot != null) {
@@ -151,6 +157,20 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
 
         fun breakdown(): String = byKind().filterValues { it > 0 }.entries.joinToString(", ") { (kind, points) -> "${kind.label} $points" }
 
+        /**
+         * The advice when [kind] dominates a spread score. Branches get the advice of the block
+         * that holds most of them when one does, or a plain function when the composable
+         * computes a value rather than emitting UI.
+         */
+        fun adviceFor(kind: Kind, returnsValue: Boolean): String {
+            if (kind != Kind.BRANCHES) return kind.advice
+            if (returnsValue) return "move the mapping into a plain function"
+            val branches = byKind()[Kind.BRANCHES] ?: 0
+            val holder = children.maxByOrNull { it.byKind()[Kind.BRANCHES] ?: 0 }
+            val held = holder?.byKind()?.get(Kind.BRANCHES) ?: 0
+            return if (holder != null && held * 2 >= branches) "most of them sit in '${holder.label}', ${holder.extraction()}" else kind.advice
+        }
+
         /** How to take this block out of the composable. */
         fun extraction(): String = when (block) {
             Block.COMPOSABLE_LAMBDA -> "extract it into a composable of its own"
@@ -166,6 +186,8 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
         private var current = root
         /** Inside a call that already scored as a state source: the calls it wraps do not score again. */
         private var insideStateSource = false
+        /** Inside the condition of a scored branch or loop: a boolean operator there is a path the reader follows. */
+        private var conditionDepth = 0
 
         /** The innermost subtree carrying at least [sharePercent] of [total] and [HOTSPOT_MIN] points, or null when the points are spread. */
         fun hotspot(total: Int, sharePercent: Int): Node? {
@@ -198,14 +220,30 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
 
         override fun visitWhenExpression(whenExpression: FirWhenExpression) {
             whenExpression.subjectVariable?.accept(this)
+            // `when { hovered && selected -> Color.A; hovered -> Color.B; else -> Color.C }`: a lookup of
+            // constants is one thing to read, however many rows it has.
+            val lookup = whenExpression.branches.size > 1 && whenExpression.branches.all { it.result.resultExpression().isConstantLike() }
+            if (lookup) current.add(Kind.BRANCHES, 1)
             for (branch in whenExpression.branches) {
                 val conditional = branch.condition !is FirElseIfTrueCondition
                 if (conditional) {
-                    current.add(Kind.BRANCHES, 1)
-                    branch.condition.accept(this)
+                    if (!lookup) current.add(Kind.BRANCHES, 1)
+                    inCondition(scored = !lookup) { branch.condition.accept(this) }
                 }
                 inChild(if (conditional) "branch" else "else branch", branch.result.source, Block.BRANCH) { branch.result.accept(this) }
             }
+        }
+
+        /** The expression a branch evaluates to: the last statement of its block, or the expression itself. */
+        private fun FirExpression.resultExpression(): FirExpression = when (this) {
+            is FirBlock -> statements.lastOrNull() as? FirExpression ?: this
+            else -> this
+        }
+
+        private inline fun inCondition(scored: Boolean, body: () -> Unit) {
+            if (scored) conditionDepth++
+            body()
+            if (scored) conditionDepth--
         }
 
         override fun visitElvisExpression(elvisExpression: FirElvisExpression) {
@@ -224,18 +262,22 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
         }
 
         override fun visitBooleanOperatorExpression(booleanOperatorExpression: FirBooleanOperatorExpression) {
-            current.add(Kind.BRANCHES, 1)
+            // `enabled = a && b` is a value; `if (a && b)` is a path.
+            if (conditionDepth > 0) current.add(Kind.BRANCHES, 1)
             visitElement(booleanOperatorExpression)
         }
 
         override fun visitWhileLoop(whileLoop: FirWhileLoop) {
-            if (whileLoop.source?.kind !is KtFakeSourceElementKind || whileLoop.source?.kind == KtFakeSourceElementKind.DesugaredForLoop) current.add(Kind.BRANCHES, 1)
-            visitElement(whileLoop)
+            val counted = whileLoop.source?.kind !is KtFakeSourceElementKind || whileLoop.source?.kind == KtFakeSourceElementKind.DesugaredForLoop
+            if (counted) current.add(Kind.BRANCHES, 1)
+            inCondition(scored = counted) { whileLoop.condition.accept(this) }
+            whileLoop.block.accept(this)
         }
 
         override fun visitDoWhileLoop(doWhileLoop: FirDoWhileLoop) {
             current.add(Kind.BRANCHES, 1)
-            visitElement(doWhileLoop)
+            doWhileLoop.block.accept(this)
+            inCondition(scored = true) { doWhileLoop.condition.accept(this) }
         }
 
         override fun visitProperty(property: FirProperty) {
@@ -258,7 +300,7 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
                 scoreEffect(functionCall)
                 return
             }
-            val producesState = !insideStateSource &&
+            val producesState = !insideStateSource && name !in NOT_STATE_SOURCES &&
                 (functionCall.resolvedType.isState(session) || callee?.callableId?.asSingleFqName()?.asString() in stateFactories)
             when {
                 producesState -> current.add(Kind.STATES, 1)

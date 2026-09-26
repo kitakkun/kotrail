@@ -9,6 +9,7 @@ import androidx.compose.runtime.collect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 
 class Item(val name: String, val selected: Boolean)
@@ -61,6 +62,23 @@ fun Defaults(a: String?, b: String?, c: String?, d: String?, e: String?, f: Stri
     }
 }
 
+// Not reported: a lookup of constants is one branch, a boolean written as a value is none,
+// and rememberUpdatedState holds a callback, not state.
+@Composable
+fun Styled(hovered: Boolean, selected: Boolean, enabled: Boolean, focused: Boolean, item: Item, onClick: () -> Unit) {
+    val current = rememberUpdatedState(onClick)
+    val label = when {
+        hovered && selected -> "both"
+        hovered -> "hovered"
+        selected -> "selected"
+        else -> "none"
+    }
+    val color = if (enabled && focused) Labels.NONE else ""
+    val active = enabled && !item.selected && focused
+    Text(if (active) label else color)
+    current.value
+}
+
 // Reported: the points pile up in the Column, which is the place to extract.
 @Composable
 fun <!KOTRAIL_COMPOSABLE_TOO_COMPLEX!>Overview<!>(items: List<Item>, filter: String?, events: Observable<String>) {
@@ -98,7 +116,31 @@ fun <!KOTRAIL_COMPOSABLE_TOO_COMPLEX!>Dashboard<!>(a: Boolean, b: Boolean, c: Bo
     }
 }
 
-/* GENERATED_FIR_TAGS: andExpression, assignment, classDeclaration, comparisonExpression, const, elvisExpression,
-functionDeclaration, functionalType, ifExpression, incrementDecrementExpression, integerLiteral, lambdaLiteral,
-localProperty, nullableType, objectDeclaration, primaryConstructor, propertyDeclaration, propertyDelegate, setter,
-stringLiteral, suspend */
+// Reported: a composable that computes a value has no UI to split, so the advice asks for a plain function.
+@Composable
+fun <!KOTRAIL_COMPOSABLE_TOO_COMPLEX!>presenter<!>(items: List<Item>, filter: String?, mode: Int): String {
+    val names = items.map { item -> if (filter != null && item.name.startsWith(filter)) item.name else "" }
+    val prefix = if (mode > 1) names.size.toString() else names.joinToString()
+    val suffix = if (names.isEmpty()) "" else names.first()
+    return if (mode > 0) prefix + suffix else suffix
+}
+
+// Reported: spread, but most of the branches sit inside the effect, and the advice says so.
+@Composable
+fun <!KOTRAIL_COMPOSABLE_TOO_COMPLEX!>Router<!>(events: Observable<String>, a: Boolean, b: Boolean) {
+    var x by remember { mutableStateOf(0) }
+    LaunchedEffect(events) {
+        events.collect { e ->
+            if (e.isEmpty()) x++ else if (e == "a") x-- else x = 0
+        }
+    }
+    Column {
+        if (a) Text("a")
+        Text(b.toString())
+    }
+}
+
+/* GENERATED_FIR_TAGS: additiveExpression, andExpression, assignment, classDeclaration, comparisonExpression, const,
+elvisExpression, equalityExpression, functionDeclaration, functionalType, ifExpression, incrementDecrementExpression,
+integerLiteral, lambdaLiteral, localProperty, nullableType, objectDeclaration, primaryConstructor, propertyDeclaration,
+propertyDelegate, setter, smartcast, stringLiteral, suspend, whenExpression */
