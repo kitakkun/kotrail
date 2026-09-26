@@ -21,6 +21,9 @@ import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
 import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
+import org.jetbrains.kotlin.fir.expressions.FirReturnExpression
+import org.jetbrains.kotlin.fir.expressions.FirVariableAssignment
+import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.expressions.FirSmartCastExpression
 import org.jetbrains.kotlin.fir.expressions.FirVarargArgumentsExpression
 import org.jetbrains.kotlin.fir.expressions.unwrapArgument
@@ -63,8 +66,19 @@ import org.jetbrains.kotlin.types.AbstractTypeChecker
  * memoized per symbol; a recorder warms the cache so that the IR writer only reads it.
  */
 class NativeAllocationService(session: FirSession) : FirExtensionSessionComponent(session) {
-    /** What a function lets out: the type as written, and the callee path from the function to the allocation, innermost last. */
-    class Allocation(val type: String, val path: List<String>)
+    /**
+     * What a function lets out: the type as written; the callee path from the function to the
+     * allocation, innermost last, each name qualified by its class when it is a member
+     * (`MirrorSurface.writeFrame`); and what the function does with it (`returns`, `keeps`, `lets go of`).
+     */
+    class Allocation(val type: String, val path: List<String>, val fate: String) {
+        /** The path for a message: simple names, qualified only where a simple name repeats. */
+        fun renderPath(): String {
+            val simple = path.map { it.substringAfterLast('.') }
+            val repeated = simple.groupingBy { it }.eachCount().filterValues { it > 1 }.keys
+            return path.zip(simple).joinToString(" > ") { (qualified, plain) -> if (plain in repeated) qualified else plain }
+        }
+    }
 
     private val cache = HashMap<FirNamedFunctionSymbol, Allocation?>()
     private val visiting = HashSet<FirNamedFunctionSymbol>()
@@ -88,11 +102,17 @@ class NativeAllocationService(session: FirSession) : FirExtensionSessionComponen
         val callee = call.calleeReference.toResolvedCallableSymbol() ?: return null
         return when {
             callee is FirConstructorSymbol && settings.types.any { call.resolvedType.isSubtypeOf(ClassId.topLevel(FqName(it))) } ->
-                Allocation(call.resolvedType.renderReadable(), emptyList())
-            callee.callableId?.asSingleFqName()?.asString() in settings.factories -> Allocation(call.resolvedType.renderReadable(), emptyList())
-            callee is FirNamedFunctionSymbol -> allocates(callee)?.let { Allocation(it.type, listOf(callee.name.asString()) + it.path) }
+                Allocation(call.resolvedType.renderReadable(), emptyList(), "lets go of")
+            callee.callableId?.asSingleFqName()?.asString() in settings.factories -> Allocation(call.resolvedType.renderReadable(), emptyList(), "lets go of")
+            callee is FirNamedFunctionSymbol -> allocates(callee)?.let { Allocation(it.type, listOf(callee.qualifiedName()) + it.path, it.fate) }
             else -> null
         }
+    }
+
+    /** `MirrorSurface.writeFrame` for a member, `writeFrame` for a top-level function. */
+    private fun FirNamedFunctionSymbol.qualifiedName(): String {
+        val owner = callableId.className?.shortName()?.asString()
+        return if (owner != null) "$owner.${name.asString()}" else name.asString()
     }
 
     private fun compute(symbol: FirNamedFunctionSymbol): Allocation? {
@@ -121,7 +141,8 @@ class NativeAllocationService(session: FirSession) : FirExtensionSessionComponen
             }
             items.mapNotNull { (it.unwrapArgument() as? FirLiteralExpression)?.value as? String }
         }.orEmpty()
-        return Allocation(type, path)
+        val fate = elements.drop(1).firstNotNullOfOrNull { (it.unwrapArgument() as? FirLiteralExpression)?.value as? String } ?: "lets go of"
+        return Allocation(type, path, fate)
     }
 
     /** Finds the allocations of a body and which of them are closed there. */
@@ -134,7 +155,10 @@ class NativeAllocationService(session: FirSession) : FirExtensionSessionComponen
 
         fun leaked(): Allocation? = allocations.entries.firstOrNull { (call, _) ->
             call !in closed && locals.entries.none { (local, allocation) -> allocation === call && local in closedLocals }
-        }?.value
+        }?.let { (call, allocation) -> Allocation(allocation.type, allocation.path, fates[call] ?: "lets go of") }
+
+        /** What the body does with each allocation: returned, kept in a property, or let go of. */
+        private val fates = HashMap<FirFunctionCall, String>()
 
         override fun visitElement(element: FirElement) {
             ancestors.add(element)
@@ -176,6 +200,7 @@ class NativeAllocationService(session: FirSession) : FirExtensionSessionComponen
             if (allocation != null) {
                 allocations[functionCall] = allocation
                 if (isClosedByUse(functionCall)) closed += functionCall
+                fates[functionCall] = fateOf(functionCall)
             }
             val callee = functionCall.calleeReference.toResolvedNamedFunctionSymbol()
             if (callee != null && callee.isInline) {
@@ -192,6 +217,41 @@ class NativeAllocationService(session: FirSession) : FirExtensionSessionComponen
                 if (receiver != null) closedLocals += receiver
             }
             visitElement(functionCall)
+        }
+
+        /** `returns` under a return or an expression body, `keeps` when assigned to a property (also through `also { x = it }`), else `lets go of`. */
+        private fun fateOf(allocation: FirFunctionCall): String {
+            if (ancestors.any { it is FirReturnExpression }) return "returns"
+            var current: FirElement = allocation
+            for (parent in ancestors.asReversed()) {
+                when {
+                    parent is FirVariableAssignment && parent.rValue.unwrapped() === current ->
+                        return if ((parent.lValue as? FirPropertyAccessExpression)?.calleeReference?.toResolvedCallableSymbol()?.let { it is FirPropertySymbol && !it.isLocal } == true) "keeps" else "lets go of"
+                    parent is FirFunctionCall && parent.explicitReceiver?.unwrapped() === current -> {
+                        val name = parent.calleeReference.toResolvedCallableSymbol()?.callableId?.asSingleFqName()?.asString()
+                        if (name !in SCOPE_FUNCTIONS) return "lets go of"
+                        if (parent.assignsToProperty()) return "keeps"
+                        current = parent
+                    }
+                    else -> return "lets go of"
+                }
+            }
+            return "lets go of"
+        }
+
+        private fun FirFunctionCall.assignsToProperty(): Boolean {
+            var found = false
+            accept(object : FirVisitorVoid() {
+                override fun visitElement(element: FirElement) {
+                    if (found) return
+                    if (element is FirVariableAssignment) {
+                        val target = (element.lValue as? FirPropertyAccessExpression)?.calleeReference?.toResolvedCallableSymbol()
+                        if (target is FirPropertySymbol && !target.isLocal) found = true
+                    }
+                    element.acceptChildren(this)
+                }
+            })
+            return found
         }
 
         /** Whether the call is the receiver of `use { }`, directly or through scope functions, among the elements above it. */

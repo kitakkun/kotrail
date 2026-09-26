@@ -72,7 +72,7 @@ object NativeAllocationInLoopChecker : FirFunctionCallChecker(MppCheckerKind.Com
         if (allocation.path.isEmpty()) {
             reportKotrail(source, KotrailDiagnostics.NATIVE_ALLOCATION_IN_LOOP, allocation.type)
         } else {
-            reportKotrail(source, KotrailDiagnostics.NATIVE_ALLOCATION_THROUGH_CALL_IN_LOOP, allocation.path.joinToString(" > "), allocation.type)
+            reportKotrail(source, KotrailDiagnostics.NATIVE_ALLOCATION_THROUGH_CALL_IN_LOOP, "'${allocation.renderPath()}' creates a '${allocation.type}'", allocation.fate)
         }
     }
 

@@ -595,6 +595,7 @@ data class KotrailConfig(
             "org.jetbrains.skia.Surface.Companion.makeRaster",
             "org.jetbrains.skia.Surface.Companion.makeRasterN32Premul",
             "org.jetbrains.skia.Bitmap.Companion.makeFromImage",
+            "org.jetbrains.skia.Image.encodeToData",
         )
         val DEFAULT_PER_ITEM_CALLBACKS: List<String> = listOf(
             "kotlinx.coroutines.flow.collect",

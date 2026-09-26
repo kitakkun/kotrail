@@ -84,7 +84,8 @@ object NoLiteralLoopChecker {
             val subject = expression.explicitReceiver ?: return
             val lambda = expression.argumentList.arguments.lastOrNull()?.unwrapArgument() as? FirAnonymousFunctionExpression ?: return
             val function = lambda.anonymousFunction
-            val variable = function.valueParameters.firstOrNull()?.symbol ?: return
+            // `forEachIndexed { index, element -> }`: the element is the last parameter.
+            val variable = function.valueParameters.lastOrNull()?.symbol ?: return
             val body = function.body ?: return
             report(subject, variable, body, config.literalLoop.maxElements)
         }
@@ -122,7 +123,7 @@ object NoLiteralLoopChecker {
             val allBooleans = elements.isNotEmpty() && elements.all { it.resolvedType.isBoolean }
             if (elements.size > maxElements && !allBooleans) return null
             val what = if (elements.size == 1) "one literal element" else "${elements.size} literal elements"
-            return Shape("loops over $what", "write the call out once per element instead of folding the cases into a loop the reader has to unfold")
+            return Shape("loops over $what", "Write the call out once per element")
         }
         val call = expression as? FirFunctionCall ?: return null
         if (call.calleeReference.toResolvedCallableSymbol()?.callableId?.asSingleFqName()?.asString() != PLUS) return null
@@ -137,7 +138,7 @@ object NoLiteralLoopChecker {
         if (count > maxElements) return null
         val dataText = data.source?.text?.toString()?.trim()?.take(40) ?: "the data"
         val what = if (count == 1) "a literal sentinel" else "$count literal sentinels"
-        return Shape("joins $what to '$dataText' before looping", "write the sentinel's call out, then loop over the data alone")
+        return Shape("joins $what to '$dataText' before looping", "Write the sentinel's call out, then loop over the data alone")
     }
 
     /** The elements of `listOf(a, b)` when every one is a literal, a constant, an enum entry or an object; null otherwise. */
@@ -165,7 +166,11 @@ object NoLiteralLoopChecker {
         else -> false
     }
 
-    /** Whether the body decides something by the loop variable: a condition, a comparison, an elvis, a safe call, a type check on it. */
+    /**
+     * Whether the body decides something by the loop variable: a condition of `if` or `when` on it, a
+     * comparison of it with a literal, an elvis, a safe call or a type check on it. `selected == option`
+     * handed on as a value is not a decision: a radio group over three literal labels is one row each.
+     */
     private fun FirElement.branchesOn(variable: FirBasedSymbol<*>): Boolean {
         var found = false
         fun FirElement.reads(): Boolean {
@@ -185,7 +190,9 @@ object NoLiteralLoopChecker {
                 found = when (element) {
                     is FirWhenExpression -> element.subjectVariable?.initializer?.reads() == true ||
                         element.branches.any { it.condition.reads() }
-                    is FirEqualityOperatorCall -> element.argumentList.arguments.any { it.reads() }
+                    is FirEqualityOperatorCall -> element.argumentList.arguments.let { args ->
+                        args.any { it.reads() } && args.any { it.unwrapArgument().isLiteralLike() }
+                    }
                     is FirElvisExpression -> element.lhs.reads()
                     is FirSafeCallExpression -> element.receiver.reads()
                     is FirTypeOperatorCall -> element.argumentList.arguments.any { it.reads() }

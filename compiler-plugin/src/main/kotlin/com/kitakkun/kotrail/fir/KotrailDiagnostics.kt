@@ -140,7 +140,7 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: the type; reported on a construction or factory call of a native-backed type inside a loop body or a per-item callback. */
     val NATIVE_ALLOCATION_IN_LOOP = tunable1<KtElement, String>("NATIVE_ALLOCATION_IN_LOOP", KotrailRule.NATIVE_ALLOCATION_IN_LOOP, WHOLE)
 
-    /** Arguments: the callee path to the allocation (`decode > newBitmap`), the type; reported on a call in a loop to a function that allocates. */
+    /** Arguments: what creates what (`'decode > newBitmap' creates a 'Bitmap'`), what becomes of it (`returns`, `keeps`, `lets go of`); reported on a call in a loop to a function that allocates. */
     val NATIVE_ALLOCATION_THROUGH_CALL_IN_LOOP = tunable2<KtElement, String, String>("NATIVE_ALLOCATION_THROUGH_CALL_IN_LOOP", KotrailRule.NATIVE_ALLOCATION_IN_LOOP, WHOLE)
 
     /** Argument: what was wrapped; reported on a weak reference built from an object nothing else holds. */
@@ -661,9 +661,9 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         )
         map.put2(
             KotrailDiagnostics.NATIVE_ALLOCATION_THROUGH_CALL_IN_LOOP,
-            "[Kotrail] ''{0}'' creates a ''{1}'' each time it is called and keeps or returns it unclosed, and this calls it once per " +
-                "iteration: its native memory is freed only when a cleaner runs, the heap stays small, and native memory grows " +
-                "unbounded. Reuse one instance across iterations, close each result with use '{' '}', or have it fill an instance it is given.",
+            "[Kotrail] {0} each time it is called and {1} it unclosed, and this calls it once per iteration: its native memory " +
+                "is freed only when a cleaner runs, the heap stays small, and native memory grows unbounded. Reuse one instance " +
+                "across iterations, close each result with use '{' '}', or have it fill an instance it is given.",
         )
         map.put1(
             KotrailDiagnostics.WEAK_REFERENCE_TO_FRESH_OBJECT,
@@ -750,7 +750,7 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         map.put2(
             KotrailDiagnostics.LITERAL_LOOP,
             "[Kotrail] This {0} and the body branches on the element: cases the author already knows, folded into a loop " +
-                "the reader has to unfold. Instead, {1}.",
+                "the reader has to unfold. {1}.",
         )
         map.put1(
             KotrailDiagnostics.FILE_TOO_LONG,

@@ -32,6 +32,14 @@ fun filters(allDevices: Boolean, kind: Kind?, day: String?, days: List<String>) 
         register(label)
     }
 
+    // Reported: an indexed loop tells the element apart, in a property initializer as well as in a body.
+    <!KOTRAIL_LITERAL_LOOP!>listOf(Kind.PHOTO, Kind.VIDEO)<!>.mapIndexed { index, item ->
+        chip(if (item == Kind.VIDEO) "Video $index" else "Photo $index", item == kind)
+    }
+
+    // Not reported: an equality with a value handed on is not a decision; a radio group is one row per label.
+    listOf("Alpha", "Beta", "Gamma").forEach { option -> show(chip(option, option == day)) }
+
     // Not reported: data looped as data, a literal list handed on without a branch, a table longer than maxElements.
     days.forEach { show(chip(it, it == day)) }
     listOf("a", "b").forEach(::register)

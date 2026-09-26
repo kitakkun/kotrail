@@ -54,7 +54,8 @@ class InferredNativeAllocationMetadataWriter : IrGenerationExtension {
 
             val fir = (declaration.metadata as? FirMetadataSource.Function)?.fir as? FirNamedFunction ?: return
             val allocation = fir.moduleData.session.nativeAllocationService.allocates(fir.symbol) ?: return
-            addStringArraysMetadataAnnotation(pluginContext, declaration, constructor, listOf(listOf(allocation.type), allocation.path))
+            // `types` carries the type and, second, what the function does with it, so the message reads the same across modules.
+            addStringArraysMetadataAnnotation(pluginContext, declaration, constructor, listOf(listOf(allocation.type, allocation.fate), allocation.path))
         }
     }
 }

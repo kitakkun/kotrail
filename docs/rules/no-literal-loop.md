@@ -48,8 +48,10 @@ This is the DRY reflex at its least useful, and assistants reach for it constant
   Or it is such a collection joined to anything else with `+` (`listOf(null) + days`,
   `days + listOf("Other")`).
 - The body branches on the loop variable: it is read in the condition or subject of an `if` or
-  `when`, in an `==` / `!=` comparison, as the left side of `?:`, as the receiver of `?.`, or in
-  an `is` check.
+  `when`, in an `==` / `!=` comparison with a literal, as the left side of `?:`, as the receiver
+  of `?.`, or in an `is` check. `selected == option` handed on as a value is not a branch: a
+  radio group over three literal labels is one row each, and writing three rows out would be
+  worse.
 
 ## When it stays quiet
 
