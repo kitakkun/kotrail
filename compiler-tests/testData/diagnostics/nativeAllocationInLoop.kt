@@ -1,6 +1,7 @@
 // KOTRAIL_CONFIG: rules.nativeAllocationInLoop=on
 import java.nio.ByteBuffer
 import org.jetbrains.skia.Bitmap
+import org.jetbrains.skia.Data
 
 class Frame(val bytes: ByteArray)
 
@@ -86,6 +87,22 @@ class Decoder(private val frames: List<Frame>) {
     }
 
     fun current(): Bitmap = latest ?: Bitmap().also { latest = it }
+
+    // Not reported: a nullable factory result closed through `?.use`, with a function reference, or as a narrowed local;
+    // and what the function returns is the bytes, not the Data.
+    fun encodeAll() {
+        for (frame in frames) {
+            encode(frame)
+            encodeNarrowed(frame)
+        }
+    }
+
+    fun encode(frame: Frame): ByteArray? = Bitmap().use { bitmap -> bitmap.encodeToData()?.use(Data::bytes) }
+
+    fun encodeNarrowed(frame: Frame): ByteArray {
+        val data = Bitmap().use { it.encodeToData() } ?: error("no data")
+        return data.use { it.bytes.copyOf() }
+    }
 }
 
 /* GENERATED_FIR_TAGS: assignment, classDeclaration, comparisonExpression, flexibleType, forLoop, functionDeclaration,

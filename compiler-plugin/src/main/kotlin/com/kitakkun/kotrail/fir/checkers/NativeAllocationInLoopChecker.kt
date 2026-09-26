@@ -4,7 +4,6 @@ import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.compat.NamedFunctionChecker
 import com.kitakkun.kotrail.fir.kotrailConfig
-import com.kitakkun.kotrail.fir.memory.NativeAllocationService
 import com.kitakkun.kotrail.fir.memory.nativeAllocationService
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
@@ -12,15 +11,12 @@ import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
-import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirFunctionCallChecker
 import org.jetbrains.kotlin.fir.declarations.FirAnonymousFunction
 import org.jetbrains.kotlin.fir.expressions.FirDoWhileLoop
-import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
-import org.jetbrains.kotlin.fir.expressions.FirSmartCastExpression
 import org.jetbrains.kotlin.fir.expressions.FirWhileLoop
 import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
 
@@ -56,9 +52,6 @@ import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
  * and closes it itself (`use { }`, or `close()` on the local) lets nothing out.
  */
 object NativeAllocationInLoopChecker : FirFunctionCallChecker(MppCheckerKind.Common) {
-    private val USE = NativeAllocationService.USE
-    private val SCOPE_FUNCTIONS = NativeAllocationService.SCOPE_FUNCTIONS
-
     context(context: CheckerContext, reporter: DiagnosticReporter)
     override fun check(expression: FirFunctionCall) {
         val config = context.session.kotrailConfig
@@ -107,20 +100,6 @@ object NativeAllocationInLoopChecker : FirFunctionCallChecker(MppCheckerKind.Com
      * Whether [allocation] is the receiver of a `use` call, directly or through a chain of scope
      * functions whose receiver it is: `Bitmap().apply { }.use { }`.
      */
-    private fun CheckerContext.isClosedByUse(allocation: FirFunctionCall): Boolean {
-        var current: FirElement = allocation
-        val elements = containingElements
-        for (parent in elements.asReversed()) {
-            if (parent === current) continue
-            val call = parent as? FirFunctionCall ?: return false
-            if (call.explicitReceiver?.unwrapped() !== current) return false
-            val name = call.calleeReference.toResolvedCallableSymbol()?.callableId?.asSingleFqName()?.asString() ?: return false
-            if (name in USE) return true
-            if (name !in SCOPE_FUNCTIONS) return false
-            current = call
-        }
-        return false
-    }
-
-    private fun FirExpression.unwrapped(): FirExpression = (this as? FirSmartCastExpression)?.originalExpression ?: this
+    private fun CheckerContext.isClosedByUse(allocation: FirFunctionCall): Boolean =
+        session.nativeAllocationService.isClosedByUse(allocation, containingElements.asReversed())
 }

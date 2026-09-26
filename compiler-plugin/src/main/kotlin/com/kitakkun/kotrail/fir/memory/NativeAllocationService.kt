@@ -22,6 +22,7 @@ import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
 import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirReturnExpression
+import org.jetbrains.kotlin.fir.expressions.FirSafeCallExpression
 import org.jetbrains.kotlin.fir.expressions.FirVariableAssignment
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.expressions.FirSmartCastExpression
@@ -195,6 +196,15 @@ class NativeAllocationService(session: FirSession) : FirExtensionSessionComponen
             visitElement(property)
         }
 
+        override fun visitSafeCallExpression(safeCallExpression: FirSafeCallExpression) {
+            // `data?.use { }`: closes the local like `data.use { }` does.
+            val selector = safeCallExpression.selector as? FirFunctionCall
+            if (selector != null && selector.fqName() in USE) {
+                (safeCallExpression.receiver.unwrapped() as? FirPropertyAccessExpression)?.calleeReference?.toResolvedCallableSymbol()?.let { closedLocals += it }
+            }
+            visitElement(safeCallExpression)
+        }
+
         override fun visitFunctionCall(functionCall: FirFunctionCall) {
             val allocation = allocationOf(functionCall)
             if (allocation != null) {
@@ -212,24 +222,33 @@ class NativeAllocationService(session: FirSession) : FirExtensionSessionComponen
                 }
             }
             val name = functionCall.calleeReference.toResolvedCallableSymbol()?.name?.asString()
-            if (name == "close" && functionCall.argumentList.arguments.isEmpty()) {
+            val closesLocal = (name == "close" && functionCall.argumentList.arguments.isEmpty()) || functionCall.fqName() in USE
+            if (closesLocal) {
                 val receiver = (functionCall.explicitReceiver?.unwrapped() as? FirPropertyAccessExpression)?.calleeReference?.toResolvedCallableSymbol()
                 if (receiver != null) closedLocals += receiver
             }
             visitElement(functionCall)
         }
 
-        /** `returns` under a return or an expression body, `keeps` when assigned to a property (also through `also { x = it }`), else `lets go of`. */
+        /**
+         * `returns` when the object itself (through scope functions and safe calls) is what is returned,
+         * `keeps` when it is assigned to a property (also through `also { x = it }`), else `lets go of`.
+         */
         private fun fateOf(allocation: FirFunctionCall): String {
-            if (ancestors.any { it is FirReturnExpression }) return "returns"
             var current: FirElement = allocation
             for (parent in ancestors.asReversed()) {
                 when {
+                    parent is FirReturnExpression && parent.result.unwrapped() === current -> return "returns"
                     parent is FirVariableAssignment && parent.rValue.unwrapped() === current ->
                         return if ((parent.lValue as? FirPropertyAccessExpression)?.calleeReference?.toResolvedCallableSymbol()?.let { it is FirPropertySymbol && !it.isLocal } == true) "keeps" else "lets go of"
+                    parent is FirSafeCallExpression && parent.receiver.unwrapped() === current -> {
+                        val selector = parent.selector as? FirFunctionCall ?: return "lets go of"
+                        if (selector.fqName() !in SCOPE_FUNCTIONS) return "lets go of"
+                        if (selector.assignsToProperty()) return "keeps"
+                        current = parent
+                    }
                     parent is FirFunctionCall && parent.explicitReceiver?.unwrapped() === current -> {
-                        val name = parent.calleeReference.toResolvedCallableSymbol()?.callableId?.asSingleFqName()?.asString()
-                        if (name !in SCOPE_FUNCTIONS) return "lets go of"
+                        if (parent.fqName() !in SCOPE_FUNCTIONS) return "lets go of"
                         if (parent.assignsToProperty()) return "keeps"
                         current = parent
                     }
@@ -254,33 +273,64 @@ class NativeAllocationService(session: FirSession) : FirExtensionSessionComponen
             return found
         }
 
-        /** Whether the call is the receiver of `use { }`, directly or through scope functions, among the elements above it. */
-        private fun isClosedByUse(allocation: FirFunctionCall): Boolean {
-            var current: FirElement = allocation
-            for (parent in ancestors.asReversed()) {
-                val call = parent as? FirFunctionCall ?: return false
-                if (call.explicitReceiver?.unwrapped() !== current) return false
-                val name = call.calleeReference.toResolvedCallableSymbol()?.callableId?.asSingleFqName()?.asString() ?: return false
-                if (name in USE) return true
-                if (name !in SCOPE_FUNCTIONS) return false
-                current = call
-            }
-            return false
-        }
+        /** Whether the call is the receiver of `use { }`, directly, through scope functions, or through `?.` (a nullable factory result). */
+        private fun isClosedByUse(allocation: FirFunctionCall): Boolean = isClosedByUse(allocation, ancestors.asReversed())
 
-        /** `Bitmap().apply { }.also { }` is the `Bitmap()` call. */
+        /**
+         * `Bitmap().apply { }.also { }` is the `Bitmap()` call; so is `factory()?.let { }`, and
+         * `factory() ?: error("...")`, which only narrows the nullable result.
+         */
         private fun unwrapScopeChain(expression: FirExpression): FirExpression {
             var current = expression.unwrapped()
-            while (current is FirFunctionCall) {
-                val name = current.calleeReference.toResolvedCallableSymbol()?.callableId?.asSingleFqName()?.asString()
-                if (name !in SCOPE_FUNCTIONS) break
-                current = current.explicitReceiver?.unwrapped() ?: break
+            while (true) {
+                current = when (current) {
+                    is FirFunctionCall -> when (current.fqName()) {
+                        in SCOPE_FUNCTIONS -> current.explicitReceiver?.unwrapped() ?: return current
+                        // `bitmap.use { it.encodeToData() }`: the value is what the lambda ends with.
+                        in RESULT_OF_LAMBDA -> current.lambdaResult() ?: return current
+                        else -> return current
+                    }
+                    is FirSafeCallExpression -> if ((current.selector as? FirFunctionCall)?.fqName() in SCOPE_FUNCTIONS) current.receiver.unwrapped() else return current
+                    is FirElvisExpression -> current.lhs.unwrapped()
+                    else -> return current
+                }
             }
-            return current
+        }
+
+        /** The last expression of the lambda a call takes, when it is the call's result. */
+        private fun FirFunctionCall.lambdaResult(): FirExpression? {
+            val lambda = argumentList.arguments.lastOrNull()?.unwrapArgument() as? FirAnonymousFunctionExpression ?: return null
+            val last = lambda.anonymousFunction.body?.statements?.lastOrNull() ?: return null
+            return ((last as? FirReturnExpression)?.result ?: last as? FirExpression)?.unwrapped()
         }
     }
 
     private fun FirExpression.unwrapped(): FirExpression = (this as? FirSmartCastExpression)?.originalExpression ?: this
+
+    private fun FirFunctionCall.fqName(): String? = calleeReference.toResolvedCallableSymbol()?.callableId?.asSingleFqName()?.asString()
+
+    /**
+     * Whether [allocation] is the receiver of `use { }` among [parents] (innermost first): directly,
+     * through scope functions (`Bitmap().apply { }.use { }`), or through a safe call on a nullable
+     * factory result (`encodeToData()?.use(Data::bytes)`). Shared with the loop checker, which
+     * walks the checker context's containing elements the same way.
+     */
+    fun isClosedByUse(allocation: FirFunctionCall, parents: List<FirElement>): Boolean {
+        var current: FirElement = allocation
+        for (parent in parents) {
+            if (parent === current) continue
+            val call = when {
+                parent is FirSafeCallExpression && parent.receiver.unwrapped() === current -> parent.selector as? FirFunctionCall ?: return false
+                parent is FirFunctionCall && parent.explicitReceiver?.unwrapped() === current -> parent
+                else -> return false
+            }
+            val name = call.fqName() ?: return false
+            if (name in USE) return true
+            if (name !in SCOPE_FUNCTIONS) return false
+            current = parent
+        }
+        return false
+    }
 
     private fun ConeKotlinType.isSubtypeOf(classId: ClassId): Boolean {
         val expanded = fullyExpandedType(session)
@@ -294,6 +344,9 @@ class NativeAllocationService(session: FirSession) : FirExtensionSessionComponen
         private val TYPES = Name.identifier("types")
         private val PATH = Name.identifier("path")
         val USE = setOf("kotlin.use", "kotlin.io.use", "kotlin.AutoCloseable.use")
+
+        /** Calls whose value is their lambda's last expression: what a `use`, `let` or `run` hands back. */
+        private val RESULT_OF_LAMBDA = USE + setOf("kotlin.let", "kotlin.run", "kotlin.with")
         val SCOPE_FUNCTIONS = setOf("kotlin.apply", "kotlin.also", "kotlin.let", "kotlin.run", "kotlin.takeIf", "kotlin.takeUnless")
     }
 }

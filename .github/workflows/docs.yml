@@ -2,8 +2,7 @@ name: Docs
 
 # Builds the VitePress site under docs-site from the Markdown under docs on every change, which
 # also checks the documentation's cross-links. Publishing to GitHub Pages is switched on with the
-# repository variable PUBLISH_DOCS=true, once Pages is available for the repository (a private
-# repository needs a paid plan) and enabled with "GitHub Actions" as its source.
+# repository variable PUBLISH_DOCS=true, with Pages enabled and "GitHub Actions" as its source.
 
 on:
   push:
