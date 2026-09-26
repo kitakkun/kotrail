@@ -42,6 +42,8 @@ reported per call, describing the largest offending group.
   the threshold.
 - Lambda arguments (trailing or not) never count.
 - The callee has a `vararg` parameter (its elements are legitimately positional).
+- Parameters named `key1`, `key2`, ... do not count: the keys of `remember`, `LaunchedEffect` and
+  their kin are an unordered set, and `key1 = state, key2 = tab` says nothing a reader wants.
 - The callee is a Java method or constructor: Kotlin cannot name its arguments.
 - Operator calls (`grid[1, 2, 3]`, `a + b`), infix calls, and `invoke` calls (`grid(1, 2, 3)`),
   which have no argument names at the call site.

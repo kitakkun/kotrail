@@ -73,6 +73,9 @@ try {
   statement (a wrapped rethrow).
 - Under `report: swallowed`, the parameter reaches anything but a logger: a return value, a
   property, a callback, a constructor, a string template.
+- The catch parameter carries the suppression: `catch (@Suppress("KOTRAIL_CATCH_TOO_BROAD") e: Exception)`
+  names exactly one clause, where `@Suppress` on the enclosing function or `try` would cover every
+  clause in it.
 - The location matches the rule's `exclude` predicate. A project's error boundaries are
   declared there, not by weakening the rule:
 

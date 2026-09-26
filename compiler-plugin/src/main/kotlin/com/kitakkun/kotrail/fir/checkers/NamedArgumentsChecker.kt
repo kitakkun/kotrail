@@ -94,7 +94,11 @@ object NamedArgumentsChecker : FirFunctionCallChecker(MppCheckerKind.Common) {
         return original.zip(mapping.values)
             .filter { (argument, _) -> argument !is FirNamedArgumentExpression && !argument.isLambda() }
             .map { (_, parameter) -> parameter }
+            // `key1`, `key2`, ... of remember and LaunchedEffect: an unordered set whose names say nothing, so naming them helps nobody.
+            .filterNot { PLACEHOLDER_NAME.matches(it.name.asString()) }
     }
+
+    private val PLACEHOLDER_NAME = Regex("key[0-9]+")
 
     /** The source of each positional, non-lambda argument with the parameter it binds to, in source order. */
     private fun positionalArgumentSources(call: FirFunctionCall): List<Pair<KtSourceElement, FirValueParameter>> {

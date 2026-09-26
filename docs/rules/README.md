@@ -4,8 +4,9 @@ One page per rule. Each page has the same shape: what it rejects, what it asks f
 exactly when it fires and when it stays quiet, the diagnostic name, its settings, and the
 fixtures that pin its behavior.
 
-Rules are grouped by what they protect. The **Default** column says whether a rule is on out of
-the box; `off` rules are switched on per project, and an `experimental` rule may change shape.
+Rules are grouped by what they protect. Every rule is on by default unless there is a specific
+reason to keep it off, and the **Default** column names that reason; an `off` rule is switched on
+per project, and an `experimental` rule may change shape.
 A rule can belong to two groups; it is listed once, under the one it serves first.
 
 ## Readability and structure (11)
@@ -53,7 +54,7 @@ What a declaration exposes, and how.
 | Prefer value class | on | `KOTRAIL_PREFER_VALUE_CLASS` | [prefer-value-class.md](prefer-value-class.md) |
 | No mutable collection in public API | on | `KOTRAIL_MUTABLE_COLLECTION_IN_PUBLIC_API` | [no-mutable-collection-in-public-api.md](no-mutable-collection-in-public-api.md) |
 | No data class in public API | on | `KOTRAIL_DATA_CLASS_IN_PUBLIC_API` | [no-data-class-in-public-api.md](no-data-class-in-public-api.md) |
-| JvmSynthetic for internal | off | `KOTRAIL_INTERNAL_VISIBLE_TO_JAVA`, `KOTRAIL_INTERNAL_CLASS_VISIBLE_TO_JAVA` | [jvm-synthetic-for-internal.md](jvm-synthetic-for-internal.md) |
+| JvmSynthetic for internal | off: only a JVM library with Java consumers needs it | `KOTRAIL_INTERNAL_VISIBLE_TO_JAVA`, `KOTRAIL_INTERNAL_CLASS_VISIBLE_TO_JAVA` | [jvm-synthetic-for-internal.md](jvm-synthetic-for-internal.md) |
 
 ## Errors and concurrency (7)
 
@@ -78,7 +79,7 @@ Objects kept too long, or not long enough.
 | Native allocation in loop | on | `KOTRAIL_NATIVE_ALLOCATION_IN_LOOP` | [native-allocation-in-loop.md](native-allocation-in-loop.md) |
 | Weak-only reference | on | `KOTRAIL_WEAK_REFERENCE_TO_FRESH_OBJECT` | [weak-only-reference.md](weak-only-reference.md) |
 | Unretained | on | `KOTRAIL_UNRETAINED_PARAMETER_RETAINED` | [unretained.md](unretained.md) |
-| Unloadable code | off | `KOTRAIL_THREAD_LOCAL_IN_UNLOADABLE_CODE`, `KOTRAIL_UNSCOPED_REGISTRATION_IN_UNLOADABLE_CODE`, `KOTRAIL_OUTBOUND_REFERENCE_IN_BUNDLED_CODE` | [unloadable-code.md](unloadable-code.md) |
+| Unloadable code | off: only for a compilation that is unloaded later (a host or IDE plugin) | `KOTRAIL_THREAD_LOCAL_IN_UNLOADABLE_CODE`, `KOTRAIL_UNSCOPED_REGISTRATION_IN_UNLOADABLE_CODE`, `KOTRAIL_OUTBOUND_REFERENCE_IN_BUNDLED_CODE` | [unloadable-code.md](unloadable-code.md) |
 
 ## Architecture policies (6)
 
@@ -108,13 +109,13 @@ Rules a project declares in its configuration: what may call, extend, depend on 
 | Preview required | on | `KOTRAIL_COMPOSABLE_WITHOUT_PREVIEW` | [compose/preview-required.md](compose/preview-required.md) |
 | Composables per file | on | `KOTRAIL_TOO_MANY_COMPOSABLES_IN_FILE` | [compose/composables-per-file.md](compose/composables-per-file.md) |
 | No side effect in composition | on | `KOTRAIL_COMPOSABLE_SIDE_EFFECT_IN_COMPOSITION` | [compose/no-side-effect-in-composition.md](compose/no-side-effect-in-composition.md) |
-| No hardcoded string | off | `KOTRAIL_COMPOSABLE_HARDCODED_STRING` | [compose/no-hardcoded-string.md](compose/no-hardcoded-string.md) |
-| Preview coverage | off | `KOTRAIL_COMPOSABLE_NOT_COVERED_BY_PREVIEW` | [compose/preview-coverage.md](compose/preview-coverage.md) |
-| Preview parameter | off | `KOTRAIL_PREVIEW_MODEL_BUILT_INLINE` | [compose/preview-parameter.md](compose/preview-parameter.md) |
+| No hardcoded string | off: only a project that localizes through resources can act on it | `KOTRAIL_COMPOSABLE_HARDCODED_STRING` | [compose/no-hardcoded-string.md](compose/no-hardcoded-string.md) |
+| Preview coverage | off: needs `packages`, for a library's preview or screenshot-test compilation | `KOTRAIL_COMPOSABLE_NOT_COVERED_BY_PREVIEW` | [compose/preview-coverage.md](compose/preview-coverage.md) |
+| Preview parameter | on | `KOTRAIL_PREVIEW_MODEL_BUILT_INLINE` | [compose/preview-parameter.md](compose/preview-parameter.md) |
 | Remember keys | on | `KOTRAIL_EFFECT_KEY_MISSING` | [compose/remember-keys.md](compose/remember-keys.md) |
 | No global mutable state | on | `KOTRAIL_GLOBAL_VAR_READ_IN_COMPOSITION`, `KOTRAIL_GLOBAL_VAR_WRITTEN_IN_COMPOSABLE` | [compose/no-global-mutable-state.md](compose/no-global-mutable-state.md) |
 | No callback in model | on | `KOTRAIL_CALLBACK_IN_UI_MODEL` | [compose/no-callback-in-model.md](compose/no-callback-in-model.md) |
-| No unstable parameter | off, experimental | `KOTRAIL_COMPOSABLE_UNSTABLE_PARAMETER` | [compose/no-unstable-parameter.md](compose/no-unstable-parameter.md) |
+| No unstable parameter | off: experimental, known noise | `KOTRAIL_COMPOSABLE_UNSTABLE_PARAMETER` | [compose/no-unstable-parameter.md](compose/no-unstable-parameter.md) |
 
 ## Test (3)
 

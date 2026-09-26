@@ -50,9 +50,9 @@ enum class KotrailRule(
     LIVE_VARIABLE_BUDGET("liveVariableBudget", Severity.ERROR),
     NARRATIVE_ORDER("narrativeOrder", Severity.ERROR),
     PARAMETER_ORDER("parameterOrder", Severity.ERROR),
-    /** Off by default: for a JVM module whose consumers include Java. */
+    /** Off by default: only a JVM library with Java consumers needs `@JvmSynthetic` on its internal API; in an app it is noise. */
     JVM_SYNTHETIC_FOR_INTERNAL("jvmSyntheticForInternal", Severity.ERROR, defaultEnabled = false),
-    /** Off by default: for a compilation loaded through its own class loader and unloaded later (a host or IDE plugin). */
+    /** Off by default: only meaningful for a compilation loaded through its own class loader and unloaded later (a host or IDE plugin); a ThreadLocal is fine elsewhere. */
     UNLOADABLE_CODE("unloadableCode", Severity.ERROR, defaultEnabled = false),
     NATIVE_ALLOCATION_IN_LOOP("nativeAllocationInLoop", Severity.ERROR),
     WEAK_ONLY_REFERENCE("weakOnlyReference", Severity.ERROR),
@@ -77,13 +77,13 @@ enum class KotrailRule(
     COMPOSE_PREVIEW_REQUIRED("compose.previewRequired", Severity.ERROR),
     COMPOSE_COMPOSABLES_PER_FILE("compose.composablesPerFile", Severity.ERROR),
     COMPOSE_NO_SIDE_EFFECT_IN_COMPOSITION("compose.noSideEffectInComposition", Severity.ERROR),
+    /** Off by default: only a project that localizes through string resources can act on it; elsewhere every Text("...") would be reported. */
     COMPOSE_NO_HARDCODED_STRING("compose.noHardcodedString", Severity.ERROR, defaultEnabled = false),
-    /** Experimental: the inference is a port of the Compose compiler's, not yet proven on large codebases. */
+    /** Off by default: experimental; the stability inference is a port of the Compose compiler's, not yet proven on large codebases, with known noise. */
     COMPOSE_NO_UNSTABLE_PARAMETER("compose.noUnstableParameter", Severity.ERROR, defaultEnabled = false),
-    /** Off by default: enabled in the compilation that carries the previews of a library or a screenshot-test source set. */
+    /** Off by default: needs `packages` to name what must be covered, and is meant for the compilation that carries a library's previews or screenshot tests. */
     COMPOSE_PREVIEW_COVERAGE("compose.previewCoverage", Severity.ERROR, defaultEnabled = false),
-    /** Off by default: an established codebase previews by hand everywhere. */
-    COMPOSE_PREVIEW_PARAMETER("compose.previewParameter", Severity.ERROR, defaultEnabled = false),
+    COMPOSE_PREVIEW_PARAMETER("compose.previewParameter", Severity.ERROR),
     COMPOSE_NO_CALLBACK_IN_MODEL("compose.noCallbackInModel", Severity.ERROR),
     COMPOSE_REMEMBER_KEYS("compose.rememberKeys", Severity.ERROR),
     COMPOSE_NO_GLOBAL_MUTABLE_STATE("compose.noGlobalMutableState", Severity.ERROR),

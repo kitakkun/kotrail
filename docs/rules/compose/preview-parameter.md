@@ -1,7 +1,7 @@
 # Preview parameter (Compose)
 
 **Diagnostic:** `KOTRAIL_PREVIEW_MODEL_BUILT_INLINE` (error, on the argument)
-**Key:** `rules.compose.previewParameter` (**off by default**)
+**Key:** `rules.compose.previewParameter` (on by default)
 **Settings:** `minPreviews` (default `2`)
 
 ## What it rejects

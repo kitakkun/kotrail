@@ -7,6 +7,13 @@ data class User(val id: String, val name: String, val email: String)
 
 class Mover {
     fun move(x: Int, y: Int, z: Int) {}
+
+fun effect(key1: Any?, key2: Any?, key3: Any?, block: () -> Unit) = block()
+
+// Not reported: keyN parameters are an unordered set, so naming them says nothing.
+fun keyed(state: Any, tab: Int, autoRefresh: Boolean) {
+    effect(state, tab, autoRefresh) { }
+}
 }
 
 fun move(x: Int, y: Int, z: Int) {}

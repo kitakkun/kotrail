@@ -6,6 +6,15 @@ fun showError() {}
 fun cleanup() {}
 fun log(e: Throwable) {}
 
+fun suppressedClause(item: String) {
+    // Not reported: the suppression on the parameter names this one clause.
+    try {
+        save(item)
+    } catch (@Suppress("KOTRAIL_CATCH_TOO_BROAD") e: Exception) {
+        showError()
+    }
+}
+
 fun broad(item: String) {
     // Reported: every failure handled alike.
     try {
