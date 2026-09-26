@@ -356,6 +356,12 @@ data class KotrailObjCThrows(
     val packages: List<Glob>,
 )
 
+/** Tunables for the must-close rule. From `rules.mustClose`. */
+data class KotrailMustClose(
+    /** Fully qualified factory functions whose result is a resource the caller owns, besides constructors of `AutoCloseable` classes. */
+    val factories: List<String>,
+)
+
 /** Tunables for the native-allocation-in-loop rule. From `rules.nativeAllocationInLoop`. */
 data class KotrailNativeAllocation(
     /** Fully qualified types (subtypes included) whose instances hold native memory freed only by a cleaner. */
@@ -493,6 +499,7 @@ data class KotrailConfig(
     val test: KotrailTest,
     val generated: KotrailGenerated,
     val nativeAllocation: KotrailNativeAllocation,
+    val mustClose: KotrailMustClose,
     val objcThrows: KotrailObjCThrows,
     val weakOnlyReference: KotrailWeakOnlyReference,
     val catchTooBroad: KotrailCatchTooBroad,
@@ -584,6 +591,16 @@ data class KotrailConfig(
             "java.util.concurrent.Executor.execute",
             "java.util.concurrent.ExecutorService.submit",
             "java.util.Timer.schedule",
+        )
+        val DEFAULT_RESOURCE_FACTORIES: List<String> = listOf(
+            "kotlin.io.inputStream", "kotlin.io.outputStream", "kotlin.io.reader", "kotlin.io.writer",
+            "kotlin.io.bufferedReader", "kotlin.io.bufferedWriter", "kotlin.io.printWriter", "kotlin.io.buffered",
+            "kotlin.io.path.inputStream", "kotlin.io.path.outputStream", "kotlin.io.path.reader", "kotlin.io.path.writer",
+            "kotlin.io.path.bufferedReader", "kotlin.io.path.bufferedWriter",
+            "java.nio.file.Files.newInputStream", "java.nio.file.Files.newOutputStream", "java.nio.file.Files.newBufferedReader",
+            "java.nio.file.Files.newBufferedWriter", "java.nio.file.Files.newDirectoryStream", "java.nio.file.Files.list",
+            "java.nio.file.Files.walk", "java.nio.file.Files.lines",
+            "java.nio.channels.FileChannel.open", "java.net.ServerSocket.accept",
         )
         val DEFAULT_NATIVE_TYPES: List<String> = listOf("org.jetbrains.skia.impl.Managed", "java.awt.image.VolatileImage")
         val DEFAULT_NATIVE_FACTORIES: List<String> = listOf(
@@ -1042,6 +1059,7 @@ data class KotrailConfig(
                     factories = list(KotrailRule.NATIVE_ALLOCATION_IN_LOOP, "factories") ?: DEFAULT_NATIVE_FACTORIES,
                     callbacks = list(KotrailRule.NATIVE_ALLOCATION_IN_LOOP, "callbacks") ?: DEFAULT_PER_ITEM_CALLBACKS,
                 ),
+                mustClose = KotrailMustClose(factories = list(KotrailRule.MUST_CLOSE, "factories") ?: DEFAULT_RESOURCE_FACTORIES),
                 objcThrows = KotrailObjCThrows(packages = list(KotrailRule.NATIVE_OBJC_THROWS, "packages").orEmpty().map(::Glob)),
                 weakOnlyReference = KotrailWeakOnlyReference(
                     types = list(KotrailRule.WEAK_ONLY_REFERENCE, "types") ?: DEFAULT_WEAK_TYPES,

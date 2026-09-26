@@ -35,6 +35,7 @@ import com.kitakkun.kotrail.fir.checkers.NarrativeOrderChecker
 import com.kitakkun.kotrail.fir.checkers.CatchTooBroadChecker
 import com.kitakkun.kotrail.fir.checkers.DelayForCompletionChecker
 import com.kitakkun.kotrail.fir.checkers.DependencyRulesChecker
+import com.kitakkun.kotrail.fir.checkers.MustCloseChecker
 import com.kitakkun.kotrail.fir.checkers.NativeAllocationInLoopChecker
 import com.kitakkun.kotrail.fir.inferred.InferredFactWarmup
 import com.kitakkun.kotrail.fir.checkers.NoLiteralLoopChecker
@@ -174,6 +175,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
         ComposableSideEffectChecker,
         ComposableGlobalMutableStateChecker,
         ObjCThrowsChecker,
+        MustCloseChecker,
         ComposableUnstableParameterChecker,
     )
     override val callableDeclarationCheckers: Set<FirCallableDeclarationChecker> = setOf(

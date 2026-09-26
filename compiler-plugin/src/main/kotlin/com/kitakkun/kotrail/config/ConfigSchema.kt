@@ -135,6 +135,9 @@ object ConfigSchema {
         KotrailRule.NATIVE_OBJC_THROWS to listOf(
             Setting("packages", Kind.LIST, "Package globs of the API the framework exports to Swift (com.acme.sdk.*); when set, only public functions in these packages are checked. Empty: every public function of an Apple compilation."),
         ),
+        KotrailRule.MUST_CLOSE to listOf(
+            Setting("factories", Kind.LIST, "Fully qualified functions whose result is a resource the caller must close, besides constructors of AutoCloseable classes; replaces the default list.", default = "kotlin.io.inputStream, kotlin.io.bufferedReader, kotlin.io.bufferedWriter, java.nio.file.Files.newBufferedReader, java.nio.file.Files.lines, ..."),
+        ),
         KotrailRule.NATIVE_ALLOCATION_IN_LOOP to listOf(
             Setting("types", Kind.LIST, "Fully qualified types (subtypes included) whose instances hold native memory that only a cleaner frees; replaces the default list.", default = "org.jetbrains.skia.impl.Managed, java.awt.image.VolatileImage"),
             Setting("factories", Kind.LIST, "Fully qualified factory functions that return such an instance; replaces the default list.", default = "java.nio.ByteBuffer.allocateDirect, org.jetbrains.skia.Image.Companion.makeFromEncoded, org.jetbrains.skia.Image.Companion.makeRaster, org.jetbrains.skia.Surface.Companion.makeRaster, ..."),

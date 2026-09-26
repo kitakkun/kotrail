@@ -140,6 +140,9 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: the type; reported on a construction or factory call of a native-backed type inside a loop body or a per-item callback. */
     val NATIVE_ALLOCATION_IN_LOOP = tunable1<KtElement, String>("NATIVE_ALLOCATION_IN_LOOP", KotrailRule.NATIVE_ALLOCATION_IN_LOOP, WHOLE)
 
+    /** Argument: the resource's type; reported on a creation that nothing closes or hands on. */
+    val RESOURCE_NOT_CLOSED = tunable1<KtElement, String>("RESOURCE_NOT_CLOSED", KotrailRule.MUST_CLOSE, WHOLE)
+
     /** Arguments: what creates what (`'decode > newBitmap' creates a 'Bitmap'`), what becomes of it (`returns`, `keeps`, `lets go of`); reported on a call in a loop to a function that allocates. */
     val NATIVE_ALLOCATION_THROUGH_CALL_IN_LOOP = tunable2<KtElement, String, String>("NATIVE_ALLOCATION_THROUGH_CALL_IN_LOOP", KotrailRule.NATIVE_ALLOCATION_IN_LOOP, WHOLE)
 
@@ -652,6 +655,11 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             KotrailDiagnostics.UNSCOPED_REGISTRATION_IN_UNLOADABLE_CODE,
             "[Kotrail] ''{0}'' registers with something that outlives the plugin and nothing here unregisters it, so the " +
                 "class loader stays alive. Pass a disposable that is disposed with the plugin, or unregister in its disposal.",
+        )
+        map.put1(
+            KotrailDiagnostics.RESOURCE_NOT_CLOSED,
+            "[Kotrail] This ''{0}'' is created here and neither closed nor handed on: the file handle, socket or buffer behind it " +
+                "stays open until a finalizer runs, if ever. Wrap it in use '{' '}', close it in a finally, or return it to a caller that will.",
         )
         map.put1(
             KotrailDiagnostics.NATIVE_ALLOCATION_IN_LOOP,

@@ -59,6 +59,7 @@ enum class KotrailRule(
     NATIVE_ALLOCATION_IN_LOOP("nativeAllocationInLoop", Severity.ERROR),
     WEAK_ONLY_REFERENCE("weakOnlyReference", Severity.ERROR),
     CATCH_TOO_BROAD("catchTooBroad", Severity.ERROR),
+    MUST_CLOSE("mustClose", Severity.ERROR),
     UNRETAINED("unretained", Severity.ERROR),
     REQUIRED_SUPERTYPE("requiredSupertype", Severity.ERROR),
     DEPENDENCY_RULES("dependencyRules", Severity.ERROR),

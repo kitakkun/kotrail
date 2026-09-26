@@ -58,7 +58,7 @@ What a declaration exposes, and how.
 | No data class in public API | on | `KOTRAIL_DATA_CLASS_IN_PUBLIC_API` | [no-data-class-in-public-api.md](no-data-class-in-public-api.md) |
 | JvmSynthetic for internal | off: only a JVM library with Java consumers needs it | `KOTRAIL_INTERNAL_VISIBLE_TO_JAVA`, `KOTRAIL_INTERNAL_CLASS_VISIBLE_TO_JAVA` | [jvm-synthetic-for-internal.md](jvm-synthetic-for-internal.md) |
 
-## Errors and concurrency (7)
+## Errors and concurrency (8)
 
 Failures that get hidden, and waits that guess.
 
@@ -68,6 +68,7 @@ Failures that get hidden, and waits that guess.
 | No swallowed cancellation | on | `KOTRAIL_SWALLOWED_CANCELLATION` | [no-swallowed-cancellation.md](no-swallowed-cancellation.md) |
 | No ignored exception | on | `KOTRAIL_IGNORED_EXCEPTION` | [no-ignored-exception.md](no-ignored-exception.md) |
 | Catch too broad | on | `KOTRAIL_CATCH_TOO_BROAD` | [catch-too-broad.md](catch-too-broad.md) |
+| Must close | on | `KOTRAIL_RESOURCE_NOT_CLOSED` | [must-close.md](must-close.md) |
 | Delay for completion | on | `KOTRAIL_DELAY_WAITS_FOR_ASYNC_WORK` | [delay-for-completion.md](delay-for-completion.md) |
 | Preconditions | on | `KOTRAIL_PRECONDITION_VIOLATED` | [preconditions.md](preconditions.md) |
 | No unimplemented code | on | `KOTRAIL_UNIMPLEMENTED_CODE` | [no-unimplemented.md](no-unimplemented.md) |
