@@ -16,6 +16,7 @@ import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
 import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.expressions.FirAnonymousFunctionExpression
 import org.jetbrains.kotlin.fir.expressions.FirCallableReferenceAccess
+import org.jetbrains.kotlin.fir.expressions.FirCheckedSafeCallSubject
 import org.jetbrains.kotlin.fir.expressions.FirElvisExpression
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
@@ -23,6 +24,7 @@ import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirReturnExpression
 import org.jetbrains.kotlin.fir.expressions.FirSafeCallExpression
 import org.jetbrains.kotlin.fir.expressions.FirSmartCastExpression
+import org.jetbrains.kotlin.fir.expressions.FirThisReceiverExpression
 import org.jetbrains.kotlin.fir.expressions.FirVariableAssignment
 import org.jetbrains.kotlin.fir.expressions.unwrapArgument
 import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
@@ -31,6 +33,7 @@ import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.ConeStarProjection
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
@@ -68,6 +71,9 @@ import org.jetbrains.kotlin.types.AbstractTypeChecker
  * A creation that takes, as an argument, a resource this function did not create (a parameter,
  * `this`, a property, a call that is not a creation) is a view over a stream someone else owns:
  * closing it would close the parent, so the parent's owner decides and the view is not tracked.
+ * A wrapper chained on such a view (`Wrapper(parameterStream).bufferedReader()`), or on a stream
+ * reached from a parameter or `this` (`parameterStream.bufferedReader()`, `this.stream.buffered()`),
+ * is a view too.
  */
 object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
     private val CLOSEABLE = listOf(
@@ -139,7 +145,7 @@ object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
 
         override fun visitFunctionCall(functionCall: FirFunctionCall) {
             val type = resourceType(functionCall)
-            if (type != null && !isViewOverUnowned(functionCall)) {
+            if (type != null && !isViewOverUnowned(functionCall) && !isWrapperOverView(functionCall)) {
                 created[functionCall] = type
                 if (isSettledAbove(functionCall)) settled += functionCall
             }
@@ -202,6 +208,53 @@ object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
             if (local != null) return@any !isCreation(locals.getValue(local))
             val inner = unwrapScopeChain(expression) as? FirFunctionCall
             inner == null || !isCreation(inner)
+        }
+
+        /** A view: a creation over an unowned argument, or a wrapper chained on a view. */
+        private fun isView(call: FirFunctionCall): Boolean = isCreation(call) && (isViewOverUnowned(call) || isWrapperOverView(call))
+
+        /**
+         * `Wrapper(parameterStream).bufferedReader()`, `parameterStream.bufferedReader()`, `this.stream.buffered()`:
+         * a creation that wraps its receiver, where the receiver is a view or a stream reached from a parameter
+         * or `this`, is a view over a stream its owner closes. `File(path).bufferedReader()` and
+         * `process.inputStream.bufferedReader()` on a local stay tracked.
+         */
+        private fun isWrapperOverView(call: FirFunctionCall): Boolean {
+            var receiver = call.explicitReceiver?.unwrapped() ?: return false
+            if (receiver is FirCheckedSafeCallSubject) receiver = receiver.originalReceiverRef.value.unwrapped()
+            if (!receiver.resolvedType.isCloseable()) return false
+            val local = receiver.localSymbol()
+            if (local != null) return isView(locals.getValue(local))
+            val inner = unwrapScopeChain(receiver)
+            if (inner is FirFunctionCall) return isView(inner)
+            return isRootedAtParameterOrThis(inner)
+        }
+
+        /**
+         * `parameterStream`, `this`, `this.stream`, `stream` (a member), `this.holder?.stream`: rooted at `this`
+         * through property accesses, or a parameter itself. A property of a parameter (`process.inputStream`)
+         * is a stream this function pulled out, so it stays the function's to close.
+         */
+        private fun isRootedAtParameterOrThis(expression: FirExpression): Boolean {
+            var current = expression.unwrapped()
+            var throughProperty = false
+            while (true) {
+                current = when (current) {
+                    is FirThisReceiverExpression -> return true
+                    is FirCheckedSafeCallSubject -> current.originalReceiverRef.value.unwrapped()
+                    is FirSafeCallExpression -> {
+                        if (current.selector !is FirPropertyAccessExpression) return false
+                        throughProperty = true
+                        current.receiver.unwrapped()
+                    }
+                    is FirPropertyAccessExpression -> {
+                        if (current.calleeReference.toResolvedCallableSymbol() is FirValueParameterSymbol) return !throughProperty
+                        throughProperty = true
+                        (current.explicitReceiver ?: current.dispatchReceiver ?: return false).unwrapped()
+                    }
+                    else -> return false
+                }
+            }
         }
 
         private fun ConeKotlinType.isCloseable(): Boolean = CLOSEABLE.any { isSubtypeOf(it) }

@@ -49,7 +49,10 @@ because nothing in the code it is looking at says the object is a resource.
   `BufferedReader(parameterReader)` or `BoundedReader(this, length)` inside the wrapped
   reader's own class. Closing the view would close the parent, so the parent's owner decides.
   A wrapper over a fresh creation, `BufferedReader(FileReader(path))`, is still tracked: the
-  wrapper carries the obligation of what it wraps.
+  wrapper carries the obligation of what it wraps. A wrapper chained on a view
+  (`Wrapper(parameterStream).bufferedReader()`), or on a stream reached from a parameter or
+  `this` (`parameterStream.bufferedReader()`, `this.stream.buffered()`), is a view too. A
+  stream pulled out of an object, `process.inputStream.bufferedReader()`, is still tracked.
 - The type is on `ignoredTypes`: an in-memory buffer holds nothing a close would free, and a
   project's `AutoCloseable` registration handles (an uninstall token) go there too:
 
@@ -101,4 +104,5 @@ the locals initialized from a creation (through scope functions, safe calls, `?:
 result of a `use` / `let` / `run` lambda), the `close()` / `use` calls on those locals and the
 bound callable references whose receiver is one of them. A creation with a closeable argument
 that is not itself a creation (directly or through a local holding one) is a view and is not
-collected.
+collected, and so is a creation whose closeable receiver is a view, a parameter, or rooted at
+`this` through property accesses.

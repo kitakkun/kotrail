@@ -138,6 +138,19 @@ fun views(parameterStream: InputStream, path: String): Int {
     return owned.read()
 }
 
+fun wrappedViews(parameterStream: InputStream): String {
+    // Not reported: a wrapper chained on a view, or on a parameter, closes a stream the caller owns.
+    val chained = Wrapper(parameterStream).bufferedReader()
+    val direct = parameterStream.bufferedReader()
+    return chained.readLine() + direct.readLine()
+}
+
+class Holder(private val stream: InputStream) {
+    // Not reported: a wrapper over a member property; the class owns the stream.
+    fun first(): String = this.stream.bufferedReader().readLine()
+    fun second(): Int = stream.buffered().read()
+}
+
 /* GENERATED_FIR_TAGS: additiveExpression, assignment, classDeclaration, elvisExpression, flexibleType,
 functionDeclaration, functionalType, integerLiteral, javaFunction, lambdaLiteral, localProperty, nullableType, override,
 propertyDeclaration, safeCall, stringLiteral, tryExpression */
