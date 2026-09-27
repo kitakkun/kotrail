@@ -179,7 +179,7 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: the local's name; reported on a local val that only one branch below it uses. */
     val NARROW_LOCAL_SCOPE = tunable1<KtProperty, String>("NARROW_LOCAL_SCOPE", KotrailRule.NARROW_LOCAL_SCOPE, NAME)
 
-    /** Arguments: the local's name, the distance (`9 lines (limit 5)`); reported on a local val declared long before its first use. */
+    /** Arguments: the local's name, the distance (`9 lines of code (limit 5)`); reported on a local val declared long before its first use. */
     val LOCAL_DECLARED_TOO_EARLY = tunable2<KtProperty, String, String>("LOCAL_DECLARED_TOO_EARLY", KotrailRule.NARROW_LOCAL_SCOPE, NAME)
 
     /** Arguments: the expression as written, the idiom to write with its key in parentheses; reported on the expression. */

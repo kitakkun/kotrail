@@ -169,7 +169,7 @@ object ConfigSchema {
                 entryHint = "a mapping with from (a package glob), deny (package globs) and optionally allow (package globs)"),
         ),
         KotrailRule.NARROW_LOCAL_SCOPE to listOf(
-            Setting("maxDistance", Kind.INT, "Lines allowed between a local's declaration and the statement that first uses it; 0 switches the distance check off.", default = "5"),
+            Setting("maxDistance", Kind.INT, "Lines of code allowed between a local's declaration and the statement that first uses it (blank and comment-only lines not counted); 0 switches the distance check off.", default = "5"),
         ),
         KotrailRule.PREFER_IDIOM to listOf(
             Setting("disabled", Kind.LIST, "Idioms not asked for: emptiness (size == 0), negation (!isEmpty()), nullOrEmpty (x == null || x.isEmpty()), chain (filter { }.first()), elvis (if (x != null) x else y)."),

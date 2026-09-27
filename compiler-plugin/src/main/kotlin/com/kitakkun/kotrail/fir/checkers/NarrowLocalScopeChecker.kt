@@ -68,9 +68,11 @@ import org.jetbrains.kotlin.text
  * body or a lambda is left alone, since the initializer would run more than once or later.
  * The fix moves the declaration to the top of the branch, when the branch has braces.
  *
- * The second shape is distance: a local whose first use is more than `maxDistance` lines below
- * its declaration, with unrelated statements in between. The same purity condition applies, and
- * the fix moves the declaration to just before the statement that first uses it.
+ * The second shape is distance: a local whose first use is more than `maxDistance` lines of code
+ * below its declaration, with unrelated statements in between. Only lines that carry code count
+ * (blank, comment-only and brace-only lines do not), so the blank lines and comments that
+ * separate the steps of a function do not push a local over the limit. The same purity condition
+ * applies, and the fix moves the declaration to just before the statement that first uses it.
  */
 object NarrowLocalScopeChecker : FirPropertyChecker(MppCheckerKind.Common) {
     context(context: CheckerContext, reporter: DiagnosticReporter)
@@ -112,10 +114,12 @@ object NarrowLocalScopeChecker : FirPropertyChecker(MppCheckerKind.Common) {
         val blockSource = block.source ?: return
         val blockText = blockSource.text?.toString() ?: return
         if (firstUseSource.startOffset < source.endOffset) return
-        val lines = blockText.substring(source.endOffset - blockSource.startOffset, firstUseSource.startOffset - blockSource.startOffset).count { it == '\n' }
+        val between = blockText.substring(source.endOffset - blockSource.startOffset, firstUseSource.startOffset - blockSource.startOffset)
+        // The first segment is the rest of the declaration's line, the last one the indentation before the first use.
+        val lines = between.split('\n').drop(1).dropLast(1).count { isCodeLine(it) } + 1
         if (lines <= maxDistance) return
         val fix = moveBeforeFix(source, block, firstUseSource)
-        reportKotrail(source, KotrailDiagnostics.LOCAL_DECLARED_TOO_EARLY, declaration.name.asString(), "$lines lines (limit $maxDistance)", fix)
+        reportKotrail(source, KotrailDiagnostics.LOCAL_DECLARED_TOO_EARLY, declaration.name.asString(), "$lines lines of code (limit $maxDistance)", fix)
     }
 
     /**

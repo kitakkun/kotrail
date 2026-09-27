@@ -177,7 +177,7 @@ data class KotrailUnloadableCode(
 )
 
 data class KotrailNarrowLocalScope(
-    /** A local whose first use is more than this many lines below its declaration is reported; `0` switches the distance check off. */
+    /** A local whose first use is more than this many lines of code below its declaration (blank, comment-only and brace-only lines not counted) is reported; `0` switches the distance check off. */
     val maxDistance: Int,
 )
 

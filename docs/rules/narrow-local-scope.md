@@ -20,7 +20,7 @@ if (user.isGuest) {
 ```
 
 ```kotlin
-val greeting = "Hello, ${user.name}"   // reported: first used 7 lines below
+val greeting = "Hello, ${user.name}"   // reported: first used 7 lines of code below
 println("one")
 ...
 println("six")
@@ -62,10 +62,13 @@ The branch shape, `KOTRAIL_NARROW_LOCAL_SCOPE`, when all of the following hold:
   branch.
 
 The distance shape, `KOTRAIL_LOCAL_DECLARED_TOO_EARLY`, when the branch shape does not apply,
-the initializer is pure in the same sense, and more than `maxDistance` lines separate the end of
-the declaration from the start of the statement that first reads the local. The lines in between
-are, by construction, statements that do not use it; the fix moves the declaration to just before
-that statement.
+the initializer is pure in the same sense, and the statement that first reads the local starts
+more than `maxDistance` lines of code below the declaration: the lines of code between the two,
+plus the first use's own line. Blank, comment-only and brace-only lines are not counted, so the
+blank lines and comments that separate the steps of a function (arrange, act, assert) do not push
+a local over the limit; the same rule applies in every source set. The lines in between are, by
+construction, statements that do not use it; the fix moves the declaration to just before that
+statement.
 
 For both shapes, the `var`s the initializer reads are its dependencies: the declaration moves
 only if no statement it would move past (and, for the branch shape, nothing in the branch

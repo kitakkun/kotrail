@@ -156,11 +156,8 @@ object FileLengthChecker : FirFileChecker(MppCheckerKind.Common) {
 
     /** Lines of code: not blank, not a lone brace, not a comment, not `package` or `import`. */
     private fun isCode(line: String): Boolean {
+        if (!isCodeLine(line)) return false
         val trimmed = line.trim()
-        if (trimmed.isEmpty()) return false
-        if (trimmed == "{" || trimmed == "}") return false
-        if (trimmed.startsWith("//") || trimmed.startsWith("/*") || trimmed.startsWith("*")) return false
-        if (trimmed.startsWith("package ") || trimmed.startsWith("import ")) return false
-        return true
+        return !trimmed.startsWith("package ") && !trimmed.startsWith("import ")
     }
 }

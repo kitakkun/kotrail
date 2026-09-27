@@ -137,7 +137,7 @@ own; a rule not listed has none.
 | | `starters` | `launch`, `async`, `launchIn`, `Thread.start`, `thread`, `Handler.post*`, `Executor.execute`, `ExecutorService.submit`, `Timer.schedule` | Functions that start work that outlives the call. Replaces the default list. |
 | `unloadableCode` (off by default) | `registrations` | JVM, AWT and IntelliJ hooks (see the rule page) | Globs over fully qualified functions that register something with the platform for the rest of its life; a call without a disposable argument is reported. Replaces the default list. |
 | | `disposableTypes` | `[com.intellij.openapi.Disposable]` | Fully qualified types an argument of which scopes a registration to a lifetime. Replaces the default list. |
-| `narrowLocalScope` | `maxDistance` | `5` | Lines allowed between a local's declaration and the statement that first uses it; `0` switches the distance check off. |
+| `narrowLocalScope` | `maxDistance` | `5` | Lines of code allowed between a local's declaration and the statement that first uses it (blank and comment-only lines not counted); `0` switches the distance check off. |
 | `liveVariableBudget` | `max` | `7` | Variables (locals and parameters) that may be live at one statement of a function; `0` disables. |
 | `noDataClassInPublicApi` | `scope` | `explicitApi` | `explicitApi` applies the rule only to modules compiled with explicit API mode; `all` everywhere. |
 | `visibilityPolicy` | `private` | | A predicate; matching declarations must be `private`. |

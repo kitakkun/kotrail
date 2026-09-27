@@ -51,17 +51,9 @@ object FunctionLengthChecker : NamedFunctionChecker(MppCheckerKind.Common) {
         val text = source.text?.toString() ?: return
         val start = (body.startOffset - source.startOffset).coerceIn(0, text.length)
         val end = (body.endOffset - source.startOffset).coerceIn(start, text.length)
-        val lines = text.substring(start, end).split('\n').count { isCode(it) }
+        val lines = text.substring(start, end).split('\n').count { isCodeLine(it) }
         if (lines <= limit) return
 
         reportKotrail(source, KotrailDiagnostics.FUNCTION_TOO_LONG, "$lines lines of code (limit $limit)")
-    }
-
-    private fun isCode(line: String): Boolean {
-        val trimmed = line.trim()
-        if (trimmed.isEmpty()) return false
-        if (trimmed == "{" || trimmed == "}") return false
-        if (trimmed.startsWith("//") || trimmed.startsWith("/*") || trimmed.startsWith("*")) return false
-        return true
     }
 }

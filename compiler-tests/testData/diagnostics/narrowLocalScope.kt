@@ -130,6 +130,27 @@ fun far(user: User, count: Int): String {
     println(fromCaptured)
     bump()
 
+    // Not reported: first used seven lines below, but only four of those lines carry code; blank and comment-only
+    // lines between the steps do not count.
+    val arranged = user.name
+    println("arrange")
+
+    println("act")
+    // assert on what the act step printed
+
+    println("assert")
+    println(arranged)
+
+    // Reported: as many lines as the case above, but all of them carry code.
+    val <!KOTRAIL_LOCAL_DECLARED_TOO_EARLY!>dense<!> = user.name
+    println("arrange")
+    println("more")
+    println("act")
+    println("more")
+    println("assert")
+    println("more")
+    println(dense)
+
     // Not reported: the initializer calls a function.
     val computed = format(user)
     println("p")
