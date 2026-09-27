@@ -2,7 +2,7 @@
 
 **Diagnostic:** `KOTRAIL_SUPPRESS_WITHOUT_REASON` (error, on the annotation)
 **Key:** `rules.suppressReason` (on by default)
-**Settings:** `annotations` (default: `kotlin.Suppress`, `android.annotation.SuppressLint`), `ids` (default: `*`), `exemptIds` (default: `unused`, `UNUSED_*`)
+**Settings:** `annotations` (default: `kotlin.Suppress`, `android.annotation.SuppressLint`), `ids` (default: `*`), `exemptIds` (default: `unused`, `UNUSED`, `UNUSED_*`)
 
 ## What it rejects
 
@@ -69,7 +69,7 @@ there is none and fixes the code.
   ```
 - An annotation not on `annotations` (`@OptIn` is a contract, not a suppression), or a
   suppression none of whose ids matches `ids`.
-- A suppression whose ids all match `exemptIds` (`unused` and `UNUSED_*` by default): a member
+- A suppression whose ids all match `exemptIds` (`unused`, `UNUSED` and `UNUSED_*` by default): a member
   invoked through a framework (a serializer, a reflection-bound callback) carries
   `@Suppress("unused")` for a reason that is always the same, so writing it down every time
   says nothing. A project that wants only Kotrail's suppressions explained, or more ids
@@ -79,7 +79,7 @@ there is none and fixes the code.
   rules:
     suppressReason:
       ids: ["KOTRAIL_*"]
-      exemptIds: ["unused", "UNUSED_*", "NAME_SHADOWING"]
+      exemptIds: ["unused", "UNUSED", "UNUSED_*", "NAME_SHADOWING"]
       annotations: [kotlin.Suppress, android.annotation.SuppressLint, com.acme.lint.Ignore]
   ```
 - The annotation is one of several on the declaration: a comment above the stack, or on the

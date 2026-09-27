@@ -150,7 +150,7 @@ object ConfigSchema {
         KotrailRule.SUPPRESS_REASON to listOf(
             Setting("annotations", Kind.LIST, "Fully qualified suppression annotations whose use must carry a reason in a comment on the same line or the line above; replaces the default list.", default = "kotlin.Suppress, android.annotation.SuppressLint"),
             Setting("ids", Kind.LIST, "Globs over the suppressed ids (the annotation's string arguments); an annotation is checked when one of its ids matches and is not exempt. Replaces the default list.", default = "*"),
-            Setting("exemptIds", Kind.LIST, "Globs over ids that owe no reason; an annotation whose ids all match one is skipped, while one that mixes in another id is checked. Replaces the default list.", default = "unused, UNUSED_*"),
+            Setting("exemptIds", Kind.LIST, "Globs over ids that owe no reason; an annotation whose ids all match one is skipped, while one that mixes in another id is checked. Replaces the default list.", default = "unused, UNUSED, UNUSED_*"),
         ),
         KotrailRule.NATIVE_ALLOCATION_IN_LOOP to listOf(
             Setting("types", Kind.LIST, "Fully qualified types (subtypes included) whose instances hold native memory that only a cleaner frees; replaces the default list.", default = "org.jetbrains.skia.impl.Managed, java.awt.image.VolatileImage"),

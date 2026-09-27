@@ -666,7 +666,7 @@ data class KotrailConfig(
         /** Every suppression owes a reason by default, apart from [DEFAULT_SUPPRESSION_EXEMPT_IDS]. */
         val DEFAULT_SUPPRESSION_IDS: List<String> = listOf("*")
         /** A member invoked through a framework carries `@Suppress("unused")` for a reason that is always the same. */
-        val DEFAULT_SUPPRESSION_EXEMPT_IDS: List<String> = listOf("unused", "UNUSED_*")
+        val DEFAULT_SUPPRESSION_EXEMPT_IDS: List<String> = listOf("unused", "UNUSED", "UNUSED_*")
         val DEFAULT_NATIVE_TYPES: List<String> = listOf("org.jetbrains.skia.impl.Managed", "java.awt.image.VolatileImage")
         val DEFAULT_NATIVE_FACTORIES: List<String> = listOf(
             "java.nio.ByteBuffer.allocateDirect",

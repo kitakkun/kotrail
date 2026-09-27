@@ -132,7 +132,7 @@ own; a rule not listed has none.
 | | `plainVars` | `false` | Whether a write to a plain `var` member of another class is reported too. Off because such writes are usually a single writer's input. |
 | `suppressReason` | `annotations` | `[kotlin.Suppress, android.annotation.SuppressLint]` | Suppression annotations whose use must carry a reason in a comment on the same line or the line above. Replaces the default list. |
 | | `ids` | `[*]` | Globs over the suppressed ids (the annotation's string arguments); an annotation is checked when one of its ids matches and is not exempt. Replaces the default list. |
-| | `exemptIds` | `[unused, UNUSED_*]` | Globs over ids that owe no reason; an annotation whose ids all match one is skipped, while one that mixes in another id is checked. Replaces the default list. |
+| | `exemptIds` | `[unused, UNUSED, UNUSED_*]` | Globs over ids that owe no reason; an annotation whose ids all match one is skipped, while one that mixes in another id is checked. Replaces the default list. |
 | `catchTooBroad` | `types` | `kotlin.Throwable`, `kotlin.Exception`, `kotlin.RuntimeException` and their `java.lang` classes, `java.lang.Error` | Exception types a catch clause must not name. Replaces the default list. |
 | | `report` | `swallowed` | `swallowed`: only clauses that let the failure go no further than a log line; `all`: every broad clause. |
 | | `loggers` | `println`, `printStackTrace`, `android.util.Log.*`, SLF4J, kotlin-logging, Kermit, Timber, IntelliJ `Logger.*` | Functions that only log; a failure handed to them alone counts as swallowed. Replaces the default list. |

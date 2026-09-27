@@ -46,7 +46,7 @@ import org.jetbrains.kotlin.types.ConstantValueKind
  * belongs next to the annotation. The annotations checked are `suppressReason.annotations`
  * (`kotlin.Suppress` and `android.annotation.SuppressLint`), on any declaration and on the file.
  * Every suppression owes a reason (`suppressReason.ids` is `*`) except those whose ids all match
- * `suppressReason.exemptIds` (`unused`, `UNUSED_*`: a member invoked through a framework carries
+ * `suppressReason.exemptIds` (`unused`, `UNUSED`, `UNUSED_*`: a member invoked through a framework carries
  * `@Suppress("unused")` for a reason that is always the same); an annotation that mixes an exempt
  * id with another is checked, as decided by [SuppressedIds]. Whether a reason is there is decided
  * from the file's text by [SuppressionReason]: a comment on the annotation's line or the line
