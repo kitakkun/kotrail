@@ -30,10 +30,10 @@ if (isAdmin && hasToken || isGuest) open()                                      
 ## What it asks for
 
 ```kotlin
-private fun Node.isSkipped(options: Options): Boolean =
-    !visible && !options.includeInvisible && children.isEmpty()
+private fun Node.isIncluded(options: Options): Boolean =
+    visible || options.includeInvisible || children.isNotEmpty()
 
-if (node.isSkipped(options)) return
+if (!node.isIncluded(options)) return
 ```
 
 or a named `val` in front of the branch (`val canSubmit = form.isValid && ...; if (canSubmit)`).

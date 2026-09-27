@@ -795,7 +795,7 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         )
         map.put2(
             KotrailDiagnostics.CONDITION_DUPLICATED,
-            "[Kotrail] This condition is also written at {1}: give it one name (`fun shouldSkip(...)`, or a property on the type " +
+            "[Kotrail] This condition is also written at {1}: give it one name (`fun Node.isIncluded(options)`, or a property on the type " +
                 "it reads) so the decision has a single definition.",
         )
         map.put2(
