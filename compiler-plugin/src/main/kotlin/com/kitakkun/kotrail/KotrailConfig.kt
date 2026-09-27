@@ -400,6 +400,8 @@ data class KotrailSuppressReason(
     val annotations: List<String>,
     /** Globs over the suppressed ids (the annotation's string arguments); an annotation is checked when one of its ids matches. */
     val ids: List<String>,
+    /** Globs over ids that owe no reason; an annotation whose ids all match one is skipped, one that mixes them in is checked. */
+    val exemptIds: List<String>,
 )
 
 /** Tunables for the native-allocation-in-loop rule. From `rules.nativeAllocationInLoop`. */
@@ -661,8 +663,10 @@ data class KotrailConfig(
             "java.io.CharArrayReader", "java.io.CharArrayWriter", "okio.Buffer",
         )
         val DEFAULT_SUPPRESSION_ANNOTATIONS: List<String> = listOf("kotlin.Suppress", "android.annotation.SuppressLint")
-        /** Only a silenced Kotrail check needs explaining by default; `*` checks every suppression. */
-        val DEFAULT_SUPPRESSION_IDS: List<String> = listOf("KOTRAIL_*")
+        /** Every suppression owes a reason by default, apart from [DEFAULT_SUPPRESSION_EXEMPT_IDS]. */
+        val DEFAULT_SUPPRESSION_IDS: List<String> = listOf("*")
+        /** A member invoked through a framework carries `@Suppress("unused")` for a reason that is always the same. */
+        val DEFAULT_SUPPRESSION_EXEMPT_IDS: List<String> = listOf("unused", "UNUSED_*")
         val DEFAULT_NATIVE_TYPES: List<String> = listOf("org.jetbrains.skia.impl.Managed", "java.awt.image.VolatileImage")
         val DEFAULT_NATIVE_FACTORIES: List<String> = listOf(
             "java.nio.ByteBuffer.allocateDirect",
@@ -1139,6 +1143,7 @@ data class KotrailConfig(
                 suppressReason = KotrailSuppressReason(
                     annotations = list(KotrailRule.SUPPRESS_REASON, "annotations") ?: DEFAULT_SUPPRESSION_ANNOTATIONS,
                     ids = list(KotrailRule.SUPPRESS_REASON, "ids") ?: DEFAULT_SUPPRESSION_IDS,
+                    exemptIds = list(KotrailRule.SUPPRESS_REASON, "exemptIds") ?: DEFAULT_SUPPRESSION_EXEMPT_IDS,
                 ),
                 objcThrows = KotrailObjCThrows(packages = list(KotrailRule.NATIVE_OBJC_THROWS, "packages").orEmpty().map(::Glob)),
                 weakOnlyReference = KotrailWeakOnlyReference(

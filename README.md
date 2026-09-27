@@ -48,7 +48,8 @@ its diagnostic and whether it is on by default.
   once, instead of the same `a && b && c` in three files; [Narrative order](docs/rules/narrative-order.md) and [Parameter order](docs/rules/parameter-order.md) put helpers after
   their first caller and data before callbacks; [Narrow local scope](docs/rules/narrow-local-scope.md), [Prefer val](docs/rules/prefer-val.md) and
   [Prefer idiom](docs/rules/prefer-idiom.md) tidy what is left; [Suppress reason](docs/rules/suppress-reason.md) asks every
-  `@Suppress` of a Kotrail check for a comment that says why.
+  `@Suppress` for a comment that says why; [Named condition](docs/rules/named-condition.md)
+  asks for one named definition of a compound condition written in several places.
 - **Naming and style** (8): [Prefer function references](docs/rules/prefer-function-references.md) over `{ transform(it) }`,
   [Named arguments for repeated types](docs/rules/named-arguments-for-repeated-types.md) for `Padding(8, 16, 8, 16)`, no comments longer than five lines
   and no fully qualified names inline.

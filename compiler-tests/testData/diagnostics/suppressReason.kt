@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.suppressReason=on, rules.suppressReason.ids=KOTRAIL_*
+// KOTRAIL_CONFIG: rules.suppressReason=on
 
 <!KOTRAIL_SUPPRESS_WITHOUT_REASON!>@file:Suppress("KOTRAIL_FILE_TOO_LONG")<!>
 
@@ -48,8 +48,34 @@ fun plain() {}
 
 <!KOTRAIL_SUPPRESS_WITHOUT_REASON!>@Suppress("KOTRAIL_CATCH_TOO_BROAD")<!> fun afterPlain() {}
 
-@Suppress("UNCHECKED_CAST")
-fun notAListedId(any: Any): List<String> = any as List<String>
+// Each operation below is kept for the old callers until they migrate.
+
+@Suppress("KOTRAIL_CATCH_TOO_BROAD") fun sectionA() {}
+
+@Suppress("KOTRAIL_CATCH_TOO_BROAD") fun sectionB() {}
+
+@Suppress("KOTRAIL_CATCH_TOO_BROAD") fun sectionC() {}
+
+fun plainAgain() {}
+
+// A comment with three blank lines before the annotation.
+
+
+
+<!KOTRAIL_SUPPRESS_WITHOUT_REASON!>@Suppress("KOTRAIL_CATCH_TOO_BROAD")<!>
+fun threeBlanksBetween() {}
+
+<!KOTRAIL_SUPPRESS_WITHOUT_REASON!>@Suppress("UNCHECKED_CAST")<!>
+fun compilerIdOwesOneToo(any: Any): List<String> = any as List<String>
+
+@Suppress("unused")
+fun exemptUnused() {}
+
+@Suppress("UNUSED_PARAMETER")
+fun exemptUnusedParameter(ignored: Int) {}
+
+<!KOTRAIL_SUPPRESS_WITHOUT_REASON!>@Suppress("unused", "DEPRECATION")<!>
+fun exemptMixedIn() {}
 
 <!KOTRAIL_SUPPRESS_WITHOUT_REASON!>@Suppress("UNCHECKED_CAST", "KOTRAIL_CATCH_TOO_BROAD")<!>
 fun mixedIds() {}

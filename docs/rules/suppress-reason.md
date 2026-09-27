@@ -2,17 +2,20 @@
 
 **Diagnostic:** `KOTRAIL_SUPPRESS_WITHOUT_REASON` (error, on the annotation)
 **Key:** `rules.suppressReason` (on by default)
-**Settings:** `annotations` (default: `kotlin.Suppress`, `android.annotation.SuppressLint`), `ids` (default: `KOTRAIL_*`)
+**Settings:** `annotations` (default: `kotlin.Suppress`, `android.annotation.SuppressLint`), `ids` (default: `*`), `exemptIds` (default: `unused`, `UNUSED_*`)
 
 ## What it rejects
 
-A suppression annotation that carries no written reason:
+A suppression annotation that carries no written reason, whatever check it silences:
 
 ```kotlin
 @Suppress("KOTRAIL_CATCH_TOO_BROAD")      // reported: why is the broad catch fine here?
 fun poll() {
     try { device.read() } catch (e: Exception) { log(e) }
 }
+
+@Suppress("UNCHECKED_CAST")               // reported: why is the cast safe?
+fun <T> decode(raw: Any): T = raw as T
 ```
 
 ## What it asks for
@@ -36,8 +39,12 @@ there is none and fixes the code.
 
 - A declaration, or the file (`@file:Suppress(...)`), carries an annotation from `annotations`
   (`kotlin.Suppress` and `android.annotation.SuppressLint` by default), and one of the
-  annotation's string arguments matches a glob in `ids` (`KOTRAIL_*` by default: a silenced
-  Kotrail check is what a reviewer needs explained). `ids: ["*"]` checks every suppression.
+  annotation's string arguments matches a glob in `ids` (`*` by default: every suppression owes
+  a reason) and no glob in `exemptIds`. A Kotrail check, an `UNCHECKED_CAST` (why the cast is
+  safe) and a `DEPRECATION` (why the old API is still used) are all worth a line.
+- An annotation that mixes an exempt id with another, `@Suppress("unused", "DEPRECATION")`, is
+  checked: the message quotes the annotation as written, so it names the id that owes the
+  reason.
 - No comment is on the annotation's line (before or after it, `//` or a block), on the line
   directly above it (a `//` line, or the line a block comment or KDoc ends on), or above the
   group it belongs to (below).
@@ -61,13 +68,18 @@ there is none and fixes the code.
   @Suppress("KOTRAIL_CATCH_TOO_BROAD") fun pollV4() { ... }    // reported: pollV3 ended the group
   ```
 - An annotation not on `annotations` (`@OptIn` is a contract, not a suppression), or a
-  suppression none of whose ids matches `ids`: a self-evident `@Suppress("UNCHECKED_CAST")` on
-  a serializer is noise to explain, so it is not checked unless the project widens `ids`:
+  suppression none of whose ids matches `ids`.
+- A suppression whose ids all match `exemptIds` (`unused` and `UNUSED_*` by default): a member
+  invoked through a framework (a serializer, a reflection-bound callback) carries
+  `@Suppress("unused")` for a reason that is always the same, so writing it down every time
+  says nothing. A project that wants only Kotrail's suppressions explained, or more ids
+  exempted, sets the lists:
 
   ```yaml
   rules:
     suppressReason:
-      ids: ["KOTRAIL_*", "DEPRECATION", "UNCHECKED_CAST"]
+      ids: ["KOTRAIL_*"]
+      exemptIds: ["unused", "UNUSED_*", "NAME_SHADOWING"]
       annotations: [kotlin.Suppress, android.annotation.SuppressLint, com.acme.lint.Ignore]
   ```
 - The annotation is one of several on the declaration: a comment above the stack, or on the
@@ -86,8 +98,8 @@ diagnostic; the comment says why the rule does not apply here.
 ## Implementation notes
 
 `fir/checkers/SuppressReasonChecker.kt`, a basic declaration checker that sees every
-annotated declaration and the file: for each annotation from `annotations` whose string
-arguments match `ids`, it asks `comments/SuppressionReason.kt` whether the file's text has a
+annotated declaration and the file: for each annotation from `annotations` with a string
+argument that matches `ids` and not `exemptIds` (`comments/SuppressedIds.kt`), it asks `comments/SuppressionReason.kt` whether the file's text has a
 comment on the annotation's line, above it, or above its group; FIR keeps no comment nodes, so
 the decision is made on the source text around the annotation's offsets. A property made from a
 constructor parameter and a default accessor share the annotations written on the parameter or
