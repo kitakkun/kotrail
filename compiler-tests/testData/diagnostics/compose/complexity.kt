@@ -32,9 +32,15 @@ fun Row(content: @Composable () -> Unit) {
     content()
 }
 
+@Composable
+fun Button(onClick: () -> Unit, content: @Composable () -> Unit) {
+    content()
+}
+
 suspend fun load(query: String): List<Item> = emptyList()
 suspend fun observe(events: Observable<String>, onEvent: (String) -> Unit) {}
 suspend fun send(action: String, id: String) {}
+fun submit(action: String, text: String) {}
 
 // Not reported: a list item with one branch scores 1.
 @Composable
@@ -200,6 +206,28 @@ fun <!KOTRAIL_COMPOSABLE_TOO_COMPLEX!>Board<!>(a: Boolean, b: Boolean, c: Boolea
         if (e) Text("e")
         if (f) Text("f")
     }
+}
+
+// Reported: the points pile up in the click handler, which is named with the advice to give it a name.
+// States 1, and the handler 5 (the `if` and its `else if` with computed results 2, the `when` 3): 6.
+@Composable
+fun <!KOTRAIL_COMPOSABLE_TOO_COMPLEX!>Composer<!>(mode: Int, title: String, hint: String) {
+    var draft by remember { mutableStateOf("") }
+    Text(title)
+    Text(hint)
+    Text(draft)
+    Button(onClick = <!KOTRAIL_COMPOSABLE_COMPLEXITY_HOTSPOT!>{
+        val text = if (draft.isBlank()) hint.trim() else if (draft.length > 80) draft.take(80) else draft.trim()
+        when (mode) {
+            0 -> submit("save", text)
+            1 -> submit("send", text)
+            2 -> submit("schedule", text)
+            else -> draft = text
+        }
+    }<!>) {
+        Text("Done")
+    }
+    Text(mode.toString())
 }
 
 /* GENERATED_FIR_TAGS: additiveExpression, andExpression, assignment, classDeclaration, comparisonExpression, const,

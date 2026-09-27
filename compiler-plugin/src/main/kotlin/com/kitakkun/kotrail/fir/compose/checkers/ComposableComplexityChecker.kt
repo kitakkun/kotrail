@@ -5,6 +5,7 @@ package com.kitakkun.kotrail.fir.compose.checkers
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.compat.NamedFunctionChecker
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
+import com.kitakkun.kotrail.fir.compose.ComposeNames
 import com.kitakkun.kotrail.fir.compose.ComplexityRecords
 import com.kitakkun.kotrail.fir.compose.isComposable
 import com.kitakkun.kotrail.fir.compose.isPreview
@@ -20,6 +21,9 @@ import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.declarations.FirAnonymousFunction
 import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
 import org.jetbrains.kotlin.fir.declarations.FirProperty
+import org.jetbrains.kotlin.fir.declarations.FirValueParameter
+import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
+import org.jetbrains.kotlin.fir.declarations.utils.isInline
 import org.jetbrains.kotlin.fir.expressions.FirAnonymousFunctionExpression
 import org.jetbrains.kotlin.fir.expressions.FirBlock
 import org.jetbrains.kotlin.fir.expressions.FirBooleanOperatorExpression
@@ -37,6 +41,7 @@ import org.jetbrains.kotlin.fir.expressions.FirTypeOperatorCall
 import org.jetbrains.kotlin.fir.expressions.FirVariableAssignment
 import org.jetbrains.kotlin.fir.expressions.FirWhenExpression
 import org.jetbrains.kotlin.fir.expressions.FirWhileLoop
+import org.jetbrains.kotlin.fir.expressions.resolvedArgumentMapping
 import org.jetbrains.kotlin.fir.expressions.impl.FirElseIfTrueCondition
 import org.jetbrains.kotlin.fir.expressions.unwrapArgument
 import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
@@ -44,15 +49,23 @@ import org.jetbrains.kotlin.fir.references.toResolvedNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.resolve.fullyExpandedType
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
+import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
+import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.ConeStarProjection
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
+import org.jetbrains.kotlin.fir.types.customAnnotations
+import org.jetbrains.kotlin.fir.types.isNothing
 import org.jetbrains.kotlin.fir.types.isNullableNothing
 import org.jetbrains.kotlin.fir.types.isSomeFunctionType
+import org.jetbrains.kotlin.fir.types.isSuspendOrKSuspendFunctionType
 import org.jetbrains.kotlin.fir.types.isUnit
+import org.jetbrains.kotlin.fir.types.lowerBoundIfFlexible
+import org.jetbrains.kotlin.fir.types.receiverType
 import org.jetbrains.kotlin.fir.types.resolvedType
+import org.jetbrains.kotlin.fir.types.returnType
 import org.jetbrains.kotlin.fir.types.typeContext
 import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
 import org.jetbrains.kotlin.name.ClassId
@@ -74,12 +87,20 @@ import org.jetbrains.kotlin.types.AbstractTypeChecker
  * | A callback parameter beyond four | 1 each, at most 4 |
  *
  * Neither line count nor call nesting counts: [FunctionLengthChecker] and [ComposableNestingChecker]
- * own those. Every lambda handed to a composable (`Column { }`, `items { }`), every effect and every
- * branch is a subtree with a score of its own, so that a composable over the limit is told which
- * block to extract (the innermost subtree carrying at least `hotspotShare` percent of the total)
- * and what kind of extraction fits it, or, when the points are spread, which kinds dominate. A
+ * own those. Every lambda handed to a composable (`Column { }`, `items { }`), every event handler
+ * lambda (`onClick = { }`, `Modifier.clickable { }`), every effect and every branch is a subtree
+ * with a score of its own, so that a composable over the limit is told which block to extract (the
+ * innermost subtree carrying at least `hotspotShare` percent of the total) and what kind of
+ * extraction fits it, or, when the points are spread, which kinds dominate. A
  * block that spans nearly the whole body (at least [WHOLE_BODY_SHARE] percent of its source) is
  * the root layout, not something to extract, and is never named; the search goes on inside it.
+ *
+ * A handler is a lambda argument whose parameter is a plain function type returning `Unit` (or
+ * `Nothing`): not `@Composable` (a content slot), not `suspend` (a coroutine body), without a
+ * receiver (a builder), and not run in place by an inline function. Lambdas of effects, state
+ * producers and the gesture and drawing callees in [NOT_HANDLER_CALLEES] are not handlers. A
+ * handler scores what its body holds like any other block; being a block of its own, it can be
+ * named as the hotspot, with the advice to give it a name.
  * A composable within the limit that still has one block carrying `hotspotMin` points on its own
  * gets that block reported as a standalone hotspot. Every composable's score and breakdown is
  * also written to a record for the `kotrailComplexity` report, under or over the limit.
@@ -90,6 +111,17 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
     private val LOOP_CALLS = setOf("forEach", "forEachIndexed", "map", "items", "itemsIndexed", "repeat", "fastForEach")
     /** Produces a `State` but holds a fresh callback rather than UI state: the freshness idiom, not a source of change. */
     private val NOT_STATE_SOURCES = setOf("rememberUpdatedState")
+    /**
+     * Callees whose lambdas are not event handlers: effects and state producers run the lambda on
+     * their own terms, and gesture and drawing callees take code that is part of the input or
+     * drawing pipeline. A trailing `*` matches a prefix.
+     */
+    private val NOT_HANDLER_CALLEES = listOf(
+        "LaunchedEffect", "DisposableEffect", "SideEffect", "produceState",
+        "remember", "rememberSaveable", "derivedStateOf", "snapshotFlow", "launch", "async",
+        "pointerInput", "awaitEachGesture", "awaitPointerEventScope", "detect*", "await*",
+        "drawBehind", "drawWithContent", "drawWithCache", "Canvas",
+    )
     private val STATE = ClassId(FqName("androidx.compose.runtime"), Name.identifier("State"))
     private const val FREE_CALLBACKS = 4
     private const val MAX_CALLBACK_POINTS = 4
@@ -156,7 +188,7 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
     }
 
     /** What a block is: decides the advice for extracting it. */
-    enum class Block { COMPOSABLE_LAMBDA, REMEMBER, EFFECT, BRANCH }
+    enum class Block { COMPOSABLE_LAMBDA, REMEMBER, EFFECT, BRANCH, HANDLER }
 
     /** The points of one subtree: what it scored itself, and the subtrees below it. */
     class Node(val label: String, val source: KtSourceElement?, private val block: Block) {
@@ -202,10 +234,11 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
             Block.REMEMBER -> "move the computation into a plain function"
             Block.EFFECT -> "move its body into a non-composable handler or an effect helper of its own"
             Block.BRANCH -> "give this variant of the UI a composable of its own"
+            Block.HANDLER -> "give it a name: move the body into a function and pass a reference"
         }
     }
 
-    /** Walks a body, scoring into the current [Node]; a lambda handed to a composable, an effect and a branch open a child. */
+    /** Walks a body, scoring into the current [Node]; a lambda handed to a composable, an event handler lambda, an effect and a branch open a child. */
     private class Scorer(private val session: FirSession, private val stateFactories: Set<String>) : FirVisitorVoid() {
         val root = Node("body", null, Block.COMPOSABLE_LAMBDA)
         private var current = root
@@ -350,9 +383,14 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
             if (producesState) insideStateSource = true
             functionCall.explicitReceiver?.accept(this)
             val composable = callee != null && callee.isComposable(session)
+            val mapping = functionCall.resolvedArgumentMapping
             for (argument in functionCall.argumentList.arguments) {
                 val lambda = argument.unwrapArgument() as? FirAnonymousFunctionExpression
-                if (lambda != null && (composable || name in LOOP_CALLS)) {
+                val parameter = if (lambda != null) mapping?.get(argument) ?: mapping?.get(lambda) else null
+                if (lambda != null && callee != null && parameter != null && isHandler(callee, parameter)) {
+                    // `onClick = { }`: points inside score as usual, the node lets the handler be named.
+                    inChild("${parameter.name.asString()} { }", lambda.source, Block.HANDLER) { lambda.anonymousFunction.body?.accept(this) }
+                } else if (lambda != null && (composable || name in LOOP_CALLS)) {
                     val block = if (name == "remember" || name == "rememberSaveable") Block.REMEMBER else Block.COMPOSABLE_LAMBDA
                     inChild("${name ?: "lambda"} { }", functionCall.source, block) { lambda.anonymousFunction.body?.accept(this) }
                 } else {
@@ -360,6 +398,25 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
                 }
             }
             insideStateSource = savedInside
+        }
+
+        /** Whether a lambda passed for [parameter] of [callee] is an event handler (see the class KDoc). */
+        private fun isHandler(callee: FirNamedFunctionSymbol, parameter: FirValueParameter): Boolean {
+            val name = callee.name.asString()
+            if (NOT_HANDLER_CALLEES.any { if (it.endsWith("*")) name.startsWith(it.dropLast(1)) else name == it }) return false
+            val type = parameter.returnTypeRef.coneType
+            if (!type.isSomeFunctionType(session)) return false
+            // A lambda that produces a value is a builder, one that returns Boolean is a dispatch.
+            val functionType = type.fullyExpandedType(session).lowerBoundIfFlexible() as? ConeClassLikeType ?: return false
+            val returned = functionType.returnType(session).fullyExpandedType(session).lowerBoundIfFlexible()
+            if (!returned.isUnit && !returned.isNothing) return false
+            if (type.customAnnotations.any { it.toAnnotationClassId(session) == ComposeNames.COMPOSABLE }) return false
+            if (type.isSuspendOrKSuspendFunctionType(session)) return false
+            // A receiver lambda is a builder (LazyColumn { items(...) }), not a callback.
+            if (type.receiverType(session) != null) return false
+            // An inline function runs the lambda in place: it is part of the body, not an event.
+            if (callee.isInline && !parameter.isNoinline && !parameter.isCrossinline) return false
+            return true
         }
 
         /** 1 for the effect, 1 more when its body assigns a State; the body's own branches score as usual. */

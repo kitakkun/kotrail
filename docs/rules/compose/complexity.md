@@ -65,7 +65,8 @@ fun ItemList(items: List<Item>, filter: String?, highlight: Boolean) {
 
 The advice follows the kind of block: a `remember { }` hotspot is a computation that wants a plain
 function, an effect hotspot wants its body in a non-composable handler or an effect helper of its
-own, and a branch wants a composable for that variant of the UI.
+own, a branch wants a composable for that variant of the UI, and an event handler lambda wants
+a name: its body moved into a function that the call site passes by reference.
 
 When branches dominate a spread score, the advice says where they are. If one block holds at
 least half of them, it is named with the advice for its kind ("most of them sit in
@@ -139,8 +140,9 @@ What does not count:
 
 ## Hotspots
 
-Every lambda handed to a composable (`Column { }`, `items { }`), every effect and every branch of
-an `if` or `when` is a subtree with a subtotal of its own. When the composable is over the limit, the
+Every lambda handed to a composable (`Column { }`, `items { }`), every event handler lambda
+(`onClick = { }`, `Modifier.clickable { }`, `onValueChange = { }`), every effect and every branch
+of an `if` or `when` is a subtree with a subtotal of its own. When the composable is over the limit, the
 innermost subtree that carries at least `hotspotShare` percent of the total and at least 5
 points is reported on the block as the place to extract. The search goes inward as long as a
 child still carries the share, so the block named is the smallest one worth extracting, not the
@@ -153,6 +155,47 @@ it, so a block within the root layout still can be. The same holds for the advic
 score: "most of them sit in ..." never names a block that spans the body, and the advice falls
 back to the one for the kind. The `Board` fixture is one `Column` holding six `if`s; it is
 reported with no hotspot and the advice to give each variant of the UI a composable of its own.
+
+A handler lambda is a block too. It is a lambda argument whose parameter is a plain function
+type returning `Unit` (or `Nothing`): not `@Composable` (a content slot), not `suspend` (a coroutine body),
+without a receiver (a builder), and not run in place by an inline function (`forEach { }`).
+Lambdas handed to effects and state producers, and to gesture and drawing callees
+(`pointerInput`, `awaitEachGesture`, `awaitPointerEventScope`, any `detect*` or `await*`,
+`drawBehind`, `drawWithContent`, `drawWithCache`, `Canvas`), are not handlers. The points inside
+a handler were always counted; being a block of its own, it can now be named, by the declared
+name of its parameter, with advice of its own:
+
+```kotlin
+@Composable
+fun Composer(mode: Int, title: String, hint: String) {    // reported: 6
+    var draft by remember { mutableStateOf("") }        // states 1
+    Text(title)
+    Text(hint)
+    Text(draft)
+    Button(onClick = {                                   // reported as the hotspot: 5
+        val text = if (draft.isBlank()) hint.trim() else if (draft.length > 80) draft.take(80) else draft.trim()
+        when (mode) {
+            0 -> submit("save", text)
+            1 -> submit("send", text)
+            2 -> submit("schedule", text)
+            else -> draft = text
+        }
+    }) {
+        Text("Done")
+    }
+    Text(mode.toString())
+}
+```
+
+```
+e: Composer.kt:2:5 [KOTRAIL_COMPOSABLE_TOO_COMPLEX] [Kotrail] This composable scores 6 (states 1, branches 5), limit 5: 'onClick { }' carries 5 of them: give it a name: move the body into a function and pass a reference. (KOTRAIL_COMPOSABLE_TOO_COMPLEX)
+e: Composer.kt:7:22 [KOTRAIL_COMPOSABLE_COMPLEXITY_HOTSPOT] [Kotrail] This block carries 5 of the composable's 6 points: the place to extract. (KOTRAIL_COMPOSABLE_COMPLEXITY_HOTSPOT)
+```
+
+Moved into `fun submitDraft()` and passed as `onClick = ::submitDraft` (or a method on the state
+holder), the decision reads as a unit and the layout shows what the button does. Within the
+limit, a handler that carries `hotspotMin` points on its own is reported as a standalone hotspot
+with the same advice.
 
 When no subtree carries the share, the points are spread, and the advice names the dominant
 kinds instead. The `Dashboard` fixture has four states, four `if` branches in one `Column` and
