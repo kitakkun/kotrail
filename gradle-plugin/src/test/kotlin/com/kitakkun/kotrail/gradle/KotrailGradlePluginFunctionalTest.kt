@@ -173,6 +173,25 @@ class KotrailGradlePluginFunctionalTest {
         assertEquals(TaskOutcome.SUCCESS, fixed.task(":kotrailFix")?.outcome, fixed.output)
         val text = File(projectDir, "src/main/kotlin/Cases.kt").readText()
         assertTrue(text.contains("names.map(::shout)"), text)
+        // Every place a lambda can stand relative to its call takes the reference in the right spot.
+        for (expected in listOf(
+            "fun referenceInsideParentheses(list: List<Int>): List<Int> = list.map(::transform)",
+            "fun referenceAfterAnotherArgument(list: List<Int>): Int = list.fold(0, ::combine)",
+            "fun referenceAfterArguments(list: List<Int>): Int = list.fold(0, ::combine)",
+            "run(::compute)",
+            "users.map(User::name)",
+            "users.forEach(repository::save)",
+            "list.map(transform = ::transform)",
+            "list.map(::transform).map(::transform)",
+            "println(list.map(::transform))",
+            "fun referenceMultiline(list: List<Int>): List<Int> = list.map(::transform)",
+            "fun referenceLabeled(list: List<Int>): List<Int> = list.map(::transform)",
+            "fun referenceLabeledInsideParentheses(list: List<Int>): List<Int> = list.map(::transform)",
+            "val step: (Int) -> Int = ::transform",
+            "run { ::compute }",
+        )) {
+            assertTrue(text.contains(expected), "expected `$expected` in:\n$text")
+        }
         assertTrue(text.contains("fun total(items: List<Int>): Int = items.sum()"), text)
         assertTrue(text.contains("is Action.Cancel -> println(\"cancel\")"), text)
         assertFalse(text.contains("else -> println(\"never\")"), text)
@@ -183,6 +202,11 @@ class KotrailGradlePluginFunctionalTest {
         val again = runBuild("kotrailFix")
         assertTrue(again.output.contains("changed since compiled"), again.output)
         assertEquals(text, File(projectDir, "src/main/kotlin/Cases.kt").readText())
+
+        // The fixed source still compiles, and none of the fixed findings comes back.
+        val recompiled = runBuild("compileKotlin")
+        assertEquals(TaskOutcome.SUCCESS, recompiled.task(":compileKotlin")?.outcome, recompiled.output)
+        assertFalse(recompiled.output.contains("KOTRAIL_PREFER_FUNCTION_REFERENCE"), recompiled.output)
     }
 
     @Test
@@ -627,6 +651,55 @@ class KotrailGradlePluginFunctionalTest {
                     println(base + next)
                 }
             }
+
+            fun transform(value: Int): Int = value + 1
+
+            fun combine(acc: Int, value: Int): Int = acc + value
+
+            fun compute(): Int = 42
+
+            class User(val name: String)
+
+            class Repository {
+                fun save(user: User) {}
+            }
+
+            fun referenceInsideParentheses(list: List<Int>): List<Int> = list.map({ transform(it) })
+
+            fun referenceAfterAnotherArgument(list: List<Int>): Int = list.fold(0, { acc, x -> combine(acc, x) })
+
+            fun referenceAfterArguments(list: List<Int>): Int = list.fold(0) { acc, x -> combine(acc, x) }
+
+            fun referenceAfterEmptyArguments(): Int = run() { compute() }
+
+            fun referenceTypeQualified(users: List<User>): List<String> = users.map { it.name }
+
+            fun referenceBound(users: List<User>, repository: Repository) {
+                users.forEach { repository.save(it) }
+            }
+
+            fun referenceNamed(list: List<Int>): List<Int> = list.map(transform = { transform(it) })
+
+            fun referenceChained(list: List<Int>): List<Int> = list.map { transform(it) }.map { transform(it) }
+
+            fun referenceNested(list: List<Int>) {
+                println(list.map { transform(it) })
+            }
+
+            fun referenceMultiline(list: List<Int>): List<Int> = list.map {
+                transform(it)
+            }
+
+            fun referenceLabeled(list: List<Int>): List<Int> = list.map step@{ transform(it) }
+
+            fun referenceLabeledInsideParentheses(list: List<Int>): List<Int> = list.map(step@{ transform(it) })
+
+            fun referenceInitializer(list: List<Int>): List<Int> = run {
+                val step: (Int) -> Int = { transform(it) }
+                list.map(step)
+            }
+
+            fun referenceProducer(): () -> Int = run { { compute() } }
         """.trimIndent()
     }
 }

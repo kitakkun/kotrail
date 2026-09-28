@@ -22,6 +22,7 @@ import org.jetbrains.kotlin.fir.declarations.declaredFunctions
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.utils.isSuspend
 import org.jetbrains.kotlin.fir.dispatchReceiverClassLookupTagOrNull
+import org.jetbrains.kotlin.fir.expressions.FirAnonymousFunctionExpression
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.FirImplicitInvokeCall
@@ -104,27 +105,35 @@ object PreferFunctionReferenceChecker : FirAnonymousFunctionChecker(MppCheckerKi
             else -> null
         } ?: return
         if (suggestion.form !in config.preferFunctionReferences.forms) return
-        reportKotrail(source, KotrailDiagnostics.PREFER_FUNCTION_REFERENCE, suggestion.text, fixFor(source, suggestion.text))
+        reportKotrail(source, KotrailDiagnostics.PREFER_FUNCTION_REFERENCE, suggestion.text, fixFor(declaration, source, suggestion.text))
     }
 
     /**
      * The edit that puts the reference where the lambda was. A trailing lambda moves into the
      * parentheses: `map { f(it) }` becomes `map(::f)`, `zip(b) { a, c -> g(a, c) }` becomes
-     * `zip(b, ::g)`. A lambda already inside parentheses, or one that is not an argument at all
-     * (`val f: (Int) -> Int = { g(it) }`), is replaced in place.
+     * `zip(b, ::g)`. A lambda already inside parentheses, named or not, or one that is not an
+     * argument of the enclosing call at all (`val f: (Int) -> Int = { g(it) }` in a trailing
+     * lambda, `remember { { g() } }`), is replaced in place.
      */
     context(context: CheckerContext)
-    private fun fixFor(lambda: KtSourceElement, reference: String): List<FixEdit> {
-        val call = context.containingElements.lastOrNull { it is FirFunctionCall } as? FirFunctionCall
-        val callSource = call?.source
-        if (callSource == null || lambda.startOffset < callSource.startOffset || lambda.endOffset > callSource.endOffset) {
-            return listOf(FixBuilder.replace(lambda, reference))
-        }
-        val builder = FixBuilder.over(callSource) ?: return listOf(FixBuilder.replace(lambda, reference))
-        // The end of what precedes the lambda: an opening parenthesis or comma, a closing parenthesis, or the callee.
-        val precedingEnd = builder.previousSignificantEnd(lambda.startOffset)
+    private fun fixFor(declaration: FirAnonymousFunction, lambda: KtSourceElement, reference: String): List<FixEdit> {
+        val inPlace = listOf(FixBuilder.replace(lambda, reference))
+        val call = context.containingElements.lastOrNull { it is FirFunctionCall } as? FirFunctionCall ?: return inPlace
+        // Only a lambda passed to the call moves; one nested deeper in an argument stays where it is.
+        val argument = call.arguments.firstOrNull {
+            (it.unwrapArgument() as? FirAnonymousFunctionExpression)?.anonymousFunction === declaration
+        } ?: return inPlace
+        val callSource = call.source ?: return inPlace
+        val argumentSource = argument.source ?: lambda
+        if (argumentSource.startOffset < callSource.startOffset || lambda.endOffset > callSource.endOffset) return inPlace
+        val builder = FixBuilder.over(callSource) ?: return inPlace
+        // A labeled lambda (`step@{ f(it) }`) starts at its label, which neither source covers.
+        val argumentStart = labelStart(builder, minOf(argumentSource.startOffset, lambda.startOffset))
+        // The end of what precedes the lambda: an opening parenthesis, a comma or the `=` of a named
+        // argument, a closing parenthesis, or the callee.
+        val precedingEnd = builder.previousSignificantEnd(argumentStart)
         return when (builder.charAt(precedingEnd - 1)) {
-            '(', ',' -> listOf(FixBuilder.replace(lambda, reference))
+            '(', ',', '=' -> listOf(builder.replaceRange(argumentStart, lambda.endOffset, reference))
             ')' -> {
                 val closing = precedingEnd - 1
                 if (builder.previousSignificantChar(closing) == '(') listOf(builder.replaceRange(closing, lambda.endOffset, "$reference)"))
@@ -133,6 +142,15 @@ object PreferFunctionReferenceChecker : FirAnonymousFunctionChecker(MppCheckerKi
             // A trailing lambda after the callee: the parentheses take its place, whitespace included.
             else -> listOf(builder.replaceRange(precedingEnd, lambda.endOffset, "($reference)"))
         }
+    }
+
+    /** The start of the `label@` before the lambda at [lambdaStart], or [lambdaStart] when it has none. */
+    private fun labelStart(builder: FixBuilder, lambdaStart: Int): Int {
+        val at = builder.previousSignificantEnd(lambdaStart) - 1
+        if (builder.charAt(at) != '@') return lambdaStart
+        var start = at
+        while (builder.charAt(start - 1)?.let { it.isLetterOrDigit() || it == '_' } == true) start--
+        return if (start < at) start else lambdaStart
     }
 
     private fun referenceForCall(
