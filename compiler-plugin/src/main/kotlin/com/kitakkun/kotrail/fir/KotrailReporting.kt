@@ -174,7 +174,7 @@ private fun writeFix(rule: KotrailRule, diagnostic: String, fix: List<FixEdit>) 
     if (!config.fixEnabled(rule)) return
     val directory = config.fixesDir ?: return
     val file = context.containingFileSymbol?.sourceFile?.path ?: return
-    FixRecords.write(directory, file, diagnostic, fix)
+    FixRecords.write(directory, file, rule.key, diagnostic, fix)
 }
 
 /**

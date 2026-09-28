@@ -15,7 +15,7 @@ class FixSelectionTest {
     private fun move(text: String, from: String, after: String): Fix {
         val start = text.indexOf(from)
         val userEnd = text.indexOf(after) + after.length
-        return Fix(listOf(Edit(start, start + from.length, ""), Edit(userEnd, userEnd, "\n" + from.trimEnd('\n'))))
+        return Fix(null, listOf(Edit(start, start + from.length, ""), Edit(userEnd, userEnd, "\n" + from.trimEnd('\n'))))
     }
 
     @Test
@@ -39,7 +39,7 @@ class FixSelectionTest {
     @Test
     fun `a fix is never applied in part`() {
         val text = "A;\nB;\nT;\n"
-        val overlapping = Fix(listOf(Edit(0, 4, "X"), Edit(9, 9, "Y")))
+        val overlapping = Fix(null, listOf(Edit(0, 4, "X"), Edit(9, 9, "Y")))
         val (result, skipped) = apply(text, listOf(move(text, "A;\n", "T;"), overlapping))
         assertEquals("B;\nT;\nA;\n", result)
         assertEquals(1, skipped)
@@ -48,7 +48,7 @@ class FixSelectionTest {
     @Test
     fun `insertions at one offset keep the recorded source order`() {
         val text = "{}"
-        val fixes = listOf(Fix(listOf(Edit(1, 1, "a;"))), Fix(listOf(Edit(1, 1, "b;"))))
+        val fixes = listOf(Fix(null, listOf(Edit(1, 1, "a;"))), Fix(null, listOf(Edit(1, 1, "b;"))))
         assertEquals("{a;b;}", apply(text, fixes).first)
     }
 }

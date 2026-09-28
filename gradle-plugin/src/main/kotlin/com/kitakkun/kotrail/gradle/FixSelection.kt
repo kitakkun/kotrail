@@ -5,8 +5,11 @@ internal class Edit(val start: Int, val end: Int, val replacement: String) {
     val isInsertion: Boolean get() = start == end
 }
 
-/** The edits of one diagnostic's fix: applied all together, or not at all. */
-internal class Fix(val edits: List<Edit>)
+/**
+ * The edits of one diagnostic's fix: applied all together, or not at all. [rule] is the key of
+ * the rule that reported it, null in a record written before the key was recorded.
+ */
+internal class Fix(val rule: String?, val edits: List<Edit>)
 
 /**
  * Chooses which fixes of one file can be applied together and orders their edits for
@@ -27,6 +30,7 @@ internal class Fix(val edits: List<Edit>)
  */
 internal fun selectEdits(fixes: List<Fix>): FixSelection {
     val accepted = mutableListOf<IndexedValue<Edit>>()
+    val fixOf = HashMap<Edit, Fix>()
     var skipped = 0
     var index = 0
     for (fix in fixes) {
@@ -35,15 +39,21 @@ internal fun selectEdits(fixes: List<Fix>): FixSelection {
             skipped++
             continue
         }
-        for (edit in fix.edits) accepted += IndexedValue(index++, edit)
+        for (edit in fix.edits) {
+            accepted += IndexedValue(index++, edit)
+            fixOf[edit] = fix
+        }
     }
     val ordered = accepted.sortedWith(
         compareByDescending<IndexedValue<Edit>> { it.value.start }.thenByDescending { it.value.end }.thenByDescending { it.index },
     )
-    return FixSelection(ordered.map { it.value }, skipped)
+    return FixSelection(ordered.map { it.value }, skipped, fixOf)
 }
 
-internal class FixSelection(val edits: List<Edit>, val skippedFixes: Int)
+/** The edits to apply in order, how many fixes were left for the next round, and the fix each edit belongs to. */
+internal class FixSelection(val edits: List<Edit>, val skippedFixes: Int, private val fixOf: Map<Edit, Fix>) {
+    fun fixOf(edit: Edit): Fix = fixOf.getValue(edit)
+}
 
 private fun Edit.conflictsWith(other: Edit): Boolean = when {
     isInsertion && other.isInsertion -> false

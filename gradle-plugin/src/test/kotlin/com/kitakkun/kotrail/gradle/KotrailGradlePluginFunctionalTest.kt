@@ -234,6 +234,55 @@ class KotrailGradlePluginFunctionalTest {
     }
 
     @Test
+    fun `kotrailFix applies only the fixes of the rules it is given`() {
+        writeSettings()
+        writeFile("kotrail.yaml", "severity: warning\n")
+        writeBuild(
+            """
+            kotrail {
+                configFile = file("kotrail.yaml")
+            }
+            """.trimIndent(),
+        )
+        writeFile(
+            "src/main/kotlin/Tools.kt",
+            """
+            private fun resolveAdb(): String = "/usr/bin/adb"
+
+            fun devices(): String = resolveAdb()
+
+            fun total(items: List<Int>): Int {
+                var sum = items.sum()
+                return sum
+            }
+            """.trimIndent(),
+        )
+
+        val compiled = runBuild("compileKotlin")
+        assertEquals(TaskOutcome.SUCCESS, compiled.task(":compileKotlin")?.outcome, compiled.output)
+        assertTrue(compiled.output.contains("KOTRAIL_HELPER_BEFORE_FIRST_USE"), compiled.output)
+        assertTrue(compiled.output.contains("KOTRAIL_PREFER_VAL"), compiled.output)
+
+        // Only the move is applied; the var stays for another run.
+        val moved = runBuild("kotrailFix", "--rules", "narrativeOrder")
+        assertEquals(TaskOutcome.SUCCESS, moved.task(":kotrailFix")?.outcome, moved.output)
+        val source = File(projectDir, "src/main/kotlin/Tools.kt")
+        var text = source.readText()
+        assertTrue(text.contains("fun devices(): String = resolveAdb()\n\nprivate fun resolveAdb(): String = \"/usr/bin/adb\""), text)
+        assertTrue(text.contains("var sum = items.sum()"), text)
+        assertTrue(moved.output.contains("Kotrail: src/main/kotlin/Tools.kt: 2 edits (narrativeOrder 2)"), moved.output)
+        assertTrue(moved.output.contains("Kotrail: applied 2 edits in 1 file (narrativeOrder 2)"), moved.output)
+        assertFalse(moved.output.contains("preferVal"), moved.output)
+
+        // The Gradle property selects the rules too, once a compilation has refreshed the record.
+        runBuild("compileKotlin")
+        val narrowed = runBuild("kotrailFix", "-Pkotrail.fix.rules=preferVal")
+        text = source.readText()
+        assertTrue(text.contains("val sum = items.sum()"), text)
+        assertTrue(narrowed.output.contains("Kotrail: applied 1 edit in 1 file (preferVal 1)"), narrowed.output)
+    }
+
+    @Test
     fun `a preview compilation checks the coverage of the main it is associated with`() {
         writeSettings()
         writeFile("kotrail.yaml", "severity: warning\nrules:\n  compose.previewRequired: off\n")

@@ -20,7 +20,9 @@ class FixEdit(val startOffset: Int, val endOffset: Int, val replacement: String)
  *
  * A record is `<sha1 of the path>.jsonl`. Its first line names the file and the SHA-256 of its
  * content at the time it was compiled; each following line is one fix,
- * `{"diagnostic": "KOTRAIL_...", "edits": [{"start": 10, "end": 20, "replacement": "..."}]}`.
+ * `{"rule": "narrativeOrder", "diagnostic": "KOTRAIL_...", "edits": [{"start": 10, "end": 20, "replacement": "..."}]}`,
+ * where `rule` is the key of the rule that reported it, so that an applier can take one rule's
+ * fixes and leave the others (records written before the key was added have none).
  * The record is started over every time the file is compiled, and only then: with incremental
  * compilation the records of files left alone keep the fixes of the build that last saw them,
  * and the content hash tells an applier whether they still fit. A checker never writes here
@@ -38,9 +40,11 @@ object FixRecords {
         }
     }
 
-    fun write(directory: String, file: String, diagnostic: String, edits: List<FixEdit>) {
+    /** Appends to the record of [file] the fix of [diagnostic], reported by the rule keyed [rule]. */
+    fun write(directory: String, file: String, rule: String, diagnostic: String, edits: List<FixEdit>) {
         val line = buildString {
-            append("{\"diagnostic\": ").append(quote(diagnostic))
+            append("{\"rule\": ").append(quote(rule))
+            append(", \"diagnostic\": ").append(quote(diagnostic))
             append(", \"edits\": [")
             edits.forEachIndexed { index, edit ->
                 if (index > 0) append(", ")

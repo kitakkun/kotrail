@@ -144,6 +144,27 @@ fixes that conflict in one file (one would insert inside text the other removes)
 per round for the same reason, each fix whole or not at all. Run the formatter
 afterwards: a deleted branch leaves its blank line.
 
+To apply one rule's fixes and leave the others, name the rules by their keys:
+
+```bash
+./gradlew kotrailFix --rules narrativeOrder,preferVal
+# or, the same as a Gradle property (the option wins when both are given)
+./gradlew kotrailFix -Pkotrail.fix.rules=narrativeOrder
+```
+
+Without either, every rule's fixes are applied. The task says, per file and in total, how many
+edits of which rule it applied:
+
+```
+Kotrail: src/main/kotlin/Recorder.kt: 5 edits (preferVal 3, narrativeOrder 2)
+Kotrail: applied 28 edits in 6 files (preferVal 12, narrativeOrder 16)
+```
+
+A file the filtered run changed has its other rules' fixes left until the next compilation
+refreshes its record, like any file that changed since it was compiled. Each fix record carries
+the key of the rule that reported it; a record written by an older compiler plugin has none and
+is applied only when no rules are given.
+
 The records are an output of the compile task, so they travel with the build cache and go with
 `clean`. Nothing else reads them, but the format is plain JSON lines (the `fixesDir` option of the
 compiler plugin), so an editor or an assistant can apply them too.

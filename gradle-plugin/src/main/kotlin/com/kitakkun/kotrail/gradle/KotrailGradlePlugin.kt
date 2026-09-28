@@ -62,6 +62,8 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
             task.group = "verification"
             task.description = "Applies the fixes Kotrail recorded during the last compilation of each source file"
             task.fixesDirectory.set(fixesDirectory())
+            task.projectDirectory.set(target.layout.projectDirectory)
+            task.rules.convention(target.providers.gradleProperty(FIX_RULES_PROPERTY))
         }
     }
 
@@ -415,6 +417,8 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
         const val EXTENSION_NAME = "kotrail"
         const val IC_METADATA_OPTION = "icMetadata"
         const val FIX_TASK = "kotrailFix"
+        /** Comma-separated rule keys whose fixes `kotrailFix` applies; the task's `--rules` option overrides it. */
+        const val FIX_RULES_PROPERTY = "kotrail.fix.rules"
         const val CONSUMER_RULES_TASK = "kotrailConsumerRules"
         const val CONSUMER_RULES_DIRECTORY = "kotrail/consumer-rules"
         const val CONSUMER_RULES_SKIPPED = "consumer shrinker rules are not added"
