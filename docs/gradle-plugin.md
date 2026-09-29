@@ -144,12 +144,19 @@ fixes that conflict in one file (one would insert inside text the other removes)
 per round for the same reason, each fix whole or not at all. Run the formatter
 afterwards: a deleted branch leaves its blank line.
 
-To apply one rule's fixes and leave the others, name the rules by their keys:
+To apply one rule's fixes and leave the others, name the rules by their keys, in full
+(`compose.rememberKeys`) or by the part after the last dot (`rememberKeys`), case-sensitive:
 
 ```bash
 ./gradlew kotrailFix --rules narrativeOrder,preferVal
 # or, the same as a Gradle property (the option wins when both are given)
 ./gradlew kotrailFix -Pkotrail.fix.rules=narrativeOrder
+```
+
+When no record matches, the task names the rules that do have records:
+
+```
+Kotrail: nothing to fix for 'preferval'; recorded rules: narrativeOrder, preferVal
 ```
 
 Without either, every rule's fixes are applied. The task says, per file and in total, how many

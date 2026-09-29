@@ -12,6 +12,13 @@ internal class Edit(val start: Int, val end: Int, val replacement: String) {
 internal class Fix(val rule: String?, val edits: List<Edit>)
 
 /**
+ * Whether this fix was reported by one of the [selected] rules, each named by its full key
+ * (`compose.rememberKeys`) or by the part after the last dot (`rememberKeys`), case-sensitive.
+ * A fix recorded without a rule key is never selected.
+ */
+internal fun Fix.isOfRules(selected: Set<String>): Boolean = rule != null && (rule in selected || rule.substringAfterLast('.') in selected)
+
+/**
  * Chooses which fixes of one file can be applied together and orders their edits for
  * application from the end of the file backwards.
  *

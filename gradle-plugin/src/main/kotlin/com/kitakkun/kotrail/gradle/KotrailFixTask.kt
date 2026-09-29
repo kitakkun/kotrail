@@ -28,8 +28,10 @@ import java.security.MessageDigest
  * again picks those up.
  *
  * [rules] narrows the fixes to those of the named rules (`--rules narrativeOrder,preferVal`, or the
- * `kotrail.fix.rules` Gradle property); a record written without a rule key matches only when
- * no filter is given. The output names, per file and in total, how many edits of which rule were
+ * `kotrail.fix.rules` Gradle property), each named by its full key (`compose.rememberKeys`) or
+ * the part after the last dot (`rememberKeys`); a record written without a rule key matches only
+ * when no filter is given (see [isOfRules]). When nothing matches, the output lists the rules that
+ * have records. The output names, per file and in total, how many edits of which rule were
  * applied.
  */
 @UntrackedTask(because = "It edits the project's sources in place and must run every time it is asked to")
@@ -45,7 +47,7 @@ abstract class KotrailFixTask : DefaultTask() {
     /** Comma-separated keys of the rules whose fixes are applied; absent or blank, every rule's. */
     @get:Input
     @get:Optional
-    @get:Option(option = "rules", description = "Comma-separated rule keys whose fixes are applied, e.g. narrativeOrder,preferVal (default: all)")
+    @get:Option(option = "rules", description = "Comma-separated rule keys whose fixes are applied, in full or by the part after the last dot, e.g. narrativeOrder,preferVal (default: all)")
     abstract val rules: Property<String>
 
     @TaskAction
@@ -57,11 +59,12 @@ abstract class KotrailFixTask : DefaultTask() {
         // Every record of one file, keyed by the file; the hash each record was taken against comes along.
         val recordsByFile = linkedMapOf<String, MutableList<Record>>()
         var fixes = 0
+        val recordedRules = sortedSetOf<String>()
         for (recordFile in records) {
             val lines = recordFile.readLines().filter { it.isNotBlank() }
             if (lines.size < 2) continue
             val header = JsonSlurper().parseText(lines.first()) as Map<*, *>
-            val recorded = lines.drop(1).map { line ->
+            val allRecorded = lines.drop(1).map { line ->
                 val fix = JsonSlurper().parseText(line) as Map<*, *>
                 Fix(
                     fix["rule"] as String?,
@@ -70,7 +73,9 @@ abstract class KotrailFixTask : DefaultTask() {
                         Edit((edit["start"] as Number).toInt(), (edit["end"] as Number).toInt(), edit["replacement"] as String)
                     },
                 )
-            }.filter { fix -> selectedRules.isEmpty() || fix.rule in selectedRules }
+            }
+            allRecorded.mapNotNullTo(recordedRules) { it.rule }
+            val recorded = allRecorded.filter { fix -> selectedRules.isEmpty() || fix.isOfRules(selectedRules) }
             if (recorded.isEmpty()) continue
             fixes += recorded.size
             recordsByFile.getOrPut(header["file"] as String) { mutableListOf() } += Record(header["hash"] as String, recorded)
@@ -117,9 +122,14 @@ abstract class KotrailFixTask : DefaultTask() {
         }
         val byRule = if (appliedByRule.isEmpty()) "" else " (${breakdown(appliedByRule)})"
         val summary = "Kotrail: applied $applied ${plural(applied, "edit")} in $changedFiles ${plural(changedFiles, "file")}$byRule"
-        val forRules = if (selectedRules.isEmpty()) "" else " for ${selectedRules.joinToString(", ")}"
         when {
-            fixes == 0 -> logger.lifecycle("Kotrail: nothing to fix$forRules (compile first if the code has findings)")
+            fixes == 0 && selectedRules.isNotEmpty() && recordedRules.isNotEmpty() -> logger.lifecycle(
+                "Kotrail: nothing to fix for ${selectedRules.joinToString(", ") { "'$it'" }}; recorded rules: ${recordedRules.joinToString(", ")}",
+            )
+            fixes == 0 -> {
+                val forRules = if (selectedRules.isEmpty()) "" else " for ${selectedRules.joinToString(", ") { "'$it'" }}"
+                logger.lifecycle("Kotrail: nothing to fix$forRules (compile first if the code has findings)")
+            }
             notes.isEmpty() -> logger.lifecycle(summary)
             else -> logger.lifecycle("$summary; ${notes.joinToString("; ")}. Compile and run kotrailFix again for those")
         }

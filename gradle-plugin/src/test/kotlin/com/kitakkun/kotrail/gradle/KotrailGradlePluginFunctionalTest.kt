@@ -263,6 +263,10 @@ class KotrailGradlePluginFunctionalTest {
         assertTrue(compiled.output.contains("KOTRAIL_HELPER_BEFORE_FIRST_USE"), compiled.output)
         assertTrue(compiled.output.contains("KOTRAIL_PREFER_VAL"), compiled.output)
 
+        // A rule no record carries applies nothing and names the ones that do; matching is case-sensitive.
+        val unknown = runBuild("kotrailFix", "--rules", "preferval")
+        assertTrue(unknown.output.contains("Kotrail: nothing to fix for 'preferval'; recorded rules: narrativeOrder, preferVal"), unknown.output)
+
         // Only the move is applied; the var stays for another run.
         val moved = runBuild("kotrailFix", "--rules", "narrativeOrder")
         assertEquals(TaskOutcome.SUCCESS, moved.task(":kotrailFix")?.outcome, moved.output)

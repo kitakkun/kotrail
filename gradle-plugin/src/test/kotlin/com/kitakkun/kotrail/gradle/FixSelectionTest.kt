@@ -1,6 +1,8 @@
 package com.kitakkun.kotrail.gradle
 
 import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class FixSelectionTest {
@@ -50,5 +52,16 @@ class FixSelectionTest {
         val text = "{}"
         val fixes = listOf(Fix(null, listOf(Edit(1, 1, "a;"))), Fix(null, listOf(Edit(1, 1, "b;"))))
         assertEquals("{a;b;}", apply(text, fixes).first)
+    }
+
+    @Test
+    fun `a rule is selected by its full key or by the part after the last dot`() {
+        val dotted = Fix("compose.rememberKeys", emptyList())
+        assertTrue(dotted.isOfRules(setOf("compose.rememberKeys")))
+        assertTrue(dotted.isOfRules(setOf("rememberKeys")))
+        assertFalse(dotted.isOfRules(setOf("rememberkeys")))
+        assertFalse(dotted.isOfRules(setOf("compose")))
+        assertTrue(Fix("preferVal", emptyList()).isOfRules(setOf("narrativeOrder", "preferVal")))
+        assertFalse(Fix(null, emptyList()).isOfRules(setOf("preferVal")))
     }
 }
