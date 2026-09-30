@@ -86,6 +86,43 @@ fun ServiceView(service: Service) {
     Text("${service.a}")
 }
 
+// Not reported: a private composable with one call site in the file is a split of its caller and shares its model.
+@Composable
+private fun UserHeader(user: User) {
+    Text(user.name)
+    Text(user.avatarUrl)
+}
+
+@Composable
+fun UserPage(user: User) {
+    UserHeader(user)
+}
+
+// Reported: a private composable called from two places is reused, so its width matters.
+@Composable
+private fun UserBadge(<!KOTRAIL_MODEL_PARAMETER_TOO_WIDE!>user<!>: User) {
+    Text(user.name)
+    Text(user.avatarUrl)
+}
+
+@Composable
+fun UserList(first: User, second: User) {
+    UserBadge(first)
+    UserBadge(second)
+}
+
+// Reported: a public composable is a contract even with one call site.
+@Composable
+fun UserTitle(<!KOTRAIL_MODEL_PARAMETER_TOO_WIDE!>user<!>: User) {
+    Text(user.name)
+    Text(user.avatarUrl)
+}
+
+@Composable
+fun UserTitlePage(user: User) {
+    UserTitle(user)
+}
+
 // Not reported: plain functions are outside the default scope.
 fun describe(user: User): String = user.name
 

@@ -1,3 +1,5 @@
+@file:OptIn(SymbolInternals::class)
+
 package com.kitakkun.kotrail.fir.checkers
 
 import com.kitakkun.kotrail.KotrailRule
@@ -17,7 +19,13 @@ import org.jetbrains.kotlin.fir.declarations.declaredProperties
 import org.jetbrains.kotlin.fir.declarations.utils.isData
 import org.jetbrains.kotlin.fir.declarations.utils.isExpect
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
+import org.jetbrains.kotlin.descriptors.Visibilities
+import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.expressions.FirExpression
+import org.jetbrains.kotlin.fir.expressions.FirQualifiedAccessExpression
+import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
+import org.jetbrains.kotlin.fir.symbols.SymbolInternals
+import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirSmartCastExpression
 import org.jetbrains.kotlin.fir.references.toResolvedPropertySymbol
@@ -38,7 +46,9 @@ import org.jetbrains.kotlin.name.Name
  *
  * The function should take the values it needs (or a smaller model). A parameter that is used as
  * a whole (passed on, copied, compared, destructured, used as a receiver of anything but a
- * property read) is not reported because narrowing would change the program.
+ * property read) is not reported because narrowing would change the program. Neither is a
+ * `private` function called from exactly one place in its file: it is a split of that caller
+ * (a composable root cut down to length) and shares the caller's model, not a contract.
  */
 object NarrowModelParametersChecker : NamedFunctionChecker(MppCheckerKind.Common) {
     context(context: CheckerContext, reporter: DiagnosticReporter)
@@ -51,6 +61,10 @@ object NarrowModelParametersChecker : NamedFunctionChecker(MppCheckerKind.Common
         if (declaration.source?.kind is KtFakeSourceElementKind) return
         if (declaration.isOverride || declaration.isExpect) return
         val body = declaration.body ?: return
+        // Only worth a scan of the file once a parameter would be reported.
+        val splitOfOneCaller by lazy(LazyThreadSafetyMode.NONE) {
+            declaration.visibility == Visibilities.Private && callSitesInFile(declaration.symbol) == 1
+        }
 
         for (parameter in declaration.valueParameters) {
             val source = parameter.source ?: continue
@@ -64,6 +78,7 @@ object NarrowModelParametersChecker : NamedFunctionChecker(MppCheckerKind.Common
             if (usage.usedAsWhole) continue
             val unused = properties - usage.readProperties
             if (unused.size <= settings.maxUnusedProperties) continue
+            if (splitOfOneCaller) return
 
             val details = "${classSymbol.classId.shortClassName} declares ${properties.size} properties, but only " +
                 describe(usage.readProperties) + " ${if (usage.readProperties.size == 1) "is" else "are"} read here; " +
@@ -75,6 +90,20 @@ object NarrowModelParametersChecker : NamedFunctionChecker(MppCheckerKind.Common
                 details,
             )
         }
+    }
+
+    /** Calls of, and references to, [function] anywhere in the file being checked. */
+    context(context: CheckerContext)
+    private fun callSitesInFile(function: FirNamedFunctionSymbol): Int {
+        val file = context.containingFileSymbol?.fir ?: return 0
+        var count = 0
+        file.accept(object : FirVisitorVoid() {
+            override fun visitElement(element: FirElement) {
+                if (element is FirQualifiedAccessExpression && element.calleeReference.toResolvedCallableSymbol() == function) count++
+                element.acceptChildren(this)
+            }
+        })
+        return count
     }
 
     private fun describe(names: Set<Name>): String =
