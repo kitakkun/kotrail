@@ -3,11 +3,16 @@ package com.kitakkun.kotrail.fir.checkers
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.exclude.Glob
+import com.kitakkun.kotrail.fir.errors.RecordsFailureService
+import com.kitakkun.kotrail.fir.errors.recordsFailureService
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.fir.FirElement
+import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.expressions.FirSafeCallExpression
+import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirTryExpressionChecker
@@ -42,6 +47,7 @@ import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
  * try { repository.save(item) } catch (e: IOException) { showError() }  // fine
  * try { work() } catch (e: Throwable) { cleanup(); throw e }            // fine: rethrown
  * try { render() } catch (e: Throwable) { failure.value = e }          // fine: forwarded whole
+ * try { scene.render() } catch (_: Throwable) { }                       // fine when render() records, then rethrows
  * ```
  *
  * `catch (e: Exception)` handles every failure alike: the network error it was written for,
@@ -50,7 +56,10 @@ import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
  * rethrows its parameter, or ends in a `throw` of anything (a wrapped rethrow), is a cleanup or
  * translation and is left alone. So is a forwarding clause, where every statement hands the
  * parameter whole to a call, an assignment or a throw and nothing inspects it: an error
- * boundary that passes the failure to whoever records it. The types are `catchTooBroad.types`, matched exactly. A
+ * boundary that passes the failure to whoever records it. An empty `Throwable` or `Exception` clause
+ * around a single call to a function that has already recorded the failure before rethrowing it (see
+ * [RecordsFailureService]) is left alone too, in a coroutine only after a clause that rethrows
+ * cancellation. The types are `catchTooBroad.types`, matched exactly. A
  * project's boundaries (an error handler at the top of a request, a plugin host) opt out with
  * the rule's `exclude` predicate.
  */
@@ -89,6 +98,11 @@ object CatchTooBroadChecker : FirTryExpressionChecker(MppCheckerKind.Common) {
                         .any { it.asSingleFqName().asString() in CANCELLATION_TYPES }
                 } && earlier.rethrows()
             }
+            // An empty clause around a single call to a function that records the failure before rethrowing it: the
+            // callee has already handed the failure on. In a coroutine, cancellation must have been let through first.
+            if (catch.block.statements.isEmpty() && names.any { it in RecordsFailureService.RECORDED_TYPES } &&
+                expression.callsRecordingFunction(session) && (cancellationHandled || !context.isSuspendContext(session))
+            ) continue
             val swallowed = catch.swallows(loggers)
             if (config.catchTooBroad.report == "swallowed" && !swallowed) continue
             val included = if (cancellationHandled) "bugs included" else "bugs and cancellations included"
@@ -102,7 +116,18 @@ object CatchTooBroadChecker : FirTryExpressionChecker(MppCheckerKind.Common) {
         }
     }
 
-    private fun FirCatch.parameterSuppresses(session: org.jetbrains.kotlin.fir.FirSession): Boolean {
+    /**
+     * Whether the try body is a single call (or a call chain, by its outermost call, `scene?.render(canvas)` included)
+     * to a function that records every failure before rethrowing it.
+     */
+    private fun FirTryExpression.callsRecordingFunction(session: FirSession): Boolean {
+        val statement = tryBlock.statements.singleOrNull() ?: return false
+        val call = ((statement as? FirSafeCallExpression)?.selector ?: statement) as? FirFunctionCall ?: return false
+        val callee = call.calleeReference.toResolvedCallableSymbol() as? FirNamedFunctionSymbol ?: return false
+        return session.recordsFailureService.recordsFailure(callee)
+    }
+
+    private fun FirCatch.parameterSuppresses(session: FirSession): Boolean {
         val suppress = parameter.symbol.resolvedAnnotationsWithArguments
             .firstOrNull { it.toAnnotationClassId(session) == StandardClassIds.Annotations.Suppress } ?: return false
         val argument = suppress.findArgumentByName(Name.identifier("names"), returnFirstWhenNotFound = true) ?: return false
@@ -145,51 +170,6 @@ object CatchTooBroadChecker : FirTryExpressionChecker(MppCheckerKind.Common) {
         return !handedOn
     }
 
-    /**
-     * Whether the clause only forwards its parameter: every statement passes it whole as an
-     * argument of a call that is not a logger (`onError(e)`), assigns it whole (`state.failure = e`),
-     * or throws it, bare or as a constructor argument (`throw e`, `throw Wrapped(e)`). No other read
-     * of it is allowed anywhere in the clause: no `is` check, no `when (e)`, no `e.message`.
-     */
-    private fun FirCatch.forwards(loggers: List<Glob>): Boolean {
-        val statements = block.statements
-        if (statements.isEmpty()) return false
-        val target = parameter.symbol
-        fun FirExpression.isParameter(): Boolean {
-            val expression = (this as? FirSmartCastExpression)?.originalExpression ?: this
-            return expression is FirQualifiedAccessExpression && expression.calleeReference.toResolvedCallableSymbol() == target
-        }
-        // How many arguments of the call are the parameter itself; none for a logger, which swallows it.
-        fun FirFunctionCall.forwardedArguments(): Int {
-            val callee = calleeReference.toResolvedCallableSymbol()?.callableId?.asSingleFqName()?.asString()
-            if (callee != null && loggers.any { it.matches(callee) }) return 0
-            return argumentList.arguments.count { it.unwrapArgument().isParameter() }
-        }
-        var forwardedReads = 0
-        for (statement in statements) {
-            val forwarded = when (statement) {
-                is FirVariableAssignment -> if (statement.rValue.isParameter()) 1 else 0
-                is FirThrowExpression -> when {
-                    statement.exception.isParameter() -> 1
-                    else -> (statement.exception as? FirFunctionCall)?.forwardedArguments() ?: 0
-                }
-                is FirFunctionCall -> statement.forwardedArguments()
-                else -> 0
-            }
-            if (forwarded == 0) return false
-            forwardedReads += forwarded
-        }
-        // Every read of the parameter is one of the forwarded ones: nothing else looks inside it.
-        var reads = 0
-        block.accept(object : FirVisitorVoid() {
-            override fun visitElement(element: FirElement) {
-                if (element is FirQualifiedAccessExpression && element.calleeReference.toResolvedCallableSymbol() == target) reads++
-                element.acceptChildren(this)
-            }
-        })
-        return reads == forwardedReads
-    }
-
     /** Whether the clause throws its parameter anywhere, or ends in a throw of anything. */
     private fun FirCatch.rethrows(): Boolean {
         if (block.statements.lastOrNull() is FirThrowExpression) return true
@@ -209,4 +189,49 @@ object CatchTooBroadChecker : FirTryExpressionChecker(MppCheckerKind.Common) {
         })
         return found
     }
+}
+
+/**
+ * Whether the clause only forwards its parameter: every statement passes it whole as an
+ * argument of a call that is not a logger (`onError(e)`), assigns it whole (`state.failure = e`),
+ * or throws it, bare or as a constructor argument (`throw e`, `throw Wrapped(e)`). No other read
+ * of it is allowed anywhere in the clause: no `is` check, no `when (e)`, no `e.message`.
+ */
+internal fun FirCatch.forwards(loggers: List<Glob>): Boolean {
+    val statements = block.statements
+    if (statements.isEmpty()) return false
+    val target = parameter.symbol
+    fun FirExpression.isParameter(): Boolean {
+        val expression = (this as? FirSmartCastExpression)?.originalExpression ?: this
+        return expression is FirQualifiedAccessExpression && expression.calleeReference.toResolvedCallableSymbol() == target
+    }
+    // How many arguments of the call are the parameter itself; none for a logger, which swallows it.
+    fun FirFunctionCall.forwardedArguments(): Int {
+        val callee = calleeReference.toResolvedCallableSymbol()?.callableId?.asSingleFqName()?.asString()
+        if (callee != null && loggers.any { it.matches(callee) }) return 0
+        return argumentList.arguments.count { it.unwrapArgument().isParameter() }
+    }
+    var forwardedReads = 0
+    for (statement in statements) {
+        val forwarded = when (statement) {
+            is FirVariableAssignment -> if (statement.rValue.isParameter()) 1 else 0
+            is FirThrowExpression -> when {
+                statement.exception.isParameter() -> 1
+                else -> (statement.exception as? FirFunctionCall)?.forwardedArguments() ?: 0
+            }
+            is FirFunctionCall -> statement.forwardedArguments()
+            else -> 0
+        }
+        if (forwarded == 0) return false
+        forwardedReads += forwarded
+    }
+    // Every read of the parameter is one of the forwarded ones: nothing else looks inside it.
+    var reads = 0
+    block.accept(object : FirVisitorVoid() {
+        override fun visitElement(element: FirElement) {
+            if (element is FirQualifiedAccessExpression && element.calleeReference.toResolvedCallableSymbol() == target) reads++
+            element.acceptChildren(this)
+        }
+    })
+    return reads == forwardedReads
 }

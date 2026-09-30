@@ -5,6 +5,7 @@ import com.kitakkun.kotrail.fir.checkers.NamedConditionIndex
 import com.kitakkun.kotrail.fir.compose.DrawsUiService
 import com.kitakkun.kotrail.fir.compose.effects.EffectCaptureService
 import com.kitakkun.kotrail.fir.concurrency.AsyncWorkService
+import com.kitakkun.kotrail.fir.errors.RecordsFailureService
 import com.kitakkun.kotrail.fir.inferred.FactsFileComponent
 import com.kitakkun.kotrail.inferred.FactsFileLookup
 import com.kitakkun.kotrail.fir.compose.insets.WindowInsetsHandlingService
@@ -28,6 +29,7 @@ class KotrailFirExtensionRegistrar(private val config: KotrailConfig, private va
         +::ThrowsService
         +::NativeAllocationService
         +::DrawsUiService
+        +::RecordsFailureService
         +::NamedConditionIndex
         +::KotrailCheckersExtension
         registerDiagnosticContainers(KotrailDiagnostics)

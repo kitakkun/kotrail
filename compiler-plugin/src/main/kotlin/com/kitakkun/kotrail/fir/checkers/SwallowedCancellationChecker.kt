@@ -90,28 +90,6 @@ object SwallowedCancellationChecker : FirTryExpressionChecker(MppCheckerKind.Com
         reportKotrail(catchSource, KotrailDiagnostics.SWALLOWED_CANCELLATION)
     }
 
-    /**
-     * Whether the code at this point runs inside a coroutine: the closest enclosing function is
-     * `suspend`, or a lambda with a suspend function type. Inline lambdas run in the caller's
-     * coroutine, so the search continues outward through them.
-     */
-    private fun CheckerContext.isSuspendContext(session: FirSession): Boolean {
-        for (symbol in containingDeclarations.asReversed()) {
-            when (symbol) {
-                is FirAnonymousFunctionSymbol -> {
-                    if (symbol.isSuspend) return true
-                    if (symbol.resolvedTypeRef.coneType.isSuspendOrKSuspendFunctionType(session)) return true
-                    if (symbol.inlineStatus == InlineStatus.Inline) continue
-                    return false
-                }
-                is FirFunctionSymbol<*> -> return symbol.isSuspend
-                is FirClassSymbol<*> -> return false
-                else -> continue
-            }
-        }
-        return false
-    }
-
     private fun FirCatch.catchesCancellation(session: FirSession): Boolean {
         val classId = parameter.returnTypeRef.coneType.fullyExpandedType(session).classId ?: return false
         return classId in cancellationClassIds || classId in cancellationSupertypeClassIds
@@ -150,4 +128,26 @@ object SwallowedCancellationChecker : FirTryExpressionChecker(MppCheckerKind.Com
             functionCall.acceptChildren(this)
         }
     }
+}
+
+/**
+ * Whether the code at this point runs inside a coroutine: the closest enclosing function is
+ * `suspend`, or a lambda with a suspend function type. Inline lambdas run in the caller's
+ * coroutine, so the search continues outward through them.
+ */
+internal fun CheckerContext.isSuspendContext(session: FirSession): Boolean {
+    for (symbol in containingDeclarations.asReversed()) {
+        when (symbol) {
+            is FirAnonymousFunctionSymbol -> {
+                if (symbol.isSuspend) return true
+                if (symbol.resolvedTypeRef.coneType.isSuspendOrKSuspendFunctionType(session)) return true
+                if (symbol.inlineStatus == InlineStatus.Inline) continue
+                return false
+            }
+            is FirFunctionSymbol<*> -> return symbol.isSuspend
+            is FirClassSymbol<*> -> return false
+            else -> continue
+        }
+    }
+    return false
 }

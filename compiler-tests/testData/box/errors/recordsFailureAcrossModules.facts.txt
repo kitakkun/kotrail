@@ -1,0 +1,3 @@
+Module: lib (lib.facts)
+{"file": "lib/Scene.kt", "id": "lib/Scene.render", "signature": "kotlin/Boolean", "facts": {"recordsFailure": {}}}
+Module: main (main.facts)

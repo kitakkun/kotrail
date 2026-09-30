@@ -11,6 +11,8 @@ import com.kitakkun.kotrail.fir.compose.insets.windowInsetsHandlingService
 import com.kitakkun.kotrail.fir.compose.locals.CompositionLocalNames
 import com.kitakkun.kotrail.fir.compose.locals.compositionLocalService
 import com.kitakkun.kotrail.fir.concurrency.asyncWorkService
+import com.kitakkun.kotrail.fir.errors.RecordsFailureService
+import com.kitakkun.kotrail.fir.errors.recordsFailureService
 import com.kitakkun.kotrail.fir.inferred.InferredFactService
 import com.kitakkun.kotrail.fir.memory.nativeAllocationService
 import com.kitakkun.kotrail.fir.noop.NoOpNames
@@ -37,7 +39,7 @@ import org.jetbrains.kotlin.name.Name
  */
 object InferredFacts {
     /** The facts, with the rules that switch each on; the writer takes the ones that are on ([InferredFact.isOn]). */
-    val functionFacts: List<InferredFunctionFact> = listOf(WindowInsets, CompositionLocals, Preconditions, NoOpWhen, EffectCapture, StartsAsyncWork, NativeAllocation, DrawsUi)
+    val functionFacts: List<InferredFunctionFact> = listOf(WindowInsets, CompositionLocals, Preconditions, NoOpWhen, EffectCapture, StartsAsyncWork, NativeAllocation, DrawsUi, RecordsFailure)
     val propertyFacts: List<InferredPropertyFact> = listOf(RequiredCompositionLocal, CompositionLocalGetter)
     val classFacts: List<InferredClassFact> = listOf(ClassPreconditions)
 
@@ -172,4 +174,13 @@ object InferredFacts {
             fir.moduleData.session.drawsUiService.arraysFor(fir.symbol)
     }
 
+    /** `@InferredRecordsFailure`, a marker, on a function that records every failure of its body before rethrowing it. */
+    object RecordsFailure : InferredFunctionFact {
+        override val name: String = InferredFactNames.RECORDS_FAILURE
+        override val rules = listOf(KotrailRule.CATCH_TOO_BROAD)
+        override val annotation: ClassId = RecordsFailureService.INFERRED_RECORDS_FAILURE
+        override val parameters: List<String> = emptyList()
+        override fun arrays(declaration: IrSimpleFunction, fir: FirNamedFunction): List<List<String>>? =
+            fir.moduleData.session.recordsFailureService.arraysFor(fir.symbol)
+    }
 }

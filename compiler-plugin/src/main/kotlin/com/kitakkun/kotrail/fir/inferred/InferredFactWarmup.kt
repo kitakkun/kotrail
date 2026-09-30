@@ -6,6 +6,7 @@ import com.kitakkun.kotrail.fir.compose.effects.effectCaptureService
 import com.kitakkun.kotrail.fir.compose.insets.windowInsetsHandlingService
 import com.kitakkun.kotrail.fir.compose.locals.compositionLocalService
 import com.kitakkun.kotrail.fir.concurrency.asyncWorkService
+import com.kitakkun.kotrail.fir.errors.recordsFailureService
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.memory.nativeAllocationService
 import com.kitakkun.kotrail.fir.noop.noOpService
@@ -40,6 +41,7 @@ object InferredFactWarmup {
         session.asyncWorkService,
         session.nativeAllocationService,
         session.drawsUiService,
+        session.recordsFailureService,
     )
 
     object FunctionChecker : NamedFunctionChecker(MppCheckerKind.Common) {

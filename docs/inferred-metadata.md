@@ -4,9 +4,10 @@ Several rules need to know something about a function that only its body can tel
 a composable handles, which locals it reads and provides, which parameters an effect captures,
 what a function requires of its arguments, which arguments make it do nothing, whether it
 starts work its caller cannot wait for, whether it creates a native-backed object and lets it
-out, whether a composable draws anything. Within one module the body is at hand. For a caller in
-another module the plugin writes down what it found and reads it back where the callee is used.
-It does so in one of two ways, by target:
+out, whether a composable draws anything, whether a function records a failure before
+rethrowing it. Within one module the body is at hand. For a caller in another module the plugin
+writes down what it found and reads it back where the callee is used. It does so in one of two
+ways, by target:
 
 - **JVM and Android**: a facts file, `<module>.facts`, written beside the build output rather
   than into it and published as an artifact of its own. The class files reference no Kotrail
@@ -30,6 +31,7 @@ It does so in one of two ways, by target:
 | Work started that the caller cannot wait for | `startsAsyncWork` | `@InferredStartsAsyncWork` | `delayForCompletion` |
 | A native-backed object created and let out | `nativeAllocation` | `@InferredNativeAllocation(types, path)` | `nativeAllocationInLoop` |
 | A composable that draws nothing | `drawsUi` | `@InferredDrawsUi(value)` | `compose.previewRequired`, `compose.previewCoverage`, `compose.noTrailingCallback`, `compose.noCallbackInModel`, and any compilation that records its composables (`composablesDir`) |
+| A failure recorded before it is rethrown | `recordsFailure` | `@InferredRecordsFailure` | `catchTooBroad` |
 
 Both carry the same strings: each fact encodes itself into the arrays of its annotation's
 parameters, and the facts file keeps those arrays under the parameter names.
@@ -232,8 +234,8 @@ What this fixes: an incremental build that compiles a use site, and not the file
 callees it calls, checks the use site against those callees' facts as the last build recorded
 them. Edit only the file with `manager.reconnect(); delay(500)` and the
 `delayForCompletion` finding stays, where it used to vanish because `reconnect`, untouched,
-had no facts; the same goes for `preconditions`, `noOpCall`, `nativeAllocationInLoop`,
-`compose.windowInsets` and `compose.compositionLocals`. A composable that only calls an effect
+had no facts; the same goes for `preconditions`, `noOpCall`, `nativeAllocationInLoop`, the
+recording callee of `catchTooBroad`, `compose.windowInsets` and `compose.compositionLocals`. A composable that only calls an effect
 wrapper in an untouched file is still seen to draw nothing, through the wrapper's `drawsUi` fact,
 so `compose.previewRequired`, `compose.noTrailingCallback`, `compose.noCallbackInModel` and the
 record of UI composables for `compose.previewCoverage` do not take it for UI, as they did when
@@ -424,9 +426,11 @@ metadata in its class files, no annotation in a klib, and nothing is published. 
 module in other modules then see it as a dependency compiled without Kotrail: none of the
 cross-module checks (async work before a `delay`, insets handled twice, preconditions, calls that
 do nothing, captured effect parameters, native allocations in a loop) has anything to read about
-it and reports nothing on its account. Analysis within the module is unchanged in a full build
-(an incremental one loses what the facts file and the plugin metadata carry across its files),
-and so is reading the facts of the module's own dependencies. The switch
+it and reports nothing on its account; an empty broad catch around one of its functions that
+records a failure before rethrowing it is reported, since nothing says the function records.
+Analysis within the module is unchanged in a full build (an incremental one loses what the facts
+file and the plugin metadata carry across its files), and so is reading the facts of the
+module's own dependencies. The switch
 can be set per compilation (`compilation("main") { inferredMetadata = false }`), and the
 consumer rules have their own switch, `consumerRules = false`. See also
 [the Gradle plugin](gradle-plugin.md#multiplatform).
