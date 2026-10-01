@@ -4,6 +4,7 @@ package com.kitakkun.kotrail
 
 import com.kitakkun.kotrail.fir.KotrailFirExtensionRegistrar
 import com.kitakkun.kotrail.inferred.FactsFileIndex
+import com.kitakkun.kotrail.inferred.FactsFileLookup
 import com.kitakkun.kotrail.ir.inferred.FactsFileOutput
 import com.kitakkun.kotrail.ir.inferred.InferredFacts
 import com.kitakkun.kotrail.ir.inferred.InferredMetadataWriter
@@ -23,8 +24,14 @@ class KotrailComponentRegistrar : CompilerPluginRegistrar() {
         val config = KotrailConfig.from(configuration)
         if (!config.enabled) return
 
-        // The facts files of the dependencies, handed over by the build tool, read on first use.
-        val factsFiles = FactsFileIndex { config.facts.map(::File) }
+        // The facts files of the dependencies, handed over by the build tool, read on first use; and the module's own,
+        // as the previous build left it, for the declarations an incremental compilation does not compile again. The
+        // writer below rewrites that file only after the FIR checkers have read it, and keeps the entries of the files
+        // it did not compile, which are the only ones read from it, so the order of the two does not change what is read.
+        val factsFiles = FactsFileLookup(
+            dependencies = FactsFileIndex { config.facts.map(::File) },
+            own = FactsFileIndex { listOfNotNull(config.ownFacts).map(::File) },
+        )
         FirExtensionRegistrarAdapter.registerExtension(KotrailFirExtensionRegistrar(config, factsFiles))
         // Every inferred fact with one of its rules on is written for the modules that compile against this one,
         // unless the module opted out (a published library whose consumers do not use Kotrail). A facts file an

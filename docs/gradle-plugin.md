@@ -194,10 +194,53 @@ There is no DSL for the facts file; the plugin wires it for every JVM and Androi
 - The facts files are inputs of the compile task, and the compiler gets a digest of their
   contents (`factsHash`), so a changed fact in a library compiles the module that depends on it
   again even when the library's ABI stayed the same.
+- A compilation also reads its own file, as its previous run left it (`ownFacts`), for the files
+  an incremental build does not compile again. That file is the task's own output, not an
+  input. See [Incremental compilation](#incremental-compilation).
 
 `--info` prints the facts files each compilation read (`Kotrail: facts files read: ...`). See
 [Inferred metadata](inferred-metadata.md#the-facts-file-jvm-and-android) for the format and
 the details.
+
+## Incremental compilation
+
+Some rules look across files, through types or bodies, and report at the use site:
+[no callback in model](rules/compose/no-callback-in-model.md) walks the classes a composable's
+parameter reaches, [narrow model parameters](rules/narrow-model-parameters.md) counts the
+properties of a data class declared elsewhere, [preconditions](rules/preconditions.md) checks a
+call against the leading `require` of a callee in another file, and every rule that reads a fact
+inferred from a body (see [Inferred metadata](inferred-metadata.md)) does the same within a module.
+
+When an incremental build compiles the use site's file and not the files of what it calls, the
+callees come from the classes directory, without their bodies. Their facts come from the
+module's own facts file, which the previous build wrote and which keeps the entries of the files
+a build does not compile, so the use site is checked as a full build would check it: edit only
+the file with `manager.reconnect(); delay(500)` and the `delayForCompletion` finding is still
+reported (see [The own facts file](inferred-metadata.md#the-own-facts-file)).
+
+The other way round does not work. Kotlin's incremental compilation recompiles a file when
+something the file itself refers to changes in a way that could change how it compiles: the
+signature of a function it calls, the constructors or supertypes of a class it names, a member
+it reads. A change in another file that does not reach that far (a function body, a private
+member, a property added to a class body, a class one step further down a model) leaves the use
+site's file as it was compiled, and its findings with it: remove the `require` from a callee and
+the build compiles the callee's file alone, so the precondition finding the last build reported
+at the call site is neither repeated nor withdrawn. Such a finding appears, or goes, only on a
+build that compiles the use site's file again: a change to that file, a clean build, or one with
+`--rerun-tasks`, under which the Kotlin compile tasks compile every file.
+
+CI usually builds from a clean state and gets the exact result; a local incremental build can
+lag behind it. When CI reports a cross-file finding the local build does not, or before relying
+on an incremental build to say one is gone, build again with `--rerun-tasks` (or after
+`./gradlew clean`). `kotlin.incremental=false` in `gradle.properties` makes every Kotlin/JVM and
+Android compilation non-incremental, at the cost of build time. Kotrail has no task that reruns
+the analysis on its own: the analysis is part of the compilation.
+
+Across modules this does not happen. A dependency's facts file is an input of the dependent's
+compile task, and its digest is a compiler argument, so a fact that changes without the
+dependency's ABI changing still recompiles the dependent, non-incrementally (see
+[Incremental compilation](inferred-metadata.md#incremental-compilation) in Inferred metadata).
+The caveat is about files within one module.
 
 ## Consumer rules
 
@@ -239,7 +282,9 @@ A JVM compilation writes its facts file only where `factsOut` says
 (`-P plugin:com.kitakkun.kotrail:factsOut=<file>`), and reads the facts files named by `facts`
 (`-P plugin:com.kitakkun.kotrail:facts=<file1>,<file2>`, or the option repeated). A hand-wired
 build passes both itself and makes the files inputs of the dependent compile task, as
-`samples/compose/lib` and `samples/compose/app` do. `inferredMetadata=false`
+`samples/compose/lib` and `samples/compose/app` do. An incremental compilation also reads its
+own file back for the files it does not compile again: `samples/compose/lib` passes the same
+path as `ownFacts` (`-P plugin:com.kitakkun.kotrail:ownFacts=<file>`). `inferredMetadata=false`
 (`-P plugin:com.kitakkun.kotrail:inferredMetadata=false`) keeps the inferred facts out: no facts
 file on the JVM, no annotation in a klib. A hand-wired build ships no consumer rules; its JVM
 output needs none, since the facts file keeps Kotrail out of the class files.

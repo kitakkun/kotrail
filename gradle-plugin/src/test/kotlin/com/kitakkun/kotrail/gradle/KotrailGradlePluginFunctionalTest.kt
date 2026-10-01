@@ -879,6 +879,115 @@ class KotrailGradlePluginFunctionalTest {
     }
 
     @Test
+    fun `an incremental build that compiles only the caller reads the facts of untouched callees from the facts file of the module itself`() {
+        writeSettings()
+        writeFile("kotrail.yaml", "severity: warning\n")
+        writeBuild(
+            """
+            dependencies {
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$COROUTINES_VERSION")
+            }
+
+            kotrail {
+                configFile = file("kotrail.yaml")
+            }
+            """.trimIndent(),
+        )
+        val calleeWithRequire = """
+            import kotlinx.coroutines.CoroutineScope
+            import kotlinx.coroutines.launch
+
+            class Manager(private val scope: CoroutineScope) {
+                fun reconnect() {
+                    scope.launch { }
+                }
+            }
+
+            fun retry(times: Int): Int {
+                require(times >= 0)
+                return times
+            }
+        """.trimIndent()
+        val caller = """
+            import kotlinx.coroutines.delay
+
+            suspend fun switch(manager: Manager) {
+                manager.reconnect()
+                delay(500)
+            }
+
+            fun again(): Int = retry(-1)
+
+            fun reconnectNow(manager: Manager) {
+                manager.reconnect()
+            }
+        """.trimIndent()
+        writeFile("src/main/kotlin/Callee.kt", calleeWithRequire)
+        writeFile("src/main/kotlin/Caller.kt", caller)
+        val classes = File(projectDir, "build/classes/kotlin/main")
+        val callerClass = File(classes, "CallerKt.class")
+        val calleeClasses = listOf(File(classes, "CalleeKt.class"), File(classes, "Manager.class"))
+        val factsFile = File(projectDir, "build/kotrail/facts/jvm-main/consumer.facts")
+        fun delayFindings(result: BuildResult) = result.output.lines().filter { "Caller.kt:5:5" in it && "KOTRAIL_DELAY_WAITS_FOR_ASYNC_WORK" in it }
+        fun preconditionFindings(result: BuildResult) = result.output.lines().filter { "Caller.kt" in it && "KOTRAIL_PRECONDITION_VIOLATED" in it }
+        fun callerFindings(result: BuildResult) = result.output.lines().filter { "Caller.kt" in it && "KOTRAIL_" in it }
+        fun entry(file: String, id: String, fact: String) = "{\"file\": \"src/main/kotlin/$file\", \"id\": \"$id\", " to fact
+        fun assertFacts(vararg expected: Pair<Pair<String, String>, Boolean>) {
+            val lines = factsFile.readLines()
+            for ((entry, present) in expected) {
+                val (prefix, fact) = entry
+                assertEquals(present, lines.any { it.startsWith(prefix) && fact in it }, "$prefix $fact\n" + lines.joinToString("\n"))
+            }
+        }
+        val reconnect = entry("Callee.kt", "/Manager.reconnect", "\"startsAsyncWork\": {}")
+        val retry = entry("Callee.kt", "/retry", "\"preconditions\": {\"conditions\": [\"times >= 0\"]}")
+        // A fact of the caller that comes from its callee: reconnectNow starts work because Manager.reconnect does.
+        val reconnectNow = entry("Caller.kt", "/reconnectNow", "\"startsAsyncWork\": {}")
+
+        // A full build: both files are compiled, both findings are reported, and the facts file describes both files.
+        val first = runBuild("compileKotlin")
+        assertEquals(TaskOutcome.SUCCESS, first.task(":compileKotlin")?.outcome, first.output)
+        assertEquals(1, delayFindings(first).size, first.output)
+        assertEquals(1, preconditionFindings(first).size, first.output)
+        assertFacts(reconnect to true, retry to true, reconnectNow to true)
+        val calleeStamps = calleeClasses.map { it.lastModified() }
+
+        // Only the caller changes (a comment at the end keeps the line numbers). The incremental build compiles
+        // Caller.kt alone and loads Callee.kt's declarations from the classes directory, without their bodies; their
+        // facts come from the module's own facts file, so both findings are still reported, and the caller's own fact
+        // that depends on its callee is written again rather than computed against a callee with no facts.
+        writeFile("src/main/kotlin/Caller.kt", "$caller\n\n// Touched.\n")
+        val callerStamp = callerClass.lastModified()
+        val second = runBuild("compileKotlin")
+        assertEquals(TaskOutcome.SUCCESS, second.task(":compileKotlin")?.outcome, second.output)
+        assertEquals(calleeStamps, calleeClasses.map { it.lastModified() }, "Callee.kt was compiled again\n" + second.output)
+        assertTrue(callerClass.lastModified() != callerStamp, "Caller.kt was not compiled again\n" + second.output)
+        assertEquals(1, delayFindings(second).size, second.output)
+        assertEquals(1, preconditionFindings(second).size, second.output)
+        assertFacts(reconnect to true, retry to true, reconnectNow to true)
+
+        // Only the callee's body changes: its require goes. Its ABI is the same, so the incremental build compiles
+        // Callee.kt alone and leaves Caller.kt as it was compiled: the caller is not checked again, so nothing withdraws
+        // the precondition finding the last build reported there (the documented limitation). The facts file has the
+        // callee's new facts and keeps the caller's.
+        writeFile("src/main/kotlin/Callee.kt", calleeWithRequire.replace("    require(times >= 0)\n", ""))
+        val callerStampBeforeThird = callerClass.lastModified()
+        val third = runBuild("compileKotlin")
+        assertEquals(TaskOutcome.SUCCESS, third.task(":compileKotlin")?.outcome, third.output)
+        assertEquals(callerStampBeforeThird, callerClass.lastModified(), "Caller.kt was compiled again\n" + third.output)
+        assertTrue(callerFindings(third).isEmpty(), third.output)
+        assertFacts(reconnect to true, retry to false, reconnectNow to true)
+
+        // Compiling every file again checks the caller against the callee as it is now: the precondition finding is
+        // gone, the finding about the work the callee still starts stays.
+        val rerun = runBuild("compileKotlin", "--rerun-tasks")
+        assertEquals(TaskOutcome.SUCCESS, rerun.task(":compileKotlin")?.outcome, rerun.output)
+        assertEquals(1, delayFindings(rerun).size, rerun.output)
+        assertTrue(preconditionFindings(rerun).isEmpty(), rerun.output)
+        assertFacts(reconnect to true, retry to false, reconnectNow to true)
+    }
+
+    @Test
     fun `a published library's facts file is a classifier artifact its module metadata and POM do not mention, which a consumer reads`() {
         val repo = File(projectDir, "repo")
         val settings = { name: String ->

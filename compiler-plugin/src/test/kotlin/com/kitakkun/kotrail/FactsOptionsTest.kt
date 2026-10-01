@@ -36,10 +36,27 @@ class FactsOptionsTest {
     }
 
     @Test
+    fun `ownFacts names the module's own file apart from the dependencies' and is not split`() {
+        val config = KotrailConfig.from(
+            configuration(
+                "factsOut" to "/build/kotrail/facts/jvm-main/lib.facts",
+                "ownFacts" to "/build/kotrail/facts/jvm-main/lib.facts",
+                "facts" to "/a/one.facts",
+            ),
+        )
+        assertEquals("/build/kotrail/facts/jvm-main/lib.facts", config.ownFacts)
+        // The own file is not one of the dependencies' files: those stay as given.
+        assertEquals(listOf("/a/one.facts"), config.facts)
+        // A path with a comma is one path: unlike facts, ownFacts names a single file.
+        assertEquals("/odd,dir/lib.facts", KotrailConfig.from(configuration("ownFacts" to "/odd,dir/lib.facts")).ownFacts)
+    }
+
+    @Test
     fun `without the options nothing is written and nothing is read`() {
         val config = KotrailConfig.from(configuration())
         assertNull(config.factsOut)
         assertEquals(emptyList<String>(), config.facts)
+        assertNull(config.ownFacts)
         assertTrue(config.inferredMetadata)
     }
 
@@ -49,10 +66,11 @@ class FactsOptionsTest {
     }
 
     @Test
-    fun `facts is the only one of the three that may repeat`() {
+    fun `facts is the only one of them that may repeat`() {
         val options = processor.pluginOptions.associateBy { it.optionName }
         assertTrue(options.getValue("facts").allowMultipleOccurrences)
         assertEquals(false, options.getValue("factsOut").allowMultipleOccurrences)
+        assertEquals(false, options.getValue("ownFacts").allowMultipleOccurrences)
         assertEquals(false, options.getValue("factsHash").allowMultipleOccurrences)
     }
 }

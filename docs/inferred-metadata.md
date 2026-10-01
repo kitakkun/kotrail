@@ -194,13 +194,58 @@ non-incrementally, and its findings follow the library: remove a `require` from 
 function and the precondition finding at the call site in the consumer goes; put it back and
 it returns. An unchanged fact changes nothing, and the task stays up to date.
 
+#### The own facts file
+
+Within one module the callee's body is normally at hand. Under incremental compilation it is
+not, for a callee in a file the compiler does not compile again: Kotlin loads the declarations
+of such a file back from the classes directory, as it would a library's, without their bodies,
+and the class files carry nothing of Kotrail. What the previous build found in those bodies is
+in the module's own facts file, whose entries for the files not compiled again are still there
+(see above). So the compiler reads that file too: the Gradle plugin passes it as `ownFacts`, the
+same path as `factsOut`, apart from the dependencies' `facts`, and not as an input of the
+compile task, since it is the task's own output. The file is read while the frontend runs and
+written after it, and the entries read from it are those of files the writer keeps as they
+were, so the order does not change what is read.
+
+A declaration loaded that way is told apart from a library's by where it comes from: the
+classes and top-level functions have the origin `Precompiled`, and the members and top-level
+properties, which Kotlin deserializes as `Library` either way, carry the module data of the
+module being compiled rather than a library's. For such a declaration a fact is looked up in
+the module's own facts file first, then in the dependencies' files; a library declaration is
+only ever looked up in the dependencies' files, and a declaration compiled from source in none
+(its body is analyzed).
+
+What this fixes: an incremental build that compiles a use site, and not the files of the
+callees it calls, checks the use site against those callees' facts as the last build recorded
+them. Edit only the file with `manager.reconnect(); delay(500)` and the
+`delayForCompletion` finding stays, where it used to vanish because `reconnect`, untouched,
+had no facts; the same goes for `preconditions`, `noOpCall`, `nativeAllocationInLoop`,
+`compose.windowInsets` and `compose.compositionLocals`. The facts the recompiled file writes for
+itself (a function that starts work because its callee does) are
+computed against those facts too, rather than against callees that seemed to have none, so the
+facts file stays complete across incremental builds.
+
+What it does not fix: a change to a callee's body does not make Kotlin compile its callers
+again, since their ABI is unaffected. Remove the `require` from a function, and the incremental
+build compiles that file alone: the facts file loses the precondition, but the caller in
+another file of the module is not checked again, and the precondition finding the last build
+reported there is neither repeated nor withdrawn. It goes on the next build that compiles the
+caller: a change to the caller's file, a clean build, or `--rerun-tasks`. Across modules this
+does not happen (see above). See
+[Incremental compilation](gradle-plugin.md#incremental-compilation) in the Gradle plugin page.
+
+A module with `inferredMetadata = false` writes no facts file, so it has none to read back
+either: under incremental compilation its untouched callees have no facts, as before.
+
 ### Without the Gradle plugin
 
 A hand-wired build passes the options itself, as the Compose samples in this repository do:
 `-P plugin:com.kitakkun.kotrail:factsOut=<file>` in the library, and
 `-P plugin:com.kitakkun.kotrail:facts=<file>` (comma separated, or repeated) in the module that
 depends on it, with the file as an input of the dependent's compile task. `factsHash` is
-optional there.
+optional there. A build that compiles incrementally also passes
+`-P plugin:com.kitakkun.kotrail:ownFacts=<file>`, the same file as `factsOut`, so that the
+declarations of the files it does not compile again keep their facts.
 
 ## Annotations (klibs)
 
@@ -269,8 +314,11 @@ source or classpath, it answers in this order:
 
 1. `override`: what wins over everything (a hand-written `@HandlesWindowInsets`, a knowledge
    base entry);
-2. for a classpath symbol, the entry under the fact's name in the facts files of the
-   dependencies;
+2. for a symbol not compiled from source, the entry under the fact's name in a facts file: for
+   a declaration of this module that an incremental compilation loaded from the classes
+   directory, the module's own facts file, then the dependencies'; for a library declaration,
+   the dependencies' only (see
+   [The own facts file](#the-own-facts-file));
 3. the declaration's own annotation, always for a classpath symbol (a klib, a hand-written
    annotation, or a JVM library built by an earlier Kotrail) and also for a source one when the
    fact says so (a contract the writer also produces: insets, preconditions, no-op conditions,

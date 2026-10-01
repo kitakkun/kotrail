@@ -109,6 +109,15 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
         allowMultipleOccurrences = true,
     )
 
+    private val ownFactsOption = CliOption(
+        optionName = "ownFacts",
+        valueDescription = "<path>",
+        description = "The facts file this compilation wrote last time, usually its own factsOut. Read for the declarations " +
+            "an incremental compilation loads from the output directory instead of compiling them, whose bodies it does not " +
+            "see; the facts of the dependencies stay with facts",
+        required = false,
+    )
+
     private val factsHashOption = CliOption(
         optionName = "factsHash",
         valueDescription = "<hex>",
@@ -139,7 +148,7 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
     }
 
     override val pluginId: String = KotrailNames.PLUGIN_ID
-    override val pluginOptions: Collection<CliOption> = listOf(configFileOption, fixesDirOption, composablesDirOption, complexityDirOption, associatedComposablesDirOption, unloadableDirOption, bundledUnloadableDirOption, rootDirOption, inferredMetadataOption, factsOutOption, factsOption, factsHashOption) + treeOptions
+    override val pluginOptions: Collection<CliOption> = listOf(configFileOption, fixesDirOption, composablesDirOption, complexityDirOption, associatedComposablesDirOption, unloadableDirOption, bundledUnloadableDirOption, rootDirOption, inferredMetadataOption, factsOutOption, factsOption, ownFactsOption, factsHashOption) + treeOptions
 
     override fun processOption(option: AbstractCliOption, value: String, configuration: CompilerConfiguration) {
         val name = option.optionName
@@ -159,6 +168,7 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
             name == factsOutOption.optionName -> configuration.put(KotrailConfigurationKeys.FACTS_OUT, value)
             name == factsOption.optionName -> value.split(',').map { it.trim() }.filter { it.isNotEmpty() }
                 .forEach { configuration.add(KotrailConfigurationKeys.FACTS, it) }
+            name == ownFactsOption.optionName -> configuration.put(KotrailConfigurationKeys.OWN_FACTS, value)
             // Only there to change the compiler arguments when a dependency's facts change.
             name == factsHashOption.optionName -> Unit
             KotrailConfig.optionPath(name) != null -> configuration.add(KotrailConfigurationKeys.OPTIONS, "$name=$value")

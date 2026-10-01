@@ -27,11 +27,15 @@ tasks.withType<KotlinCompile>().configureEach {
 // Without the Gradle plugin the facts file is wired by hand: the library writes what Kotrail
 // infers about its composables to a file of its own, outside the class files, which
 // :samples:compose:app reads. The directory is an output of the compile task, which the Kotlin
-// plugin cleans before a full compilation and keeps for an incremental one.
+// plugin cleans before a full compilation and keeps for an incremental one; an incremental one
+// reads the same file back (ownFacts) for the files it does not compile again.
 tasks.named<KotlinCompile>("compileKotlin") {
     val factsDirectory = layout.buildDirectory.dir("kotrail/facts/jvm-main")
     outputs.dir(factsDirectory).withPropertyName("kotrailFactsDirectory")
     compilerOptions.freeCompilerArgs.addAll(
-        factsDirectory.map { listOf("-P", "plugin:com.kitakkun.kotrail:factsOut=${it.file("lib.facts").asFile}") },
+        factsDirectory.map {
+            val file = it.file("lib.facts").asFile
+            listOf("-P", "plugin:com.kitakkun.kotrail:factsOut=$file", "-P", "plugin:com.kitakkun.kotrail:ownFacts=$file")
+        },
     )
 }

@@ -1,7 +1,8 @@
 package com.kitakkun.kotrail.fir.inferred
 
 import com.kitakkun.kotrail.fir.inferred.InferredMetadata.strings
-import com.kitakkun.kotrail.inferred.FactsFileIndex
+import com.kitakkun.kotrail.fir.isPrecompiled
+import com.kitakkun.kotrail.inferred.FactsFileLookup
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.extensions.FirExtensionSessionComponent
@@ -75,20 +76,28 @@ object FactKeys {
 }
 
 /**
- * The facts in the facts files of the compilation's dependencies (the `facts` plugin option; see
- * [com.kitakkun.kotrail.inferred.FactsFile]), for the [InferredFactService]s to read before a
- * classpath declaration's own annotations. The index is built once, lazily, and shared by every
- * session; a compilation handed no facts files finds nothing.
+ * The facts in the facts files (see [com.kitakkun.kotrail.inferred.FactsFile]) for the
+ * [InferredFactService]s to read before a declaration's own annotations: the module's own file
+ * (the `ownFacts` plugin option) for a declaration that an incremental compilation loaded back
+ * from the output directory, and the files of the compilation's dependencies (the `facts` plugin
+ * option) for that and for a library declaration; see [FactsFileLookup] for the order. A source
+ * declaration finds nothing: its body is analyzed. The indexes are built once, lazily, and shared
+ * by every session; a compilation handed no facts files finds nothing.
  */
-class FactsFileComponent(session: FirSession, private val index: FactsFileIndex) : FirExtensionSessionComponent(session) {
+class FactsFileComponent(session: FirSession, private val lookup: FactsFileLookup) : FirExtensionSessionComponent(session) {
     /** The arguments of fact [name] a facts file recorded for [symbol], or null. */
     fun arguments(symbol: FirBasedSymbol<*>, name: String): FactArguments? {
         val id = FactKeys.id(symbol) ?: return null
-        return index.lookup(id, FactKeys.signature(symbol, session), name)?.let { FactArguments.of(it) }
+        val origin = when {
+            symbol.origin.fromSource -> FactsFileLookup.Origin.SOURCE
+            symbol.isPrecompiled(session) -> FactsFileLookup.Origin.PRECOMPILED
+            else -> FactsFileLookup.Origin.LIBRARY
+        }
+        return lookup.lookup(id, FactKeys.signature(symbol, session), name, origin)?.let { FactArguments.of(it) }
     }
 
     companion object {
-        fun getFactory(index: FactsFileIndex): Factory = Factory { session -> FactsFileComponent(session, index) }
+        fun getFactory(lookup: FactsFileLookup): Factory = Factory { session -> FactsFileComponent(session, lookup) }
     }
 }
 

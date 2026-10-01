@@ -63,6 +63,10 @@ import java.util.function.BiFunction
  *   task, and the compiler gets a digest of their contents as `factsHash`, so a change to a fact
  *   alone reruns the dependent compilation, which the classpath normalization of the compile
  *   task would not.
+ * - **Itself.** The compilation also reads its own file, as the previous build left it
+ *   (`ownFacts`, the same path as `factsOut`), for the declarations of the files an incremental
+ *   compilation does not compile again. It is passed apart from `facts`, which are the
+ *   dependencies', and is not an input of the compile task: it is the task's own output.
  */
 internal class FactsFiles(
     private val project: Project,
@@ -106,8 +110,15 @@ internal class FactsFiles(
                 .withPathSensitivity(PathSensitivity.NONE)
                 .optional()
         }
+        // The file this compilation writes, and the same file as the compilation's previous run left it, which an
+        // incremental compilation reads for the files it does not compile again. Neither is an input: the second is the
+        // task's own output, and its entries for the files compiled now are replaced by the writer.
         val out = project.provider<List<SubpluginOption>> {
-            listOf(FilesSubpluginOption(FACTS_OUT_OPTION, listOf(factsFile.get().asFile), FilesOptionKind.INTERNAL))
+            val file = factsFile.get().asFile
+            listOf(
+                FilesSubpluginOption(FACTS_OUT_OPTION, listOf(file), FilesOptionKind.INTERNAL),
+                FilesSubpluginOption(OWN_FACTS_OPTION, listOf(file), FilesOptionKind.INTERNAL),
+            )
         }
         // Mapped from the files, not computed now: the hash is of what the dependencies wrote, so it is read when the
         // compile task runs, after them. The transformers are classes, which the configuration cache can store.
@@ -360,6 +371,7 @@ internal class FactsFiles(
 
         const val FACTS_OUT_OPTION = "factsOut"
         const val FACTS_OPTION = "facts"
+        const val OWN_FACTS_OPTION = "ownFacts"
         const val FACTS_HASH_OPTION = "factsHash"
 
         private const val ELEMENTS_SUFFIX = "KotrailFactsElements"

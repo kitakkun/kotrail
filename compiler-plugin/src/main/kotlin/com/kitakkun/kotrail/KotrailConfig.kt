@@ -538,6 +538,8 @@ data class KotrailConfig(
     val factsOut: String?,
     /** The facts files of the compilation's dependencies (the `facts` plugin option). */
     val facts: List<String>,
+    /** The facts file the compilation wrote last time, or `null` to read none (the `ownFacts` plugin option). */
+    val ownFacts: String?,
     private val switches: Map<KotrailRule, Boolean>,
     private val severities: Map<KotrailRule, Severity>,
     private val notes: Map<KotrailRule, String>,
@@ -813,6 +815,7 @@ data class KotrailConfig(
                 inferredMetadata = configuration.get(KotrailConfigurationKeys.INFERRED_METADATA) ?: true,
                 factsOut = configuration.get(KotrailConfigurationKeys.FACTS_OUT),
                 facts = configuration.get(KotrailConfigurationKeys.FACTS).orEmpty(),
+                ownFacts = configuration.get(KotrailConfigurationKeys.OWN_FACTS),
             )
         } catch (e: ConfigException) {
             throw CliOptionProcessingException("Kotrail configuration: ${e.message}")
@@ -1074,6 +1077,7 @@ data class KotrailConfig(
                 inferredMetadata = true,
                 factsOut = null,
                 facts = emptyList(),
+                ownFacts = null,
                 switches = switches,
                 severities = severities,
                 notes = notes,

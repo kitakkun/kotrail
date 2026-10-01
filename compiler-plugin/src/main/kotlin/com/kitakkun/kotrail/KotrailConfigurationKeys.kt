@@ -46,6 +46,12 @@ object KotrailConfigurationKeys {
     /** The facts files of this compilation's dependencies, in the order given; the first to describe a declaration wins. */
     val FACTS = CompilerConfigurationKey<List<String>>("facts")
 
+    /**
+     * The facts file this compilation wrote last time (its own `factsOut`), read for the declarations an incremental
+     * compilation loads from the output directory instead of compiling them; unset means none is read.
+     */
+    val OWN_FACTS = CompilerConfigurationKey<String>("ownFacts")
+
     /** Main-compilation record directories of the modules on this compilation's runtime class path. */
     val BUNDLED_UNLOADABLE_DIRS = CompilerConfigurationKey<List<String>>("bundledUnloadableDir")
 }
