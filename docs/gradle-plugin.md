@@ -41,6 +41,7 @@ kotrail {
     // enabled = false           // do not run the plugin here at all
     // annotations = false       // do not add the annotations artifact
     // inferredMetadata = false  // write no inferred facts for other modules
+    // incrementalMetadata = false // no facts in the class files' metadata, even when not publishing
     // consumerRules = false     // ship no shrinker rules to consumers
     // packagingExcludes = false // keep older libraries' facts files in an Android app's APK
 }
@@ -52,6 +53,7 @@ kotrail {
 | `enabled` | `true` | Whether the compiler plugin is applied at all. Per compilation. |
 | `annotations` | `true` | Whether `kotrail-annotations` is added as `compileOnly` (Kotlin/JVM and Kotlin/Android). |
 | `inferredMetadata` | `true` | Whether the inferred facts are written for the modules that compile against this one: the facts file `build/kotrail/facts/<target>-<compilation>/<project>.facts` on the JVM and Android (published as the `kotrail-facts` artifact), annotations (`@InferredStartsAsyncWork` and the rest) in a klib. `false` writes and publishes neither, for a library whose consumers do not use Kotrail; callers in other modules then see the module as if it had been compiled without Kotrail, while analysis within it is unchanged. Per compilation. See [Inferred metadata](inferred-metadata.md). |
+| `incrementalMetadata` | `true` | Whether a JVM or Android compilation also writes its inferred facts, and a digest of what the model rules read of each class, into the Kotlin metadata of its class files, where Kotlin's incremental compilation compares them, so that a changed fact or model compiles the files of the module that depend on it again (the `icMetadata` compiler option). Off by itself in a build whose task graph publishes (any `publish*` task, any Maven publication task), so published class files carry nothing of Kotrail; such a build compiles the module completely, and the next ordinary build once more. `false` keeps the metadata out always. Off as well when `inferredMetadata` is. Per compilation. See [Incremental compilation](#incremental-compilation). |
 | `consumerRules` | `true` | Whether the module ships `-dontwarn com.kitakkun.kotrail.**` to its consumers. The JVM and Android outputs of this version reference no Kotrail class (the facts are in a separate artifact), so the rule is only needed by consumers that also shrink JVM libraries built by earlier versions, whose class files carry the annotations. See [Consumer rules](#consumer-rules). |
 | `packagingExcludes` | `true` | Whether an Android application (`com.android.application`) leaves `META-INF/kotrail/**` out of its APK and bundle, through `android.packaging.resources.excludes`. Only libraries built by earlier versions of Kotrail carry facts files there; this version publishes them as a separate artifact, so the exclude matters only for those older libraries. See [Publishing a library](inferred-metadata.md#publishing-a-library). |
 | `bundledConfigurations` | empty | Configurations whose projects this compilation's artifact bundles, for unloadable code. Per compilation. |
@@ -160,7 +162,10 @@ to the source sets that need it, as `api` or `implementation`.
 
 The facts the compiler plugin writes for callers in other modules never need the artifact. On
 the JVM and Android they go to a facts file under `build/kotrail/facts`, outside the class
-files, which name nothing of Kotrail; the JAR and the AAR carry nothing of it. In a klib they
+files, which name no class of Kotrail; outside a publishing build the class files' Kotlin
+metadata also carries them for incremental compilation (see
+[Incremental compilation](#incremental-compilation)), and a published JAR or AAR carries
+nothing of Kotrail. In a klib they
 are annotations (`@InferredStartsAsyncWork` and the rest), written against a stub class when
 the artifact is absent, which a klib consumer without Kotrail drops silently. A published
 library therefore carries the facts with no Kotrail dependency, `annotations = false` included
@@ -211,43 +216,68 @@ properties of a data class declared elsewhere, [preconditions](rules/preconditio
 call against the leading `require` of a callee in another file, and every rule that reads a fact
 inferred from a body (see [Inferred metadata](inferred-metadata.md)) does the same within a module.
 
-When an incremental build compiles the use site's file and not the files of what it calls, the
-callees come from the classes directory, without their bodies. Their facts come from the
-module's own facts file, which the previous build wrote and which keeps the entries of the files
-a build does not compile, so the use site is checked as a full build would check it: edit only
-the file with `manager.reconnect(); delay(500)` and the `delayForCompletion` finding is still
-reported (see [The own facts file](inferred-metadata.md#the-own-facts-file)). The rules that
-tell the module's own code from a library's count those callees as the module's: the owner of a
-plain `var` in [no external mutation](rules/no-external-mutation.md), a project model in
-[no callback in model](rules/compose/no-callback-in-model.md) and
+**What is automatic.** When an incremental build compiles the use site's file and not the files
+of what it calls, the callees come from the classes directory, without their bodies. Their facts
+come from the Kotlin metadata of their class files, where the compilation of their file wrote
+them, and from the module's own facts file, so the use site is checked as a full build would
+check it: edit only the file with `manager.reconnect(); delay(500)` and the `delayForCompletion`
+finding is still reported (see [The own facts file](inferred-metadata.md#the-own-facts-file)).
+The rules that tell the module's own code from a library's count those callees as the module's:
+the owner of a plain `var` in [no external mutation](rules/no-external-mutation.md), a project
+model in [no callback in model](rules/compose/no-callback-in-model.md) and
 [preview parameter](rules/compose/preview-parameter.md), and a helper whose effect is reported
 where it is declared rather than at each call in [remember keys](rules/compose/remember-keys.md).
 A composable that only calls an effect wrapper in such a file still draws nothing, through the
 wrapper's `drawsUi` fact, and needs no [preview](rules/compose/preview-required.md).
 
-The other way round does not work. Kotlin's incremental compilation recompiles a file when
-something the file itself refers to changes in a way that could change how it compiles: the
-signature of a function it calls, the constructors or supertypes of a class it names, a member
-it reads. A change in another file that does not reach that far (a function body, a private
-member, a property added to a class body, a class one step further down a model) leaves the use
-site's file as it was compiled, and its findings with it: remove the `require` from a callee and
-the build compiles the callee's file alone, so the precondition finding the last build reported
-at the call site is neither repeated nor withdrawn. Such a finding appears, or goes, only on a
-build that compiles the use site's file again: a change to that file, a clean build, or one with
-`--rerun-tasks`, under which the Kotlin compile tasks compile every file.
+The other way round works too. Kotlin's incremental compilation compiles a file again when
+something it refers to changes in the Kotlin metadata: the signature of a function it calls, the
+constructors or supertypes of a class it names, a member it reads. A body, a private member or a
+class one step further down a model is not there by itself, so the plugin puts what its rules
+read of them there (`incrementalMetadata`, on by default; see
+[Plugin metadata for incremental compilation](inferred-metadata.md#plugin-metadata-for-incremental-compilation)):
 
-CI usually builds from a clean state and gets the exact result; a local incremental build can
-lag behind it. When CI reports a cross-file finding the local build does not, or before relying
-on an incremental build to say one is gone, build again with `--rerun-tasks` (or after
-`./gradlew clean`). `kotlin.incremental=false` in `gradle.properties` makes every Kotlin/JVM and
-Android compilation non-incremental, at the cost of build time. Kotrail has no task that reruns
-the analysis on its own: the analysis is part of the compilation.
+- Remove the `require` from a callee: the build compiles the callee's file, sees its
+  precondition fact gone from the metadata, and compiles the callers' files in the same build.
+  The precondition finding at the call site goes; put the `require` back and it returns.
+- A model class gains a callback, a private `var` or a property in its body, in its own file:
+  the digest of the model surface in its metadata changes, so the classes that hold it are
+  compiled again, their digests change in turn, and the composable that takes the outer model is
+  compiled again, however deep the change was.
+- A rule that asks whether a name exists without resolving it (`noFqnReferences`,
+  `implicitReceivers`, `sealedWhenBranchStyle`, `preferFunctionReferences`) records the question
+  as the compiler records the names it resolves, so a declaration of that name added or removed
+  in another file compiles the asking file again.
 
-Across modules this does not happen. A dependency's facts file is an input of the dependent's
+A body change that changes no fact and no model surface changes nothing in the metadata, and
+the use sites stay as they were compiled.
+
+**The publish-time switch.** A build whose task graph holds a publishing task (any task whose
+name starts with `publish`, or any Maven publication task such as `publishToMavenLocal`)
+compiles every Kotlin/JVM and Android compilation without that metadata (`icMetadata=false`),
+so that published class files carry nothing of Kotrail. The switch is a compile task input:
+such a build compiles each module completely, not incrementally, and the next ordinary build
+compiles it once more with the metadata. `incrementalMetadata = false` keeps the metadata out of
+every build, for a project that would rather not pay for those two compilations; its
+incremental builds then leave a use site's findings as they were until its file is compiled
+again.
+
+**What still needs a full build.** A few findings depend on the bodies of many files at once,
+which no metadata of one declaration describes: duplicates of a
+[named condition](rules/named-condition.md) across a file the build compiles and one it does
+not, and [preview coverage](rules/compose/preview-coverage.md), whose previews in untouched files
+are not read again. With `incrementalMetadata = false`, so does every cross-file finding above.
+CI usually builds from a clean state and gets the exact result; when CI reports such a finding
+the local build does not, or before relying on an incremental build to say one is gone, build
+again with `--rerun-tasks` (or after `./gradlew clean`). `kotlin.incremental=false` in
+`gradle.properties` makes every Kotlin/JVM and Android compilation non-incremental, at the cost
+of build time. Kotrail has no task that reruns the analysis on its own: the analysis is part of
+the compilation.
+
+Across modules none of this is needed. A dependency's facts file is an input of the dependent's
 compile task, and its digest is a compiler argument, so a fact that changes without the
 dependency's ABI changing still recompiles the dependent, non-incrementally (see
 [Incremental compilation](inferred-metadata.md#incremental-compilation) in Inferred metadata).
-The caveat is about files within one module.
 
 ## Consumer rules
 
@@ -293,5 +323,8 @@ build passes both itself and makes the files inputs of the dependent compile tas
 own file back for the files it does not compile again: `samples/compose/lib` passes the same
 path as `ownFacts` (`-P plugin:com.kitakkun.kotrail:ownFacts=<file>`). `inferredMetadata=false`
 (`-P plugin:com.kitakkun.kotrail:inferredMetadata=false`) keeps the inferred facts out: no facts
-file on the JVM, no annotation in a klib. A hand-wired build ships no consumer rules; its JVM
-output needs none, since the facts file keeps Kotrail out of the class files.
+file on the JVM, no annotation in a klib. The facts also go into the class files' Kotlin
+metadata for incremental compilation unless the build passes
+`-P plugin:com.kitakkun.kotrail:icMetadata=false`, which a hand-wired build does for the
+compilations whose class files it publishes. A hand-wired build ships no consumer rules; its JVM
+output needs none, since it references no Kotrail class.

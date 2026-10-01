@@ -9,8 +9,11 @@ another module the plugin writes down what it found and reads it back where the 
 It does so in one of two ways, by target:
 
 - **JVM and Android**: a facts file, `<module>.facts`, written beside the build output rather
-  than into it and published as an artifact of its own. The class files, the JAR and the AAR
-  carry nothing of Kotrail.
+  than into it and published as an artifact of its own. The class files reference no Kotrail
+  class. Outside a build that publishes, their Kotlin metadata also carries the facts for
+  Kotlin's incremental compilation within the module (see
+  [Plugin metadata for incremental compilation](#plugin-metadata-for-incremental-compilation));
+  a published JAR or AAR carries nothing of Kotrail.
 - **Klibs** (Native, JS, Wasm, and the metadata compilation of shared source sets): an
   annotation of string arrays on the declaration.
 
@@ -207,22 +210,23 @@ it returns. An unchanged fact changes nothing, and the task stays up to date.
 
 Within one module the callee's body is normally at hand. Under incremental compilation it is
 not, for a callee in a file the compiler does not compile again: Kotlin loads the declarations
-of such a file back from the classes directory, as it would a library's, without their bodies,
-and the class files carry nothing of Kotrail. What the previous build found in those bodies is
-in the module's own facts file, whose entries for the files not compiled again are still there
-(see above). So the compiler reads that file too: the Gradle plugin passes it as `ownFacts`, the
-same path as `factsOut`, apart from the dependencies' `facts`, and not as an input of the
-compile task, since it is the task's own output. The file is read while the frontend runs and
-written after it, and the entries read from it are those of files the writer keeps as they
-were, so the order does not change what is read.
+of such a file back from the classes directory, as it would a library's, without their bodies.
+What the previous build found in those bodies is in the plugin metadata of their class files
+(see [Plugin metadata for incremental compilation](#plugin-metadata-for-incremental-compilation)),
+unless that is off, and in the module's own facts file, whose entries for the files not compiled
+again are still there (see above). So the compiler reads that file too: the Gradle plugin passes
+it as `ownFacts`, the same path as `factsOut`, apart from the dependencies' `facts`, and not as
+an input of the compile task, since it is the task's own output. The file is read while the
+frontend runs and written after it, and the entries read from it are those of files the writer
+keeps as they were, so the order does not change what is read.
 
 A declaration loaded that way is told apart from a library's by where it comes from: the
 classes and top-level functions have the origin `Precompiled`, and the members and top-level
 properties, which Kotlin deserializes as `Library` either way, carry the module data of the
 module being compiled rather than a library's. For such a declaration a fact is looked up in
-the module's own facts file first, then in the dependencies' files; a library declaration is
-only ever looked up in the dependencies' files, and a declaration compiled from source in none
-(its body is analyzed).
+the plugin metadata of its class file first, then in the module's own facts file, then in the
+dependencies' files; a library declaration is only ever looked up in the dependencies' files,
+and a declaration compiled from source in none (its body is analyzed).
 
 What this fixes: an incremental build that compiles a use site, and not the files of the
 callees it calls, checks the use site against those callees' facts as the last build recorded
@@ -238,17 +242,105 @@ such a wrapper looked like a library composable. The facts the recompiled file w
 computed against those facts too, rather than against callees that seemed to have none, so the
 facts file stays complete across incremental builds.
 
-What it does not fix: a change to a callee's body does not make Kotlin compile its callers
-again, since their ABI is unaffected. Remove the `require` from a function, and the incremental
-build compiles that file alone: the facts file loses the precondition, but the caller in
-another file of the module is not checked again, and the precondition finding the last build
-reported there is neither repeated nor withdrawn. It goes on the next build that compiles the
-caller: a change to the caller's file, a clean build, or `--rerun-tasks`. Across modules this
-does not happen (see above). See
+What it does not fix on its own: a change to a callee's body does not make Kotlin compile its
+callers again, since their ABI is unaffected. That is what the plugin metadata is for (next
+section): with it, a fact that changes makes the callee count as changed, and the callers are
+compiled again in the same build. Without it (`incrementalMetadata = false`, or a hand-wired
+build without `icMetadata`), remove the `require` from a function and the incremental build
+compiles that file alone: the facts file loses the precondition, but the caller in another file
+of the module is not checked again, and the precondition finding the last build reported there
+is neither repeated nor withdrawn until a build compiles the caller. Across modules this does
+not happen (see above). See
 [Incremental compilation](gradle-plugin.md#incremental-compilation) in the Gradle plugin page.
 
-A module with `inferredMetadata = false` writes no facts file, so it has none to read back
-either: under incremental compilation its untouched callees have no facts, as before.
+A module with `inferredMetadata = false` writes no facts file and no plugin metadata, so it has
+none to read back either: under incremental compilation its untouched callees have no facts, as
+before.
+
+### Plugin metadata for incremental compilation
+
+Kotlin's incremental compilation decides which files to compile again from the Kotlin metadata
+of the classes it compiled: a declaration whose metadata changed counts as changed, and every
+file that looked its name up is compiled again, round after round until nothing more changes.
+An inferred fact lives in a body, which the metadata does not describe, so on its own a changed
+fact changes nothing there. The plugin therefore also writes the facts into the metadata, as
+the compiler plugin data that Kotlin keeps for each declaration under a plugin id
+(`compiler_plugin_data`, here under `com.kitakkun.kotrail`):
+
+- **What**: for every declaration that has at least one fact (the same declarations, facts and
+  arrays as the facts file), one blob, the UTF-8 of `{"preconditions": {"conditions":
+  ["times >= 0"]}}`, names and parameters sorted, with no path, time or version in it. A fact
+  of a function goes on the function, of a property on the property, of a class
+  (`classPreconditions`) on the class. A declaration without a fact gets no blob, so a fact that
+  appears or goes changes the declaration's metadata as surely as one that changes.
+- **Model surfaces**: a class or interface also gets, under `surface`, a digest (16 hex digits
+  of a SHA-256) of what the model rules read of it (`compose.noCallbackInModel`,
+  `narrowModelParameters`, `compose.noUnstableParameter`): its header and supertypes, and every
+  property it declares with its visibility, `val` or `var`, field, delegate, type, and whether it
+  is a callback or a `@Composable` slot, followed by the same for every model class of the module
+  it reaches through them. Those rules read members Kotlin does not count as part of a class's
+  ABI (a private property, a property in the class body) and classes the use site never names
+  (a model inside a model). Only written while one of those rules is on and, unless
+  `narrowModelParameters` has `scope: all`, in a module whose classpath has `@Composable`.
+- **Where**: JVM and Android compilations only, by default (the `icMetadata` option, on unless
+  `incrementalMetadata` or `inferredMetadata` is off, or the build publishes; see below). Klibs
+  carry their facts as annotations, and none of this section applies to them.
+
+Within the module, a fact is now looked up in this order: `override`; for a declaration that an
+incremental compilation loaded from the classes directory, the plugin metadata of its class
+file, written by the last compilation of its file and so at least as fresh as anything else;
+the module's own facts file (for class files written without the metadata); the dependencies'
+facts files; the declaration's annotation; `knowledge`; the body, for a declaration compiled
+from source. A blob without the fact asked for (a hand-written contract the writer leaves out)
+falls through to the next step.
+
+What Kotlin then propagates, within one module and one build:
+
+- **A changed fact**: remove the `require` from `retry` in `Callee.kt`; Kotlin compiles
+  `Callee.kt`, sees that the metadata of `retry` changed, and compiles `Caller.kt`, which calls
+  `retry`, in the same build: the precondition finding there goes. Put the `require` back, and
+  it returns. The same holds for every fact in the table above. A body change that changes no
+  fact changes no metadata, and the callers stay as they were compiled.
+- **A changed model**: `Details` gains `val onOpen: () -> Unit` in `Details.kt`. Kotlin compiles
+  `Details.kt`, then `Model.kt`, which names `Details`; the digest of `Model` takes `Details` in,
+  so it changes, and `Screen.kt`, which takes a `Model` and never names `Details`, is compiled
+  as well: `KOTRAIL_CALLBACK_IN_UI_MODEL` appears there. Each round goes one class further, so
+  a model any number of classes deep reaches the composable.
+- **A name a rule asked for by hand**: rules that ask whether a name exists without resolving
+  it (`noFqnReferences` asking whether `Date` is taken in the file's package or a star-imported
+  one, `implicitReceivers` asking whether another receiver has a member of that name,
+  `sealedWhenBranchStyle` asking whether an object declares `equals`, `preferFunctionReferences`
+  asking whether a function shares a property's name) record the question with Kotlin's lookup
+  tracker, as the compiler does for every name it resolves. A file that declares `class Date`
+  next to `Stamp.kt`, which writes `java.util.Date()`, compiles `Stamp.kt` again, and the
+  finding that asked for an import goes; delete the file and it returns.
+
+**The publish-time switch.** The blob is plugin data, which the Kotlin compiler keeps for the
+plugin that wrote it and otherwise passes over, so class files that carry it compile and run as
+any other. Still, a published library would carry bytes of a tool its consumers never asked
+for, and incremental compilation is a concern of the build that compiles, not of the artifact.
+So the Gradle plugin turns the metadata off in a build that publishes: when the task graph
+holds a Maven publication task (`publishToMavenLocal`, `publish...To...Repository`) or any task
+whose name starts with `publish`, every Kotlin/JVM and Android compile task gets
+`icMetadata=false`, and the published class files carry nothing of Kotrail. The option is an
+input of the compile task, so the switch compiles the module again, and completely: a
+publishing build is not incremental for Kotrail's purposes, and the next ordinary build compiles
+once more to put the metadata back. `incrementalMetadata = false` turns the metadata off for
+good; incremental builds then behave as described under [The own facts file](#the-own-facts-file),
+without the propagation above.
+
+What remains out of reach of incremental compilation, because no declaration's metadata or name
+lookup describes it:
+
+- `namedCondition` duplicates: the conditions of a module are indexed while its files are
+  checked, so an incremental build matches a condition against the files it compiles, not the
+  untouched ones; a duplicate across a recompiled and an untouched file is found by the next
+  full build.
+- `compose.previewCoverage` across untouched files: whether some preview calls a composable is
+  read from the previews' bodies, and an incremental build sees the bodies of the files it
+  compiles only.
+
+For those, CI's clean build is the reference, and `--rerun-tasks` gets the same result locally.
 
 ### Without the Gradle plugin
 
@@ -258,7 +350,10 @@ A hand-wired build passes the options itself, as the Compose samples in this rep
 depends on it, with the file as an input of the dependent's compile task. `factsHash` is
 optional there. A build that compiles incrementally also passes
 `-P plugin:com.kitakkun.kotrail:ownFacts=<file>`, the same file as `factsOut`, so that the
-declarations of the files it does not compile again keep their facts.
+declarations of the files it does not compile again keep their facts. The plugin metadata for
+incremental compilation is on unless the build passes
+`-P plugin:com.kitakkun.kotrail:icMetadata=false`, which a hand-wired build that publishes its
+class files does for the compilation it publishes; nothing switches it off by itself there.
 
 ## Annotations (klibs)
 
@@ -281,7 +376,10 @@ callee with no fact and reports nothing about it.
 ## Publishing a library
 
 A JVM or Android library built with this version of Kotrail references no Kotrail class and
-carries no Kotrail file: its facts are the separate `kotrail-facts` artifact, which a consumer
+carries no Kotrail file, and the build that publishes it compiles its class files without the
+plugin metadata for incremental compilation (see
+[The publish-time switch](#plugin-metadata-for-incremental-compilation)), so they carry no
+Kotrail bytes either: its facts are the separate `kotrail-facts` artifact, which a consumer
 without Kotrail never resolves, and which R8, ProGuard and the APK never see. It is published by
 classifier alone, so the library's Gradle module metadata and POM name nothing of Kotrail: no
 variant, no attribute, no dependency, unless the build declares a Kotrail dependency itself
@@ -309,12 +407,14 @@ stay for them:
 A module that should write no facts at all sets `inferredMetadata = false` in the
 `kotrail { }` block (or `-P plugin:com.kitakkun.kotrail:inferredMetadata=false` without the
 Gradle plugin). The compiler plugin then registers no writer and warms no fact for it: no
-facts file on the JVM (one left at `factsOut` by an earlier build is deleted), no annotation in
-a klib, and nothing is published. Callers of the module in other modules then see it as a
-dependency compiled without Kotrail: none of the cross-module checks (async work before a
-`delay`, insets handled twice, preconditions, calls that do nothing, captured effect parameters,
-native allocations in a loop) has anything to read about it and reports nothing on its account. Analysis within the
-module is unchanged, and so is reading the facts of the module's own dependencies. The switch
+facts file on the JVM (one left at `factsOut` by an earlier build is deleted), no plugin
+metadata in its class files, no annotation in a klib, and nothing is published. Callers of the
+module in other modules then see it as a dependency compiled without Kotrail: none of the
+cross-module checks (async work before a `delay`, insets handled twice, preconditions, calls that
+do nothing, captured effect parameters, native allocations in a loop) has anything to read about
+it and reports nothing on its account. Analysis within the module is unchanged in a full build
+(an incremental one loses what the facts file and the plugin metadata carry across its files),
+and so is reading the facts of the module's own dependencies. The switch
 can be set per compilation (`compilation("main") { inferredMetadata = false }`), and the
 consumer rules have their own switch, `consumerRules = false`. See also
 [the Gradle plugin](gradle-plugin.md#multiplatform).
@@ -327,11 +427,12 @@ source or classpath, it answers in this order:
 
 1. `override`: what wins over everything (a hand-written `@HandlesWindowInsets`, a knowledge
    base entry);
-2. for a symbol not compiled from source, the entry under the fact's name in a facts file: for
-   a declaration of this module that an incremental compilation loaded from the classes
-   directory, the module's own facts file, then the dependencies'; for a library declaration,
-   the dependencies' only (see
-   [The own facts file](#the-own-facts-file));
+2. for a symbol not compiled from source, the entry under the fact's name that was recorded
+   for it: for a declaration of this module that an incremental compilation loaded from the
+   classes directory, the plugin metadata of its class file, then the module's own facts file,
+   then the dependencies'; for a library declaration, the dependencies' facts files only (see
+   [The own facts file](#the-own-facts-file) and
+   [Plugin metadata for incremental compilation](#plugin-metadata-for-incremental-compilation));
 3. the declaration's own annotation, always for a classpath symbol (a klib, a hand-written
    annotation, or a JVM library built by an earlier Kotrail) and also for a source one when the
    fact says so (a contract the writer also produces: insets, preconditions, no-op conditions,
@@ -348,7 +449,9 @@ declaration while FIR is available; each fact says which declarations are worth 
 composable, a non-suspend function). `InferredMetadataWriter` (`.../ir/inferred/`) then walks
 the module once and, for every exported declaration (non-private, non-local, directly in a file
 or a class) that does not already carry the annotation, asks each fact with one of its rules on
-for its arrays, and writes them to the facts file on the JVM or through
+for its arrays, and writes them to the facts file on the JVM (and, with `icMetadata`, as one
+blob per declaration through `metadataDeclarationRegistrar.addCustomMetadataExtension`, with the
+model surface digest of `ModelSurface` (`.../fir/`) on a class) or as annotations through
 `metadataDeclarationRegistrar` for a klib. `InferredFacts` lists the facts, each naming its
 name in the facts file, its annotation, its parameters, the declarations it applies to, and the
 service it reads.

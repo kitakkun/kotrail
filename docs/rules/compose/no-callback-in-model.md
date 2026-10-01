@@ -100,10 +100,14 @@ model's classes, usually in other files. Kotlin's incremental compilation recomp
 composable's file when something the file itself refers to changes: the model class's
 constructors or supertypes, a property the composable reads. A callback added as a property in
 a model's body, or anywhere in a class one step further down (a model held by the model),
-changes nothing the composable's file names, so the file is not compiled again and the finding
-appears on the next build that compiles it: a clean build, or one with `--rerun-tasks`. Removing
-such a callback leaves a stale finding the same way. A CI build from a clean state sees the
-exact result. See [Incremental compilation](../../gradle-plugin.md#incremental-compilation).
+changes nothing the composable's file names by itself. So, while this rule is on, every
+non-private class and interface of the module carries, in its Kotlin metadata, a digest of what
+this rule reads of it and of the model classes it reaches (`incrementalMetadata`, on by
+default): the callback changes the digest of its class, then of the classes that hold it as
+each is compiled again, and the composable's file is compiled again in the same build, so the
+finding appears, and goes when the callback does. With `incrementalMetadata = false` it appears
+only on the next build that compiles the composable's file: a clean build, or one with
+`--rerun-tasks`. See [Incremental compilation](../../gradle-plugin.md#incremental-compilation).
 
 ## Fixtures
 
