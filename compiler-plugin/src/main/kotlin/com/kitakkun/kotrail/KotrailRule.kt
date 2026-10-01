@@ -99,6 +99,7 @@ enum class KotrailRule(
     COMPOSE_NO_CALLBACK_IN_MODEL("compose.noCallbackInModel", Severity.ERROR),
     COMPOSE_REMEMBER_KEYS("compose.rememberKeys", Severity.ERROR),
     COMPOSE_NO_GLOBAL_MUTABLE_STATE("compose.noGlobalMutableState", Severity.ERROR),
+    COMPOSE_RETAIN_LEAK("compose.retainLeak", Severity.ERROR),
     COMPOSE_UNWRITTEN_STATE("compose.unwrittenState", Severity.ERROR),
 
     TEST_NAMING("test.naming", Severity.ERROR),

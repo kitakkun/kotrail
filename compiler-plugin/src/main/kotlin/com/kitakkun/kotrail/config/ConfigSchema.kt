@@ -242,6 +242,12 @@ object ConfigSchema {
             Setting("max", Kind.INT, "Maximum non-private UI composables in one file, previews excluded; 0 disables.", default = "3"),
             Setting("countOverloadsSeparately", Kind.BOOLEAN, "Whether overloads of one composable name count one each; by default they count as one component.", default = "false"),
         ),
+        KotrailRule.COMPOSE_RETAIN_LEAK to listOf(
+            Setting("functions", Kind.LIST, "Fully qualified functions that keep their result and their keys (arguments of parameters named key1, key2, ..., keys or inputs) beyond the composable; the result is the function-typed argument whose return type is the call's own. Replaces the default list.",
+                default = "androidx.compose.runtime.retain.retain, androidx.compose.runtime.retain.RetainedEffect, androidx.compose.runtime.retain.RetainedValuesStoreRegistry.LocalRetainedValuesStoreProvider"),
+            Setting("leakTypes", Kind.LIST, "Fully qualified classes (subclasses included) that a retained value or key must never be or hold; classes annotated @DoNotRetain always count. Replaces the default list.",
+                default = "android.content.Context, android.view.View"),
+        ),
         KotrailRule.COMPOSE_NO_GLOBAL_MUTABLE_STATE to listOf(
             Setting("handlerWrites", Kind.BOOLEAN, "Whether an assignment to a global var from a composable's event handler or effect (onClick = { Session.user = null }) is reported; assignments during composition always are. Off, only writes during composition count.", default = "true"),
         ),

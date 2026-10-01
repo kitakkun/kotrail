@@ -6,6 +6,7 @@ import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.ModelSurface
 import com.kitakkun.kotrail.fir.compose.ComposeNames
 import com.kitakkun.kotrail.fir.compose.emitsUi
+import com.kitakkun.kotrail.fir.compose.holdsItsArguments
 import com.kitakkun.kotrail.fir.compose.isComposable
 import com.kitakkun.kotrail.fir.compose.isPreview
 import com.kitakkun.kotrail.fir.isOfThisModule
@@ -37,8 +38,6 @@ import org.jetbrains.kotlin.fir.types.customAnnotations
 import org.jetbrains.kotlin.fir.types.isSomeFunctionType
 import org.jetbrains.kotlin.fir.types.isUnit
 import org.jetbrains.kotlin.fir.types.renderReadable
-import org.jetbrains.kotlin.name.ClassId
-import org.jetbrains.kotlin.name.FqName
 
 /**
  * Keeps callbacks out of the models a UI composable takes:
@@ -95,17 +94,6 @@ object ComposableCallbackInModelChecker : NamedFunctionChecker(MppCheckerKind.Co
         }
     }
 
-    /** Classpath types whose type arguments are their contents: collections, arrays, `Pair`, `Triple`, `Sequence`. */
-    private val CONTAINER_PACKAGES = setOf(FqName("kotlin.collections"), FqName("kotlinx.collections.immutable"))
-    private val CONTAINER_CLASSES = setOf("kotlin.Array", "kotlin.Pair", "kotlin.Triple", "kotlin.sequences.Sequence")
-        .map { ClassId.topLevel(FqName(it)) }
-        .toSet()
-
-    private fun ConeKotlinType.holdsItsArguments(): Boolean {
-        val classId = (this as? ConeClassLikeType)?.lookupTag?.classId ?: return false
-        return classId.packageFqName in CONTAINER_PACKAGES || classId in CONTAINER_CLASSES
-    }
-
     /** Walks what a composable can observe of a type and finds the first function-typed property. */
     private class CallbackSearch(private val session: FirSession, private val allowComposableSlots: Boolean) {
         /** Classes on the current path, so that a class reached again inside itself is not entered again. */
@@ -128,7 +116,6 @@ object ComposableCallbackInModelChecker : NamedFunctionChecker(MppCheckerKind.Co
                 return if (path.isNotEmpty()) path.joinToString(".") else "a type argument of ${holder ?: expanded.renderReadable()}"
             }
             if (expanded !is ConeClassLikeType) return null
-            // `ArrayList` is a type alias of a Java class on the JVM: the declared name says it is a collection.
             if (type.holdsItsArguments() || expanded.holdsItsArguments()) {
                 for (argument in expanded.typeArguments) {
                     val argumentType = (argument as? ConeKotlinTypeProjection)?.type ?: continue

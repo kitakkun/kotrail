@@ -181,6 +181,8 @@ own; a rule not listed has none.
 | `compose.composablesPerFile` | `max` | `3` | Maximum non-private UI composables in one file, previews excluded; `0` disables. |
 | | `countOverloadsSeparately` | `false` | Whether overloads of one composable name count one each; by default they count as one component. |
 | `compose.noGlobalMutableState` | `handlerWrites` | `true` | Whether an assignment to a global `var` from a composable's event handler or effect is reported; assignments during composition always are. |
+| `compose.retainLeak` | `functions` | `retain`, `RetainedEffect`, `RetainedValuesStoreRegistry.LocalRetainedValuesStoreProvider` | Fully qualified functions that keep their value and keys beyond the composable. Keys are the arguments of parameters named `key1`, `key2`, ..., `keys` or `inputs`; the value is the function-typed argument whose return type is the call's own. Replaces the default list. |
+| | `leakTypes` | `[android.content.Context, android.view.View]` | Fully qualified classes (subclasses included) that a retained value or key must never be or hold; classes annotated `@DoNotRetain` always count. Replaces the default list. |
 | `compose.noSideEffectInComposition` | `types` | `[kotlinx.coroutines.Job, kotlinx.coroutines.Deferred]` | Declared return types that mark a call as starting work. Replaces the default list. |
 | | `functions` | `[]` | Fully qualified functions reported by name whatever they return. |
 | `compose.noUnstableParameter` (experimental, off by default) | `stableTypes` | `[]` | Types the project declares stable, as fully qualified names with `*` / `**` wildcards and an optional `<*,_>` mask, like a Compose stability configuration file. |

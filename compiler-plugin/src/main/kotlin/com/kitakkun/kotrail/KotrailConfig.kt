@@ -52,6 +52,10 @@ data class KotrailComposeSettings(
     val previewParameterMinPreviews: Int,
     /** Fully qualified functions whose trailing lambda is keyed by their other arguments: remember, LaunchedEffect and the like. */
     val rememberKeysFunctions: List<String>,
+    /** Fully qualified functions that retain their result and keys beyond the composable: retain, RetainedEffect and the like. */
+    val retainFunctions: List<String>,
+    /** Fully qualified classes (subclasses included) that must never be retained, directly or through what a retained value holds. */
+    val retainLeakTypes: List<String>,
     val previewCoverage: KotrailPreviewCoverage,
     /**
      * The project's changes to the insets knowledge base, keyed by the composable's fully
@@ -818,6 +822,12 @@ data class KotrailConfig(
             "androidx.compose.runtime.DisposableEffect",
             "androidx.compose.runtime.produceState",
         )
+        val DEFAULT_RETAIN_FUNCTIONS: List<String> = listOf(
+            "androidx.compose.runtime.retain.retain",
+            "androidx.compose.runtime.retain.RetainedEffect",
+            "androidx.compose.runtime.retain.RetainedValuesStoreRegistry.LocalRetainedValuesStoreProvider",
+        )
+        val DEFAULT_RETAIN_LEAK_TYPES: List<String> = listOf("android.content.Context", "android.view.View")
         val DEFAULT_TEST_ASSERTIONS: List<String> = listOf(
             "kotlin.test.*", "org.junit.Assert.*", "org.junit.jupiter.api.Assertions.*", "assertk.*", "io.kotest.*",
             "com.google.common.truth.*", "dev.mokkery.verify*", "io.mockk.verify*", "org.mockito.*verify*",
@@ -1165,6 +1175,8 @@ data class KotrailConfig(
                     globalStateHandlerWrites = boolean(ruleNode(KotrailRule.COMPOSE_NO_GLOBAL_MUTABLE_STATE), "handlerWrites") ?: true,
                     previewParameterMinPreviews = int(KotrailRule.COMPOSE_PREVIEW_PARAMETER, "minPreviews") ?: 2,
                     rememberKeysFunctions = list(KotrailRule.COMPOSE_REMEMBER_KEYS, "functions") ?: DEFAULT_REMEMBER_KEYS_FUNCTIONS,
+                    retainFunctions = list(KotrailRule.COMPOSE_RETAIN_LEAK, "functions") ?: DEFAULT_RETAIN_FUNCTIONS,
+                    retainLeakTypes = list(KotrailRule.COMPOSE_RETAIN_LEAK, "leakTypes") ?: DEFAULT_RETAIN_LEAK_TYPES,
                     sideEffectTypes = list(KotrailRule.COMPOSE_NO_SIDE_EFFECT_IN_COMPOSITION, "types") ?: DEFAULT_SIDE_EFFECT_TYPES,
                     sideEffectFunctions = list(KotrailRule.COMPOSE_NO_SIDE_EFFECT_IN_COMPOSITION, "functions").orEmpty(),
                     hardcodedStringParameters = list(KotrailRule.COMPOSE_NO_HARDCODED_STRING, "parameters") ?: DEFAULT_HARDCODED_STRING_PARAMETERS,

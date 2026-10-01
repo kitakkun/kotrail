@@ -376,6 +376,15 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Arguments: the global var, where it is assigned; reported on an assignment to it in a composable. */
     val GLOBAL_VAR_WRITTEN_IN_COMPOSABLE = tunable2<KtElement, String, String>("GLOBAL_VAR_WRITTEN_IN_COMPOSABLE", KotrailRule.COMPOSE_NO_GLOBAL_MUTABLE_STATE, WHOLE)
 
+    /**
+     * Arguments: what is retained (`This retained value`, `This key of retain`), what it holds that must not be
+     * retained (`Holder.view (android.view.View)`, `@DoNotRetain Session`); reported on the calculation or the key.
+     */
+    val RETAINED_LEAK = tunable2<KtElement, String, String>("RETAINED_LEAK", KotrailRule.COMPOSE_RETAIN_LEAK, WHOLE)
+
+    /** Argument: the calculation's result type; reported on a calculation of retain whose result is a RememberObserver but not a RetainObserver. */
+    val RETAINED_REMEMBER_OBSERVER = tunable1<KtElement, String>("RETAINED_REMEMBER_OBSERVER", KotrailRule.COMPOSE_RETAIN_LEAK, WHOLE)
+
     /** Argument: the local's name; reported on a composable's local MutableState whose value nothing assigns. */
     val STATE_NEVER_WRITTEN = tunable1<KtProperty, String>("STATE_NEVER_WRITTEN", KotrailRule.COMPOSE_UNWRITTEN_STATE, NAME)
 
@@ -667,6 +676,17 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             "[Kotrail] ''{0}'' is a plain var outside the composition: Compose does not observe it, so this composable " +
                 "shows the value it read first and is never recomposed when it changes. Hold it in a MutableState or a " +
                 "StateFlow collected as state, and hand it in as a parameter.",
+        )
+        map.put2(
+            KotrailDiagnostics.RETAINED_LEAK,
+            "[Kotrail] {0} holds {1}: a retained value outlives its composable and keeps everything it references, and " +
+                "its keys are kept in memory for as long as it is retained, so this leaks. Retain only data that is " +
+                "independent of the host (never a Context or a View).",
+        )
+        map.put1(
+            KotrailDiagnostics.RETAINED_REMEMBER_OBSERVER,
+            "[Kotrail] ''{0}'' is a RememberObserver but not a RetainObserver: retain throws for it. Implement " +
+                "RetainObserver, or remember it instead.",
         )
         map.put2(
             KotrailDiagnostics.GLOBAL_VAR_WRITTEN_IN_COMPOSABLE,
