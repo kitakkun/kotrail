@@ -54,7 +54,7 @@ its diagnostic and whether it is on by default.
   [Prefer value class](docs/rules/prefer-value-class.md) over a one-field data class, no mutable collection or data class in a
   public API.
 - **Errors and concurrency** (9): [Must close](docs/rules/must-close.md) for a reader or stream created and never closed;
-  [No external state write](docs/rules/no-external-state-write.md) for `scene.capturing.value = true` from outside `Scene`;
+  [No external mutation](docs/rules/no-external-mutation.md) for `scene.capturing.value = true` from outside `Scene`;
   [Catch too broad](docs/rules/catch-too-broad.md) and [No swallowed cancellation](docs/rules/no-swallowed-cancellation.md) for
   the `catch (e: Exception)` reflex, [Delay for completion](docs/rules/delay-for-completion.md) for `reconnect(); delay(500)`,
   [Preconditions](docs/rules/preconditions.md) for arguments that violate the callee's own `require`, checked across modules.

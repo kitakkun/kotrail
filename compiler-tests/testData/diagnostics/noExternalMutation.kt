@@ -1,4 +1,4 @@
-// KOTRAIL_CONFIG: rules.noExternalStateWrite=on, rules.noExternalStateWrite.plainVars=true
+// KOTRAIL_CONFIG: rules.noExternalMutation=on, rules.noExternalMutation.plainVars=true
 // FILE: Owners.kt
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
@@ -109,39 +109,39 @@ import org.junit.jupiter.api.Test
 class CaptureTool(private val scene: Scene, private val repo: Repository, private val counter: Counter) {
     // Reported: another class flips the scene's flag.
     fun capture() {
-        <!KOTRAIL_STATE_WRITTEN_OUTSIDE_OWNER!>scene.capturing.value = true<!>
+        <!KOTRAIL_MUTATED_OUTSIDE_OWNER!>scene.capturing.value = true<!>
     }
 
     // Reported: a delegated state var of another class.
     fun select() {
-        <!KOTRAIL_STATE_WRITTEN_OUTSIDE_OWNER!>scene.selected = 3<!>
+        <!KOTRAIL_MUTATED_OUTSIDE_OWNER!>scene.selected = 3<!>
     }
 
     // Reported: updating another class's flow.
     fun refresh() {
-        <!KOTRAIL_STATE_WRITTEN_OUTSIDE_OWNER!>repo.state.update { it.copy(x = 1) }<!>
+        <!KOTRAIL_MUTATED_OUTSIDE_OWNER!>repo.state.update { it.copy(x = 1) }<!>
     }
 
     // Reported: a plain var of another class, assigned and compound-assigned.
     fun bump() {
-        <!KOTRAIL_STATE_WRITTEN_OUTSIDE_OWNER!>counter.count = 3<!>
-        <!KOTRAIL_STATE_WRITTEN_OUTSIDE_OWNER!>counter.count += 1<!>
-        <!KOTRAIL_STATE_WRITTEN_OUTSIDE_OWNER!>counter.count++<!>
+        <!KOTRAIL_MUTATED_OUTSIDE_OWNER!>counter.count = 3<!>
+        <!KOTRAIL_MUTATED_OUTSIDE_OWNER!>counter.count += 1<!>
+        <!KOTRAIL_MUTATED_OUTSIDE_OWNER!>counter.count++<!>
     }
 
     // Reported: a lambda in another class is still outside the owner.
-    fun deferred(): () -> Unit = { <!KOTRAIL_STATE_WRITTEN_OUTSIDE_OWNER!>scene.capturing.value = false<!> }
+    fun deferred(): () -> Unit = { <!KOTRAIL_MUTATED_OUTSIDE_OWNER!>scene.capturing.value = false<!> }
 }
 
 // Reported: a top-level function is outside every class.
 fun stopCapture(scene: Scene) {
-    <!KOTRAIL_STATE_WRITTEN_OUTSIDE_OWNER!>scene.capturing.value = false<!>
+    <!KOTRAIL_MUTATED_OUTSIDE_OWNER!>scene.capturing.value = false<!>
 }
 
-// Reported: an object's state written from another class.
+// Reported: an object's state mutated from another class.
 class Login {
     fun signIn() {
-        <!KOTRAIL_STATE_WRITTEN_OUTSIDE_OWNER!>Session.active.value = true<!>
+        <!KOTRAIL_MUTATED_OUTSIDE_OWNER!>Session.active.value = true<!>
     }
 }
 
@@ -151,14 +151,14 @@ class Editor {
         point.x = 1
         settings.volume = 2
         // Reported: a state holder is reported on every owner, a bag of values included.
-        <!KOTRAIL_STATE_WRITTEN_OUTSIDE_OWNER!>settings.muted.value = true<!>
-        <!KOTRAIL_STATE_WRITTEN_OUTSIDE_OWNER!>holder.flag.value = true<!>
+        <!KOTRAIL_MUTATED_OUTSIDE_OWNER!>settings.muted.value = true<!>
+        <!KOTRAIL_MUTATED_OUTSIDE_OWNER!>holder.flag.value = true<!>
         // Reported: a data class with a function is not a bag.
-        <!KOTRAIL_STATE_WRITTEN_OUTSIDE_OWNER!>frame.index = 2<!>
+        <!KOTRAIL_MUTATED_OUTSIDE_OWNER!>frame.index = 2<!>
         // Reported: a data class's state flag flipped from outside, around the writer's own work.
-        <!KOTRAIL_STATE_WRITTEN_OUTSIDE_OWNER!>canvas.flag.value = true<!>
+        <!KOTRAIL_MUTATED_OUTSIDE_OWNER!>canvas.flag.value = true<!>
         canvas.render()
-        <!KOTRAIL_STATE_WRITTEN_OUTSIDE_OWNER!>canvas.flag.value = false<!>
+        <!KOTRAIL_MUTATED_OUTSIDE_OWNER!>canvas.flag.value = false<!>
         // Not reported: a local.
         var local = 0
         local += 1
@@ -183,8 +183,8 @@ class Factory {
 
     // Reported: a received object belongs to someone else.
     fun reuse(counter: Counter): Counter {
-        <!KOTRAIL_STATE_WRITTEN_OUTSIDE_OWNER!>counter.count = 4<!>
-        return counter.apply { <!KOTRAIL_STATE_WRITTEN_OUTSIDE_OWNER!>count = 5<!> }
+        <!KOTRAIL_MUTATED_OUTSIDE_OWNER!>counter.count = 4<!>
+        return counter.apply { <!KOTRAIL_MUTATED_OUTSIDE_OWNER!>count = 5<!> }
     }
 }
 
@@ -209,7 +209,7 @@ class EditingPresenter {
 // Reported: an internal owner declared in another file is visible to the whole module.
 internal class DraftPresenter(private val draft: Draft) {
     fun type(text: String) {
-        <!KOTRAIL_STATE_WRITTEN_OUTSIDE_OWNER!>draft.text.value = text<!>
+        <!KOTRAIL_MUTATED_OUTSIDE_OWNER!>draft.text.value = text<!>
     }
 }
 

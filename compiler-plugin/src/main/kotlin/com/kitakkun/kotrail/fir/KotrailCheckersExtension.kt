@@ -36,7 +36,7 @@ import com.kitakkun.kotrail.fir.checkers.CatchTooBroadChecker
 import com.kitakkun.kotrail.fir.checkers.DelayForCompletionChecker
 import com.kitakkun.kotrail.fir.checkers.DependencyRulesChecker
 import com.kitakkun.kotrail.fir.checkers.MustCloseChecker
-import com.kitakkun.kotrail.fir.checkers.NoExternalStateWriteChecker
+import com.kitakkun.kotrail.fir.checkers.NoExternalMutationChecker
 import com.kitakkun.kotrail.fir.checkers.NativeAllocationInLoopChecker
 import com.kitakkun.kotrail.fir.inferred.InferredFactWarmup
 import com.kitakkun.kotrail.fir.checkers.NoLiteralLoopChecker
@@ -224,10 +224,10 @@ object KotrailExpressionCheckers : ExpressionCheckers() {
         MustBeSerializableChecker,
         NegationIdiomChecker,
         ConfiguredCallIdiomChecker,
-        NoExternalStateWriteChecker.Calls,
+        NoExternalMutationChecker.Calls,
     )
     override val variableAssignmentCheckers: Set<FirVariableAssignmentChecker> = setOf(
-        NoExternalStateWriteChecker.Assignments,
+        NoExternalMutationChecker.Assignments,
     )
     override val resolvedQualifierCheckers: Set<FirResolvedQualifierChecker> = setOf(
         NoFqnReferences.QualifierChecker,

@@ -69,7 +69,7 @@ Failures that get hidden, and waits that guess.
 | No ignored exception | on | `KOTRAIL_IGNORED_EXCEPTION` | [no-ignored-exception.md](no-ignored-exception.md) |
 | Catch too broad | on | `KOTRAIL_CATCH_TOO_BROAD` | [catch-too-broad.md](catch-too-broad.md) |
 | Must close | on | `KOTRAIL_RESOURCE_NOT_CLOSED` | [must-close.md](must-close.md) |
-| No external state write | on | `KOTRAIL_STATE_WRITTEN_OUTSIDE_OWNER` | [no-external-state-write.md](no-external-state-write.md) |
+| No external mutation | on | `KOTRAIL_MUTATED_OUTSIDE_OWNER` | [no-external-mutation.md](no-external-mutation.md) |
 | Delay for completion | on | `KOTRAIL_DELAY_WAITS_FOR_ASYNC_WORK` | [delay-for-completion.md](delay-for-completion.md) |
 | Preconditions | on | `KOTRAIL_PRECONDITION_VIOLATED` | [preconditions.md](preconditions.md) |
 | No unimplemented code | on | `KOTRAIL_UNIMPLEMENTED_CODE` | [no-unimplemented.md](no-unimplemented.md) |

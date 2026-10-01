@@ -378,8 +378,8 @@ data class KotrailMustClose(
     val ignoredTypes: List<String>,
 )
 
-/** Tunables for the no-external-state-write rule. From `rules.noExternalStateWrite`. */
-data class KotrailNoExternalStateWrite(
+/** Tunables for the no-external-mutation rule. From `rules.noExternalMutation`. */
+data class KotrailNoExternalMutation(
     /** Fully qualified types (subtypes included) whose instances hold mutable state written through `value`, `update` or `emit`. */
     val types: List<String>,
     /** Whether a write to a plain `var` member of another class is reported too. */
@@ -526,7 +526,7 @@ data class KotrailConfig(
     val generated: KotrailGenerated,
     val nativeAllocation: KotrailNativeAllocation,
     val mustClose: KotrailMustClose,
-    val noExternalStateWrite: KotrailNoExternalStateWrite,
+    val noExternalMutation: KotrailNoExternalMutation,
     val objcThrows: KotrailObjCThrows,
     val weakOnlyReference: KotrailWeakOnlyReference,
     val catchTooBroad: KotrailCatchTooBroad,
@@ -1109,9 +1109,9 @@ data class KotrailConfig(
                     factories = list(KotrailRule.MUST_CLOSE, "factories") ?: DEFAULT_RESOURCE_FACTORIES,
                     ignoredTypes = list(KotrailRule.MUST_CLOSE, "ignoredTypes") ?: DEFAULT_IN_MEMORY_RESOURCES,
                 ),
-                noExternalStateWrite = KotrailNoExternalStateWrite(
-                    types = list(KotrailRule.NO_EXTERNAL_STATE_WRITE, "types") ?: DEFAULT_STATE_HOLDER_TYPES,
-                    plainVars = boolean(ruleNode(KotrailRule.NO_EXTERNAL_STATE_WRITE), "plainVars") ?: false,
+                noExternalMutation = KotrailNoExternalMutation(
+                    types = list(KotrailRule.NO_EXTERNAL_MUTATION, "types") ?: DEFAULT_STATE_HOLDER_TYPES,
+                    plainVars = boolean(ruleNode(KotrailRule.NO_EXTERNAL_MUTATION), "plainVars") ?: false,
                 ),
                 objcThrows = KotrailObjCThrows(packages = list(KotrailRule.NATIVE_OBJC_THROWS, "packages").orEmpty().map(::Glob)),
                 weakOnlyReference = KotrailWeakOnlyReference(

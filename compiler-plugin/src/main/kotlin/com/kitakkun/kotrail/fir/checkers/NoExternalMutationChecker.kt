@@ -2,7 +2,7 @@
 
 package com.kitakkun.kotrail.fir.checkers
 
-import com.kitakkun.kotrail.KotrailNoExternalStateWrite
+import com.kitakkun.kotrail.KotrailNoExternalMutation
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.kotrailConfig
@@ -57,7 +57,7 @@ import org.jetbrains.kotlin.text
 import org.jetbrains.kotlin.types.AbstractTypeChecker
 
 /**
- * Reports a write to a class's mutable state from code outside that class:
+ * Reports a mutation of another object's mutable state from code outside the class that owns it:
  *
  * ```kotlin
  * class Scene { val capturing = mutableStateOf(false); fun render() { ... } }
@@ -99,7 +99,7 @@ import org.jetbrains.kotlin.types.AbstractTypeChecker
  * (`Config().apply { name = "x" }`), and a local initialized by a constructor call. An extension
  * function declared outside the owner is outside it, even when it writes through its receiver.
  */
-object NoExternalStateWriteChecker {
+object NoExternalMutationChecker {
     private val UPDATE_CALLS = setOf("update", "emit", "tryEmit", "compareAndSet", "getAndUpdate", "updateAndGet")
     private val SCOPE_FUNCTIONS = setOf("kotlin.apply", "kotlin.also", "kotlin.run", "kotlin.with", "kotlin.let")
 
@@ -107,8 +107,8 @@ object NoExternalStateWriteChecker {
         context(context: CheckerContext, reporter: DiagnosticReporter)
         override fun check(expression: FirVariableAssignment) {
             val config = context.session.kotrailConfig
-            if (!config.isEnabled(KotrailRule.NO_EXTERNAL_STATE_WRITE)) return
-            val settings = config.noExternalStateWrite
+            if (!config.isEnabled(KotrailRule.NO_EXTERNAL_MUTATION)) return
+            val settings = config.noExternalMutation
             // `x += 1` and `x++` assign through a reference to the original access.
             val lValue = when (val value = expression.lValue) {
                 is FirDesugaredAssignmentValueReferenceExpression -> value.expressionRef.value
@@ -138,11 +138,11 @@ object NoExternalStateWriteChecker {
         context(context: CheckerContext, reporter: DiagnosticReporter)
         override fun check(expression: FirFunctionCall) {
             val config = context.session.kotrailConfig
-            if (!config.isEnabled(KotrailRule.NO_EXTERNAL_STATE_WRITE)) return
+            if (!config.isEnabled(KotrailRule.NO_EXTERNAL_MUTATION)) return
             if (expression.calleeReference.name.asString() !in UPDATE_CALLS) return
             val holder = expression.explicitReceiver?.unwrapSmartCast() as? FirPropertyAccessExpression ?: return
             val session = context.session
-            if (!holder.resolvedType.isStateHolder(session, config.noExternalStateWrite)) return
+            if (!holder.resolvedType.isStateHolder(session, config.noExternalMutation)) return
             reportIfOutside(expression.source, holder, session, plainVar = false)
         }
     }
@@ -166,7 +166,7 @@ object NoExternalStateWriteChecker {
         if (context.containingDeclarations.any { it is FirClassSymbol<*> && it.classId == owner.classId }) return
         if (isInTest(session)) return
         val name = access.source?.text?.toString() ?: property.name.asString()
-        reportKotrail(source, KotrailDiagnostics.STATE_WRITTEN_OUTSIDE_OWNER, name, owner.classId.shortClassName.asString())
+        reportKotrail(source, KotrailDiagnostics.MUTATED_OUTSIDE_OWNER, name, owner.classId.shortClassName.asString())
     }
 
     /** The class or object that declares [property], a companion standing for the class around it; null for a local or top-level one. */
@@ -245,7 +245,7 @@ object NoExternalStateWriteChecker {
 
     private fun FirExpression.unwrapSmartCast(): FirExpression = if (this is FirSmartCastExpression) originalExpression else this
 
-    private fun ConeKotlinType.isStateHolder(session: FirSession, settings: KotrailNoExternalStateWrite): Boolean {
+    private fun ConeKotlinType.isStateHolder(session: FirSession, settings: KotrailNoExternalMutation): Boolean {
         val expanded = fullyExpandedType(session)
         if (expanded.isNullableNothing) return false
         return settings.types.any { name ->

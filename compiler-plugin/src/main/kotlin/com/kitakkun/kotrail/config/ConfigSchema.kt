@@ -139,7 +139,7 @@ object ConfigSchema {
             Setting("factories", Kind.LIST, "Fully qualified functions whose result is a resource the caller must close, besides constructors of AutoCloseable classes; replaces the default list.", default = "kotlin.io.inputStream, kotlin.io.bufferedReader, kotlin.io.bufferedWriter, java.nio.file.Files.newBufferedReader, java.nio.file.Files.lines, ..."),
             Setting("ignoredTypes", Kind.LIST, "AutoCloseable types (subtypes included) that hold nothing worth closing, such as in-memory buffers or a project's registration handles; replaces the default list.", default = "java.io.ByteArrayInputStream, java.io.ByteArrayOutputStream, java.io.StringReader, java.io.StringWriter, java.io.CharArrayReader, java.io.CharArrayWriter, okio.Buffer"),
         ),
-        KotrailRule.NO_EXTERNAL_STATE_WRITE to listOf(
+        KotrailRule.NO_EXTERNAL_MUTATION to listOf(
             Setting("types", Kind.LIST, "Fully qualified types (subtypes included) whose instances hold mutable state, written through value, update or emit; replaces the default list.", default = "androidx.compose.runtime.MutableState, kotlinx.coroutines.flow.MutableStateFlow, kotlinx.coroutines.flow.MutableSharedFlow"),
             Setting("plainVars", Kind.BOOLEAN, "Whether a write to a plain var member of another class is reported too.", default = "false"),
         ),

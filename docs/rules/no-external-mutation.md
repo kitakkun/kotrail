@@ -1,12 +1,14 @@
-# No external state write
+# No external mutation
 
-**Diagnostic:** `KOTRAIL_STATE_WRITTEN_OUTSIDE_OWNER` (error, on the assignment or call)
-**Key:** `rules.noExternalStateWrite` (on by default)
+**Diagnostic:** `KOTRAIL_MUTATED_OUTSIDE_OWNER` (error, on the assignment or call)
+**Key:** `rules.noExternalMutation` (on by default)
 **Settings:** `types` (default: `androidx.compose.runtime.MutableState`, `kotlinx.coroutines.flow.MutableStateFlow`, `kotlinx.coroutines.flow.MutableSharedFlow`), `plainVars` (default: `false`)
 
 ## What it rejects
 
-A write to a class's mutable state from code outside that class:
+Mutating another object's mutable fields directly, from code outside the class that owns them.
+By default the rule looks at state holders (`MutableState`, `MutableStateFlow`,
+`MutableSharedFlow`) and delegated `var`s; `plainVars` adds plain `var`s:
 
 ```kotlin
 class Scene {
@@ -111,7 +113,7 @@ plain `var` writes too):
 
 ```yaml
 rules:
-  noExternalStateWrite:
+  noExternalMutation:
     types: [androidx.compose.runtime.MutableState, kotlinx.coroutines.flow.MutableStateFlow, kotlinx.coroutines.flow.MutableSharedFlow, com.acme.state.Store]
     plainVars: true
 ```
@@ -125,11 +127,11 @@ state read-only once the writes are inside the owner.
 
 ## Fixtures
 
-`compiler-tests/testData/diagnostics/noExternalStateWrite.kt`
+`compiler-tests/testData/diagnostics/noExternalMutation.kt`
 
 ## Implementation notes
 
-`fir/checkers/NoExternalStateWriteChecker.kt`: a variable-assignment checker for `value = x` and
+`fir/checkers/NoExternalMutationChecker.kt`: a variable-assignment checker for `value = x` and
 plain `var` writes (unwrapping the desugared reference of `+=` and `++`) and a function-call
 checker for the update and emit family. Both resolve the written property's declaring class
 through its containing class lookup tag and compare it with the class symbols in

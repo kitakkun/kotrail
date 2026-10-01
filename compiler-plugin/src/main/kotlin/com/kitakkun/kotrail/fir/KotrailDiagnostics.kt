@@ -143,8 +143,8 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: the resource's type; reported on a creation that nothing closes or hands on. */
     val RESOURCE_NOT_CLOSED = tunable1<KtElement, String>("RESOURCE_NOT_CLOSED", KotrailRule.MUST_CLOSE, WHOLE)
 
-    /** Arguments: the property as written, the class that declares it; reported on a write to its state from outside that class. */
-    val STATE_WRITTEN_OUTSIDE_OWNER = tunable2<KtElement, String, String>("STATE_WRITTEN_OUTSIDE_OWNER", KotrailRule.NO_EXTERNAL_STATE_WRITE, WHOLE)
+    /** Arguments: the property as written, the class that owns it; reported on a mutation of its state from outside that class. */
+    val MUTATED_OUTSIDE_OWNER = tunable2<KtElement, String, String>("MUTATED_OUTSIDE_OWNER", KotrailRule.NO_EXTERNAL_MUTATION, WHOLE)
 
     /** Arguments: what creates what (`'decode > newBitmap' creates a 'Bitmap'`), what becomes of it (`returns`, `keeps`, `lets go of`); reported on a call in a loop to a function that allocates. */
     val NATIVE_ALLOCATION_THROUGH_CALL_IN_LOOP = tunable2<KtElement, String, String>("NATIVE_ALLOCATION_THROUGH_CALL_IN_LOOP", KotrailRule.NATIVE_ALLOCATION_IN_LOOP, WHOLE)
@@ -686,8 +686,8 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
                 "finalizer runs, if ever. Wrap it in use '{' '}', close it in a finally, or store or return it where its owner will close it.",
         )
         map.put2(
-            KotrailDiagnostics.STATE_WRITTEN_OUTSIDE_OWNER,
-            "[Kotrail] ''{0}'' is written here, outside ''{1}'', which declares it: give ''{1}'' a method that makes this " +
+            KotrailDiagnostics.MUTATED_OUTSIDE_OWNER,
+            "[Kotrail] ''{0}'' is mutated here, outside ''{1}'', which owns it: give ''{1}'' a method that makes this " +
                 "change, so every transition is in one place.",
         )
         map.put1(
