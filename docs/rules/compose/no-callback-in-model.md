@@ -19,7 +19,7 @@ data class Screen(val header: Header)
 data class Header(val title: String, val onBack: () -> Unit)
 
 @Composable
-fun ScreenContent(screen: Screen) { ... }       // reported: Screen.Header.onBack, through the nested model
+fun ScreenContent(screen: Screen) { ... }       // reported: Header.onBack, through the nested model
 ```
 
 ## What it asks for
@@ -43,11 +43,37 @@ up through the composable's own parameters.
 
 ## What counts as a model
 
-A class the project declares that a UI composable takes as a parameter, directly or through
-type arguments (`List<UserRow>`, `Map<Id, UserRow>`, `Pair<A, B>`), and every project class
-reachable from it through its properties, constructor and body alike, inherited ones included.
-Classes from the classpath are not looked into. The composable's own function-typed parameters
-are, of course, fine.
+A class the project declares that a UI composable takes as a parameter, and every project class
+reachable from it through what the composable can observe of it:
+
+- its properties that are not private, constructor and body alike, inherited ones included;
+- the private primary-constructor properties of a data class, which its `equals` compares;
+- the elements of a collection, an array, a `Pair`, a `Triple` or a `Sequence`, whether the
+  parameter or a property has that type (`List<UserRow>`, `Map<Id, UserRow>`, `Array<UserRow>`;
+  every type of `kotlin.collections` and of `kotlinx.collections.immutable`);
+- the type arguments of the project's own generic classes, in place of their type parameters:
+  `Section<UserRow>` with `val entries: List<T>` reaches `UserRow` through `entries`.
+
+What is not walked:
+
+- any other private property, such as a work queue a class keeps for itself
+  (`private val requests = Channel<Request>()` whose `Request` holds a reply lambda);
+- the type arguments of any other class from the classpath: the element type of a `Flow`, a
+  `Channel`, a `StateFlow`, a `Deferred`, a Compose `State`;
+- a project generic class's type argument that only private properties use.
+
+The composable reads its model through that surface, and Compose compares the model with its
+`equals`, which for a data class covers the primary constructor and for any other class is
+the class's own. Private state is neither read nor, outside a data class's constructor,
+compared. A stream's elements are not the model's value at all: they arrive later, at a
+collection site, and become the model of whatever composable they are handed to, which is
+checked on its own parameters. Walking either would report composables for callbacks they never
+see, often in files far from the class that changed.
+
+A function type that sits directly in a type argument, with no property on the way
+(`dismiss: Pair<() -> Unit, String>`), is reported too, named as "a type argument of
+Pair<...>". Classes from the classpath are not looked into. The composable's own function-typed
+parameters are, of course, fine.
 
 ## Settings
 
@@ -62,9 +88,22 @@ are, of course, fine.
 - The composable draws nothing (an effect wrapper), returns a value, is a preview, or is an
   `override` / `expect`.
 - No project class reachable from the parameter's type has a function-typed property.
+- The callback is behind a private property (other than a data class's constructor property),
+  or in the element type of a `Flow`, a `Channel` or any other classpath class that is not a
+  collection, an array, a `Pair`, a `Triple` or a `Sequence`.
 - The property is a `@Composable` slot and `allowComposableSlots` is on (the default).
-- A function type sits in a type argument of a classpath type (`dismiss: Pair<() -> Unit, String>`)
-  is still reported, named as "a type argument of Pair<...>".
+
+## Incremental compilation
+
+The finding is reported on the composable's parameter, but what it is about is declared in the
+model's classes, usually in other files. Kotlin's incremental compilation recompiles the
+composable's file when something the file itself refers to changes: the model class's
+constructors or supertypes, a property the composable reads. A callback added as a property in
+a model's body, or anywhere in a class one step further down (a model held by the model),
+changes nothing the composable's file names, so the file is not compiled again and the finding
+appears on the next build that compiles it: a clean build, or one with `--rerun-tasks`. Removing
+such a callback leaves a stale finding the same way. A CI build from a clean state sees the
+exact result. See [Incremental compilation](../../gradle-plugin.md#incremental-compilation).
 
 ## Fixtures
 
@@ -74,6 +113,12 @@ are, of course, fine.
 
 `fir/compose/checkers/ComposableCallbackInModelChecker.kt`, a `FirNamedFunctionChecker`. For
 each parameter of a UI composable (judged as [preview required](preview-required.md) judges it),
-the type is expanded and walked: function types are the finding, type arguments are followed,
-and a source-declared class or interface contributes its properties and its supertypes, each
-class once. The first callback found is reported on the parameter, as `Class.property`.
+the type is expanded and walked: function types are the finding; the type arguments of a
+container (a class of `kotlin.collections` or `kotlinx.collections.immutable`, `Array`, `Pair`,
+`Triple`, `Sequence`, judged by the declared name too, since `ArrayList` is a type alias of a
+Java class on the JVM) are followed; a source-declared class or interface contributes its
+properties that are not private (and a data class its private constructor properties) and its
+supertypes, with a substitutor from its type parameters to the type's arguments applied to both.
+Each class is walked once per list of type arguments and never inside itself, and each
+parameter gets a walk of its own. The first callback found is reported on the parameter, as
+`Class.property`.

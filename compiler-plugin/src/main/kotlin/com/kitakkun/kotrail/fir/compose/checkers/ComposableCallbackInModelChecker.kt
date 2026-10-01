@@ -13,6 +13,7 @@ import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.descriptors.ClassKind
+import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
@@ -20,20 +21,27 @@ import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
+import org.jetbrains.kotlin.fir.declarations.utils.fromPrimaryConstructor
+import org.jetbrains.kotlin.fir.declarations.utils.isData
 import org.jetbrains.kotlin.fir.declarations.utils.isExpect
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
+import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.resolve.fullyExpandedType
+import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
 import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.ConeKotlinTypeProjection
+import org.jetbrains.kotlin.fir.types.ConeTypeProjection
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.customAnnotations
 import org.jetbrains.kotlin.fir.types.isSomeFunctionType
 import org.jetbrains.kotlin.fir.types.isUnit
 import org.jetbrains.kotlin.fir.types.renderReadable
+import org.jetbrains.kotlin.name.ClassId
+import org.jetbrains.kotlin.name.FqName
 
 /**
  * Keeps callbacks out of the models a UI composable takes:
@@ -55,8 +63,14 @@ import org.jetbrains.kotlin.fir.types.renderReadable
  * `onAction: (Action) -> Unit`.
  *
  * A model is a class the project declares that a UI composable takes as a parameter, directly
- * or through type arguments (`List<UserRow>`, `Map<Id, UserRow>`), and every project class
- * reachable from it through its properties, including inherited ones. A function-typed property
+ * or as the element of a collection, an array, a `Pair` or a `Triple` (`List<UserRow>`,
+ * `Map<Id, UserRow>`), and every project class reachable from it the same way through its
+ * non-private properties, inherited ones included, and the private primary-constructor properties
+ * of a data class, which its `equals` compares. That is the surface the composable reads and
+ * Compose compares; any other private property, and the element type of a `Flow`, a `Channel`, a
+ * `StateFlow` or any other generic class from the classpath, is not part of it. A project's own
+ * generic class is walked with its type arguments in place of its type parameters, so its
+ * arguments count where its non-private properties carry them. A function-typed property
  * anywhere in that graph is reported on the composable's parameter, naming the property. A
  * `@Composable` slot in a model (`cell: @Composable (Row) -> Unit` of a table column) is what such
  * a model is for and is allowed by default; `allowComposableSlots: false` reports it too.
@@ -74,25 +88,42 @@ object ComposableCallbackInModelChecker : NamedFunctionChecker(MppCheckerKind.Co
         if (declaration.symbol.isPreview(session)) return
         if (declaration.body == null || !declaration.symbol.emitsUi(session, config.compose.nonUiPackages)) return
 
-        val search = CallbackSearch(session, config.compose.allowComposableSlots)
         for (parameter in declaration.valueParameters) {
             val type = parameter.returnTypeRef.coneType
             if (type.isSomeFunctionType(session)) continue
-            val path = search.callbackIn(type, path = emptyList()) ?: continue
+            val search = CallbackSearch(session, config.compose.allowComposableSlots)
+            val path = search.callbackIn(type, path = emptyList(), holder = null) ?: continue
             val source = parameter.source ?: continue
             reportKotrail(source, KotrailDiagnostics.CALLBACK_IN_UI_MODEL, "${parameter.name.asString()}: ${type.renderReadable()}", path)
         }
     }
 
-    /** Walks the project classes reachable from a type and finds the first function-typed property. */
+    /** Classpath types whose type arguments are their contents: collections, arrays, `Pair`, `Triple`, `Sequence`. */
+    private val CONTAINER_PACKAGES = setOf(FqName("kotlin.collections"), FqName("kotlinx.collections.immutable"))
+    private val CONTAINER_CLASSES = setOf("kotlin.Array", "kotlin.Pair", "kotlin.Triple", "kotlin.sequences.Sequence")
+        .map { ClassId.topLevel(FqName(it)) }
+        .toSet()
+
+    private fun ConeKotlinType.holdsItsArguments(): Boolean {
+        val classId = (this as? ConeClassLikeType)?.lookupTag?.classId ?: return false
+        return classId.packageFqName in CONTAINER_PACKAGES || classId in CONTAINER_CLASSES
+    }
+
+    /** Walks what a composable can observe of a type and finds the first function-typed property. */
     private class CallbackSearch(private val session: FirSession, private val allowComposableSlots: Boolean) {
-        private val visited = mutableSetOf<FirRegularClassSymbol>()
+        /** Classes on the current path, so that a class reached again inside itself is not entered again. */
+        private val walking = mutableSetOf<FirRegularClassSymbol>()
+
+        /** Classes already walked, with the type arguments they were walked under. */
+        private val walked = mutableSetOf<Pair<FirRegularClassSymbol, List<ConeTypeProjection>>>()
 
         /**
          * `Class.property` of the first callback reachable from [type], or, for one that sits in a type
          * argument with no property on the way (`Pair<() -> Unit, String>`), the type that carries it.
+         * The type arguments of a container are its elements and are walked; those of a project class
+         * replace its type parameters in its properties; those of any other class are not looked at.
          */
-        fun callbackIn(type: ConeKotlinType, path: List<String>, holder: String? = null): String? {
+        fun callbackIn(type: ConeKotlinType, path: List<String>, holder: String?): String? {
             val expanded = type.fullyExpandedType(session)
             if (expanded.isSomeFunctionType(session)) {
                 val isSlot = expanded.customAnnotations.any { it.toAnnotationClassId(session) == ComposeNames.COMPOSABLE }
@@ -100,28 +131,47 @@ object ComposableCallbackInModelChecker : NamedFunctionChecker(MppCheckerKind.Co
                 return if (path.isNotEmpty()) path.joinToString(".") else "a type argument of ${holder ?: expanded.renderReadable()}"
             }
             if (expanded !is ConeClassLikeType) return null
-            for (argument in expanded.typeArguments) {
-                val argumentType = (argument as? ConeKotlinTypeProjection)?.type ?: continue
-                callbackIn(argumentType, path, holder ?: expanded.renderReadable())?.let { return it }
+            // `ArrayList` is a type alias of a Java class on the JVM: the declared name says it is a collection.
+            if (type.holdsItsArguments() || expanded.holdsItsArguments()) {
+                for (argument in expanded.typeArguments) {
+                    val argumentType = (argument as? ConeKotlinTypeProjection)?.type ?: continue
+                    callbackIn(argumentType, path, holder ?: expanded.renderReadable())?.let { return it }
+                }
+                return null
             }
             val classSymbol = expanded.toRegularClassSymbol(session) ?: return null
-            return callbackIn(classSymbol)
+            return callbackIn(classSymbol, expanded)
         }
 
-        private fun callbackIn(classSymbol: FirRegularClassSymbol): String? {
+        private fun callbackIn(classSymbol: FirRegularClassSymbol, type: ConeClassLikeType): String? {
             if (!classSymbol.origin.fromSource) return null
             if (classSymbol.classKind != ClassKind.CLASS && classSymbol.classKind != ClassKind.INTERFACE) return null
-            if (!visited.add(classSymbol)) return null
-            val className = classSymbol.classId.shortClassName.asString()
-            for (property in classSymbol.declarationSymbols.filterIsInstance<FirPropertySymbol>()) {
-                if (property.receiverParameterSymbol != null) continue
-                callbackIn(property.resolvedReturnType, listOf(className, property.name.asString()))?.let { return it }
+            if (classSymbol in walking || !walked.add(classSymbol to type.typeArguments.toList())) return null
+            walking += classSymbol
+            try {
+                val arguments = classSymbol.typeParameterSymbols.zip(type.typeArguments)
+                    .mapNotNull { (parameter, argument) -> (argument as? ConeKotlinTypeProjection)?.let { parameter to it.type } }
+                    .toMap()
+                val substitutor = substitutorByMap(arguments, session)
+                val className = classSymbol.classId.shortClassName.asString()
+                for (property in classSymbol.declarationSymbols.filterIsInstance<FirPropertySymbol>()) {
+                    if (property.receiverParameterSymbol != null) continue
+                    // A data class compares every property of its primary constructor, private ones included.
+                    val isCompared = classSymbol.isData && property.fromPrimaryConstructor
+                    if (Visibilities.isPrivate(property.visibility) && !isCompared) continue
+                    val propertyType = substitutor.substituteOrSelf(property.resolvedReturnType)
+                    callbackIn(propertyType, listOf(className, property.name.asString()), holder = null)?.let { return it }
+                }
+                for (superType in classSymbol.resolvedSuperTypes) {
+                    val substituted = substitutor.substituteOrSelf(superType)
+                    // A class that implements a function type defines its own equality; it is not a captured lambda.
+                    if (substituted.isSomeFunctionType(session)) continue
+                    callbackIn(substituted, path = emptyList(), holder = null)?.let { return it }
+                }
+                return null
+            } finally {
+                walking -= classSymbol
             }
-            for (superType in classSymbol.resolvedSuperTypes) {
-                val superClass = superType.toRegularClassSymbol(session) ?: continue
-                callbackIn(superClass)?.let { return it }
-            }
-            return null
         }
     }
 }
