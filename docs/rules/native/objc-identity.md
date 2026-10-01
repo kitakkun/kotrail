@@ -44,12 +44,27 @@ val strongWindow = window                            // or hold window.objcPtr()
 - `===` or `!==` where either operand's type is an Objective-C class or protocol: anything that
   extends `kotlinx.cinterop.ObjCObject`, which is every `NSObject` subclass and every
   Objective-C protocol.
-- `kotlin.native.ref.WeakReference(x)` where `x` is such an object.
+- `kotlin.native.ref.WeakReference(x)` where `x` is such an object and its class may be one
+  defined in Objective-C: a class or protocol that cinterop generated, which carries
+  `@ExternalObjCClass`. The class is read from the type of `x`, narrowed by a smart cast; when
+  that type is one from Objective-C (a protocol, `NSObject`, `UIView`) and `x` reads a local
+  `val` or a final `val` declared in the same file, without a delegate or a getter body, from the
+  type of its initializer; and failing both, from the type argument. A parameter typed as a protocol is
+  reported, since what it holds may come from Objective-C.
 
 ## When it stays quiet
 
 - A comparison with `null`, which is a null check rather than an identity question.
 - Identity comparisons and weak references on Kotlin objects.
+- A weak reference to an instance of a class defined in Kotlin that extends `NSObject` or
+  implements a protocol (`class Delegate : NSObject(), UIScrollViewDelegateProtocol`). Such an
+  object is a Kotlin object first: its Kotlin side owns it and keeps one identity, with no
+  wrapper in between, so the weak reference tracks the object itself as it does any Kotlin
+  object. The class is known from the argument (`WeakReference(Delegate())`), from a smart cast
+  (`if (d is Delegate) WeakReference(d)`), or from one hop to a `val`'s initializer
+  (`val d: UIScrollViewDelegateProtocol = Delegate(); WeakReference(d)`). One hop only: a `val`
+  initialized from another `val` is not followed further, and a `var`, a parameter, or a
+  function result says no more than its declared type, so the weak reference is reported.
 - Every compilation that is not a Kotlin/Native compilation linking a Darwin platform library:
   the interop names do not resolve there, so the rule does nothing on JVM, Android, JS, or
   Wasm sources.
@@ -58,10 +73,18 @@ val strongWindow = window                            // or hold window.objcPtr()
 
 `compiler-tests/testData/diagnostics/native/objcIdentity.kt`, compiled against stubs of the
 interop names under `compiler-tests/compose-stubs/src/main/kotlin/{kotlinx/cinterop,platform,kotlin/native/ref}`.
+The platform stubs carry `@ExternalObjCClass` on every class and protocol, as cinterop output
+does.
 
 ## Implementation notes
 
 `fir/native/checkers/ObjCIdentityChecker.kt`. A `FirEqualityOperatorCallChecker` for the
 identity operations, and a `FirFunctionCallChecker` for the `WeakReference` constructor, both
 deciding through subtyping against `kotlinx.cinterop.ObjCObject`, which they look up through
-the session's symbol provider and treat as absent when the compilation has no interop.
+the session's symbol provider and treat as absent when the compilation has no interop. A class
+counts as defined in Kotlin when it is a subtype of `ObjCObject`, is not from `kotlinx.cinterop`
+or the compiler's `objcnames` forward declarations, and neither it nor a class it is nested in
+carries `kotlinx.cinterop.ExternalObjCClass`, the test the compiler itself applies; supertypes
+are not consulted, since a Kotlin subclass of `NSObject` has no annotation of its own.
+Kotlin/Native accepts only final classes and objects as Kotlin subtypes of Objective-C types, so
+such a type names the object's exact class.

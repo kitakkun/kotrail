@@ -5,6 +5,7 @@ package custom
 import kotlin.native.ref.WeakReference
 import kotlinx.cinterop.objcPtr
 import platform.UIKit.UIFocusItemScrollableContainer
+import platform.UIKit.UIScrollViewDelegateProtocol
 import platform.UIKit.UIView
 import platform.UIKit.UIWindow
 import platform.darwin.NSObject
@@ -54,6 +55,42 @@ class Holder(window: UIWindow, plain: Plain) {
     // Not reported: the strong reference, or the address.
     val strongWindow = window
     val address = window.objcPtr()
+}
+
+// A delegate defined in Kotlin: an Objective-C object whose Kotlin side owns it.
+class KotlinDelegate : NSObject(), UIScrollViewDelegateProtocol
+
+class Delegates(delegate: UIScrollViewDelegateProtocol) {
+    // Not reported: an instance of a Kotlin-defined subclass keeps its one Kotlin identity.
+    val weakKotlin = WeakReference(KotlinDelegate())
+
+    // Reported: typed as the protocol, the parameter can hold an object from Objective-C.
+    val weakParameter = <!KOTRAIL_OBJC_WEAK_REFERENCE!>WeakReference(delegate)<!>
+}
+
+fun localDelegate(): WeakReference<UIScrollViewDelegateProtocol> {
+    // Not reported: the local is read through to its initializer, a Kotlin-defined class.
+    val delegate: UIScrollViewDelegateProtocol = KotlinDelegate()
+    return WeakReference(delegate)
+}
+
+// Not reported: a val of this file is read through as well, whatever type it declares.
+val sharedDelegate: NSObject = KotlinDelegate()
+val weakShared = WeakReference(sharedDelegate)
+
+fun narrowed(delegate: UIScrollViewDelegateProtocol): WeakReference<UIScrollViewDelegateProtocol>? =
+    // Not reported: the smart cast narrows the argument to the Kotlin-defined class.
+    if (delegate is KotlinDelegate) WeakReference(delegate) else null
+
+fun parameterDelegate(delegate: UIScrollViewDelegateProtocol) =
+    // Reported: the concrete class behind a parameter is unknown.
+    <!KOTRAIL_OBJC_WEAK_REFERENCE!>WeakReference(delegate)<!>
+
+fun twoHops(): WeakReference<UIScrollViewDelegateProtocol> {
+    // Reported: one hop only, and this local's initializer reads another local.
+    val first: UIScrollViewDelegateProtocol = KotlinDelegate()
+    val second = first
+    return <!KOTRAIL_OBJC_WEAK_REFERENCE!>WeakReference(second)<!>
 }
 
 /* GENERATED_FIR_TAGS: classDeclaration, equalityExpression, functionDeclaration, ifExpression, lambdaLiteral,
