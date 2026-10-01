@@ -103,8 +103,8 @@ class SurfaceDigests(val needsCompose: Boolean)
  *   header alone when there is no fact, and never deleted; without `factsOut` there is none.
  *   With `icMetadata` (the default) the same facts also go into the Kotlin metadata of the class
  *   files, as the plugin's data on each declaration that has one, for incremental compilation to
- *   compare (see [PluginMetadata]); a build that publishes turns it off, and the class files then
- *   carry nothing of Kotrail.
+ *   compare (see [PluginMetadata]); a build that publishes to a repository turns it off, and the
+ *   class files then carry nothing of Kotrail.
  * - For a klib (Native, JS, Wasm, the metadata compilation of shared source sets) they are
  *   annotations, added through `metadataDeclarationRegistrar` so consumers read them with no
  *   extra wiring, against a stub class when the annotations artifact is absent.

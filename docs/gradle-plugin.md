@@ -42,6 +42,7 @@ kotrail {
     // annotations = false       // do not add the annotations artifact
     // inferredMetadata = false  // write no inferred facts for other modules
     // incrementalMetadata = false // no facts in the class files' metadata, even when not publishing
+    // publishingTasks = listOf("publish*") // publishToMavenLocal also leaves that metadata out
     // consumerRules = false     // ship no shrinker rules to consumers
     // packagingExcludes = false // keep older libraries' facts files in an Android app's APK
 }
@@ -53,7 +54,8 @@ kotrail {
 | `enabled` | `true` | Whether the compiler plugin is applied at all. Per compilation. |
 | `annotations` | `true` | Whether `kotrail-annotations` is added as `compileOnly` (Kotlin/JVM and Kotlin/Android). |
 | `inferredMetadata` | `true` | Whether the inferred facts are written for the modules that compile against this one: the facts file `build/kotrail/facts/<target>-<compilation>/<project>.facts` on the JVM and Android (published as the `kotrail-facts` artifact), annotations (`@InferredStartsAsyncWork` and the rest) in a klib. `false` writes and publishes neither, for a library whose consumers do not use Kotrail; callers in other modules then see the module as if it had been compiled without Kotrail, while analysis within it is unchanged. Per compilation. See [Inferred metadata](inferred-metadata.md). |
-| `incrementalMetadata` | `true` | Whether a JVM or Android compilation also writes its inferred facts, and a digest of what the model rules read of each class, into the Kotlin metadata of its class files, where Kotlin's incremental compilation compares them, so that a changed fact or model compiles the files of the module that depend on it again (the `icMetadata` compiler option). Off by itself in a build whose task graph publishes (any `publish*` task, any Maven publication task), so published class files carry nothing of Kotrail; such a build compiles the module completely, and the next ordinary build once more. `false` keeps the metadata out always. Off as well when `inferredMetadata` is. Per compilation. See [Incremental compilation](#incremental-compilation). |
+| `incrementalMetadata` | `true` | Whether a JVM or Android compilation also writes its inferred facts, and a digest of what the model rules read of each class, into the Kotlin metadata of its class files, where Kotlin's incremental compilation compares them, so that a changed fact or model compiles the files of the module that depend on it again (the `icMetadata` compiler option). Off by itself in a build that publishes to a repository (its task graph holds a task named `publish` or matching `publish*Repository`, or a `PublishToMavenRepository` task; see `publishingTasks`), so class files published there carry nothing of Kotrail; such a build compiles the module completely, and the next ordinary build once more. `publishToMavenLocal` keeps it by default: the metadata names no class and does consumers no harm, and a local trial loop pays no extra compilation. `false` keeps the metadata out always. Off as well when `inferredMetadata` is. Per compilation. See [Incremental compilation](#incremental-compilation). |
+| `publishingTasks` | `["publish", "publish*Repository"]` | Globs over simple task names (`*` matches any run of characters, `?` one character) of the tasks that make a build publish, and so turn `incrementalMetadata` off for it. Setting it replaces the default; a `PublishToMavenRepository` task counts whatever the list holds, so `emptyList()` leaves that check alone. `listOf("publish*")` counts `publishToMavenLocal` too; `listOf("publish*Repository", "uploadToArtifactory")` adds a publishing task of another plugin. For the whole project. See [Incremental compilation](#incremental-compilation). |
 | `consumerRules` | `true` | Whether the module ships `-dontwarn com.kitakkun.kotrail.**` to its consumers. The JVM and Android outputs of this version reference no Kotrail class (the facts are in a separate artifact), so the rule is only needed by consumers that also shrink JVM libraries built by earlier versions, whose class files carry the annotations. See [Consumer rules](#consumer-rules). |
 | `packagingExcludes` | `true` | Whether an Android application (`com.android.application`) leaves `META-INF/kotrail/**` out of its APK and bundle, through `android.packaging.resources.excludes`. Only libraries built by earlier versions of Kotrail carry facts files there; this version publishes them as a separate artifact, so the exclude matters only for those older libraries. See [Publishing a library](inferred-metadata.md#publishing-a-library). |
 | `bundledConfigurations` | empty | Configurations whose projects this compilation's artifact bundles, for unloadable code. Per compilation. |
@@ -162,10 +164,10 @@ to the source sets that need it, as `api` or `implementation`.
 
 The facts the compiler plugin writes for callers in other modules never need the artifact. On
 the JVM and Android they go to a facts file under `build/kotrail/facts`, outside the class
-files, which name no class of Kotrail; outside a publishing build the class files' Kotlin
-metadata also carries them for incremental compilation (see
-[Incremental compilation](#incremental-compilation)), and a published JAR or AAR carries
-nothing of Kotrail. In a klib they
+files, which name no class of Kotrail; unless the build publishes to a repository, the class
+files' Kotlin metadata also carries them for incremental compilation (see
+[Incremental compilation](#incremental-compilation)), and a JAR or AAR published to a
+repository carries nothing of Kotrail. In a klib they
 are annotations (`@InferredStartsAsyncWork` and the rest), written against a stub class when
 the artifact is absent, which a klib consumer without Kotrail drops silently. A published
 library therefore carries the facts with no Kotrail dependency, `annotations = false` included
@@ -252,15 +254,40 @@ read of them there (`incrementalMetadata`, on by default; see
 A body change that changes no fact and no model surface changes nothing in the metadata, and
 the use sites stay as they were compiled.
 
-**The publish-time switch.** A build whose task graph holds a publishing task (any task whose
-name starts with `publish`, or any Maven publication task such as `publishToMavenLocal`)
-compiles every Kotlin/JVM and Android compilation without that metadata (`icMetadata=false`),
-so that published class files carry nothing of Kotrail. The switch is a compile task input:
-such a build compiles each module completely, not incrementally, and the next ordinary build
-compiles it once more with the metadata. `incrementalMetadata = false` keeps the metadata out of
-every build, for a project that would rather not pay for those two compilations; its
-incremental builds then leave a use site's findings as they were until its file is compiled
-again.
+**The publish-time switch.** A build that publishes to a repository compiles every Kotlin/JVM
+and Android compilation without that metadata (`icMetadata=false`), so that the class files it
+publishes carry nothing of Kotrail. It publishes when its task graph holds a task named
+`publish` (the lifecycle task) or matching `publish*Repository`
+(`publishMavenPublicationToSonatypeRepository`, `publishAllPublicationsToStagingRepository`,
+an Ivy publication's task), or any task of type `PublishToMavenRepository`. The switch is a
+compile task input: such a build compiles each module completely, not incrementally, and the
+next ordinary build compiles it once more with the metadata.
+
+`publishToMavenLocal` and the `publish...ToMavenLocal` tasks do not count. The metadata in a JAR
+carries no class reference: it is plugin data in the Kotlin metadata, which a consumer's
+compiler passes over, so it is harmless to consumers, Kotrail or not. A publication to the
+local Maven repository is usually a local trial, and keeping the metadata there spares that
+loop the two full compilations (the publishing build and the next one): the publication reuses
+the classes the last build compiled.
+
+`publishingTasks` replaces the task name globs; the `PublishToMavenRepository` check stays
+whatever it holds, and `emptyList()` leaves that check alone:
+
+```kotlin
+kotrail {
+    // publishToMavenLocal also leaves the metadata out
+    publishingTasks = listOf("publish*")
+
+    // or: a publishing task of another plugin counts as well
+    // publishingTasks = listOf("publish*Repository", "uploadToArtifactory")
+}
+```
+
+A task of another publishing plugin, such as `publishPlugins` of the Gradle Plugin Portal's
+publishing plugin, counts only once listed. `incrementalMetadata = false` keeps the metadata
+out of every build, for a project that would rather not pay for those two compilations when it
+publishes; its incremental builds then leave a use site's findings as they were until its file
+is compiled again.
 
 **What still needs a full build.** A few findings depend on the bodies of many files at once,
 which no metadata of one declaration describes: duplicates of a

@@ -10,10 +10,10 @@ It does so in one of two ways, by target:
 
 - **JVM and Android**: a facts file, `<module>.facts`, written beside the build output rather
   than into it and published as an artifact of its own. The class files reference no Kotrail
-  class. Outside a build that publishes, their Kotlin metadata also carries the facts for
-  Kotlin's incremental compilation within the module (see
+  class. Unless the build publishes to a repository, their Kotlin metadata also carries the
+  facts for Kotlin's incremental compilation within the module (see
   [Plugin metadata for incremental compilation](#plugin-metadata-for-incremental-compilation));
-  a published JAR or AAR carries nothing of Kotrail.
+  a JAR or AAR published to a repository carries nothing of Kotrail.
 - **Klibs** (Native, JS, Wasm, and the metadata compilation of shared source sets): an
   annotation of string arrays on the declaration.
 
@@ -283,7 +283,8 @@ the compiler plugin data that Kotlin keeps for each declaration under a plugin i
   (a model inside a model). Only written while one of those rules is on and, unless
   `narrowModelParameters` has `scope: all`, in a module whose classpath has `@Composable`.
 - **Where**: JVM and Android compilations only, by default (the `icMetadata` option, on unless
-  `incrementalMetadata` or `inferredMetadata` is off, or the build publishes; see below). Klibs
+  `incrementalMetadata` or `inferredMetadata` is off, or the build publishes to a repository;
+  see below). Klibs
   carry their facts as annotations, and none of this section applies to them.
 
 Within the module, a fact is now looked up in this order: `override`; for a declaration that an
@@ -317,17 +318,30 @@ What Kotlin then propagates, within one module and one build:
 
 **The publish-time switch.** The blob is plugin data, which the Kotlin compiler keeps for the
 plugin that wrote it and otherwise passes over, so class files that carry it compile and run as
-any other. Still, a published library would carry bytes of a tool its consumers never asked
-for, and incremental compilation is a concern of the build that compiles, not of the artifact.
-So the Gradle plugin turns the metadata off in a build that publishes: when the task graph
-holds a Maven publication task (`publishToMavenLocal`, `publish...To...Repository`) or any task
-whose name starts with `publish`, every Kotlin/JVM and Android compile task gets
-`icMetadata=false`, and the published class files carry nothing of Kotrail. The option is an
-input of the compile task, so the switch compiles the module again, and completely: a
-publishing build is not incremental for Kotrail's purposes, and the next ordinary build compiles
-once more to put the metadata back. `incrementalMetadata = false` turns the metadata off for
-good; incremental builds then behave as described under [The own facts file](#the-own-facts-file),
-without the propagation above.
+any other: it carries no class reference and is harmless to consumers. Still, a released
+library would carry bytes of a tool its consumers never asked for, and incremental compilation
+is a concern of the build that compiles, not of the artifact. So the Gradle plugin turns the
+metadata off in a build that publishes to a repository: when the task graph holds a task named
+`publish` (the lifecycle task) or matching `publish*Repository`
+(`publishMavenPublicationToSonatypeRepository`, `publishAllPublicationsToStagingRepository`,
+an Ivy publication's task), or any task of type `PublishToMavenRepository`, every Kotlin/JVM and
+Android compile task gets `icMetadata=false`, and the class files published there carry nothing
+of Kotrail. The option is an input of the compile task, so the switch compiles the module
+again, and completely: a publishing build is not incremental for Kotrail's purposes, and the
+next ordinary build compiles once more to put the metadata back.
+
+`publishToMavenLocal` and the `publish...ToMavenLocal` tasks keep the metadata by default.
+Publishing to the local Maven repository is usually a local trial of the build, and the
+metadata does the trial's consumers no harm, so such a build publishes the classes the last
+build compiled, and the trial loop does not pay the two full compilations. The `publishingTasks`
+setting of the `kotrail { }` block replaces the task name globs
+(`publishingTasks = listOf("publish*")` counts `publishToMavenLocal` too;
+`publishingTasks = listOf("publish*Repository", "uploadToArtifactory")` adds a publishing task of
+another plugin); the `PublishToMavenRepository` check stays whatever it holds. See
+[Incremental compilation](gradle-plugin.md#incremental-compilation) in the Gradle plugin's
+documentation. `incrementalMetadata = false` turns the metadata off for good; incremental builds
+then behave as described under [The own facts file](#the-own-facts-file), without the
+propagation above.
 
 What remains out of reach of incremental compilation, because no declaration's metadata or name
 lookup describes it:
@@ -376,8 +390,8 @@ callee with no fact and reports nothing about it.
 ## Publishing a library
 
 A JVM or Android library built with this version of Kotrail references no Kotrail class and
-carries no Kotrail file, and the build that publishes it compiles its class files without the
-plugin metadata for incremental compilation (see
+carries no Kotrail file, and the build that publishes it to a repository compiles its class
+files without the plugin metadata for incremental compilation (see
 [The publish-time switch](#plugin-metadata-for-incremental-compilation)), so they carry no
 Kotrail bytes either: its facts are the separate `kotrail-facts` artifact, which a consumer
 without Kotrail never resolves, and which R8, ProGuard and the APK never see. It is published by

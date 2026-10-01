@@ -1168,82 +1168,96 @@ class KotrailGradlePluginFunctionalTest {
     }
 
     @Test
-    fun `a build that publishes compiles without the plugin metadata, an ordinary build with it`() {
+    fun `a build that publishes to a repository compiles without the plugin metadata, an ordinary build with it`() {
         writeSettings()
         writeFile("kotrail.yaml", "severity: warning\n")
-        writeFile("src/main/kotlin/Retry.kt", "fun retry(times: Int): Int {\n    require(times >= 0)\n    return times\n}\n")
-        val publishing = """
-            plugins {
-                kotlin("jvm") version "$kotlinVersion"
-                id("com.kitakkun.kotrail")
-                `maven-publish`
-            }
-
-            group = "com.example"
-            version = "1.0"
-
-            repositories {
-                maven { url = uri("$repository") }
-                mavenCentral()
-            }
-
-            kotlin {
-                jvmToolchain(21)
-            }
-
-            publishing {
-                publications {
-                    create<MavenPublication>("maven") {
-                        from(components["java"])
-                    }
-                }
-            }
-
-        """.trimIndent()
-        writeFile("build.gradle.kts", publishing + "\nkotrail {\n    configFile = file(\"kotrail.yaml\")\n}\n")
+        writeFile("src/main/kotlin/Retry.kt", RETRY_SOURCE)
+        writePublishingBuild("configFile = file(\"kotrail.yaml\")")
         val retryClass = File(projectDir, "build/classes/kotlin/main/RetryKt.class")
-        val localRepository = File(projectDir, "m2")
-        val publishedJar = File(localRepository, "com/example/consumer/1.0/consumer-1.0.jar")
-        // The plugin id is the key of Kotrail's plugin data in the Kotlin metadata, a string of the class file.
-        fun carriesMetadata(bytes: ByteArray) = "com.kitakkun.kotrail" in String(bytes, Charsets.ISO_8859_1)
-        fun jarClassesCarryMetadata(jar: File): Boolean = ZipFile(jar).use { zip ->
-            zip.entries().asSequence().filter { it.name.endsWith(".class") }.any { carriesMetadata(zip.getInputStream(it).readBytes()) }
-        }
+        val publishedJar = File(projectDir, "published/com/example/consumer/1.0/consumer-1.0.jar")
 
         // An ordinary build writes the facts into the class files, for incremental compilation.
         val assemble = runBuild("assemble", "--configuration-cache")
         assertEquals(TaskOutcome.SUCCESS, assemble.task(":compileKotlin")?.outcome, assemble.output)
-        assertTrue(carriesMetadata(retryClass.readBytes()), "RetryKt.class carries no plugin metadata")
-        assertTrue(jarClassesCarryMetadata(File(projectDir, "build/libs/consumer-1.0.jar")))
+        assertTrue(carriesPluginMetadata(retryClass.readBytes()), "RetryKt.class carries no plugin metadata")
+        assertTrue(jarClassesCarryPluginMetadata(File(projectDir, "build/libs/consumer-1.0.jar")))
 
-        // A build that publishes compiles again without it, so the published JAR carries nothing of Kotrail.
-        val publish = runBuild("publishToMavenLocal", "-Dmaven.repo.local=${localRepository.absolutePath}", "--configuration-cache")
+        // A build that publishes to a repository compiles again without it, so the published JAR carries nothing of
+        // Kotrail.
+        val publish = runBuild("publishAllPublicationsToTestRepository", "--configuration-cache")
         assertEquals(TaskOutcome.SUCCESS, publish.task(":compileKotlin")?.outcome, publish.output)
-        assertFalse(carriesMetadata(retryClass.readBytes()), "RetryKt.class carries plugin metadata")
+        assertFalse(carriesPluginMetadata(retryClass.readBytes()), "RetryKt.class carries plugin metadata")
         assertTrue(publishedJar.isFile, publishedJar.path)
-        assertFalse(jarClassesCarryMetadata(publishedJar))
+        assertFalse(jarClassesCarryPluginMetadata(publishedJar))
 
         // Publishing again, from the entry the configuration cache stored: the answer stored with it still says the
         // build publishes, so there is nothing to compile, and nothing of Kotrail.
         val again = GradleRunner.create()
             .withProjectDir(projectDir)
-            .withArguments("publishToMavenLocal", "-Dmaven.repo.local=${localRepository.absolutePath}", "--configuration-cache")
+            .withArguments("publishAllPublicationsToTestRepository", "--configuration-cache")
             .forwardOutput()
             .build()
         assertTrue(again.output.contains("Reusing configuration cache"), again.output)
         assertEquals(TaskOutcome.UP_TO_DATE, again.task(":compileKotlin")?.outcome, again.output)
-        assertFalse(jarClassesCarryMetadata(publishedJar))
+        assertFalse(jarClassesCarryPluginMetadata(publishedJar))
 
         // The next ordinary build compiles with it again.
         val next = runBuild("assemble", "--configuration-cache")
         assertEquals(TaskOutcome.SUCCESS, next.task(":compileKotlin")?.outcome, next.output)
-        assertTrue(carriesMetadata(retryClass.readBytes()), "RetryKt.class carries no plugin metadata")
+        assertTrue(carriesPluginMetadata(retryClass.readBytes()), "RetryKt.class carries no plugin metadata")
 
         // incrementalMetadata = false keeps it out of every build.
-        writeFile("build.gradle.kts", publishing + "\nkotrail {\n    configFile = file(\"kotrail.yaml\")\n    incrementalMetadata = false\n}\n")
+        writePublishingBuild("configFile = file(\"kotrail.yaml\")\n    incrementalMetadata = false")
         val off = runBuild("assemble", "--configuration-cache")
         assertEquals(TaskOutcome.SUCCESS, off.task(":compileKotlin")?.outcome, off.output)
-        assertFalse(carriesMetadata(retryClass.readBytes()), "RetryKt.class carries plugin metadata")
+        assertFalse(carriesPluginMetadata(retryClass.readBytes()), "RetryKt.class carries plugin metadata")
+
+        // With the metadata on again and no task name counted, the type of the repository publication task still
+        // counts: the build keeps the classes as the previous one compiled them, without the metadata, and publishes
+        // them so.
+        writePublishingBuild("configFile = file(\"kotrail.yaml\")\n    publishingTasks = emptyList()")
+        val byType = runBuild("publishAllPublicationsToTestRepository", "--configuration-cache")
+        assertEquals(TaskOutcome.UP_TO_DATE, byType.task(":compileKotlin")?.outcome, byType.output)
+        assertEquals(TaskOutcome.SUCCESS, byType.task(":publishMavenPublicationToTestRepository")?.outcome, byType.output)
+        assertFalse(jarClassesCarryPluginMetadata(publishedJar))
+    }
+
+    @Test
+    fun `publishing to the local Maven repository keeps the plugin metadata unless publishingTasks counts it`() {
+        writeSettings()
+        writeFile("kotrail.yaml", "severity: warning\n")
+        writeFile("src/main/kotlin/Retry.kt", RETRY_SOURCE)
+        writePublishingBuild("configFile = file(\"kotrail.yaml\")")
+        val retryClass = File(projectDir, "build/classes/kotlin/main/RetryKt.class")
+        val localRepository = File(projectDir, "m2")
+        val publishedJar = File(localRepository, "com/example/consumer/1.0/consumer-1.0.jar")
+        val publishToMavenLocal = arrayOf("publishToMavenLocal", "-Dmaven.repo.local=${localRepository.absolutePath}", "--configuration-cache")
+
+        val assemble = runBuild("assemble", "--configuration-cache")
+        assertEquals(TaskOutcome.SUCCESS, assemble.task(":compileKotlin")?.outcome, assemble.output)
+        assertTrue(carriesPluginMetadata(retryClass.readBytes()), "RetryKt.class carries no plugin metadata")
+
+        // Publishing to the local Maven repository is a trial of the build, not a release: the classes stay as the
+        // ordinary build compiled them, and the JAR carries the metadata, which names no class.
+        val publish = runBuild(*publishToMavenLocal)
+        assertEquals(TaskOutcome.UP_TO_DATE, publish.task(":compileKotlin")?.outcome, publish.output)
+        assertTrue(publishedJar.isFile, publishedJar.path)
+        assertTrue(jarClassesCarryPluginMetadata(publishedJar))
+
+        // So the next ordinary build has nothing to compile either.
+        val next = runBuild("assemble", "--configuration-cache")
+        assertEquals(TaskOutcome.UP_TO_DATE, next.task(":compileKotlin")?.outcome, next.output)
+
+        // publishingTasks = listOf("publish*") counts it as publishing: the build compiles again without the metadata,
+        // and the next ordinary build puts it back.
+        writePublishingBuild("configFile = file(\"kotrail.yaml\")\n    publishingTasks = listOf(\"publish*\")")
+        val counted = runBuild(*publishToMavenLocal)
+        assertEquals(TaskOutcome.SUCCESS, counted.task(":compileKotlin")?.outcome, counted.output)
+        assertFalse(carriesPluginMetadata(retryClass.readBytes()), "RetryKt.class carries plugin metadata")
+        assertFalse(jarClassesCarryPluginMetadata(publishedJar))
+        val after = runBuild("assemble", "--configuration-cache")
+        assertEquals(TaskOutcome.SUCCESS, after.task(":compileKotlin")?.outcome, after.output)
+        assertTrue(carriesPluginMetadata(retryClass.readBytes()), "RetryKt.class carries no plugin metadata")
     }
 
     @Test
@@ -1583,6 +1597,58 @@ class KotrailGradlePluginFunctionalTest {
         val files = File(projectDirectory, "build/kotrail/facts/$compilation").listFiles { file -> file.extension == "facts" }.orEmpty()
         assertEquals(1, files.size, files.joinToString())
         return files.single().readText()
+    }
+
+    /** The plugin id is the key of Kotrail's plugin data in the Kotlin metadata, a string of the class file. */
+    private fun carriesPluginMetadata(classFile: ByteArray): Boolean = "com.kitakkun.kotrail" in String(classFile, Charsets.ISO_8859_1)
+
+    private fun jarClassesCarryPluginMetadata(jar: File): Boolean = ZipFile(jar).use { zip ->
+        zip.entries().asSequence().filter { it.name.endsWith(".class") }.any { carriesPluginMetadata(zip.getInputStream(it).readBytes()) }
+    }
+
+    /**
+     * A Kotlin/JVM build that publishes the `java` component as `com.example:consumer:1.0`, to the
+     * local Maven repository or to the repository `test` in `published/`, with [kotrailBlock] in
+     * its `kotrail { }` block.
+     */
+    private fun writePublishingBuild(kotrailBlock: String) {
+        writeFile(
+            "build.gradle.kts",
+            """
+            plugins {
+                kotlin("jvm") version "$kotlinVersion"
+                id("com.kitakkun.kotrail")
+                `maven-publish`
+            }
+
+            group = "com.example"
+            version = "1.0"
+
+            repositories {
+                maven { url = uri("$repository") }
+                mavenCentral()
+            }
+
+            kotlin {
+                jvmToolchain(21)
+            }
+
+            publishing {
+                publications {
+                    create<MavenPublication>("maven") {
+                        from(components["java"])
+                    }
+                }
+                repositories {
+                    maven {
+                        name = "test"
+                        url = uri("published")
+                    }
+                }
+            }
+
+            """.trimIndent() + "\nkotrail {\n    $kotrailBlock\n}\n",
+        )
     }
 
     private fun writeSettings(include: List<String> = emptyList()) {

@@ -2,6 +2,7 @@ package com.kitakkun.kotrail.gradle
 
 import org.gradle.api.Action
 import org.gradle.api.model.ObjectFactory
+import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.Property
 import javax.inject.Inject
 
@@ -52,6 +53,21 @@ abstract class KotrailExtension @Inject constructor(private val objects: ObjectF
      * artifact instead, so the exclude only matters for those older libraries. Default `true`.
      */
     abstract val packagingExcludes: Property<Boolean>
+
+    /**
+     * Globs over simple task names (`*` matches any run of characters, `?` one character) of the
+     * tasks that make a build publish, so that its compile tasks leave the plugin metadata for
+     * incremental compilation ([incrementalMetadata]) out of the class files. Default
+     * `["publish", "publish*Repository"]`: the `publish` lifecycle task and every task that
+     * publishes to a repository, but not `publishToMavenLocal` or `publish...ToMavenLocal`, so a
+     * local trial does not pay two full compilations for metadata that names no class and does a
+     * consumer no harm. Setting it replaces the default. A task of type `PublishToMavenRepository`
+     * counts whatever the list holds, so an empty list leaves that check alone and no name counts.
+     * `listOf("publish*")` counts publishing to the local Maven repository too;
+     * `listOf("publish*Repository", "uploadToArtifactory")` adds a publishing task of another plugin.
+     * For the whole project, not per compilation.
+     */
+    abstract val publishingTasks: ListProperty<String>
 
     internal val overrides: MutableList<CompilationOverride> = mutableListOf()
 

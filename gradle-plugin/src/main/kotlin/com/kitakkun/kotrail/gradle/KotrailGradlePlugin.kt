@@ -48,8 +48,9 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
             inferredMetadata.convention(true)
             incrementalMetadata.convention(true)
             packagingExcludes.convention(true)
+            publishingTasks.convention(PublishingBuild.DEFAULT_TASK_NAMES)
         }
-        publishing = PublishingBuild.of(target)
+        publishing = PublishingBuild.of(target, extension.publishingTasks)
         factsFiles = FactsFiles(target) { compilationName ->
             specsFor(compilationName).lastOrNull { it.inferredMetadata.isPresent }?.inferredMetadata?.get() ?: true
         }
@@ -102,11 +103,11 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
 
     /**
      * `icMetadata`: on unless `incrementalMetadata` (or `inferredMetadata`, which writes no
-     * metadata at all) is off for the compilation, or the build publishes ([PublishingBuild]), so
-     * that published class files carry no Kotrail metadata. A plain option, so an input of the
-     * compile task: when it flips, the task runs again and compiles every file, since Gradle
-     * reports no incremental change for a changed input that is not a file. Read when the options
-     * are, after the task graph is ready.
+     * metadata at all) is off for the compilation, or the build publishes to a repository
+     * ([PublishingBuild], `publishingTasks`), so that class files published there carry no
+     * Kotrail metadata. A plain option, so an input of the compile task: when it flips, the task
+     * runs again and compiles every file, since Gradle reports no incremental change for a changed
+     * input that is not a file. Read when the options are, after the task graph is ready.
      */
     private fun incrementalMetadataOption(compilationName: String): Provider<List<SubpluginOption>> {
         val publishing = publishing
