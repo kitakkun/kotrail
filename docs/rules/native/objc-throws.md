@@ -64,6 +64,9 @@ declaration at the boundary, where the exception becomes an error the caller see
 
 - The function declares `@Throws`, whatever it lists.
 - The function is internal, private, protected, an override, or hidden from Objective-C.
+- Test code: a file in a test source set (`src/iosTest/`, `src/commonTest/` and kin) or a
+  function annotated as a test (by `test.annotations`). No framework exports a test source set,
+  so nothing in it reaches Swift, and in a test a thrown exception is how the test fails.
 - The throw sits in a lambda that runs later (a callback, a coroutine), behind its own boundary.
 - The throw passes a `CancellationException` on (`if (e is CancellationException) throw e` in a
   catch clause): cancellation transparency, which a suspending caller expects, not a failure.

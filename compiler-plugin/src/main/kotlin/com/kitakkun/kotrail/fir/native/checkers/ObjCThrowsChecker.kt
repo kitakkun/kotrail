@@ -6,6 +6,8 @@ import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.native.throwsService
 import com.kitakkun.kotrail.fir.reportKotrail
+import com.kitakkun.kotrail.fir.test.isTestFunction
+import com.kitakkun.kotrail.fir.test.isTestSourcePath
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
@@ -42,7 +44,9 @@ import org.jetbrains.kotlin.name.Name
  * are checked (where `kotlinx.cinterop.ObjCObject` resolves), and only what the framework
  * exports: public API, not `@HiddenFromObjC`, not an override (its signature is fixed elsewhere),
  * not an inline function with a reified type parameter (which has no Objective-C entry point).
- * `native.objcThrows.packages` narrows it to the packages a framework actually exports.
+ * Test code is skipped (a file in a test source set, or a function annotated as a test): no
+ * framework exports a test source set. `native.objcThrows.packages` narrows it to the packages a
+ * framework actually exports.
  */
 object ObjCThrowsChecker : NamedFunctionChecker(MppCheckerKind.Common) {
     private val HIDDEN_FROM_OBJC = ClassId(FqName("kotlin.native"), Name.identifier("HiddenFromObjC"))
@@ -54,6 +58,10 @@ object ObjCThrowsChecker : NamedFunctionChecker(MppCheckerKind.Common) {
         val source = declaration.source ?: return
         if (source.kind is KtFakeSourceElementKind) return
         if (session.symbolProvider.getClassLikeSymbolByClassId(ObjCNames.OBJC_OBJECT) == null) return
+        // A test source set is never exported to Swift or Objective-C.
+        val path = context.containingFileSymbol?.sourceFile?.path
+        if (path != null && isTestSourcePath(path)) return
+        if (declaration.symbol.isTestFunction(session, session.kotrailConfig.test.annotations)) return
         if (!declaration.effectiveVisibility.publicApi || declaration.isOverride || declaration.body == null) return
         if (declaration.name.asString() == "main") return
         // An inline function with a reified type parameter has no Objective-C entry point at all.

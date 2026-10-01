@@ -3,6 +3,7 @@
 package custom
 
 import kotlin.native.HiddenFromObjC
+import org.junit.jupiter.api.Test
 
 class ParseException(message: String) : Exception(message)
 
@@ -95,6 +96,18 @@ fun guarded(block: () -> Config): Config? = try {
 fun deferred(text: String): () -> Config = { throws(text) }
 
 fun callsQuiet(text: String): Config = quiet(text)
+
+// Not reported: a test, which no framework exports. The helper beside it is reported here, in a main
+// source set; in a test source set (src/iosTest/ and the like) the whole file is skipped.
+class ParserTest {
+    @Test
+    fun parsesText() {
+        val config: Config? = quiet("text")
+        checkNotNull(config)
+    }
+
+    fun <!KOTRAIL_OBJC_EXPORT_MISSING_THROWS!>fixture<!>(): Config = declared("fixture")
+}
 
 fun main() {
     declared(""); quiet(""); throws(""); requires(""); callsDeclared(""); callsThrowing(""); throwsInInlineLambda(emptyList())
