@@ -29,6 +29,7 @@ import org.jetbrains.kotlin.fir.declarations.utils.isDelegatedProperty
 import org.jetbrains.kotlin.fir.expressions.FirAnonymousFunctionExpression
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
+import org.jetbrains.kotlin.fir.expressions.FirReturnExpression
 import org.jetbrains.kotlin.fir.expressions.FirVarargArgumentsExpression
 import org.jetbrains.kotlin.fir.expressions.resolvedArgumentMapping
 import org.jetbrains.kotlin.fir.expressions.unwrapArgument
@@ -48,11 +49,14 @@ import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.customAnnotations
 import org.jetbrains.kotlin.fir.types.isSomeFunctionType
 import org.jetbrains.kotlin.fir.types.isUnit
+import org.jetbrains.kotlin.fir.types.lowerBoundIfFlexible
 import org.jetbrains.kotlin.fir.types.renderReadable
 import org.jetbrains.kotlin.fir.types.resolvedType
+import org.jetbrains.kotlin.fir.types.typeContext
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.types.AbstractTypeChecker
 
 /**
  * Keeps a Context, a View and anything marked `@DoNotRetain` out of `retain`:
@@ -64,8 +68,9 @@ import org.jetbrains.kotlin.name.Name
  * fun Screen(context: Context, view: View, id: String) {
  *     val a = retain { context }                 // reported: android.content.Context
  *     val b = retain { Holder(view) }            // reported: Holder.view (android.view.View)
- *     val c = retain(view) { Cache() }           // reported on the key
- *     val d = retain(id) { Cache() }             // fine
+ *     val c = retain { mutableStateOf(view) }    // reported: MutableState<View> (android.view.View)
+ *     val d = retain(view) { Cache() }           // reported on the key
+ *     val e = retain(id) { Cache() }             // fine
  * }
  * ```
  *
@@ -78,13 +83,16 @@ import org.jetbrains.kotlin.name.Name
  * The calls are those of the `functions` setting (`retain`, `RetainedEffect` and a store
  * registry's `LocalRetainedValuesStoreProvider` by default). Their keys are the arguments of the
  * parameters named `key1`, `key2`, ..., `keys` or `inputs`; their value is the function-typed
- * argument whose return type is the call's own (`calculation` of `retain`). A value or a key is
- * reported when its type is one of `leakTypes` (a Context or a View by default), a subclass of one,
- * or a class annotated `@DoNotRetain` or extending one, or holds one: what a project class stores
- * (its properties with a backing field or a delegate, private ones included, and those of its
- * project superclasses), and the elements of a collection, an array, a `Pair`, a `Triple` or a
- * `Sequence`. A project's own generic class is walked with its type arguments in place of its type
- * parameters. Any other library class ends the walk: what it holds is not visible from its type.
+ * argument whose return type is the call's own (`calculation` of `retain`); a lambda's value is
+ * its last expression when that is more specific (`retain<Any> { context }` retains a Context). A
+ * value or a key is reported when its type is one of `leakTypes` (a Context or a View by default),
+ * a subclass of one, or a class annotated `@DoNotRetain` or extending one, or holds one: what a
+ * project class stores (its properties with a backing field or a delegate, private ones included,
+ * and those of its project superclasses), and the type arguments of a library class (a collection's
+ * elements, `MutableState<View>`, `StateFlow<View>`, `Lazy<Context>`) other than one of
+ * `nonRetainingTypes` (a weak or a soft reference). A project's own generic class is walked with its
+ * type arguments in place of its type parameters. A library class without type arguments ends the
+ * walk: what it holds is not visible from its type.
  *
  * A value that is a `RememberObserver` but not a `RetainObserver` is reported too: `retain` throws
  * for it.
@@ -106,7 +114,7 @@ object ComposableRetainLeakChecker : FirFunctionCallChecker(MppCheckerKind.Commo
         if (callee.callableId.asSingleFqName().asString() !in config.compose.retainFunctions) return
         if (!isInComposition(session)) return
 
-        val search = LeakSearch(session, config.compose.retainLeakTypes.toSet())
+        val search = LeakSearch(session, config.compose.retainLeakTypes.toSet(), config.compose.retainNonRetainingTypes.toSet())
         for ((argument, parameter) in expression.resolvedArgumentMapping.orEmpty()) {
             if (KEY_PARAMETER.matches(parameter.name.asString())) {
                 val elements = if (argument is FirVarargArgumentsExpression) argument.arguments else listOf(argument)
@@ -169,11 +177,24 @@ object ComposableRetainLeakChecker : FirFunctionCallChecker(MppCheckerKind.Commo
         return (type.typeArguments.lastOrNull() as? ConeKotlinTypeProjection)?.type == returned
     }
 
-    /** What a function-typed argument (a lambda, a reference) produces. */
+    /**
+     * What a function-typed argument (a lambda, a reference) produces: its function type's result,
+     * or a lambda's last expression when that is more specific. `T` of `retain<Any> { context }` is
+     * `Any`, and the value retained is a Context.
+     */
     private fun FirExpression.resultType(session: FirSession): ConeKotlinType? {
         val type = resolvedType.fullyExpandedType(session)
         if (!type.isSomeFunctionType(session)) return null
-        return (type.typeArguments.lastOrNull() as? ConeKotlinTypeProjection)?.type
+        val declared = (type.typeArguments.lastOrNull() as? ConeKotlinTypeProjection)?.type ?: return null
+        val produced = (this as? FirAnonymousFunctionExpression)?.lastExpression()?.resolvedType ?: return declared
+        // Not more specific when the last expression is coerced to Unit.
+        return if (AbstractTypeChecker.isSubtypeOf(session.typeContext, produced, declared)) produced else declared
+    }
+
+    /** The last expression of a lambda's body: the result of the return its body ends in, or its last statement. */
+    private fun FirAnonymousFunctionExpression.lastExpression(): FirExpression? {
+        val last = anonymousFunction.body?.statements?.lastOrNull() ?: return null
+        return (last as? FirReturnExpression)?.result ?: last as? FirExpression
     }
 
     /** Whether a value of this type is a `RememberObserver` but not a `RetainObserver`, which `retain` throws for. */
@@ -186,7 +207,11 @@ object ComposableRetainLeakChecker : FirFunctionCallChecker(MppCheckerKind.Commo
         this.classId == classId || lookupSuperTypes(this, lookupInterfaces = true, deep = true, useSiteSession = session).any { it.lookupTag.classId == classId }
 
     /** Walks what a value holds, and finds the first thing that must not be retained. */
-    private class LeakSearch(private val session: FirSession, private val leakTypes: Set<String>) {
+    private class LeakSearch(
+        private val session: FirSession,
+        private val leakTypes: Set<String>,
+        private val nonRetainingTypes: Set<String>,
+    ) {
         /** Classes on the current path, so that a class reached again inside itself is not entered again. */
         private val walking = mutableSetOf<FirRegularClassSymbol>()
 
@@ -196,8 +221,9 @@ object ComposableRetainLeakChecker : FirFunctionCallChecker(MppCheckerKind.Commo
         /**
          * What a value of [type] holds that must not be retained, for the message: the type itself
          * (`android.content.Context`, `@DoNotRetain Session`, `AppContext (android.content.Context)`),
-         * the property that holds it (`Holder.view (android.view.View)`), or the container whose
-         * elements it is (`List<View> (android.view.View)`).
+         * the property that holds it (`Holder.view (android.view.View)`), the generic whose type
+         * argument it is (`List<View> (android.view.View)`, `MutableState<View> (android.view.View)`),
+         * or both (`StateFlow<Holder> (Holder.view: android.view.View)`).
          */
         fun leakIn(type: ConeKotlinType): String? {
             // Each value and key is a search of its own: a class one of them reached is not settled for the next.
@@ -206,24 +232,29 @@ object ComposableRetainLeakChecker : FirFunctionCallChecker(MppCheckerKind.Commo
             return leakIn(type, path = null, holder = null)
         }
 
+        /**
+         * [path] is the property that stores [type] (`Holder.view`), when the walk came through one;
+         * [holder] is the outermost library generic the walk entered before any property (`StateFlow<Holder>`).
+         */
         private fun leakIn(type: ConeKotlinType, path: String?, holder: String?): String? {
-            val expanded = type.fullyExpandedType(session)
+            // A platform type (`Context!`) holds what its lower bound does.
+            val expanded = type.fullyExpandedType(session).lowerBoundIfFlexible()
             // What a lambda captures is not in its type.
             if (expanded.isSomeFunctionType(session)) return null
             if (expanded !is ConeClassLikeType) return null
-            if (type.holdsItsArguments() || expanded.holdsItsArguments()) {
-                for (argument in expanded.typeArguments) {
-                    val argumentType = (argument as? ConeKotlinTypeProjection)?.type ?: continue
-                    leakIn(argumentType, path, holder ?: type.renderReadable())?.let { return it }
-                }
-                return null
-            }
             val classSymbol = expanded.toRegularClassSymbol(session) ?: return null
             forbidden(classSymbol)?.let { (reason, isItself) ->
-                val where = path ?: holder ?: if (isItself) return reason else type.renderReadable()
-                return "$where ($reason)"
+                return when {
+                    holder != null && path != null -> "$holder ($path: $reason)"
+                    path != null -> "$path ($reason)"
+                    holder != null -> "$holder ($reason)"
+                    isItself -> reason
+                    else -> "${type.lowerBoundIfFlexible().renderReadable()} ($reason)"
+                }
             }
-            return leakInMembers(classSymbol, expanded)
+            // A project class: of this module, also when an incremental build loaded it from the classes directory.
+            if (classSymbol.isOfThisModule(session)) return leakInMembers(classSymbol, expanded, holder)
+            return leakInArguments(classSymbol, type, expanded, path, holder)
         }
 
         /**
@@ -246,10 +277,38 @@ object ComposableRetainLeakChecker : FirFunctionCallChecker(MppCheckerKind.Commo
             return null
         }
 
+        /**
+         * The first leak among the type arguments of a library class. What it stores is not visible
+         * from its members, and a generic holds what its type arguments are: a collection its
+         * elements, `MutableState<View>` and `StateFlow<View>` their value, `Lazy<Context>` what it
+         * computes. One of [nonRetainingTypes] (a weak or a soft reference) holds nothing, and a star
+         * projection or a type parameter holds nothing known.
+         */
+        private fun leakInArguments(
+            classSymbol: FirRegularClassSymbol,
+            type: ConeKotlinType,
+            expanded: ConeClassLikeType,
+            path: String?,
+            holder: String?,
+        ): String? {
+            if (expanded.typeArguments.isEmpty()) return null
+            if (classSymbol.isNonRetaining()) return null
+            // A property already names where the value is held; without one, the outermost generic does.
+            val via = holder ?: if (path == null) type.lowerBoundIfFlexible().renderReadable() else null
+            for (argument in expanded.typeArguments) {
+                val argumentType = (argument as? ConeKotlinTypeProjection)?.type ?: continue
+                leakIn(argumentType, path, via)?.let { return it }
+            }
+            return null
+        }
+
+        private fun FirRegularClassSymbol.isNonRetaining(): Boolean =
+            classId.asSingleFqName().asString() in nonRetainingTypes ||
+                lookupSuperTypes(this, lookupInterfaces = true, deep = true, useSiteSession = session)
+                    .any { it.lookupTag.classId.asSingleFqName().asString() in nonRetainingTypes }
+
         /** The first leak among what a project class stores, its superclasses' fields included. */
-        private fun leakInMembers(classSymbol: FirRegularClassSymbol, type: ConeClassLikeType): String? {
-            // A project class: of this module, also when an incremental build loaded it from the classes directory.
-            if (!classSymbol.isOfThisModule(session)) return null
+        private fun leakInMembers(classSymbol: FirRegularClassSymbol, type: ConeClassLikeType, holder: String?): String? {
             if (classSymbol.classKind != ClassKind.CLASS) return null
             if (classSymbol in walking || !walked.add(classSymbol to type.typeArguments.toList())) return null
             walking += classSymbol
@@ -264,16 +323,22 @@ object ComposableRetainLeakChecker : FirFunctionCallChecker(MppCheckerKind.Commo
                     // Only what an instance stores: a property computed by its getter holds nothing of its own.
                     if (!property.hasBackingField && !property.isDelegatedProperty) continue
                     val propertyType = substitutor.substituteOrSelf(property.resolvedReturnType)
-                    leakIn(propertyType, path = "$className.${property.name.asString()}", holder = null)?.let { return it }
+                    leakIn(propertyType, path = "$className.${property.name.asString()}", holder)?.let { return it }
                 }
                 for (superType in classSymbol.resolvedSuperTypes) {
                     val substituted = substitutor.substituteOrSelf(superType)
-                    leakIn(substituted, path = null, holder = null)?.let { return it }
+                    // An interface stores nothing, and its type arguments say what it handles (`Comparator<View>`);
+                    // a collection's are its elements still, as when it is implemented by delegation.
+                    if (substituted.isInterface() && !substituted.holdsItsArguments()) continue
+                    leakIn(substituted, path = null, holder)?.let { return it }
                 }
                 return null
             } finally {
                 walking -= classSymbol
             }
         }
+
+        private fun ConeKotlinType.isInterface(): Boolean =
+            fullyExpandedType(session).toRegularClassSymbol(session)?.classKind == ClassKind.INTERFACE
     }
 }

@@ -4,13 +4,19 @@ import android.view.View
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.RememberObserver
 import androidx.compose.runtime.annotation.DoNotRetain
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.retain.RetainObserver
 import androidx.compose.runtime.retain.RetainedEffect
 import androidx.compose.runtime.retain.retain
 import androidx.compose.runtime.retain.retainRetainedValuesStoreRegistry
+import java.lang.ref.SoftReference
 import java.lang.ref.WeakReference
+import java.util.Optional
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 
 class Holder(val view: View)
 
@@ -56,6 +62,16 @@ class Lookup(private val id: String) {
     val view: View get() = View(Context())
 }
 
+class WeakHolder(context: Context) {
+    private val reference = WeakReference(context)
+    fun context(): Context? = reference.get()
+}
+
+// Compares views without holding one.
+class ViewOrder : Comparator<View> {
+    override fun compare(a: View, b: View): Int = 0
+}
+
 // Reported: a Context, a View held by a property, a class marked @DoNotRetain.
 @Composable
 fun Retained(context: Context, view: View) {
@@ -79,11 +95,34 @@ fun Shapes(appContext: AppContext, views: List<View>, view: View) {
     retain <!KOTRAIL_RETAINED_LEAK!>{ Box(view) }<!>
 }
 
+// Reported: a library generic holds what its type arguments are, through a project class too.
+@Composable
+fun Generics(context: Context, view: View, holders: StateFlow<Holder>) {
+    retain <!KOTRAIL_RETAINED_LEAK!>{ mutableStateOf(view) }<!>
+    retain <!KOTRAIL_RETAINED_LEAK!>{ MutableStateFlow(view) }<!>
+    retain <!KOTRAIL_RETAINED_LEAK!>{ holders }<!>
+    retain <!KOTRAIL_RETAINED_LEAK!>{ lazy { context } }<!>
+}
+
+// Reported: a platform type holds what its Kotlin type does, a referent taken out of a weak reference included.
+@Composable
+fun Platform(context: Context, view: View) {
+    retain <!KOTRAIL_RETAINED_LEAK!>{ Optional.of(view) }<!>
+    retain <!KOTRAIL_RETAINED_LEAK!>{ WeakReference(context).get() }<!>
+}
+
+// Reported: the value is what the lambda returns, though the call infers a wider type.
+@Composable
+fun Widened(context: Context) {
+    retain<Any> <!KOTRAIL_RETAINED_LEAK!>{ context }<!>
+}
+
 // Reported: keys are kept as long as the value is.
 @Composable
-fun Keys(view: View, session: Session, id: String) {
+fun Keys(view: View, session: Session, state: MutableState<View>, id: String) {
     retain(<!KOTRAIL_RETAINED_LEAK!>view<!>) { Data() }
     retain(id, <!KOTRAIL_RETAINED_LEAK!>session<!>) { Data() }
+    retain(<!KOTRAIL_RETAINED_LEAK!>state<!>) { Data() }
     RetainedEffect(<!KOTRAIL_RETAINED_LEAK!>view<!>) { onRetire {} }
     retainRetainedValuesStoreRegistry().LocalRetainedValuesStoreProvider(<!KOTRAIL_RETAINED_LEAK!>view<!>) {}
 }
@@ -118,11 +157,24 @@ fun Plain(count: Int, id: String) {
     RetainedEffect(id) { onRetire {} }
 }
 
-// Quiet: a library class other than the leak types ends the walk, and a computed property stores nothing.
+// Quiet: a weak or a soft reference does not keep what it refers to, also held by a project class,
+// and a computed property stores nothing.
 @Composable
-fun Library(context: Context, id: String) {
+fun Library(context: Context, view: View, id: String) {
     retain { WeakReference(context) }
+    retain { SoftReference(view) }
+    retain { WeakHolder(context) }
     retain { Lookup(id) }
+}
+
+// Quiet: a generic of data holds data, an interface a class implements stores nothing, and a
+// result coerced to Unit retains Unit.
+@Composable
+fun GenericData(context: Context, count: Int) {
+    retain { mutableStateOf(count) }
+    retain { ViewOrder() }
+    retain<Any> { count }
+    retain<Unit> { context }
 }
 
 // Quiet: what a lambda captures is not in its type.

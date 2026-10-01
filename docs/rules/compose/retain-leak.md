@@ -2,7 +2,7 @@
 
 **Diagnostics:** `KOTRAIL_RETAINED_LEAK` (error, on the calculation or the key), `KOTRAIL_RETAINED_REMEMBER_OBSERVER` (error, on the calculation)
 **Key:** `rules.compose.retainLeak` (on by default)
-**Settings:** `functions` (default `retain`, `RetainedEffect`, `RetainedValuesStoreRegistry.LocalRetainedValuesStoreProvider`), `leakTypes` (default `android.content.Context`, `android.view.View`)
+**Settings:** `functions` (default `retain`, `RetainedEffect`, `RetainedValuesStoreRegistry.LocalRetainedValuesStoreProvider`), `leakTypes` (default `android.content.Context`, `android.view.View`), `nonRetainingTypes` (default `java.lang.ref.Reference`, `kotlin.native.ref.WeakReference`)
 
 ## What it rejects
 
@@ -24,8 +24,9 @@ fun Screen(context: Context, view: View) {
     val b = retain { Holder(view) }           // reported: Holder.view (android.view.View)
     val c = retain { Presenter(context) }     // reported: Presenter.context (android.content.Context)
     val d = retain { Session() }              // reported: @DoNotRetain Session
-    val e = retain(view) { Cache() }          // reported on the key: android.view.View
-    val f = retain { Tracker() }              // reported: a RememberObserver but not a RetainObserver
+    val e = retain { mutableStateOf(view) }   // reported: MutableState<View> (android.view.View)
+    val f = retain(view) { Cache() }          // reported on the key: android.view.View
+    val g = retain { Tracker() }              // reported: a RememberObserver but not a RetainObserver
 }
 ```
 
@@ -79,20 +80,28 @@ and throws.
   getter, or in a lambda of a `@Composable` function type (`setContent { }`, a content slot).
 - **Keys** are the arguments of the parameters named `key1`, `key2`, ..., `keys` or `inputs`. The
   **value** is the function-typed argument whose return type is the call's own (`calculation` of
-  `retain`); a function whose result is `Unit` (`RetainedEffect`) has keys only.
+  `retain`); a function whose result is `Unit` (`RetainedEffect`) has keys only. A lambda's value
+  is the type of its last expression when that is more specific than what the call infers:
+  `retain<Any> { context }` retains a Context.
 - `KOTRAIL_RETAINED_LEAK` is reported on the calculation, or on each key, when its type:
   - is one of `leakTypes` or a subclass of one (`AppContext : Context`),
   - is a class annotated `@DoNotRetain`, or a subclass of one,
   - or holds one of those. A project class holds what it stores: every property with a backing
     field or a delegate, private ones included (a private `context` leaks as much as a public
-    one), and the stored properties of its project superclasses. A collection, an array, a
-    `Pair`, a `Triple` or a `Sequence` holds its elements. A project's own generic class is
-    walked with its type arguments in place of its type parameters (`Box(view)` holds a View
-    through `Box.value`).
+    one), and the stored properties of its project superclasses. A library class holds what its
+    type arguments are: a collection or an array its elements, `MutableState<View>` and
+    `StateFlow<View>` their value, `Lazy<Context>` what it computes, `Optional<View>` what it
+    wraps, unless it is one of `nonRetainingTypes` (a weak or a soft reference). A project's own
+    generic class is walked with its type arguments in place of its type parameters (`Box(view)`
+    holds a View through `Box.value`). A platform type (`Context!`, as `WeakReference.get()`
+    returns) holds what its Kotlin type does.
 - The message names what is held and how: `android.content.Context` for the value itself,
   `AppContext (android.content.Context)` for a subclass, `Holder.view (android.view.View)` for a
-  property, `List<View> (android.view.View)` for elements, `@DoNotRetain Session` for an
-  annotated class.
+  property, `MutableState<View> (android.view.View)` for a type argument, `StateFlow<Holder>
+  (Holder.view: android.view.View)` for a property reached through one, `@DoNotRetain Session`
+  for an annotated class.
+- A library generic that does not hold its type arguments is reported too: a `Comparator<View>`,
+  a `KClass<View>`. Add such a class to `nonRetainingTypes`.
 - `KOTRAIL_RETAINED_REMEMBER_OBSERVER` is reported on the calculation when the value's type is a
   `RememberObserver` and not a `RetainObserver`. Keys may be either: the runtime does not dispatch
   to them.
@@ -102,13 +111,21 @@ and throws.
 - The function is not `@Composable` and the call is not in a `@Composable` lambda.
 - The value and the keys hold only data: `retain { Data(count) }`, `retain(id) { Cache() }`.
 - The value is both a `RememberObserver` and a `RetainObserver`.
-- A library class other than `leakTypes` ends the walk: what it holds is not visible from its
-  type. `retain { WeakReference(context) }` is quiet, as it should be; a `StateFlow<View>` is
-  quiet too, which is a miss.
+- A weak or a soft reference does not keep what it refers to: `retain { WeakReference(context) }`
+  and `retain { SoftReference(view) }` are quiet, and so is a project class that stores one.
+  `nonRetainingTypes` lists them, subclasses included.
+- The type arguments hold only data: `retain { mutableStateOf(count) }`.
+- A library class without type arguments ends the walk: what it holds is not visible from its
+  type.
+- An interface that a project class implements stores nothing: `class ViewOrder :
+  Comparator<View>` holds no View.
 - A property computed by its getter stores nothing: `val view: View get() = ...` is not held.
 - What a lambda captures is not in its type: `retain { { view.invalidate() } }` is quiet.
-- The value's type is what the call infers: a `retain { context }` whose result is discarded as
-  the last statement of a `Unit` lambda returns `Unit`, and nothing is retained.
+- A lambda whose result is coerced to `Unit` retains `Unit`: `retain<Unit> { context }`, or a
+  `retain { context }` that is itself the last statement of a `Unit` lambda.
+- A library class that holds a Context without naming it in its type arguments, and a value
+  declared wider than what it holds (`val state: State<Any> = mutableStateOf(view)`, retained
+  as `retain { state }`), are quiet, which is a miss.
 
 ## Settings
 
@@ -123,6 +140,10 @@ rules:
       - android.content.Context
       - android.view.View
       - androidx.lifecycle.LifecycleOwner
+    nonRetainingTypes:    # replaces the default list; subclasses included
+      - java.lang.ref.Reference
+      - kotlin.native.ref.WeakReference
+      - kotlin.reflect.KClass
 ```
 
 ## Related rules
@@ -140,8 +161,11 @@ walks the same type graph for a different finding.
 `fir/compose/checkers/ComposableRetainLeakChecker.kt`, a function call checker. The callee is
 matched by `callableId` against `functions`; keys by parameter name, the value by comparing the
 parameter's function return type with the callee's return type. The walk over what a value holds
-resolves supertypes with `lookupSuperTypes` for the leak and `@DoNotRetain` checks, enters only
-classes of this module, keeps the properties that have a backing field or are delegated, and
-remembers the classes it walked with their type arguments so that a cycle ends. The container
-types whose type arguments are walked are shared with `noCallbackInModel` in
-`fir/compose/ContainerTypes.kt`.
+resolves supertypes with `lookupSuperTypes` for the leak and `@DoNotRetain` checks, enters the
+members only of classes of this module, keeps the properties that have a backing field or are
+delegated, and remembers the classes it walked with their type arguments so that a cycle ends.
+A library class is entered through its type arguments, after the lower bound of a platform type
+is taken. A project class's library supertypes are walked the same way, except interfaces other
+than the container types of `fir/compose/ContainerTypes.kt` (shared with `noCallbackInModel`).
+A lambda's value type is its last statement's type (the result of the return the body ends in)
+when `AbstractTypeChecker.isSubtypeOf` places it under the function type's result.
