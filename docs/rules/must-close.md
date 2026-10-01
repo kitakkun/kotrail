@@ -43,16 +43,10 @@ because nothing in the code it is looking at says the object is a resource.
   assigned to a property (also through `also { installed = it }`), passed as an argument, or
   the receiver of a bound callable reference (`thread(block = surface::close)`,
   `onDispose(surface::close)`). Whoever receives it is the owner; the rule does not follow it.
-- The resource is a view over a stream the function does not own: a constructor or factory
-  that takes, as an argument, a resource that is not a creation in the same function (a
-  parameter, `this`, a property, the result of a call that is not a creation), as in
-  `BufferedReader(parameterReader)` or `BoundedReader(this, length)` inside the wrapped
-  reader's own class. Closing the view would close the parent, so the parent's owner decides.
-  A wrapper over a fresh creation, `BufferedReader(FileReader(path))`, is still tracked: the
-  wrapper carries the obligation of what it wraps. A wrapper chained on a view
-  (`Wrapper(parameterStream).bufferedReader()`), or on a stream reached from a parameter or
-  `this` (`parameterStream.bufferedReader()`, `this.stream.buffered()`), is a view too. A
-  stream pulled out of an object, `process.inputStream.bufferedReader()`, is still tracked.
+- The resource is a wrapper over a borrowed stream: a stream the function received rather than
+  created (a parameter, `this`, a property, the result of a call that is not a creation).
+  Closing the wrapper would close the lender's stream, so the wrapper is not the function's to
+  close. [Wrappers over borrowed streams](#wrappers-over-borrowed-streams) lists the forms.
 - The type is on `ignoredTypes`: an in-memory buffer holds nothing a close would free, and a
   project's `AutoCloseable` registration handles (an uninstall token) go there too:
 
@@ -74,10 +68,25 @@ because nothing in the code it is looking at says the object is a resource.
 - A local closed anywhere in the body counts as closed, whatever the paths; the rule does not
   reason about paths, so a `close()` reachable on one branch settles the resource.
 
-## Views and pointers
+## Wrappers over borrowed streams
 
-A type that is only a pointer or a view over memory owned elsewhere, with no deallocator of its
-own (a native pointer into a buffer another object frees), is `AutoCloseable` in name only: its
+The rule does not track a resource created over a borrowed stream:
+
+- A constructor or factory that takes, as an argument, a resource that is not a creation in the
+  same function: `BufferedReader(parameterReader)`, or `BoundedReader(this, length)` inside the
+  wrapped reader's own class.
+- A wrapper chained on such a wrapper, or on a stream reached from a parameter or `this`:
+  `Wrapper(parameterStream).bufferedReader()`, `parameterStream.bufferedReader()`,
+  `this.stream.buffered()`.
+
+Two forms stay tracked. A wrapper over a fresh creation, `BufferedReader(FileReader(path))`,
+carries the obligation of what it wraps. A wrapper chained on a stream pulled out of an object,
+`process.inputStream.bufferedReader()`, is the function's to close.
+
+## Pointers without a deallocator
+
+A type that is only a pointer into memory owned elsewhere, with no deallocator of its own (a
+native pointer into a buffer another object frees), is `AutoCloseable` in name only: its
 `close()` frees nothing, and closing it early can be wrong. List it in `ignoredTypes`:
 
 ```yaml
@@ -103,6 +112,6 @@ creations, what the elements above each one do with it (`use`, return, assignmen
 the locals initialized from a creation (through scope functions, safe calls, `?:` and the
 result of a `use` / `let` / `run` lambda), the `close()` / `use` calls on those locals and the
 bound callable references whose receiver is one of them. A creation with a closeable argument
-that is not itself a creation (directly or through a local holding one) is a view and is not
-collected, and so is a creation whose closeable receiver is a view, a parameter, or rooted at
-`this` through property accesses.
+that is not itself a creation (directly or through a local holding one) wraps a borrowed stream
+and is not collected, and so is a creation whose closeable receiver is itself a wrapper over a
+borrowed stream, a parameter, or rooted at `this` through property accesses.

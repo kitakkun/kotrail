@@ -121,25 +121,25 @@ class Source(private val stream: InputStream) : Reader() {
     override fun read(cbuf: CharArray, off: Int, len: Int): Int = -1
     override fun close() {}
 
-    // Not reported: a view over this reader; its owner closes it.
+    // Not reported: a wrapper over `this`, a borrowed stream; whoever owns this reader closes it.
     fun limited(n: Int): Int = Bounded(this, n).read()
 
-    // Not reported: a view over a property the class owns.
+    // Not reported: a wrapper over a stream borrowed from a property the class owns.
     fun peek(): Int = Wrapper(this.stream).read()
 }
 
-fun views(parameterStream: InputStream, path: String): Int {
-    // Not reported: a view over a parameter; the caller owns the stream.
-    val view = Wrapper(parameterStream)
-    view.read()
+fun borrowedStreams(parameterStream: InputStream, path: String): Int {
+    // Not reported: a wrapper over a stream borrowed from the caller; the caller closes it.
+    val wrapper = Wrapper(parameterStream)
+    wrapper.read()
 
     // Reported: the wrapped stream is created here, so the wrapper carries the obligation.
     val owned = <!KOTRAIL_RESOURCE_NOT_CLOSED!>Wrapper(FileInputStream(path))<!>
     return owned.read()
 }
 
-fun wrappedViews(parameterStream: InputStream): String {
-    // Not reported: a wrapper chained on a view, or on a parameter, closes a stream the caller owns.
+fun chainedOnBorrowed(parameterStream: InputStream): String {
+    // Not reported: a wrapper chained on a wrapper over a borrowed stream, or on a parameter, closes a stream the caller owns.
     val chained = Wrapper(parameterStream).bufferedReader()
     val direct = parameterStream.bufferedReader()
     return chained.readLine() + direct.readLine()
