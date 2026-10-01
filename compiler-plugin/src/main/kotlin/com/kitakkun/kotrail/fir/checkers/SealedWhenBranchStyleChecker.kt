@@ -8,8 +8,10 @@ import com.kitakkun.kotrail.compat.qualifierClassId
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.fix.FixBuilder
 import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.recordNameProbe
 import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
+import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -74,7 +76,7 @@ object SealedWhenBranchStyleChecker : FirWhenExpressionChecker(MppCheckerKind.Co
                         val fix = listOf(FixBuilder.insertBefore(conditionSource, "is "))
                         reportKotrail(conditionSource, KotrailDiagnostics.SEALED_WHEN_BRANCH_STYLE, name, "is $name", fix)
                     }
-                    WhenBranchStyle.OBJECT -> condition.objectChecked(session)?.let { objectClass ->
+                    WhenBranchStyle.OBJECT -> condition.objectChecked()?.let { objectClass ->
                         val name = objectClass.name.asString()
                         val conditionSource = condition.source ?: continue
                         val written = FixBuilder.textOf(conditionSource) ?: continue
@@ -91,6 +93,7 @@ object SealedWhenBranchStyleChecker : FirWhenExpressionChecker(MppCheckerKind.Co
         if (this is FirBooleanOperatorExpression) leftOperand.alternatives() + rightOperand.alternatives() else listOf(this)
 
     /** The object an `Obj ->` condition compares the subject with, or `null`. */
+    context(context: CheckerContext)
     private fun FirExpression.objectCompared(session: FirSession): FirRegularClassSymbol? {
         if (this !is FirEqualityOperatorCall || operation != FirOperation.EQ) return null
         val qualifier = arguments.filterIsInstance<FirResolvedQualifier>().singleOrNull() ?: return null
@@ -98,20 +101,27 @@ object SealedWhenBranchStyleChecker : FirWhenExpressionChecker(MppCheckerKind.Co
     }
 
     /** The object an `is Obj ->` condition checks the subject against, or `null`. */
-    private fun FirExpression.objectChecked(session: FirSession): FirRegularClassSymbol? {
+    context(context: CheckerContext)
+    private fun FirExpression.objectChecked(): FirRegularClassSymbol? {
         if (this !is FirTypeOperatorCall || operation != FirOperation.IS) return null
-        val classSymbol = conversionTypeRef.coneType.fullyExpandedType(session).toRegularClassSymbol(session) ?: return null
-        return classSymbol.takeIf { it.classKind == ClassKind.OBJECT && !it.declaresEquals() }
+        val classSymbol = conversionTypeRef.coneType.fullyExpandedType().toRegularClassSymbol() ?: return null
+        return classSymbol.takeIf { it.classKind == ClassKind.OBJECT && !it.declaresEquals(source) }
     }
 
+    context(context: CheckerContext)
     private fun ClassId.toObjectSymbol(session: FirSession): FirRegularClassSymbol? =
         (session.symbolProvider.getClassLikeSymbolByClassId(this) as? FirRegularClassSymbol)
-            ?.takeIf { it.classKind == ClassKind.OBJECT && !it.declaresEquals() }
+            ?.takeIf { it.classKind == ClassKind.OBJECT && !it.declaresEquals(null) }
 
     /**
      * `Obj ->` compares with `equals`, `is Obj ->` checks the type; for an object that writes its
-     * own `equals` the two can differ, so such an object is left as written.
+     * own `equals` the two can differ, so such an object is left as written. The object's
+     * declarations are read by hand, so the question is recorded for incremental compilation: an
+     * `equals` added to or removed from the object in another file compiles this file again.
      */
-    private fun FirRegularClassSymbol.declaresEquals(): Boolean =
-        declarationSymbols.any { it is FirNamedFunctionSymbol && it.name == OperatorNameConventions.EQUALS && it.valueParameterSymbols.size == 1 }
+    context(context: CheckerContext)
+    private fun FirRegularClassSymbol.declaresEquals(source: KtSourceElement?): Boolean {
+        recordNameProbe(OperatorNameConventions.EQUALS, classId.asSingleFqName(), source)
+        return declarationSymbols.any { it is FirNamedFunctionSymbol && it.name == OperatorNameConventions.EQUALS && it.valueParameterSymbols.size == 1 }
+    }
 }

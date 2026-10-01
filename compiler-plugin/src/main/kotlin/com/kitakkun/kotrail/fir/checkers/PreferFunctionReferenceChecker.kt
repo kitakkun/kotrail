@@ -9,6 +9,7 @@ import com.kitakkun.kotrail.fir.fix.FixBuilder
 import com.kitakkun.kotrail.fir.compose.ComposeNames
 import com.kitakkun.kotrail.fir.compose.isComposable
 import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.recordNameProbe
 import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
@@ -220,16 +221,22 @@ object PreferFunctionReferenceChecker : FirAnonymousFunctionChecker(MppCheckerKi
         val owner = receiver.resolvedType.toRegularClassSymbol(session)?.takeIf { it.typeParameterSymbols.isEmpty() }
             ?: return null
         val scope = owner.unsubstitutedScope(session, context.scopeSession, withForcedTypeCalculator = false, memberRequiredPhase = null)
+        // The receiver's scope and the packages are asked by hand, so each question is recorded for incremental
+        // compilation: a function of that name added or removed in another file compiles this file again.
+        val ownerFqName = owner.classId.asSingleFqName()
         val memberName = if (property is FirSyntheticPropertySymbol) {
             // A Java getter is only referenceable as a function: `File::getAbsolutePath`, not `File::absolutePath`.
             val getterName = property.getterId.callableName
+            recordNameProbe(getterName, ownerFqName, access.source)
             if (scope.getFunctions(getterName).size > 1) return null
             getterName
         } else {
             // `Type::name` is ambiguous when a function of the same name exists on the receiver or as a
             // same-package extension, which is how an Objective-C property and its getter method arrive.
+            recordNameProbe(property.name, ownerFqName, access.source)
             if (scope.getFunctions(property.name).isNotEmpty()) return null
             val packages = setOfNotNull(owner.classId.packageFqName, property.callableId?.packageName)
+            packages.forEach { recordNameProbe(property.name, it, access.source) }
             if (packages.any { session.symbolProvider.getTopLevelFunctionSymbols(it, property.name).isNotEmpty() }) return null
             property.name
         }

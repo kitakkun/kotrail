@@ -6,6 +6,7 @@ import com.kitakkun.kotrail.compat.qualifierClassId
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.recordNameProbe
 import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
@@ -140,14 +141,22 @@ object NoFqnReferences {
         return allow.any { prefix -> name == prefix || name.startsWith("$prefix.") }
     }
 
-    /** Whether the simple name of [target] already means something else in [file]. */
+    /**
+     * Whether the simple name of [target] already means something else in [file]. The packages of
+     * the star imports and the file's own package are asked by hand, so each question is recorded
+     * for incremental compilation: a class of that name added to or removed from one of them in
+     * another file compiles [file] again. The default imports are not recorded: they name the
+     * standard library's packages, which no source file of the module adds to.
+     */
     private fun classNameIsTaken(target: ClassId, file: FirFile, session: FirSession): Boolean {
         val name = target.shortClassName
         for (import in file.imports) {
             val fqName = import.importedFqName ?: continue
             if (import.isAllUnder) {
                 val candidate = ClassId(fqName, name)
-                if (candidate != target && session.symbolProvider.getClassLikeSymbolByClassId(candidate) != null) return true
+                if (candidate == target) continue
+                session.recordNameProbe(name, fqName, import.source, file.source)
+                if (session.symbolProvider.getClassLikeSymbolByClassId(candidate) != null) return true
             } else {
                 val bound = import.aliasName ?: fqName.shortName()
                 if (bound == name && fqName != target.asSingleFqName()) return true
@@ -156,6 +165,7 @@ object NoFqnReferences {
         if (file.declarations.any { it is FirClassLikeDeclaration && it.symbol.name == name && it.symbol.classId != target }) return true
         val filePackage = file.packageDirective.packageFqName
         val samePackage = ClassId(filePackage, name)
+        if (samePackage != target) session.recordNameProbe(name, filePackage, null, file.source)
         if (samePackage != target && session.symbolProvider.getClassLikeSymbolByClassId(samePackage) != null) return true
         for (path in session.defaultImportsProvider.getDefaultImports(includeLowPriorityImports = true)) {
             if (path.isAllUnder) {
@@ -168,27 +178,33 @@ object NoFqnReferences {
         return false
     }
 
-    /** Whether a top-level callable named [name] from another package is already in scope in [file]. */
+    /**
+     * Whether a top-level callable named [name] from another package is already in scope in [file].
+     * The packages are asked by hand, and the star imports and the file's own package recorded for
+     * incremental compilation, as in [classNameIsTaken].
+     */
     private fun callableNameIsTaken(targetPackage: FqName, name: Name, file: FirFile, session: FirSession): Boolean {
-        fun providesCallable(packageFqName: FqName): Boolean =
-            packageFqName != targetPackage &&
-                (session.symbolProvider.getTopLevelFunctionSymbols(packageFqName, name).isNotEmpty() ||
-                    session.symbolProvider.getTopLevelPropertySymbols(packageFqName, name).isNotEmpty())
+        fun providesCallable(packageFqName: FqName, record: Boolean): Boolean {
+            if (packageFqName == targetPackage) return false
+            if (record) session.recordNameProbe(name, packageFqName, null, file.source)
+            return session.symbolProvider.getTopLevelFunctionSymbols(packageFqName, name).isNotEmpty() ||
+                session.symbolProvider.getTopLevelPropertySymbols(packageFqName, name).isNotEmpty()
+        }
 
         for (import in file.imports) {
             val fqName = import.importedFqName ?: continue
             if (import.isAllUnder) {
-                if (providesCallable(fqName)) return true
+                if (providesCallable(fqName, record = true)) return true
             } else {
                 val bound = import.aliasName ?: fqName.shortName()
                 if (bound == name && fqName.parent() != targetPackage) return true
             }
         }
         if (file.declarations.any { it is FirCallableDeclaration && it.symbol.callableId?.callableName == name }) return true
-        if (providesCallable(file.packageDirective.packageFqName)) return true
+        if (providesCallable(file.packageDirective.packageFqName, record = true)) return true
         for (path in session.defaultImportsProvider.getDefaultImports(includeLowPriorityImports = true)) {
             if (path.isAllUnder) {
-                if (providesCallable(path.fqName)) return true
+                if (providesCallable(path.fqName, record = false)) return true
             } else if ((path.alias ?: path.fqName.shortName()) == name && path.fqName.parent() != targetPackage) {
                 return true
             }

@@ -3,8 +3,10 @@ package com.kitakkun.kotrail.fir.checkers
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.kotrailConfig
+import com.kitakkun.kotrail.fir.recordNameProbe
 import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
+import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
@@ -17,7 +19,6 @@ import org.jetbrains.kotlin.fir.expressions.FirQualifiedAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirThisReceiverExpression
 import org.jetbrains.kotlin.fir.references.FirThisReference
 import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
-import org.jetbrains.kotlin.fir.resolve.ScopeSession
 import org.jetbrains.kotlin.fir.resolve.fullyExpandedType
 import org.jetbrains.kotlin.fir.resolve.isSubclassOf
 import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
@@ -93,7 +94,7 @@ object AmbiguousImplicitReceiverChecker : FirQualifiedAccessExpressionChecker(Mp
                     // Nesting a scope in another of the same type (`Row { Row { } }`, a builder in a builder), or of a
                     // supertype or subtype of it (`ContentDrawScope` in `DrawScope`), means the nearest one.
                     !candidate.classSymbol(session).isRelatedTo(boundClass, session) &&
-                    candidate.hasMemberNamed(callee.name, session, context.scopeSession)
+                    candidate.hasMemberNamed(callee.name, source)
             } ?: continue
             reportKotrail(
                 source,
@@ -131,10 +132,18 @@ object AmbiguousImplicitReceiverChecker : FirQualifiedAccessExpressionChecker(Mp
         else -> null
     }
 
-    /** Whether the receiver's type declares or inherits a function or property called [name]. */
-    private fun FirThisOwnerSymbol<*>.hasMemberNamed(name: Name, session: FirSession, scopeSession: ScopeSession): Boolean {
+    /**
+     * Whether the receiver's type declares or inherits a function or property called [name]. The
+     * name is looked up in the class's scope by hand, so the lookup is recorded for incremental
+     * compilation: a member of that name added to or removed from the class (or a supertype) in
+     * another file compiles this file again.
+     */
+    context(context: CheckerContext)
+    private fun FirThisOwnerSymbol<*>.hasMemberNamed(name: Name, source: KtSourceElement): Boolean {
+        val session = context.session
         val classSymbol = classSymbol(session) ?: return false
-        val scope = classSymbol.unsubstitutedScope(session, scopeSession, withForcedTypeCalculator = false, memberRequiredPhase = null)
+        recordNameProbe(name, classSymbol.classId.asSingleFqName(), source)
+        val scope = classSymbol.unsubstitutedScope(session, context.scopeSession, withForcedTypeCalculator = false, memberRequiredPhase = null)
         return scope.getFunctions(name).isNotEmpty() || scope.getProperties(name).isNotEmpty()
     }
 }
