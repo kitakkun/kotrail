@@ -5,6 +5,7 @@ import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.compose.effects.EffectCaptureAnalysis
 import com.kitakkun.kotrail.fir.compose.effects.effectCaptureService
 import com.kitakkun.kotrail.fir.compose.isComposable
+import com.kitakkun.kotrail.fir.isOfThisModule
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
@@ -91,7 +92,8 @@ object ComposableRememberKeysChecker : FirFunctionCallChecker(MppCheckerKind.Com
 
         val callee = expression.calleeReference.toResolvedNamedFunctionSymbol() ?: return
         // A helper of this module is reported at its own effect; the call is where the fix belongs only for a helper compiled elsewhere.
-        if (callee.origin.fromSource) return
+        // One that an incremental build did not compile again is still of this module: its effect was reported when it was.
+        if (callee.isOfThisModule(session)) return
         if (callee.callableId.asSingleFqName().asString() in keyedFunctions) return
         if (!callee.isComposable(session)) return
         val captured = service.capturedParameters(callee)

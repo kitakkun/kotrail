@@ -7,6 +7,7 @@ import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.compose.ComposeNames
 import com.kitakkun.kotrail.fir.compose.isComposable
 import com.kitakkun.kotrail.fir.compose.isPreview
+import com.kitakkun.kotrail.fir.isOfThisModule
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.reportKotrail
 import com.kitakkun.kotrail.fir.reportingAt
@@ -136,7 +137,8 @@ object ComposablePreviewParameterChecker : FirFileChecker(MppCheckerKind.Common)
                 override fun visitFunctionCall(functionCall: FirFunctionCall) {
                     if (model != null) return
                     val constructor = functionCall.calleeReference.toResolvedCallableSymbol() as? FirConstructorSymbol
-                    val classSymbol = constructor?.takeIf { it.origin.fromSource }?.resolvedReturnType?.toRegularClassSymbol(session)
+                    // A class of this module, also one an incremental build loaded from the classes directory.
+                    val classSymbol = constructor?.takeIf { it.isOfThisModule(session) }?.resolvedReturnType?.toRegularClassSymbol(session)
                     if (classSymbol != null && classSymbol.classKind == ClassKind.CLASS && !classSymbol.classId.isPreviewStandIn()) {
                         model = classSymbol
                         return

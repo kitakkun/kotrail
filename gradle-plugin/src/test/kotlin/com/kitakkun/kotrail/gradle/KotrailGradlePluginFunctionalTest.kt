@@ -881,7 +881,7 @@ class KotrailGradlePluginFunctionalTest {
     @Test
     fun `an incremental build that compiles only the caller reads the facts of untouched callees from the facts file of the module itself`() {
         writeSettings()
-        writeFile("kotrail.yaml", "severity: warning\n")
+        writeFile("kotrail.yaml", "severity: warning\nrules:\n  noExternalMutation:\n    plainVars: true\n")
         writeBuild(
             """
             dependencies {
@@ -907,6 +907,16 @@ class KotrailGradlePluginFunctionalTest {
                 require(times >= 0)
                 return times
             }
+
+            class Settings {
+                var name: String = ""
+
+                fun reset() {
+                    name = ""
+                }
+            }
+
+            data class Point(var x: Int)
         """.trimIndent()
         val caller = """
             import kotlinx.coroutines.delay
@@ -921,15 +931,27 @@ class KotrailGradlePluginFunctionalTest {
             fun reconnectNow(manager: Manager) {
                 manager.reconnect()
             }
+
+            fun rename(settings: Settings) {
+                settings.name = "renamed"
+            }
+
+            fun move(point: Point) {
+                point.x = 1
+            }
         """.trimIndent()
         writeFile("src/main/kotlin/Callee.kt", calleeWithRequire)
         writeFile("src/main/kotlin/Caller.kt", caller)
         val classes = File(projectDir, "build/classes/kotlin/main")
         val callerClass = File(classes, "CallerKt.class")
-        val calleeClasses = listOf(File(classes, "CalleeKt.class"), File(classes, "Manager.class"))
+        val calleeClasses = listOf("CalleeKt", "Manager", "Settings", "Point").map { File(classes, "$it.class") }
         val factsFile = File(projectDir, "build/kotrail/facts/jvm-main/consumer.facts")
         fun delayFindings(result: BuildResult) = result.output.lines().filter { "Caller.kt:5:5" in it && "KOTRAIL_DELAY_WAITS_FOR_ASYNC_WORK" in it }
         fun preconditionFindings(result: BuildResult) = result.output.lines().filter { "Caller.kt" in it && "KOTRAIL_PRECONDITION_VIOLATED" in it }
+        // Settings is a class of this module, which a plain var write from another class is reported against; Point is a
+        // data class with no function of its own, a bag of values, which is not.
+        fun stateWriteFindings(result: BuildResult) = result.output.lines().filter { "Caller.kt" in it && "KOTRAIL_MUTATED_OUTSIDE_OWNER" in it }
+            .also { findings -> assertTrue(findings.none { "'Point'" in it }, result.output) }
         fun callerFindings(result: BuildResult) = result.output.lines().filter { "Caller.kt" in it && "KOTRAIL_" in it }
         fun entry(file: String, id: String, fact: String) = "{\"file\": \"src/main/kotlin/$file\", \"id\": \"$id\", " to fact
         fun assertFacts(vararg expected: Pair<Pair<String, String>, Boolean>) {
@@ -949,6 +971,7 @@ class KotrailGradlePluginFunctionalTest {
         assertEquals(TaskOutcome.SUCCESS, first.task(":compileKotlin")?.outcome, first.output)
         assertEquals(1, delayFindings(first).size, first.output)
         assertEquals(1, preconditionFindings(first).size, first.output)
+        assertEquals(1, stateWriteFindings(first).size, first.output)
         assertFacts(reconnect to true, retry to true, reconnectNow to true)
         val calleeStamps = calleeClasses.map { it.lastModified() }
 
@@ -964,6 +987,9 @@ class KotrailGradlePluginFunctionalTest {
         assertTrue(callerClass.lastModified() != callerStamp, "Caller.kt was not compiled again\n" + second.output)
         assertEquals(1, delayFindings(second).size, second.output)
         assertEquals(1, preconditionFindings(second).size, second.output)
+        // Settings, loaded from the classes directory, is still a class of this module, not a library's; Point is still a
+        // bag, though its generated members come back from the class file without a source that says they are generated.
+        assertEquals(1, stateWriteFindings(second).size, second.output)
         assertFacts(reconnect to true, retry to true, reconnectNow to true)
 
         // Only the callee's body changes: its require goes. Its ABI is the same, so the incremental build compiles
@@ -984,6 +1010,7 @@ class KotrailGradlePluginFunctionalTest {
         assertEquals(TaskOutcome.SUCCESS, rerun.task(":compileKotlin")?.outcome, rerun.output)
         assertEquals(1, delayFindings(rerun).size, rerun.output)
         assertTrue(preconditionFindings(rerun).isEmpty(), rerun.output)
+        assertEquals(1, stateWriteFindings(rerun).size, rerun.output)
         assertFacts(reconnect to true, retry to false, reconnectNow to true)
     }
 

@@ -216,7 +216,12 @@ callees come from the classes directory, without their bodies. Their facts come 
 module's own facts file, which the previous build wrote and which keeps the entries of the files
 a build does not compile, so the use site is checked as a full build would check it: edit only
 the file with `manager.reconnect(); delay(500)` and the `delayForCompletion` finding is still
-reported (see [The own facts file](inferred-metadata.md#the-own-facts-file)).
+reported (see [The own facts file](inferred-metadata.md#the-own-facts-file)). The rules that
+tell the module's own code from a library's count those callees as the module's: the owner of a
+plain `var` in [no external mutation](rules/no-external-mutation.md), a project model in
+[no callback in model](rules/compose/no-callback-in-model.md) and
+[preview parameter](rules/compose/preview-parameter.md), and a helper whose effect is reported
+where it is declared rather than at each call in [remember keys](rules/compose/remember-keys.md).
 
 The other way round does not work. Kotlin's incremental compilation recompiles a file when
 something the file itself refers to changes in a way that could change how it compiles: the

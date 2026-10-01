@@ -26,3 +26,11 @@ fun FirBasedSymbol<*>.isPrecompiled(session: FirSession): Boolean {
     val own = session.moduleData
     return moduleData == own || moduleData in own.allDependsOnDependencies
 }
+
+/**
+ * Whether the declaration belongs to the module [session] compiles: compiled from source, or
+ * loaded back by an incremental compilation from a file it does not compile again
+ * ([isPrecompiled]). What a rule means by "this module" or "a project class", as opposed to a
+ * library; whether the body is at hand is another question, which `fromSource` answers.
+ */
+fun FirBasedSymbol<*>.isOfThisModule(session: FirSession): Boolean = origin.fromSource || isPrecompiled(session)

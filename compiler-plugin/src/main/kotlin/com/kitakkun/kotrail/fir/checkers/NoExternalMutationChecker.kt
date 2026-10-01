@@ -5,6 +5,7 @@ package com.kitakkun.kotrail.fir.checkers
 import com.kitakkun.kotrail.KotrailNoExternalMutation
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
+import com.kitakkun.kotrail.fir.isPrecompiled
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.reportKotrail
 import com.kitakkun.kotrail.fir.test.isTestFunction
@@ -22,6 +23,9 @@ import org.jetbrains.kotlin.fir.containingClassLookupTag
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
+import org.jetbrains.kotlin.fir.declarations.utils.isData
+import org.jetbrains.kotlin.fir.declarations.utils.isEnumClass
+import org.jetbrains.kotlin.fir.declarations.utils.isInlineOrValue
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.expressions.FirAnonymousFunctionExpression
 import org.jetbrains.kotlin.fir.expressions.FirDesugaredAssignmentValueReferenceExpression
@@ -102,6 +106,8 @@ import org.jetbrains.kotlin.types.AbstractTypeChecker
 object NoExternalMutationChecker {
     private val UPDATE_CALLS = setOf("update", "emit", "tryEmit", "compareAndSet", "getAndUpdate", "updateAndGet")
     private val SCOPE_FUNCTIONS = setOf("kotlin.apply", "kotlin.also", "kotlin.run", "kotlin.with", "kotlin.let")
+    private val OBJECT_MEMBERS = setOf("equals", "hashCode", "toString")
+    private val COMPONENT = Regex("component[1-9][0-9]*")
 
     object Assignments : FirVariableAssignmentChecker(MppCheckerKind.Common) {
         context(context: CheckerContext, reporter: DiagnosticReporter)
@@ -157,7 +163,8 @@ object NoExternalMutationChecker {
         if (source == null) return
         val property = access.calleeReference.toResolvedCallableSymbol() as? FirPropertySymbol ?: return
         val owner = ownerOf(property, session) ?: return
-        if (plainVar && owner.origin != FirDeclarationOrigin.Source) return
+        // An owner of this module: compiled from source, or loaded from the classes directory by an incremental build.
+        if (plainVar && owner.origin != FirDeclarationOrigin.Source && !owner.isPrecompiled(session)) return
         if (plainVar && owner.isBag()) return
         if (owner.isDeclaredInWriterFile(session)) return
         val receiver = access.dispatchReceiver?.unwrapSmartCast()
@@ -182,7 +189,25 @@ object NoExternalMutationChecker {
      * add a method to. The members generated for a data class are not its own.
      */
     private fun FirRegularClassSymbol.isBag(): Boolean = declarationSymbols.none { member ->
-        member is FirNamedFunctionSymbol && member.source?.kind !is KtFakeSourceElementKind
+        member is FirNamedFunctionSymbol && member.source?.kind !is KtFakeSourceElementKind && !isGeneratedWithoutSource(member)
+    }
+
+    /**
+     * A member the compiler generated, of a class loaded from class files (by an incremental build,
+     * from a file it did not compile again), where no source says so: `componentN`, `copy`,
+     * `equals`, `hashCode` and `toString` of a data class, the last three of a value class, `values`
+     * and `valueOf` of an enum class. Their own `equals`, `hashCode` or `toString` is taken for a
+     * generated one there.
+     */
+    private fun FirRegularClassSymbol.isGeneratedWithoutSource(member: FirNamedFunctionSymbol): Boolean {
+        if (member.source != null) return false
+        val name = member.name.asString()
+        return when {
+            isData -> name in OBJECT_MEMBERS || name == "copy" || COMPONENT.matches(name)
+            isInlineOrValue -> name in OBJECT_MEMBERS
+            isEnumClass -> name == "values" || name == "valueOf"
+            else -> false
+        }
     }
 
     /**

@@ -9,6 +9,7 @@ import com.kitakkun.kotrail.fir.compose.ComposeNames
 import com.kitakkun.kotrail.fir.compose.emitsUi
 import com.kitakkun.kotrail.fir.compose.isComposable
 import com.kitakkun.kotrail.fir.compose.isPreview
+import com.kitakkun.kotrail.fir.isOfThisModule
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
@@ -29,6 +30,7 @@ import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.resolve.fullyExpandedType
 import org.jetbrains.kotlin.fir.resolve.substitution.substitutorByMap
 import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.fir.types.ConeClassLikeType
@@ -144,7 +146,8 @@ object ComposableCallbackInModelChecker : NamedFunctionChecker(MppCheckerKind.Co
         }
 
         private fun callbackIn(classSymbol: FirRegularClassSymbol, type: ConeClassLikeType): String? {
-            if (!classSymbol.origin.fromSource) return null
+            // A project class: of this module, also when an incremental build loaded it from the classes directory.
+            if (!classSymbol.isOfThisModule(session)) return null
             if (classSymbol.classKind != ClassKind.CLASS && classSymbol.classKind != ClassKind.INTERFACE) return null
             if (classSymbol in walking || !walked.add(classSymbol to type.typeArguments.toList())) return null
             walking += classSymbol
@@ -154,10 +157,18 @@ object ComposableCallbackInModelChecker : NamedFunctionChecker(MppCheckerKind.Co
                     .toMap()
                 val substitutor = substitutorByMap(arguments, session)
                 val className = classSymbol.classId.shortClassName.asString()
+                // A class loaded from class files does not say which properties its primary constructor declares; in a
+                // data class every parameter of the primary constructor is one, under the same name.
+                val primaryParameters = if (classSymbol.isData && !classSymbol.origin.fromSource) {
+                    classSymbol.declarationSymbols.filterIsInstance<FirConstructorSymbol>().firstOrNull { it.isPrimary }
+                        ?.valueParameterSymbols?.mapTo(HashSet()) { it.name }.orEmpty()
+                } else {
+                    emptySet()
+                }
                 for (property in classSymbol.declarationSymbols.filterIsInstance<FirPropertySymbol>()) {
                     if (property.receiverParameterSymbol != null) continue
                     // A data class compares every property of its primary constructor, private ones included.
-                    val isCompared = classSymbol.isData && property.fromPrimaryConstructor
+                    val isCompared = classSymbol.isData && (property.fromPrimaryConstructor || property.name in primaryParameters)
                     if (Visibilities.isPrivate(property.visibility) && !isCompared) continue
                     val propertyType = substitutor.substituteOrSelf(property.resolvedReturnType)
                     callbackIn(propertyType, listOf(className, property.name.asString()), holder = null)?.let { return it }
