@@ -708,7 +708,7 @@ class KotrailGradlePluginFunctionalTest {
     }
 
     @Test
-    fun `a JVM library's JAR carries nothing of Kotrail, its facts file lies beside it, and inferredMetadata false writes none`() {
+    fun `a JVM library's JAR references nothing of Kotrail, its facts file lies beside it, and inferredMetadata false writes none`() {
         writeSettings()
         writeFile("kotrail.yaml", "severity: warning\n")
         writeFile(
@@ -733,11 +733,14 @@ class KotrailGradlePluginFunctionalTest {
         val managerClass = File(projectDir, "build/classes/kotlin/main/Manager.class")
         val factsFile = File(projectDir, "build/kotrail/facts/jvm-main/consumer.facts")
 
-        // By default the facts are written to the facts file under build/kotrail/facts, not into the classes or the
-        // JAR, and the classes name nothing of Kotrail. The consumer rule still ships, for the JARs of earlier versions.
+        // By default the facts are written to the facts file under build/kotrail/facts, not into a file of the classes
+        // or the JAR, and the classes name no class of Kotrail. Outside a build that publishes, their Kotlin metadata
+        // carries the facts for incremental compilation, under the plugin id. The consumer rule still ships, for the
+        // JARs of earlier versions.
         writeBuild(dependencies + "\n\nkotrail {\n    configFile = file(\"kotrail.yaml\")\n}")
         runBuild("jar")
         assertFalse("com/kitakkun/kotrail" in classFileText(managerClass))
+        assertTrue("com.kitakkun.kotrail" in classFileText(managerClass))
         assertFalse(File(projectDir, "build/classes/kotlin/main/META-INF/kotrail").exists())
         val lines = factsFile.readLines()
         assertTrue(lines.firstOrNull()?.startsWith("{\"module\": \"consumer\", \"kotrail\": ") == true, lines.joinToString("\n"))
@@ -754,10 +757,12 @@ class KotrailGradlePluginFunctionalTest {
             }
         }
 
-        // With both switches off, there is no facts file (the one of the previous build is gone) and the JAR has no rule.
+        // With both switches off, there is no facts file (the one of the previous build is gone), no plugin metadata, and
+        // the JAR has no rule.
         writeBuild(dependencies + "\n\nkotrail {\n    configFile = file(\"kotrail.yaml\")\n    inferredMetadata = false\n    consumerRules = false\n}")
         runBuild("jar")
         assertFalse("com/kitakkun/kotrail" in classFileText(managerClass))
+        assertFalse("com.kitakkun.kotrail" in classFileText(managerClass))
         assertFalse(factsFile.exists(), factsFile.path)
         ZipFile(jar).use { zip ->
             assertNull(zip.getEntry("META-INF/proguard/kotrail.pro"))
@@ -1016,27 +1021,229 @@ class KotrailGradlePluginFunctionalTest {
         assertTrue(previewFindings(second).isEmpty(), second.output)
         assertFacts(reconnect to true, retry to true, tracker to true, reconnectNow to true, screen to true)
 
-        // Only the callee's body changes: its require goes. Its ABI is the same, so the incremental build compiles
-        // Callee.kt alone and leaves Caller.kt as it was compiled: the caller is not checked again, so nothing withdraws
-        // the precondition finding the last build reported there (the documented limitation). The facts file has the
-        // callee's new facts and keeps the caller's.
-        writeFile("src/main/kotlin/Callee.kt", calleeWithRequire.replace("    require(times >= 0)\n", ""))
+        // Only the callee's body changes, and none of its facts: the incremental build compiles Callee.kt alone. The
+        // plugin metadata of its declarations is what it was, so Kotlin sees nothing of Caller.kt's to compile again.
+        val calleeReturningOther = calleeWithRequire.replace("    return times\n", "    return times + 0\n")
+        writeFile("src/main/kotlin/Callee.kt", calleeReturningOther)
         val callerStampBeforeThird = callerClass.lastModified()
         val third = runBuild("compileKotlin")
         assertEquals(TaskOutcome.SUCCESS, third.task(":compileKotlin")?.outcome, third.output)
         assertEquals(callerStampBeforeThird, callerClass.lastModified(), "Caller.kt was compiled again\n" + third.output)
         assertTrue(callerFindings(third).isEmpty(), third.output)
+        assertFacts(reconnect to true, retry to true, tracker to true, reconnectNow to true, screen to true)
+
+        // The callee's body changes and its require goes. Its ABI is the same, but the precondition was in the plugin
+        // metadata of retry, which is gone now: Kotlin counts retry as changed and compiles Caller.kt, which calls it,
+        // again in the same build. The caller is checked against the callee as it is now, from the class file: the
+        // precondition finding goes, the findings that do not depend on it are reported again.
+        val calleeWithoutRequire = calleeReturningOther.replace("    require(times >= 0)\n", "")
+        writeFile("src/main/kotlin/Callee.kt", calleeWithoutRequire)
+        val callerStampBeforeFourth = callerClass.lastModified()
+        val fourth = runBuild("compileKotlin")
+        assertEquals(TaskOutcome.SUCCESS, fourth.task(":compileKotlin")?.outcome, fourth.output)
+        assertTrue(callerClass.lastModified() != callerStampBeforeFourth, "Caller.kt was not compiled again\n" + fourth.output)
+        assertTrue(preconditionFindings(fourth).isEmpty(), fourth.output)
+        assertEquals(1, delayFindings(fourth).size, fourth.output)
+        assertEquals(1, stateWriteFindings(fourth).size, fourth.output)
+        assertTrue(previewFindings(fourth).isEmpty(), fourth.output)
         assertFacts(reconnect to true, retry to false, tracker to true, reconnectNow to true, screen to true)
 
-        // Compiling every file again checks the caller against the callee as it is now: the precondition finding is
-        // gone, the finding about the work the callee still starts stays.
+        // The require comes back, in the callee's file alone: the caller is compiled again and the finding returns.
+        writeFile("src/main/kotlin/Callee.kt", calleeReturningOther)
+        val callerStampBeforeFifth = callerClass.lastModified()
+        val fifth = runBuild("compileKotlin")
+        assertEquals(TaskOutcome.SUCCESS, fifth.task(":compileKotlin")?.outcome, fifth.output)
+        assertTrue(callerClass.lastModified() != callerStampBeforeFifth, "Caller.kt was not compiled again\n" + fifth.output)
+        assertEquals(1, preconditionFindings(fifth).size, fifth.output)
+        assertEquals(1, delayFindings(fifth).size, fifth.output)
+        assertFacts(reconnect to true, retry to true, tracker to true, reconnectNow to true, screen to true)
+
+        // Compiling every file again gives the same findings: the incremental builds did not drift from a full one.
         val rerun = runBuild("compileKotlin", "--rerun-tasks")
         assertEquals(TaskOutcome.SUCCESS, rerun.task(":compileKotlin")?.outcome, rerun.output)
         assertEquals(1, delayFindings(rerun).size, rerun.output)
-        assertTrue(preconditionFindings(rerun).isEmpty(), rerun.output)
+        assertEquals(1, preconditionFindings(rerun).size, rerun.output)
         assertEquals(1, stateWriteFindings(rerun).size, rerun.output)
         assertTrue(previewFindings(rerun).isEmpty(), rerun.output)
-        assertFacts(reconnect to true, retry to false, tracker to true, reconnectNow to true, screen to true)
+        assertFacts(reconnect to true, retry to true, tracker to true, reconnectNow to true, screen to true)
+    }
+
+    @Test
+    fun `an incremental build compiles a composable again when a model class it reaches gains a callback in its own file`() {
+        writeSettings()
+        writeFile("kotrail.yaml", "severity: warning\n")
+        writeBuild("kotrail {\n    configFile = file(\"kotrail.yaml\")\n}")
+        writeFile("src/main/kotlin/androidx/compose/runtime/Composable.kt", COMPOSABLE_STUB)
+        writeFile(
+            "src/main/kotlin/com/acme/ui/Text.kt",
+            """
+            package com.acme.ui
+
+            import androidx.compose.runtime.Composable
+
+            @Composable
+            fun Text(text: String, content: @Composable () -> Unit = {}) {
+                content()
+            }
+            """.trimIndent(),
+        )
+        // Screen names Model, Model names Details, and Screen never names Details.
+        writeFile("src/main/kotlin/Model.kt", "data class Model(val title: String, val details: Details)\n")
+        val details = "data class Details(val text: String)\n"
+        writeFile("src/main/kotlin/Details.kt", details)
+        writeFile(
+            "src/main/kotlin/Screen.kt",
+            """
+            import androidx.compose.runtime.Composable
+            import com.acme.ui.Text
+
+            @Composable
+            fun Screen(model: Model) {
+                Text(model.title)
+            }
+            """.trimIndent(),
+        )
+        val screenClass = File(projectDir, "build/classes/kotlin/main/ScreenKt.class")
+        fun callbackFindings(result: BuildResult) = result.output.lines().filter { "Screen.kt" in it && "KOTRAIL_CALLBACK_IN_UI_MODEL" in it }
+
+        val first = runBuild("compileKotlin")
+        assertEquals(TaskOutcome.SUCCESS, first.task(":compileKotlin")?.outcome, first.output)
+        assertTrue(callbackFindings(first).isEmpty(), first.output)
+
+        // Model.kt alone is compiled again, with Details loaded from its class file: the digest of Model reads Details the
+        // same way from a class file as from source, so it stays the same, and Screen.kt is left alone.
+        writeFile("src/main/kotlin/Model.kt", "data class Model(val title: String, val details: Details)\n\n// Touched.\n")
+        val screenStampBeforeTouch = screenClass.lastModified()
+        val touched = runBuild("compileKotlin")
+        assertEquals(TaskOutcome.SUCCESS, touched.task(":compileKotlin")?.outcome, touched.output)
+        assertEquals(screenStampBeforeTouch, screenClass.lastModified(), "Screen.kt was compiled again\n" + touched.output)
+
+        // Details gains a callback in its own file. Kotlin compiles Details.kt, then Model.kt, which names Details; the
+        // digest of what the model rules read of Model, in its plugin metadata, takes Details in, so Model counts as
+        // changed, and Screen.kt, which names Model, is compiled as well, in the same build.
+        writeFile("src/main/kotlin/Details.kt", "data class Details(val text: String, val onOpen: () -> Unit)\n")
+        val screenStamp = screenClass.lastModified()
+        val second = runBuild("compileKotlin")
+        assertEquals(TaskOutcome.SUCCESS, second.task(":compileKotlin")?.outcome, second.output)
+        assertTrue(screenClass.lastModified() != screenStamp, "Screen.kt was not compiled again\n" + second.output)
+        assertEquals(1, callbackFindings(second).size, second.output)
+        assertTrue(callbackFindings(second).single().contains("Details.onOpen"), second.output)
+
+        // The callback goes again, and with it the finding.
+        writeFile("src/main/kotlin/Details.kt", details)
+        val third = runBuild("compileKotlin")
+        assertEquals(TaskOutcome.SUCCESS, third.task(":compileKotlin")?.outcome, third.output)
+        assertTrue(callbackFindings(third).isEmpty(), third.output)
+    }
+
+    @Test
+    fun `an incremental build compiles a file again when a name it checked for appears in another file`() {
+        writeSettings()
+        writeFile("kotrail.yaml", "severity: warning\n")
+        writeBuild("kotrail {\n    configFile = file(\"kotrail.yaml\")\n}")
+        writeFile("src/main/kotlin/Stamp.kt", "fun stamp(): Long = java.util.Date().time\n")
+        val stampClass = File(projectDir, "build/classes/kotlin/main/StampKt.class")
+        fun fqnFindings(result: BuildResult) = result.output.lines().filter { "Stamp.kt" in it && "KOTRAIL_FQN_REFERENCE" in it }
+
+        // `java.util.Date` could be imported: nothing else is called Date here.
+        val first = runBuild("compileKotlin")
+        assertEquals(TaskOutcome.SUCCESS, first.task(":compileKotlin")?.outcome, first.output)
+        assertEquals(1, fqnFindings(first).size, first.output)
+
+        // Another file of the same package declares a Date: an import of java.util.Date would now clash with it. The
+        // rule asked the package for the name by hand, and recorded the question for incremental compilation, so
+        // Stamp.kt, untouched and with nothing in it that resolves to the new class, is compiled again.
+        writeFile("src/main/kotlin/Date.kt", "class Date\n")
+        val stampStamp = stampClass.lastModified()
+        val second = runBuild("compileKotlin")
+        assertEquals(TaskOutcome.SUCCESS, second.task(":compileKotlin")?.outcome, second.output)
+        assertTrue(stampClass.lastModified() != stampStamp, "Stamp.kt was not compiled again\n" + second.output)
+        assertTrue(fqnFindings(second).isEmpty(), second.output)
+
+        // The other Date goes: the import would work again, and the finding is back.
+        File(projectDir, "src/main/kotlin/Date.kt").delete()
+        val third = runBuild("compileKotlin")
+        assertEquals(TaskOutcome.SUCCESS, third.task(":compileKotlin")?.outcome, third.output)
+        assertEquals(1, fqnFindings(third).size, third.output)
+    }
+
+    @Test
+    fun `a build that publishes compiles without the plugin metadata, an ordinary build with it`() {
+        writeSettings()
+        writeFile("kotrail.yaml", "severity: warning\n")
+        writeFile("src/main/kotlin/Retry.kt", "fun retry(times: Int): Int {\n    require(times >= 0)\n    return times\n}\n")
+        val publishing = """
+            plugins {
+                kotlin("jvm") version "$kotlinVersion"
+                id("com.kitakkun.kotrail")
+                `maven-publish`
+            }
+
+            group = "com.example"
+            version = "1.0"
+
+            repositories {
+                maven { url = uri("$repository") }
+                mavenCentral()
+            }
+
+            kotlin {
+                jvmToolchain(21)
+            }
+
+            publishing {
+                publications {
+                    create<MavenPublication>("maven") {
+                        from(components["java"])
+                    }
+                }
+            }
+
+        """.trimIndent()
+        writeFile("build.gradle.kts", publishing + "\nkotrail {\n    configFile = file(\"kotrail.yaml\")\n}\n")
+        val retryClass = File(projectDir, "build/classes/kotlin/main/RetryKt.class")
+        val localRepository = File(projectDir, "m2")
+        val publishedJar = File(localRepository, "com/example/consumer/1.0/consumer-1.0.jar")
+        // The plugin id is the key of Kotrail's plugin data in the Kotlin metadata, a string of the class file.
+        fun carriesMetadata(bytes: ByteArray) = "com.kitakkun.kotrail" in String(bytes, Charsets.ISO_8859_1)
+        fun jarClassesCarryMetadata(jar: File): Boolean = ZipFile(jar).use { zip ->
+            zip.entries().asSequence().filter { it.name.endsWith(".class") }.any { carriesMetadata(zip.getInputStream(it).readBytes()) }
+        }
+
+        // An ordinary build writes the facts into the class files, for incremental compilation.
+        val assemble = runBuild("assemble", "--configuration-cache")
+        assertEquals(TaskOutcome.SUCCESS, assemble.task(":compileKotlin")?.outcome, assemble.output)
+        assertTrue(carriesMetadata(retryClass.readBytes()), "RetryKt.class carries no plugin metadata")
+        assertTrue(jarClassesCarryMetadata(File(projectDir, "build/libs/consumer-1.0.jar")))
+
+        // A build that publishes compiles again without it, so the published JAR carries nothing of Kotrail.
+        val publish = runBuild("publishToMavenLocal", "-Dmaven.repo.local=${localRepository.absolutePath}", "--configuration-cache")
+        assertEquals(TaskOutcome.SUCCESS, publish.task(":compileKotlin")?.outcome, publish.output)
+        assertFalse(carriesMetadata(retryClass.readBytes()), "RetryKt.class carries plugin metadata")
+        assertTrue(publishedJar.isFile, publishedJar.path)
+        assertFalse(jarClassesCarryMetadata(publishedJar))
+
+        // Publishing again, from the entry the configuration cache stored: the answer stored with it still says the
+        // build publishes, so there is nothing to compile, and nothing of Kotrail.
+        val again = GradleRunner.create()
+            .withProjectDir(projectDir)
+            .withArguments("publishToMavenLocal", "-Dmaven.repo.local=${localRepository.absolutePath}", "--configuration-cache")
+            .forwardOutput()
+            .build()
+        assertTrue(again.output.contains("Reusing configuration cache"), again.output)
+        assertEquals(TaskOutcome.UP_TO_DATE, again.task(":compileKotlin")?.outcome, again.output)
+        assertFalse(jarClassesCarryMetadata(publishedJar))
+
+        // The next ordinary build compiles with it again.
+        val next = runBuild("assemble", "--configuration-cache")
+        assertEquals(TaskOutcome.SUCCESS, next.task(":compileKotlin")?.outcome, next.output)
+        assertTrue(carriesMetadata(retryClass.readBytes()), "RetryKt.class carries no plugin metadata")
+
+        // incrementalMetadata = false keeps it out of every build.
+        writeFile("build.gradle.kts", publishing + "\nkotrail {\n    configFile = file(\"kotrail.yaml\")\n    incrementalMetadata = false\n}\n")
+        val off = runBuild("assemble", "--configuration-cache")
+        assertEquals(TaskOutcome.SUCCESS, off.task(":compileKotlin")?.outcome, off.output)
+        assertFalse(carriesMetadata(retryClass.readBytes()), "RetryKt.class carries plugin metadata")
     }
 
     @Test

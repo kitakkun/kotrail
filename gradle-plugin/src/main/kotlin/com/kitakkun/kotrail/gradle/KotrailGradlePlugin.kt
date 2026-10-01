@@ -37,6 +37,7 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
     private lateinit var project: Project
     private lateinit var extension: KotrailExtension
     private lateinit var factsFiles: FactsFiles
+    private lateinit var publishing: Provider<Boolean>
 
     override fun apply(target: Project) {
         project = target
@@ -45,8 +46,10 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
             annotations.convention(true)
             consumerRules.convention(true)
             inferredMetadata.convention(true)
+            incrementalMetadata.convention(true)
             packagingExcludes.convention(true)
         }
+        publishing = PublishingBuild.of(target)
         factsFiles = FactsFiles(target) { compilationName ->
             specsFor(compilationName).lastOrNull { it.inferredMetadata.isPresent }?.inferredMetadata?.get() ?: true
         }
@@ -76,8 +79,9 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
         wireComposableRecords(kotlinCompilation)
         wireComplexityRecords(kotlinCompilation)
         wireUnloadableRecords(kotlinCompilation)
-        // The facts file this compilation writes and those of its dependencies (JVM and Android only).
-        val factsOptions = factsFiles.wire(kotlinCompilation)
+        // The facts file this compilation writes and those of its dependencies, and whether the facts also go into
+        // the class files' Kotlin metadata for incremental compilation (JVM and Android only).
+        val factsOptions = factsFiles.wire(kotlinCompilation)?.zip(incrementalMetadataOption(compilationName), FactsFiles.ConcatOptions())
         val options = project.provider {
             val options = optionsFor(compilationName) +
                 SubpluginOption("fixesDir", fixesDirectoryFor(kotlinCompilation).get().asFile.path) +
@@ -94,6 +98,26 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
             options
         }
         return if (factsOptions == null) options else options.zip(factsOptions, FactsFiles.ConcatOptions())
+    }
+
+    /**
+     * `icMetadata`: on unless `incrementalMetadata` (or `inferredMetadata`, which writes no
+     * metadata at all) is off for the compilation, or the build publishes ([PublishingBuild]), so
+     * that published class files carry no Kotrail metadata. A plain option, so an input of the
+     * compile task: when it flips, the task runs again and compiles every file, since Gradle
+     * reports no incremental change for a changed input that is not a file. Read when the options
+     * are, after the task graph is ready.
+     */
+    private fun incrementalMetadataOption(compilationName: String): Provider<List<SubpluginOption>> {
+        val publishing = publishing
+        return project.provider {
+            val specs = specsFor(compilationName)
+            val incremental = specs.lastOrNull { it.incrementalMetadata.isPresent }?.incrementalMetadata?.get() ?: true
+            val inferred = specs.lastOrNull { it.inferredMetadata.isPresent }?.inferredMetadata?.get() ?: true
+            // Constant for a compilation that writes none, so that publishing does not compile it again for nothing.
+            val on = incremental && inferred && !publishing.get()
+            listOf(SubpluginOption(IC_METADATA_OPTION, on.toString()))
+        }
     }
 
     /**
@@ -453,6 +477,7 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
 
     private companion object {
         const val EXTENSION_NAME = "kotrail"
+        const val IC_METADATA_OPTION = "icMetadata"
         const val FIX_TASK = "kotrailFix"
         const val CONSUMER_RULES_TASK = "kotrailConsumerRules"
         const val CONSUMER_RULES_DIRECTORY = "kotrail/consumer-rules"

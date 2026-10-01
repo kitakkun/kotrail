@@ -31,6 +31,20 @@ abstract class KotrailOptions {
     abstract val inferredMetadata: Property<Boolean>
 
     /**
+     * Whether a JVM or Android compilation also writes its inferred facts, and a digest of what
+     * the model rules read of each class, into the Kotlin metadata of its class files, where
+     * Kotlin's incremental compilation compares them: a fact that changes in one file then compiles
+     * the files of the module that depend on it again, so that their cross-file findings appear and
+     * go as a full build would report them. Default `true`. A build whose task graph publishes
+     * (a `publish*` task, any Maven publication task) compiles without it, so that published class
+     * files carry nothing of Kotrail; that build is therefore not incremental for the compile tasks
+     * it reruns, and the next ordinary build compiles them once more. `false` keeps the class files
+     * free of it always, and incremental builds behave as they did without it. Off as well when
+     * [inferredMetadata] is.
+     */
+    abstract val incrementalMetadata: Property<Boolean>
+
+    /**
      * A `kotrail.yaml` with rule settings.
      *
      * Files are layered rather than replaced: a compilation is given the project's file first and
