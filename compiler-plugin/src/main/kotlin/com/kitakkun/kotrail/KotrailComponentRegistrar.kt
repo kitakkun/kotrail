@@ -52,6 +52,9 @@ class KotrailComponentRegistrar : CompilerPluginRegistrar() {
                     module = { configuration.get(CommonConfigurationKeys.MODULE_NAME) },
                     rootDir = config.rootDir,
                 ),
+                // The same facts in the class files' Kotlin metadata, for incremental compilation, unless the build
+                // keeps them out (a build that publishes the class files).
+                pluginMetadata = config.icMetadata,
             ),
         )
     }

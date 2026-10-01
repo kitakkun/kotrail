@@ -1,13 +1,17 @@
 package com.kitakkun.kotrail.fir.inferred
 
+import com.kitakkun.kotrail.KotrailNames
 import com.kitakkun.kotrail.fir.inferred.InferredMetadata.strings
 import com.kitakkun.kotrail.fir.isPrecompiled
 import com.kitakkun.kotrail.inferred.FactsFileLookup
+import com.kitakkun.kotrail.inferred.PluginMetadata
 import org.jetbrains.kotlin.fir.FirSession
+import org.jetbrains.kotlin.fir.declarations.utils.compilerPluginMetadata
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.extensions.FirExtensionSessionComponent
 import org.jetbrains.kotlin.fir.resolve.fullyExpandedType
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
+import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassLikeSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
@@ -76,16 +80,18 @@ object FactKeys {
 }
 
 /**
- * The facts in the facts files (see [com.kitakkun.kotrail.inferred.FactsFile]) for the
- * [InferredFactService]s to read before a declaration's own annotations: the module's own file
- * (the `ownFacts` plugin option) for a declaration that an incremental compilation loaded back
- * from the output directory, and the files of the compilation's dependencies (the `facts` plugin
- * option) for that and for a library declaration; see [FactsFileLookup] for the order. A source
- * declaration finds nothing: its body is analyzed. The indexes are built once, lazily, and shared
- * by every session; a compilation handed no facts files finds nothing.
+ * The recorded facts for the [InferredFactService]s to read before a declaration's own
+ * annotations. For a declaration that an incremental compilation loaded back from the output
+ * directory, first the plugin metadata the last compilation of its file wrote into the class
+ * file (see [com.kitakkun.kotrail.inferred.PluginMetadata]; written unless `icMetadata` was off),
+ * then the module's own facts file (the `ownFacts` plugin option). Then, for that and for a
+ * library declaration, the facts files of the compilation's dependencies (the `facts` plugin
+ * option); see [FactsFileLookup] for the order of the files. A source declaration finds nothing:
+ * its body is analyzed. The indexes are built once, lazily, and shared by every session; a
+ * compilation handed no facts files and loading no class file with plugin metadata finds nothing.
  */
 class FactsFileComponent(session: FirSession, private val lookup: FactsFileLookup) : FirExtensionSessionComponent(session) {
-    /** The arguments of fact [name] a facts file recorded for [symbol], or null. */
+    /** The arguments of fact [name] the plugin metadata or a facts file recorded for [symbol], or null. */
     fun arguments(symbol: FirBasedSymbol<*>, name: String): FactArguments? {
         val id = FactKeys.id(symbol) ?: return null
         val origin = when {
@@ -93,8 +99,17 @@ class FactsFileComponent(session: FirSession, private val lookup: FactsFileLooku
             symbol.isPrecompiled(session) -> FactsFileLookup.Origin.PRECOMPILED
             else -> FactsFileLookup.Origin.LIBRARY
         }
+        // What the last compilation of the declaration's file found, in its class file: at least as fresh as the own
+        // facts file, which the same compilation wrote. Without the fact there (a hand-written contract the writer
+        // skips, or class files compiled without the metadata), the facts files answer.
+        if (origin == FactsFileLookup.Origin.PRECOMPILED) pluginMetadata(symbol)?.get(name)?.let { return FactArguments.of(it) }
         return lookup.lookup(id, FactKeys.signature(symbol, session), name, origin)?.let { FactArguments.of(it) }
     }
+
+    /** The facts in the plugin metadata of [symbol]'s declaration, or null when it carries none of Kotrail's. */
+    @OptIn(SymbolInternals::class)
+    private fun pluginMetadata(symbol: FirBasedSymbol<*>): Map<String, Map<String, List<String>>>? =
+        symbol.fir.compilerPluginMetadata?.get(KotrailNames.PLUGIN_ID)?.let(PluginMetadata::decode)
 
     companion object {
         fun getFactory(lookup: FactsFileLookup): Factory = Factory { session -> FactsFileComponent(session, lookup) }

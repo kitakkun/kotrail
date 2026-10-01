@@ -534,6 +534,8 @@ data class KotrailConfig(
     val rootDir: String?,
     /** Whether the inferred facts are written for other modules (the `inferredMetadata` plugin option). */
     val inferredMetadata: Boolean,
+    /** Whether a JVM compilation also writes its facts into the Kotlin metadata of its class files, for incremental compilation (the `icMetadata` plugin option). */
+    val icMetadata: Boolean,
     /** Where a JVM compilation writes its facts file, or `null` to write none (the `factsOut` plugin option). */
     val factsOut: String?,
     /** The facts files of the compilation's dependencies (the `facts` plugin option). */
@@ -813,6 +815,7 @@ data class KotrailConfig(
                 bundledUnloadableDirs = configuration.get(KotrailConfigurationKeys.BUNDLED_UNLOADABLE_DIRS).orEmpty(),
                 rootDir = configuration.get(KotrailConfigurationKeys.ROOT_DIR),
                 inferredMetadata = configuration.get(KotrailConfigurationKeys.INFERRED_METADATA) ?: true,
+                icMetadata = configuration.get(KotrailConfigurationKeys.IC_METADATA) ?: true,
                 factsOut = configuration.get(KotrailConfigurationKeys.FACTS_OUT),
                 facts = configuration.get(KotrailConfigurationKeys.FACTS).orEmpty(),
                 ownFacts = configuration.get(KotrailConfigurationKeys.OWN_FACTS),
@@ -1075,6 +1078,7 @@ data class KotrailConfig(
                 bundledUnloadableDirs = emptyList(),
                 rootDir = null,
                 inferredMetadata = true,
+                icMetadata = true,
                 factsOut = null,
                 facts = emptyList(),
                 ownFacts = null,

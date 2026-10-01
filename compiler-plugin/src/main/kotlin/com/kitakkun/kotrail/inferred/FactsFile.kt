@@ -68,15 +68,26 @@ object FactsFile {
             append("{\"file\": ").append(quote(entry.file))
             append(", \"id\": ").append(quote(entry.id))
             append(", \"signature\": ").append(quote(entry.signature))
-            append(", \"facts\": {")
-            entry.facts.entries.joinTo(this, ", ") { (name, arguments) ->
-                quote(name) + ": {" + arguments.entries.joinToString(", ") { (parameter, values) ->
-                    quote(parameter) + ": [" + values.joinToString(", ") { quote(it) } + "]"
-                } + "}"
-            }
-            append("}}\n")
+            append(", \"facts\": ").append(renderFacts(entry.facts))
+            append("}\n")
         }
     }
+
+    /**
+     * One declaration's facts as a JSON object, `{"name": {"parameter": ["value", ...]}, ...}`,
+     * in the order of the maps given: the `facts` of a line of the file, and the plugin metadata
+     * of a declaration (see [PluginMetadata]).
+     */
+    internal fun renderFacts(facts: Map<String, Map<String, List<String>>>): String =
+        facts.entries.joinToString(", ", prefix = "{", postfix = "}") { (name, arguments) ->
+            quote(name) + ": {" + arguments.entries.joinToString(", ") { (parameter, values) ->
+                quote(parameter) + ": [" + values.joinToString(", ") { quote(it) } + "]"
+            } + "}"
+        }
+
+    /** The facts of a JSON object such as [renderFacts] writes, or null when [text] is not one. */
+    internal fun parseFacts(text: String): Map<String, Map<String, List<String>>>? =
+        factsOf(runCatching { Json(text).value() }.getOrNull())
 
     /** The entries of a file's text; the header and any line that is not an entry are skipped. */
     fun parse(text: String): List<Entry> = text.lineSequence().filter { it.isNotBlank() }.mapNotNull { line ->
@@ -84,15 +95,19 @@ object FactsFile {
         val file = fields["file"] as? String ?: return@mapNotNull null
         val id = fields["id"] as? String ?: return@mapNotNull null
         val signature = fields["signature"] as? String ?: return@mapNotNull null
-        val facts = (fields["facts"] as? Map<*, *>)?.entries?.mapNotNull { (name, arguments) ->
+        val facts = factsOf(fields["facts"]) ?: return@mapNotNull null
+        Entry(file, id, signature, facts)
+    }.toList()
+
+    /** The facts of a parsed JSON object, leaving out what does not have their shape; null when [value] is not an object. */
+    private fun factsOf(value: Any?): Map<String, Map<String, List<String>>>? =
+        (value as? Map<*, *>)?.entries?.mapNotNull { (name, arguments) ->
             val parameters = (arguments as? Map<*, *>)?.entries?.mapNotNull { (parameter, values) ->
                 val strings = (values as? List<*>)?.filterIsInstance<String>() ?: return@mapNotNull null
                 (parameter as? String ?: return@mapNotNull null) to strings
             }?.toMap() ?: return@mapNotNull null
             (name as? String ?: return@mapNotNull null) to parameters
-        }?.toMap() ?: return@mapNotNull null
-        Entry(file, id, signature, facts)
-    }.toList()
+        }?.toMap()
 
     /**
      * What an incremental compilation leaves in the file: the [existing] entries of the files it

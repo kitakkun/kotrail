@@ -3,11 +3,13 @@
 package com.kitakkun.kotrail.ir.inferred
 
 import com.kitakkun.kotrail.KotrailConfig
+import com.kitakkun.kotrail.KotrailNames
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.KotrailVersion
 import com.kitakkun.kotrail.compat.addStringArraysMetadataAnnotation
 import com.kitakkun.kotrail.fir.inferred.FactKeys
 import com.kitakkun.kotrail.inferred.FactsFile
+import com.kitakkun.kotrail.inferred.PluginMetadata
 import com.kitakkun.kotrail.ir.inferredAnnotationConstructor
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
@@ -81,12 +83,15 @@ class FactsFileOutput(val file: File?, val module: () -> String?, val rootDir: S
  * or class, unless it already carries the fact's annotation (a hand-written contract).
  *
  * - On the JVM (Android included) the facts go to the facts file at the `factsOut` path (see
- *   [FactsFile]), source paths relative to the build's root directory, and neither the class
- *   files nor the output directory carry anything of Kotrail. Under incremental compilation the
- *   module fragment holds only the recompiled files: their entries replace what the facts file
- *   said about them, and the entries of files that no longer exist are dropped. The file is
- *   written on every compilation, the header alone when there is no fact, and never deleted.
- *   Without `factsOut` nothing is written.
+ *   [FactsFile]), source paths relative to the build's root directory, and the output directory
+ *   gets no file of Kotrail. Under incremental compilation the module fragment holds only the
+ *   recompiled files: their entries replace what the facts file said about them, and the entries
+ *   of files that no longer exist are dropped. The file is written on every compilation, the
+ *   header alone when there is no fact, and never deleted; without `factsOut` there is none.
+ *   With `icMetadata` (the default) the same facts also go into the Kotlin metadata of the class
+ *   files, as the plugin's data on each declaration that has one, for incremental compilation to
+ *   compare (see [PluginMetadata]); a build that publishes turns it off, and the class files then
+ *   carry nothing of Kotrail.
  * - For a klib (Native, JS, Wasm, the metadata compilation of shared source sets) they are
  *   annotations, added through `metadataDeclarationRegistrar` so consumers read them with no
  *   extra wiring, against a stub class when the annotations artifact is absent.
@@ -96,36 +101,57 @@ class InferredMetadataWriter(
     private val propertyFacts: List<InferredPropertyFact>,
     private val classFacts: List<InferredClassFact>,
     private val factsFile: FactsFileOutput,
+    /** Whether a JVM compilation also writes the facts into the Kotlin metadata of its class files (the `icMetadata` option). */
+    private val pluginMetadata: Boolean,
 ) : IrGenerationExtension {
     override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
         if (!pluginContext.afterK2) return
         // On the JVM the file is written on every compilation, the header alone when no fact is on or found, so that
         // a module without facts still has a file to publish.
         if (pluginContext.platform.isJvm()) {
-            writeFactsFile(moduleFragment)
+            writeJvm(moduleFragment, pluginContext)
             return
         }
         if (functionFacts.isEmpty() && propertyFacts.isEmpty() && classFacts.isEmpty()) return
         writeAnnotations(moduleFragment, pluginContext)
     }
 
-    private fun writeFactsFile(moduleFragment: IrModuleFragment) {
-        val output = factsFile.file ?: return
-        val module = factsFile.module() ?: moduleFragment.name.asString().removeSurrounding("<", ">")
+    /**
+     * The facts file at `factsOut`, and, with [pluginMetadata], the same facts in the Kotlin metadata of every
+     * declaration that has one: one blob per declaration (see [PluginMetadata]), which the class file carries as the
+     * plugin's data and Kotlin's incremental compilation compares with what the previous compilation wrote. A fact that
+     * appears, changes or goes changes the declaration for it, so the files that use the declaration are compiled
+     * again; within the module the reader takes the blob back (see
+     * [com.kitakkun.kotrail.fir.inferred.FactsFileComponent]).
+     */
+    private fun writeJvm(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
         val entries = ArrayList<FactsFile.Entry>()
+        val blobs = LinkedHashMap<IrDeclaration, MutableMap<String, Map<String, List<String>>>>()
         for (file in moduleFragment.files) {
             val path = FactsFile.sourcePath(file.fileEntry.name, factsFile.rootDir)
             file.acceptChildrenVoid(
                 object : Walker() {
                     override fun <D, F : FirDeclaration> emit(fact: InferredFact<D, F>, declaration: D, fir: F, arrays: List<List<String>>)
                         where D : IrDeclarationWithVisibility, D : IrMutableAnnotationContainer {
+                        val arguments = fact.parameters.zip(arrays).toMap()
+                        if (pluginMetadata) blobs.getOrPut(declaration) { LinkedHashMap() }[fact.name] = arguments
                         val id = FactKeys.id(fir.symbol) ?: return
                         val signature = FactKeys.signature(fir.symbol, fir.moduleData.session)
-                        entries += FactsFile.Entry(path, id, signature, mapOf(fact.name to fact.parameters.zip(arrays).toMap()))
+                        entries += FactsFile.Entry(path, id, signature, mapOf(fact.name to arguments))
                     }
                 },
             )
         }
+        writeFactsFile(moduleFragment, entries)
+        for ((declaration, facts) in blobs) {
+            val bytes = PluginMetadata.encode(facts) ?: continue
+            pluginContext.metadataDeclarationRegistrar.addCustomMetadataExtension(declaration, KotrailNames.PLUGIN_ID, bytes)
+        }
+    }
+
+    private fun writeFactsFile(moduleFragment: IrModuleFragment, entries: List<FactsFile.Entry>) {
+        val output = factsFile.file ?: return
+        val module = factsFile.module() ?: moduleFragment.name.asString().removeSurrounding("<", ">")
         val compiled = moduleFragment.files.mapTo(HashSet()) { FactsFile.sourcePath(it.fileEntry.name, factsFile.rootDir) }
         FactsFile.update(output, module, KotrailVersion.VERSION, entries, compiled, factsFile.rootDir)
     }

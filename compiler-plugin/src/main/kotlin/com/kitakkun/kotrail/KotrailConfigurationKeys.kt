@@ -40,6 +40,13 @@ object KotrailConfigurationKeys {
      */
     val INFERRED_METADATA = CompilerConfigurationKey<Boolean>("inferredMetadata")
 
+    /**
+     * Whether a JVM compilation also writes the inferred facts (and the model surface digests)
+     * into the Kotlin metadata of its class files, as plugin data that Kotlin's incremental
+     * compilation compares; unset means it does. Off when [INFERRED_METADATA] is.
+     */
+    val IC_METADATA = CompilerConfigurationKey<Boolean>("icMetadata")
+
     /** Where a JVM compilation writes its facts file; unset means it writes none. */
     val FACTS_OUT = CompilerConfigurationKey<String>("factsOut")
 

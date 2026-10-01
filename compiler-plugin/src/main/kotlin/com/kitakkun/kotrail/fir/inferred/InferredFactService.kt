@@ -22,10 +22,11 @@ import org.jetbrains.kotlin.name.Name
  *
  * [of] answers for any symbol, source or classpath, in this order: [override] (a hand-written
  * contract, a knowledge base that wins over everything); for a symbol not compiled from source,
- * the entry under [factName] in a facts file ([recorded]): for a declaration of this module that
- * an incremental compilation loaded back from the output directory instead of compiling it
- * (without a body; see [com.kitakkun.kotrail.fir.isPrecompiled]), the module's own facts file as
- * the previous build left it,
+ * the entry under [factName] that was recorded for it ([recorded]): for a declaration of this
+ * module that an incremental compilation loaded back from the output directory instead of
+ * compiling it (without a body; see [com.kitakkun.kotrail.fir.isPrecompiled]), the plugin
+ * metadata the last compilation of its file wrote into the class file, then the module's own
+ * facts file as the previous build left it,
  * then the facts files of the dependencies, which are all a library declaration is looked up in;
  * the declaration's own [annotation], always for a
  * classpath symbol (a klib, or a JVM library built by an earlier Kotrail) and also for a source
@@ -72,9 +73,9 @@ abstract class InferredFactService<S : FirBasedSymbol<*>, T>(session: FirSession
     fun declared(symbol: S): T? = symbol.annotationOf(session, annotation)?.let { decode(FactArguments.of(it)) }
 
     /**
-     * The fact a facts file recorded for [symbol], or null when none did: the module's own file, then the dependencies',
-     * for a declaration of this module an incremental compilation did not compile again; the dependencies' for a
-     * library declaration. See [FactsFileComponent].
+     * The fact recorded for [symbol], or null when nothing did: for a declaration of this module an incremental
+     * compilation did not compile again, the plugin metadata in its class file, then the module's own facts file, then
+     * the dependencies'; the dependencies' facts files for a library declaration. See [FactsFileComponent].
      */
     fun recorded(symbol: S): T? = session.factsFiles.arguments(symbol, factName)?.let { decode(it) }
 
@@ -104,7 +105,8 @@ abstract class InferredFactService<S : FirBasedSymbol<*>, T>(session: FirSession
     private fun compute(symbol: S): T {
         override(symbol)?.let { return it }
         // A declaration of this module that an incremental compilation did not compile again has no body here: what the
-        // previous build found in it is in the module's own facts file, which [recorded] reads before the dependencies'.
+        // last compilation of its file found in it is in the plugin metadata of its class file and in the module's own
+        // facts file, which [recorded] reads in that order, before the dependencies' facts files.
         if (!symbol.origin.fromSource) recorded(symbol)?.let { return it }
         if (!symbol.origin.fromSource || metadataForSource) declared(symbol)?.let { return it }
         knowledge(symbol)?.let { return it }

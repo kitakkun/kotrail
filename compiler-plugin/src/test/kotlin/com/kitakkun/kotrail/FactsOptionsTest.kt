@@ -1,11 +1,13 @@
 package com.kitakkun.kotrail
 
+import org.jetbrains.kotlin.compiler.plugin.CliOptionProcessingException
 import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
 import org.jetbrains.kotlin.config.CompilerConfiguration
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 
 /** The options that name the facts files: where this compilation writes its own, which ones it reads, and the digest of those. */
 @OptIn(ExperimentalCompilerApi::class)
@@ -58,6 +60,17 @@ class FactsOptionsTest {
         assertEquals(emptyList<String>(), config.facts)
         assertNull(config.ownFacts)
         assertTrue(config.inferredMetadata)
+        assertTrue(config.icMetadata)
+    }
+
+    @Test
+    fun `icMetadata takes true or false and nothing else`() {
+        assertEquals(false, KotrailConfig.from(configuration("icMetadata" to "false")).icMetadata)
+        assertEquals(true, KotrailConfig.from(configuration("icMetadata" to "true")).icMetadata)
+        val option = processor.pluginOptions.single { it.optionName == "icMetadata" }
+        assertThrows<CliOptionProcessingException> {
+            processor.processOption(option, "yes", CompilerConfiguration())
+        }
     }
 
     @Test

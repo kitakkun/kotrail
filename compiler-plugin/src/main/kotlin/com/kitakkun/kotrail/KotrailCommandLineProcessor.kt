@@ -92,6 +92,16 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
         required = false,
     )
 
+    private val icMetadataOption = CliOption(
+        optionName = "icMetadata",
+        valueDescription = "<true|false>",
+        description = "Whether a JVM compilation also writes the inferred facts, and the digests of the classes the model " +
+            "rules walk, into the Kotlin metadata of its class files, as plugin data that incremental compilation compares, " +
+            "so that a changed fact compiles the files that depend on it again. Default true; false keeps the class files " +
+            "free of it, as for a build that publishes them. inferredMetadata=false turns it off too",
+        required = false,
+    )
+
     private val factsOutOption = CliOption(
         optionName = "factsOut",
         valueDescription = "<path>",
@@ -148,7 +158,7 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
     }
 
     override val pluginId: String = KotrailNames.PLUGIN_ID
-    override val pluginOptions: Collection<CliOption> = listOf(configFileOption, fixesDirOption, composablesDirOption, complexityDirOption, associatedComposablesDirOption, unloadableDirOption, bundledUnloadableDirOption, rootDirOption, inferredMetadataOption, factsOutOption, factsOption, ownFactsOption, factsHashOption) + treeOptions
+    override val pluginOptions: Collection<CliOption> = listOf(configFileOption, fixesDirOption, composablesDirOption, complexityDirOption, associatedComposablesDirOption, unloadableDirOption, bundledUnloadableDirOption, rootDirOption, inferredMetadataOption, icMetadataOption, factsOutOption, factsOption, ownFactsOption, factsHashOption) + treeOptions
 
     override fun processOption(option: AbstractCliOption, value: String, configuration: CompilerConfiguration) {
         val name = option.optionName
@@ -164,6 +174,10 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
             name == inferredMetadataOption.optionName -> configuration.put(
                 KotrailConfigurationKeys.INFERRED_METADATA,
                 value.toBooleanStrictOrNull() ?: throw CliOptionProcessingException("inferredMetadata must be true or false, got '$value'"),
+            )
+            name == icMetadataOption.optionName -> configuration.put(
+                KotrailConfigurationKeys.IC_METADATA,
+                value.toBooleanStrictOrNull() ?: throw CliOptionProcessingException("icMetadata must be true or false, got '$value'"),
             )
             name == factsOutOption.optionName -> configuration.put(KotrailConfigurationKeys.FACTS_OUT, value)
             name == factsOption.optionName -> value.split(',').map { it.trim() }.filter { it.isNotEmpty() }
