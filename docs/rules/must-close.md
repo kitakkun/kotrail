@@ -78,8 +78,12 @@ The rule does not track a resource created over a borrowed stream:
 - A wrapper chained on such a wrapper, or on a stream reached from a parameter or `this`:
   `Wrapper(parameterStream).bufferedReader()`, `parameterStream.bufferedReader()`,
   `this.stream.buffered()`.
+- A constructor or factory around either of the above, nested to any depth, directly or
+  through a local: `BufferedReader(InputStreamReader(parameterStream))`, or
+  `val reader = InputStreamReader(parameterStream)` followed by `BufferedReader(reader)`.
 
-Two forms stay tracked. A wrapper over a fresh creation, `BufferedReader(FileReader(path))`,
+Two forms stay tracked. A wrapper whose innermost stream is a fresh creation,
+`BufferedReader(FileReader(path))` or `BufferedReader(InputStreamReader(FileInputStream(path)))`,
 carries the obligation of what it wraps. A wrapper chained on a stream pulled out of an object,
 `process.inputStream.bufferedReader()`, is the function's to close.
 
@@ -112,6 +116,8 @@ creations, what the elements above each one do with it (`use`, return, assignmen
 the locals initialized from a creation (through scope functions, safe calls, `?:` and the
 result of a `use` / `let` / `run` lambda), the `close()` / `use` calls on those locals and the
 bound callable references whose receiver is one of them. A creation with a closeable argument
-that is not itself a creation (directly or through a local holding one) wraps a borrowed stream
-and is not collected, and so is a creation whose closeable receiver is itself a wrapper over a
-borrowed stream, a parameter, or rooted at `this` through property accesses.
+that is not itself a creation (directly or through a local holding one), or that is a creation
+wrapping a borrowed stream itself, wraps a borrowed stream and is not collected, and so is a
+creation whose closeable receiver is itself a wrapper over a borrowed stream, a parameter, or
+rooted at `this` through property accesses. The question recurses through nested creations,
+with a visited set so a creation met again answers no.

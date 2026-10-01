@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.InputStream
+import java.io.InputStreamReader
 import java.io.Reader
 import java.io.StringReader
 import kotlin.concurrent.thread
@@ -143,6 +144,17 @@ fun chainedOnBorrowed(parameterStream: InputStream): String {
     val chained = Wrapper(parameterStream).bufferedReader()
     val direct = parameterStream.bufferedReader()
     return chained.readLine() + direct.readLine()
+}
+
+fun nestedWrappers(parameterStream: InputStream, path: String): String {
+    // Not reported: the inner reader wraps a stream borrowed from the caller, so the outer one does too.
+    val borrowed = BufferedReader(InputStreamReader(parameterStream))
+    val reader = InputStreamReader(parameterStream)
+    val throughLocal = BufferedReader(reader)
+
+    // Reported: the innermost stream is created here, so the outer wrapper carries the obligation.
+    val owned = <!KOTRAIL_RESOURCE_NOT_CLOSED!>BufferedReader(InputStreamReader(FileInputStream(path)))<!>
+    return borrowed.readLine() + throughLocal.readLine() + owned.readLine()
 }
 
 class Holder(private val stream: InputStream) {

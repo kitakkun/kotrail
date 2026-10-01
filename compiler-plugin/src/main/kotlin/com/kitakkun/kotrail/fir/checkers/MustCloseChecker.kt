@@ -74,7 +74,8 @@ import org.jetbrains.kotlin.types.AbstractTypeChecker
  * it. Closing the wrapper would close the lender's stream, so the wrapper is not this function's
  * to close and is not tracked. A wrapper chained on such a wrapper
  * (`Wrapper(parameterStream).bufferedReader()`), or on a stream reached from a parameter or `this`
- * (`parameterStream.bufferedReader()`, `this.stream.buffered()`), wraps a borrowed stream too.
+ * (`parameterStream.bufferedReader()`, `this.stream.buffered()`), wraps a borrowed stream too, and
+ * so does a creation around such a wrapper (`BufferedReader(InputStreamReader(parameterStream))`).
  */
 object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
     private val CLOSEABLE = listOf(
@@ -146,7 +147,7 @@ object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
 
         override fun visitFunctionCall(functionCall: FirFunctionCall) {
             val type = resourceType(functionCall)
-            if (type != null && !wrapsBorrowedArgument(functionCall) && !isChainedOnBorrowed(functionCall)) {
+            if (type != null && !wrapsBorrowed(functionCall, HashSet())) {
                 created[functionCall] = type
                 if (isSettledAbove(functionCall)) settled += functionCall
             }
@@ -200,19 +201,25 @@ object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
         /**
          * `BoundedReader(this, n)`, `BufferedReader(parameterReader)`: an argument is a resource this
          * function did not create, so the new object is a wrapper over a borrowed stream, which its lender closes.
-         * `BufferedReader(FileReader(path))` and a wrapper over a local holding a creation stay tracked.
+         * An argument that is a creation, directly, through a scope chain or through a local holding one, is
+         * borrowed when it wraps a borrowed stream itself: `BufferedReader(InputStreamReader(parameterStream))`.
+         * `BufferedReader(FileReader(path))` and a wrapper over a local holding a fresh creation stay tracked.
          */
-        private fun wrapsBorrowedArgument(call: FirFunctionCall): Boolean = call.argumentList.arguments.any { argument ->
-            val expression = argument.unwrapArgument().unwrapped()
-            if (expression is FirAnonymousFunctionExpression || !expression.resolvedType.isCloseable()) return@any false
-            val local = expression.localSymbol()
-            if (local != null) return@any !isCreation(locals.getValue(local))
-            val inner = unwrapScopeChain(expression) as? FirFunctionCall
-            inner == null || !isCreation(inner)
-        }
+        private fun wrapsBorrowedArgument(call: FirFunctionCall, visited: MutableSet<FirFunctionCall>): Boolean =
+            call.argumentList.arguments.any { argument ->
+                val expression = argument.unwrapArgument().unwrapped()
+                if (expression is FirAnonymousFunctionExpression || !expression.resolvedType.isCloseable()) return@any false
+                val local = expression.localSymbol()
+                val inner = if (local != null) locals.getValue(local) else unwrapScopeChain(expression) as? FirFunctionCall
+                inner == null || !isCreation(inner) || wrapsBorrowed(inner, visited)
+            }
 
-        /** A wrapper over a borrowed stream: a creation over a borrowed argument, or a wrapper chained on one. */
-        private fun wrapsBorrowed(call: FirFunctionCall): Boolean = isCreation(call) && (wrapsBorrowedArgument(call) || isChainedOnBorrowed(call))
+        /**
+         * A wrapper over a borrowed stream: a creation over a borrowed argument, or a wrapper chained on one.
+         * [visited] holds the creations already asked about in this walk; one met again answers no.
+         */
+        private fun wrapsBorrowed(call: FirFunctionCall, visited: MutableSet<FirFunctionCall>): Boolean =
+            visited.add(call) && isCreation(call) && (wrapsBorrowedArgument(call, visited) || isChainedOnBorrowed(call, visited))
 
         /**
          * `Wrapper(parameterStream).bufferedReader()`, `parameterStream.bufferedReader()`, `this.stream.buffered()`:
@@ -220,14 +227,14 @@ object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
          * stream reached from a parameter or `this`, wraps a borrowed stream its lender closes. `File(path).bufferedReader()` and
          * `process.inputStream.bufferedReader()` on a local stay tracked.
          */
-        private fun isChainedOnBorrowed(call: FirFunctionCall): Boolean {
+        private fun isChainedOnBorrowed(call: FirFunctionCall, visited: MutableSet<FirFunctionCall>): Boolean {
             var receiver = call.explicitReceiver?.unwrapped() ?: return false
             if (receiver is FirCheckedSafeCallSubject) receiver = receiver.originalReceiverRef.value.unwrapped()
             if (!receiver.resolvedType.isCloseable()) return false
             val local = receiver.localSymbol()
-            if (local != null) return wrapsBorrowed(locals.getValue(local))
+            if (local != null) return wrapsBorrowed(locals.getValue(local), visited)
             val inner = unwrapScopeChain(receiver)
-            if (inner is FirFunctionCall) return wrapsBorrowed(inner)
+            if (inner is FirFunctionCall) return wrapsBorrowed(inner, visited)
             return isRootedAtParameterOrThis(inner)
         }
 
