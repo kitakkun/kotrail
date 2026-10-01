@@ -1,7 +1,10 @@
 package com.kitakkun.kotrail.ir.inferred
 
+import com.kitakkun.kotrail.KotrailConfig
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.compose.ComposeNames
+import com.kitakkun.kotrail.fir.compose.DrawsUiService
+import com.kitakkun.kotrail.fir.compose.drawsUiService
 import com.kitakkun.kotrail.fir.compose.effects.effectCaptureService
 import com.kitakkun.kotrail.fir.compose.insets.WindowInsetsNames
 import com.kitakkun.kotrail.fir.compose.insets.windowInsetsHandlingService
@@ -21,6 +24,7 @@ import org.jetbrains.kotlin.fir.declarations.FirRegularClass
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrProperty
 import org.jetbrains.kotlin.ir.declarations.IrSimpleFunction
+import org.jetbrains.kotlin.ir.types.isUnit
 import org.jetbrains.kotlin.ir.util.hasAnnotation
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
@@ -32,8 +36,8 @@ import org.jetbrains.kotlin.name.Name
  * only read back through the FIR declaration attached to the IR one.
  */
 object InferredFacts {
-    /** The facts, with the rules that switch each on; the writer takes the ones with any of their rules enabled. */
-    val functionFacts: List<InferredFunctionFact> = listOf(WindowInsets, CompositionLocals, Preconditions, NoOpWhen, EffectCapture, StartsAsyncWork, NativeAllocation)
+    /** The facts, with the rules that switch each on; the writer takes the ones that are on ([InferredFact.isOn]). */
+    val functionFacts: List<InferredFunctionFact> = listOf(WindowInsets, CompositionLocals, Preconditions, NoOpWhen, EffectCapture, StartsAsyncWork, NativeAllocation, DrawsUi)
     val propertyFacts: List<InferredPropertyFact> = listOf(RequiredCompositionLocal, CompositionLocalGetter)
     val classFacts: List<InferredClassFact> = listOf(ClassPreconditions)
 
@@ -146,4 +150,26 @@ object InferredFacts {
         override fun arrays(declaration: IrSimpleFunction, fir: FirNamedFunction): List<List<String>>? =
             fir.moduleData.session.nativeAllocationService.arraysFor(fir.symbol)
     }
+
+    /**
+     * `@InferredDrawsUi(["false"])` on a `Unit`-returning composable that draws nothing. Also written when the
+     * compilation records its UI composables (`composablesDir`), whose record is made with it.
+     */
+    object DrawsUi : InferredFunctionFact {
+        override val name: String = InferredFactNames.DRAWS_UI
+        override val rules = listOf(
+            KotrailRule.COMPOSE_PREVIEW_REQUIRED,
+            KotrailRule.COMPOSE_PREVIEW_COVERAGE,
+            KotrailRule.COMPOSE_NO_TRAILING_CALLBACK,
+            KotrailRule.COMPOSE_NO_CALLBACK_IN_MODEL,
+        )
+        override val annotation: ClassId = ComposeNames.INFERRED_DRAWS_UI
+        override val parameters = listOf(DrawsUiService.VALUE.asString())
+        override fun isOn(config: KotrailConfig): Boolean = super.isOn(config) || config.composablesDir != null
+        override fun applies(declaration: IrSimpleFunction): Boolean =
+            declaration.hasAnnotation(ComposeNames.COMPOSABLE) && declaration.returnType.isUnit()
+        override fun arrays(declaration: IrSimpleFunction, fir: FirNamedFunction): List<List<String>>? =
+            fir.moduleData.session.drawsUiService.arraysFor(fir.symbol)
+    }
+
 }

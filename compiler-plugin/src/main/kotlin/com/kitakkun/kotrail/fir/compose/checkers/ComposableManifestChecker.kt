@@ -45,7 +45,7 @@ object ComposableManifestChecker : FirFileChecker(MppCheckerKind.Common) {
             }
             if (!function.symbol.isComposable(session) || !function.returnTypeRef.coneType.isUnit) return@mapNotNull null
             if (function.isExpect || function.symbol.isPreview(session)) return@mapNotNull null
-            if (!function.symbol.emitsUi(session, config.compose.nonUiPackages)) return@mapNotNull null
+            if (!function.symbol.emitsUi(session)) return@mapNotNull null
             val callableId = function.symbol.callableId
             ComposableManifest.Entry(callableId.asSingleFqName().asString(), callableId.packageName.asString(), visibility)
         }

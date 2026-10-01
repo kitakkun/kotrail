@@ -4,8 +4,9 @@ Several rules need to know something about a function that only its body can tel
 a composable handles, which locals it reads and provides, which parameters an effect captures,
 what a function requires of its arguments, which arguments make it do nothing, whether it
 starts work its caller cannot wait for, whether it creates a native-backed object and lets it
-out. Within one module the body is at hand. For a caller in another module the plugin writes down what it found and reads it back
-where the callee is used. It does so in one of two ways, by target:
+out, whether a composable draws anything. Within one module the body is at hand. For a caller in
+another module the plugin writes down what it found and reads it back where the callee is used.
+It does so in one of two ways, by target:
 
 - **JVM and Android**: a facts file, `<module>.facts`, written beside the build output rather
   than into it and published as an artifact of its own. The class files, the JAR and the AAR
@@ -25,9 +26,17 @@ where the callee is used. It does so in one of two ways, by target:
 | Parameters an effect keeps | `effectCapture` | `@InferredEffectCapture(captured)` | `compose.rememberKeys` |
 | Work started that the caller cannot wait for | `startsAsyncWork` | `@InferredStartsAsyncWork` | `delayForCompletion` |
 | A native-backed object created and let out | `nativeAllocation` | `@InferredNativeAllocation(types, path)` | `nativeAllocationInLoop` |
+| A composable that draws nothing | `drawsUi` | `@InferredDrawsUi(value)` | `compose.previewRequired`, `compose.previewCoverage`, `compose.noTrailingCallback`, `compose.noCallbackInModel`, and any compilation that records its composables (`composablesDir`) |
 
 Both carry the same strings: each fact encodes itself into the arrays of its annotation's
 parameters, and the facts file keeps those arrays under the parameter names.
+
+`drawsUi` is written only for a `Unit`-returning composable that draws nothing (an effect
+wrapper, a probe that only reads a local), as `{"drawsUi": {"value": ["false"]}}`: a composable
+without it is taken to draw, as one from a library compiled without Kotrail always is. The
+Gradle plugin records the composables of every compilation for
+[preview coverage](rules/compose/preview-coverage.md), so in practice every JVM compilation
+writes it.
 
 ## The facts file (JVM and Android)
 
@@ -220,8 +229,12 @@ callees it calls, checks the use site against those callees' facts as the last b
 them. Edit only the file with `manager.reconnect(); delay(500)` and the
 `delayForCompletion` finding stays, where it used to vanish because `reconnect`, untouched,
 had no facts; the same goes for `preconditions`, `noOpCall`, `nativeAllocationInLoop`,
-`compose.windowInsets` and `compose.compositionLocals`. The facts the recompiled file writes for
-itself (a function that starts work because its callee does) are
+`compose.windowInsets` and `compose.compositionLocals`. A composable that only calls an effect
+wrapper in an untouched file is still seen to draw nothing, through the wrapper's `drawsUi` fact,
+so `compose.previewRequired`, `compose.noTrailingCallback`, `compose.noCallbackInModel` and the
+record of UI composables for `compose.previewCoverage` do not take it for UI, as they did when
+such a wrapper looked like a library composable. The facts the recompiled file writes for itself
+(a function that starts work because its callee does) are
 computed against those facts too, rather than against callees that seemed to have none, so the
 facts file stays complete across incremental builds.
 

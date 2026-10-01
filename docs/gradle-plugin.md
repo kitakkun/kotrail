@@ -222,6 +222,8 @@ plain `var` in [no external mutation](rules/no-external-mutation.md), a project 
 [no callback in model](rules/compose/no-callback-in-model.md) and
 [preview parameter](rules/compose/preview-parameter.md), and a helper whose effect is reported
 where it is declared rather than at each call in [remember keys](rules/compose/remember-keys.md).
+A composable that only calls an effect wrapper in such a file still draws nothing, through the
+wrapper's `drawsUi` fact, and needs no [preview](rules/compose/preview-required.md).
 
 The other way round does not work. Kotlin's incremental compilation recompiles a file when
 something the file itself refers to changes in a way that could change how it compiles: the

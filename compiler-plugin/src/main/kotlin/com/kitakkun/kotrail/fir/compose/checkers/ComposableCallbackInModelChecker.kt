@@ -88,7 +88,7 @@ object ComposableCallbackInModelChecker : NamedFunctionChecker(MppCheckerKind.Co
         if (!declaration.symbol.isComposable(session)) return
         if (!declaration.returnTypeRef.coneType.isUnit) return
         if (declaration.symbol.isPreview(session)) return
-        if (declaration.body == null || !declaration.symbol.emitsUi(session, config.compose.nonUiPackages)) return
+        if (declaration.body == null || !declaration.symbol.emitsUi(session)) return
 
         for (parameter in declaration.valueParameters) {
             val type = parameter.returnTypeRef.coneType

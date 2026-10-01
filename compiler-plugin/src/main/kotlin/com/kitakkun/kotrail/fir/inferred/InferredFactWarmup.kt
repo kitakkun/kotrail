@@ -1,6 +1,7 @@
 package com.kitakkun.kotrail.fir.inferred
 
 import com.kitakkun.kotrail.compat.NamedFunctionChecker
+import com.kitakkun.kotrail.fir.compose.drawsUiService
 import com.kitakkun.kotrail.fir.compose.effects.effectCaptureService
 import com.kitakkun.kotrail.fir.compose.insets.windowInsetsHandlingService
 import com.kitakkun.kotrail.fir.compose.locals.compositionLocalService
@@ -38,6 +39,7 @@ object InferredFactWarmup {
         session.effectCaptureService,
         session.asyncWorkService,
         session.nativeAllocationService,
+        session.drawsUiService,
     )
 
     object FunctionChecker : NamedFunctionChecker(MppCheckerKind.Common) {
@@ -47,7 +49,7 @@ object InferredFactWarmup {
             val config = context.session.kotrailConfig
             if (!config.inferredMetadata) return
             for (fact in functionFacts(context.session)) {
-                if (fact.rules.any(config::isEnabled)) fact.warm(declaration.symbol)
+                if (fact.isOn(config)) fact.warm(declaration.symbol)
             }
         }
     }
@@ -57,7 +59,7 @@ object InferredFactWarmup {
         override fun check(declaration: FirRegularClass) {
             if (!context.session.kotrailConfig.inferredMetadata) return
             val classes = context.session.preconditionService.classes
-            if (classes.rules.any(context.session.kotrailConfig::isEnabled)) classes.warm(declaration.symbol)
+            if (classes.isOn(context.session.kotrailConfig)) classes.warm(declaration.symbol)
         }
     }
 
@@ -66,7 +68,7 @@ object InferredFactWarmup {
         override fun check(declaration: FirProperty) {
             if (!context.session.kotrailConfig.inferredMetadata) return
             val locals = context.session.compositionLocalService
-            if (locals.rules.none(context.session.kotrailConfig::isEnabled)) return
+            if (!locals.isOn(context.session.kotrailConfig)) return
             locals.isRequiredBySource(declaration.symbol)
             locals.getters.warm(declaration.symbol)
         }

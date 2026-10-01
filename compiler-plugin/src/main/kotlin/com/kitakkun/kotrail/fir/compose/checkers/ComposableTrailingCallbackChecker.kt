@@ -56,7 +56,7 @@ object ComposableTrailingCallbackChecker : NamedFunctionChecker(MppCheckerKind.C
         if (!declaration.returnTypeRef.coneType.isUnit) return
         // An effect or a probe has no content slot for the trailing lambda to be mistaken for. A
         // declaration without a body (an interface member) cannot be judged and is still held to the rule.
-        if (declaration.body != null && !declaration.symbol.emitsUi(session, config.compose.nonUiPackages)) return
+        if (declaration.body != null && !declaration.symbol.emitsUi(session)) return
 
         val parameters = declaration.valueParameters
         val last = parameters.lastOrNull() ?: return

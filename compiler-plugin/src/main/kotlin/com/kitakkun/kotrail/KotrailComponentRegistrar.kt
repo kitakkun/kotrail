@@ -33,7 +33,7 @@ class KotrailComponentRegistrar : CompilerPluginRegistrar() {
             own = FactsFileIndex { listOfNotNull(config.ownFacts).map(::File) },
         )
         FirExtensionRegistrarAdapter.registerExtension(KotrailFirExtensionRegistrar(config, factsFiles))
-        // Every inferred fact with one of its rules on is written for the modules that compile against this one,
+        // Every inferred fact that is on (one of its rules is) is written for the modules that compile against this one,
         // unless the module opted out (a published library whose consumers do not use Kotrail). A facts file an
         // earlier compilation left at factsOut goes with it, so that nothing stale is published or read. Otherwise the
         // writer is registered whatever rules are on: on the JVM it writes the facts file on every compilation, the
@@ -44,9 +44,9 @@ class KotrailComponentRegistrar : CompilerPluginRegistrar() {
         }
         IrGenerationExtension.registerExtension(
             InferredMetadataWriter(
-                functionFacts = InferredFacts.functionFacts.filter { it.rules.any(config::isEnabled) },
-                propertyFacts = InferredFacts.propertyFacts.filter { it.rules.any(config::isEnabled) },
-                classFacts = InferredFacts.classFacts.filter { it.rules.any(config::isEnabled) },
+                functionFacts = InferredFacts.functionFacts.filter { it.isOn(config) },
+                propertyFacts = InferredFacts.propertyFacts.filter { it.isOn(config) },
+                classFacts = InferredFacts.classFacts.filter { it.isOn(config) },
                 factsFile = FactsFileOutput(
                     file = config.factsOut?.let(::File),
                     module = { configuration.get(CommonConfigurationKeys.MODULE_NAME) },

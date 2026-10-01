@@ -48,7 +48,10 @@ calls it directly.
   emits UI when its body, lambdas included, calls a `Unit`-returning composable other than the
   runtime's own constructs (`nonUiPackages`, `androidx.compose.runtime` by default) or invokes a
   content slot it was handed; a callee of the same compilation is judged by its own body, a
-  callee from the classpath is taken as drawing. `CompositionLocalProvider(...) { Text("x") }`
+  callee whose body is not at hand (another module's, or one in a file an incremental build did
+  not compile again) by the `drawsUi` fact its module wrote (see
+  [Inferred metadata](../../inferred-metadata.md)), and is taken as drawing without one, as a
+  library compiled without Kotrail always is. `CompositionLocalProvider(...) { Text("x") }`
   therefore draws and `LaunchedEffect(key) { }` does not.
 - The composable is called from a preview in the same file, at any call depth inside the
   preview's body (a preview wrapped in a theme lambda still counts).
@@ -62,7 +65,8 @@ on the composable, on a class or object around it, or on the file.
 
 ## Fixtures
 
-`compiler-tests/testData/diagnostics/compose/previewRequired.kt`
+`compiler-tests/testData/diagnostics/compose/previewRequired.kt`; across modules, through the
+`drawsUi` fact, `compiler-tests/testData/box/compose/drawsUiAcrossModules.kt`
 
 ## Implementation notes
 

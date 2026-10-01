@@ -88,7 +88,7 @@ object ComposablePreviewRequiredChecker : FirFileChecker(MppCheckerKind.Common) 
         val severity = config.severity(diagnostic.rule)
         for ((function, enclosing, suppressed) in functions) {
             if (!function.needsPreview(session, config.compose.previewRequireFor)) continue
-            if (!function.symbol.emitsUi(session, config.compose.nonUiPackages)) continue
+            if (!function.symbol.emitsUi(session)) continue
             if (function.symbol.callableId in previewed) continue
             if (diagnostic.baseName in suppressed || severity.suppressAllName in suppressed) continue
             val source = function.source ?: continue

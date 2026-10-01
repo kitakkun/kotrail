@@ -8,8 +8,9 @@ import java.security.MessageDigest
  * directory the `composablesDir` option names and read by the preview-coverage rule of another
  * compilation (`associatedComposablesDir`): a `preview` compilation associated with `main`, a
  * screenshot-test source set. The compilation that has the sources judges what draws
- * ([emitsUi] needs the bodies); the compilation that has the previews sees `main` as class
- * files only, which no symbol provider enumerates.
+ * ([emitsUi] needs the bodies, or for the callees in files an incremental build did not compile
+ * again, the `drawsUi` facts the module's own facts file kept); the compilation that has the
+ * previews sees `main` as class files only, which no symbol provider enumerates.
  *
  * One record per source file, `<sha1 of the path>.jsonl`: a header line naming the file, then
  * one line per composable, `{"name": "com.acme.ui.Card", "package": "com.acme.ui", "visibility": "public"}`,

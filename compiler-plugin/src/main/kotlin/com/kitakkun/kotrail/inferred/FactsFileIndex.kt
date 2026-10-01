@@ -68,4 +68,5 @@ object InferredFactNames {
     const val EFFECT_CAPTURE: String = "effectCapture"
     const val STARTS_ASYNC_WORK: String = "startsAsyncWork"
     const val NATIVE_ALLOCATION: String = "nativeAllocation"
+    const val DRAWS_UI: String = "drawsUi"
 }

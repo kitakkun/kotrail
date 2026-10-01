@@ -118,7 +118,7 @@ object ComposablePreviewCoverageChecker : FirFileChecker(MppCheckerKind.Common) 
                 symbol.resolvedReturnType.isUnit &&
                 !symbol.isExpect &&
                 !symbol.isPreview(this) &&
-                symbol.emitsUi(this, kotrailConfig.compose.nonUiPackages) &&
+                symbol.emitsUi(this) &&
                 when (scope) {
                     PreviewScope.PUBLIC -> symbol.visibility == Visibilities.Public
                     PreviewScope.INTERNAL, PreviewScope.ALL -> symbol.visibility == Visibilities.Public || symbol.visibility == Visibilities.Internal

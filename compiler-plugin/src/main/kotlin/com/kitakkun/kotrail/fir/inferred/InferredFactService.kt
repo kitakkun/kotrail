@@ -2,6 +2,7 @@
 
 package com.kitakkun.kotrail.fir.inferred
 
+import com.kitakkun.kotrail.KotrailConfig
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.inferred.InferredMetadata.annotationOf
 import org.jetbrains.kotlin.fir.FirSession
@@ -40,6 +41,9 @@ import org.jetbrains.kotlin.name.Name
 abstract class InferredFactService<S : FirBasedSymbol<*>, T>(session: FirSession) : FirExtensionSessionComponent(session) {
     /** The rules that read the fact: any of them being on switches the analysis and the metadata on. */
     abstract val rules: List<KotrailRule>
+
+    /** Whether the fact is computed for every source declaration and written: one of [rules] is on, unless the fact says otherwise. */
+    open fun isOn(config: KotrailConfig): Boolean = rules.any(config::isEnabled)
 
     /** The annotation the fact travels as in a klib. */
     abstract val annotation: ClassId

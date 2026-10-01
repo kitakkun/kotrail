@@ -2,6 +2,7 @@
 
 package com.kitakkun.kotrail.ir.inferred
 
+import com.kitakkun.kotrail.KotrailConfig
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.KotrailVersion
 import com.kitakkun.kotrail.compat.addStringArraysMetadataAnnotation
@@ -43,6 +44,9 @@ import java.io.File
 interface InferredFact<D : IrDeclaration, F : FirDeclaration> {
     /** The rules that read the fact: it is written while any of them is enabled. */
     val rules: List<KotrailRule>
+
+    /** Whether the fact is written: one of [rules] is on, unless the fact says otherwise (as its FIR service does). */
+    fun isOn(config: KotrailConfig): Boolean = rules.any(config::isEnabled)
 
     /** The fact's name in a facts file, one of [com.kitakkun.kotrail.inferred.InferredFactNames]. */
     val name: String

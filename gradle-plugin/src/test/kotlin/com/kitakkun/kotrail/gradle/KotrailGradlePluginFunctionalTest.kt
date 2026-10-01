@@ -894,6 +894,8 @@ class KotrailGradlePluginFunctionalTest {
             """.trimIndent(),
         )
         val calleeWithRequire = """
+            import androidx.compose.runtime.Composable
+            import androidx.compose.runtime.SideEffect
             import kotlinx.coroutines.CoroutineScope
             import kotlinx.coroutines.launch
 
@@ -917,8 +919,14 @@ class KotrailGradlePluginFunctionalTest {
             }
 
             data class Point(var x: Int)
+
+            @Composable
+            fun Tracker() {
+                SideEffect { }
+            }
         """.trimIndent()
         val caller = """
+            import androidx.compose.runtime.Composable
             import kotlinx.coroutines.delay
 
             suspend fun switch(manager: Manager) {
@@ -939,14 +947,24 @@ class KotrailGradlePluginFunctionalTest {
             fun move(point: Point) {
                 point.x = 1
             }
+
+            @Composable
+            fun Screen() {
+                Tracker()
+            }
         """.trimIndent()
+        writeFile("src/main/kotlin/androidx/compose/runtime/Composable.kt", COMPOSABLE_STUB)
+        writeFile("src/main/kotlin/androidx/compose/runtime/Effects.kt", SIDE_EFFECT_STUB)
         writeFile("src/main/kotlin/Callee.kt", calleeWithRequire)
         writeFile("src/main/kotlin/Caller.kt", caller)
         val classes = File(projectDir, "build/classes/kotlin/main")
         val callerClass = File(classes, "CallerKt.class")
         val calleeClasses = listOf("CalleeKt", "Manager", "Settings", "Point").map { File(classes, "$it.class") }
         val factsFile = File(projectDir, "build/kotrail/facts/jvm-main/consumer.facts")
-        fun delayFindings(result: BuildResult) = result.output.lines().filter { "Caller.kt:5:5" in it && "KOTRAIL_DELAY_WAITS_FOR_ASYNC_WORK" in it }
+        fun delayFindings(result: BuildResult) = result.output.lines().filter { "Caller.kt:6:5" in it && "KOTRAIL_DELAY_WAITS_FOR_ASYNC_WORK" in it }
+        // Screen only calls Tracker, which only runs an effect: it draws nothing and needs no preview, also when Tracker
+        // comes from the classes directory, through its drawsUi fact.
+        fun previewFindings(result: BuildResult) = result.output.lines().filter { "KOTRAIL_COMPOSABLE_WITHOUT_PREVIEW" in it }
         fun preconditionFindings(result: BuildResult) = result.output.lines().filter { "Caller.kt" in it && "KOTRAIL_PRECONDITION_VIOLATED" in it }
         // Settings is a class of this module, which a plain var write from another class is reported against; Point is a
         // data class with no function of its own, a bag of values, which is not.
@@ -963,8 +981,11 @@ class KotrailGradlePluginFunctionalTest {
         }
         val reconnect = entry("Callee.kt", "/Manager.reconnect", "\"startsAsyncWork\": {}")
         val retry = entry("Callee.kt", "/retry", "\"preconditions\": {\"conditions\": [\"times >= 0\"]}")
-        // A fact of the caller that comes from its callee: reconnectNow starts work because Manager.reconnect does.
+        val tracker = entry("Callee.kt", "/Tracker", "\"drawsUi\": {\"value\": [\"false\"]}")
+        // Facts of the caller that come from its callee: reconnectNow starts work because Manager.reconnect does, and
+        // Screen draws nothing because Tracker draws nothing.
         val reconnectNow = entry("Caller.kt", "/reconnectNow", "\"startsAsyncWork\": {}")
+        val screen = entry("Caller.kt", "/Screen", "\"drawsUi\": {\"value\": [\"false\"]}")
 
         // A full build: both files are compiled, both findings are reported, and the facts file describes both files.
         val first = runBuild("compileKotlin")
@@ -972,7 +993,8 @@ class KotrailGradlePluginFunctionalTest {
         assertEquals(1, delayFindings(first).size, first.output)
         assertEquals(1, preconditionFindings(first).size, first.output)
         assertEquals(1, stateWriteFindings(first).size, first.output)
-        assertFacts(reconnect to true, retry to true, reconnectNow to true)
+        assertTrue(previewFindings(first).isEmpty(), first.output)
+        assertFacts(reconnect to true, retry to true, tracker to true, reconnectNow to true, screen to true)
         val calleeStamps = calleeClasses.map { it.lastModified() }
 
         // Only the caller changes (a comment at the end keeps the line numbers). The incremental build compiles
@@ -990,7 +1012,9 @@ class KotrailGradlePluginFunctionalTest {
         // Settings, loaded from the classes directory, is still a class of this module, not a library's; Point is still a
         // bag, though its generated members come back from the class file without a source that says they are generated.
         assertEquals(1, stateWriteFindings(second).size, second.output)
-        assertFacts(reconnect to true, retry to true, reconnectNow to true)
+        // Tracker, loaded from the classes directory, still draws nothing, so Screen still needs no preview.
+        assertTrue(previewFindings(second).isEmpty(), second.output)
+        assertFacts(reconnect to true, retry to true, tracker to true, reconnectNow to true, screen to true)
 
         // Only the callee's body changes: its require goes. Its ABI is the same, so the incremental build compiles
         // Callee.kt alone and leaves Caller.kt as it was compiled: the caller is not checked again, so nothing withdraws
@@ -1002,7 +1026,7 @@ class KotrailGradlePluginFunctionalTest {
         assertEquals(TaskOutcome.SUCCESS, third.task(":compileKotlin")?.outcome, third.output)
         assertEquals(callerStampBeforeThird, callerClass.lastModified(), "Caller.kt was compiled again\n" + third.output)
         assertTrue(callerFindings(third).isEmpty(), third.output)
-        assertFacts(reconnect to true, retry to false, reconnectNow to true)
+        assertFacts(reconnect to true, retry to false, tracker to true, reconnectNow to true, screen to true)
 
         // Compiling every file again checks the caller against the callee as it is now: the precondition finding is
         // gone, the finding about the work the callee still starts stays.
@@ -1011,7 +1035,8 @@ class KotrailGradlePluginFunctionalTest {
         assertEquals(1, delayFindings(rerun).size, rerun.output)
         assertTrue(preconditionFindings(rerun).isEmpty(), rerun.output)
         assertEquals(1, stateWriteFindings(rerun).size, rerun.output)
-        assertFacts(reconnect to true, retry to false, reconnectNow to true)
+        assertTrue(previewFindings(rerun).isEmpty(), rerun.output)
+        assertFacts(reconnect to true, retry to false, tracker to true, reconnectNow to true, screen to true)
     }
 
     @Test
@@ -1434,6 +1459,15 @@ class KotrailGradlePluginFunctionalTest {
 
             @Target(AnnotationTarget.FUNCTION, AnnotationTarget.TYPE)
             annotation class Composable
+        """.trimIndent()
+
+        val SIDE_EFFECT_STUB = """
+            package androidx.compose.runtime
+
+            @Composable
+            fun SideEffect(effect: () -> Unit) {
+                effect()
+            }
         """.trimIndent()
 
         val PREVIEW_STUB = """

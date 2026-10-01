@@ -1,0 +1,4 @@
+Module: lib (lib.facts)
+{"file": "lib/Lib.kt", "id": "lib/Tracker", "signature": "kotlin/String", "facts": {"drawsUi": {"value": ["false"]}}}
+Module: main (main.facts)
+{"file": "main/Main.kt", "id": "/Screen", "signature": "", "facts": {"drawsUi": {"value": ["false"]}}}
