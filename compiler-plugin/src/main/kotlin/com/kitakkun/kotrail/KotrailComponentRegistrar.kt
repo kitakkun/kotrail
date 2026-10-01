@@ -8,6 +8,7 @@ import com.kitakkun.kotrail.inferred.FactsFileLookup
 import com.kitakkun.kotrail.ir.inferred.FactsFileOutput
 import com.kitakkun.kotrail.ir.inferred.InferredFacts
 import com.kitakkun.kotrail.ir.inferred.InferredMetadataWriter
+import com.kitakkun.kotrail.ir.inferred.SurfaceDigests
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
@@ -55,7 +56,19 @@ class KotrailComponentRegistrar : CompilerPluginRegistrar() {
                 // The same facts in the class files' Kotlin metadata, for incremental compilation, unless the build
                 // keeps them out (a build that publishes the class files).
                 pluginMetadata = config.icMetadata,
+                surfaceDigests = surfaceDigests(config),
             ),
         )
+    }
+
+    /**
+     * Whether the classes get the digest of what the model rules walk: when one of them is on. All but
+     * `narrowModelParameters` with `scope: all` walk only from composables, which a module without Compose has none of.
+     */
+    private fun surfaceDigests(config: KotrailConfig): SurfaceDigests? {
+        val narrow = config.isEnabled(KotrailRule.NARROW_MODEL_PARAMETERS)
+        if (narrow && config.narrowModelParameters.scope == NarrowModelParametersScope.ALL) return SurfaceDigests(needsCompose = false)
+        val composeWalks = narrow || config.isEnabled(KotrailRule.COMPOSE_NO_CALLBACK_IN_MODEL) || config.isEnabled(KotrailRule.COMPOSE_NO_UNSTABLE_PARAMETER)
+        return if (composeWalks) SurfaceDigests(needsCompose = true) else null
     }
 }

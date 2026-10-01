@@ -7,6 +7,8 @@ import com.kitakkun.kotrail.KotrailNames
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.KotrailVersion
 import com.kitakkun.kotrail.compat.addStringArraysMetadataAnnotation
+import com.kitakkun.kotrail.fir.ModelSurface
+import com.kitakkun.kotrail.fir.compose.ComposeNames
 import com.kitakkun.kotrail.fir.inferred.FactKeys
 import com.kitakkun.kotrail.inferred.FactsFile
 import com.kitakkun.kotrail.inferred.PluginMetadata
@@ -14,11 +16,13 @@ import com.kitakkun.kotrail.ir.inferredAnnotationConstructor
 import org.jetbrains.kotlin.backend.common.extensions.IrGenerationExtension
 import org.jetbrains.kotlin.backend.common.extensions.IrPluginContext
 import org.jetbrains.kotlin.descriptors.DescriptorVisibilities
+import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.backend.FirMetadataSource
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
 import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.FirRegularClass
+import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.ir.IrElement
 import org.jetbrains.kotlin.ir.declarations.IrClass
 import org.jetbrains.kotlin.ir.declarations.IrDeclaration
@@ -78,6 +82,15 @@ typealias InferredClassFact = InferredFact<IrClass, FirRegularClass>
 class FactsFileOutput(val file: File?, val module: () -> String?, val rootDir: String?)
 
 /**
+ * Which classes get the digest of their model surface in their plugin metadata (see
+ * [ModelSurface]): every exported class or interface, when a rule that walks models is on. When
+ * the rules on only walk the parameters of composables ([needsCompose]: `compose.noCallbackInModel`,
+ * `compose.noUnstableParameter`, `narrowModelParameters` with its default scope), only in a module
+ * that can declare composables, whose classpath has `@Composable`.
+ */
+class SurfaceDigests(val needsCompose: Boolean)
+
+/**
  * Writes every inferred fact with one of its rules on for the modules that compile against this one:
  * for every exported (non-private, non-local, directly in a file or a class) function, property
  * or class, unless it already carries the fact's annotation (a hand-written contract).
@@ -103,6 +116,8 @@ class InferredMetadataWriter(
     private val factsFile: FactsFileOutput,
     /** Whether a JVM compilation also writes the facts into the Kotlin metadata of its class files (the `icMetadata` option). */
     private val pluginMetadata: Boolean,
+    /** Which classes also get their model surface digest there, or null for none. */
+    private val surfaceDigests: SurfaceDigests?,
 ) : IrGenerationExtension {
     override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
         if (!pluginContext.afterK2) return
@@ -122,11 +137,14 @@ class InferredMetadataWriter(
      * plugin's data and Kotlin's incremental compilation compares with what the previous compilation wrote. A fact that
      * appears, changes or goes changes the declaration for it, so the files that use the declaration are compiled
      * again; within the module the reader takes the blob back (see
-     * [com.kitakkun.kotrail.fir.inferred.FactsFileComponent]).
+     * [com.kitakkun.kotrail.fir.inferred.FactsFileComponent]). A class whose surface a model rule walks also gets the
+     * digest of that surface there ([SurfaceDigests]), which only incremental compilation looks at.
      */
     private fun writeJvm(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
         val entries = ArrayList<FactsFile.Entry>()
         val blobs = LinkedHashMap<IrDeclaration, MutableMap<String, Map<String, List<String>>>>()
+        var digests: Boolean? = null
+        val digesters = HashMap<FirSession, ModelSurface.Digester>()
         for (file in moduleFragment.files) {
             val path = FactsFile.sourcePath(file.fileEntry.name, factsFile.rootDir)
             file.acceptChildrenVoid(
@@ -138,6 +156,16 @@ class InferredMetadataWriter(
                         val id = FactKeys.id(fir.symbol) ?: return
                         val signature = FactKeys.signature(fir.symbol, fir.moduleData.session)
                         entries += FactsFile.Entry(path, id, signature, mapOf(fact.name to arguments))
+                    }
+
+                    override fun exportedClass(declaration: IrClass, fir: FirRegularClass) {
+                        if (!pluginMetadata || surfaceDigests == null || !ModelSurface.isModelKind(fir.symbol)) return
+                        val session = fir.moduleData.session
+                        val on = digests ?: (!surfaceDigests.needsCompose || session.symbolProvider.getClassLikeSymbolByClassId(ComposeNames.COMPOSABLE) != null)
+                            .also { digests = it }
+                        if (!on) return
+                        val digest = digesters.getOrPut(session) { ModelSurface.Digester(session) }.digest(fir.symbol)
+                        blobs.getOrPut(declaration) { LinkedHashMap() } += PluginMetadata.surface(digest)
                     }
                 },
             )
@@ -173,6 +201,9 @@ class InferredMetadataWriter(
         abstract fun <D, F : FirDeclaration> emit(fact: InferredFact<D, F>, declaration: D, fir: F, arrays: List<List<String>>)
             where D : IrDeclarationWithVisibility, D : IrMutableAnnotationContainer
 
+        /** Called for every exported class, after its facts. */
+        open fun exportedClass(declaration: IrClass, fir: FirRegularClass) {}
+
         override fun visitElement(element: IrElement) {
             element.acceptChildrenVoid(this)
         }
@@ -193,6 +224,7 @@ class InferredMetadataWriter(
             declaration.acceptChildrenVoid(this)
             val fir = (declaration.metadata as? FirMetadataSource.Class)?.fir as? FirRegularClass ?: return
             for (fact in classFacts) write(fact, declaration, fir)
+            if (declaration.isExported()) exportedClass(declaration, fir)
         }
 
         private fun <D, F : FirDeclaration> write(fact: InferredFact<D, F>, declaration: D, fir: F) where D : IrDeclarationWithVisibility, D : IrMutableAnnotationContainer {

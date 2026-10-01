@@ -3,6 +3,7 @@ package com.kitakkun.kotrail.inferred
 import org.junit.jupiter.api.Assertions.assertArrayEquals
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Test
 
@@ -31,6 +32,8 @@ class PluginMetadataTest {
     @Test
     fun `the bytes read back as the facts`() {
         assertEquals(facts, PluginMetadata.decode(PluginMetadata.encode(facts)!!))
+        val surface = facts + PluginMetadata.surface("0123456789abcdef")
+        assertEquals(surface, PluginMetadata.decode(PluginMetadata.encode(surface)!!))
     }
 
     @Test
@@ -39,5 +42,24 @@ class PluginMetadataTest {
         assertFalse(PluginMetadata.encode(facts)!!.contentEquals(PluginMetadata.encode(changed)!!))
         assertNull(PluginMetadata.encode(emptyMap()))
         assertNull(PluginMetadata.decode("not json".toByteArray()))
+    }
+
+    @Test
+    fun `the digest of a surface is stable and changes with any property`() {
+        // Lines as ModelSurface writes them: a class, its properties, then a class it reaches.
+        val header = "class /Model kind=CLASS data=true value=false modality=FINAL typeParameters= stableMarker=false"
+        val name = "  property name public val receiver=- field=true delegated=false compared=true type=kotlin/String function=false slot=false"
+        val details = "  property details public val receiver=- field=true delegated=false compared=true type=/Details function=false slot=false"
+        val nested = "class /Details kind=CLASS data=true value=false modality=FINAL typeParameters= stableMarker=false"
+        val surface = listOf(header, name, details, nested)
+        assertEquals(PluginMetadata.digest(surface), PluginMetadata.digest(surface.toList()))
+        assertEquals(16, PluginMetadata.digest(surface).length)
+        // A property added to the nested class, one that changes its type, or one that becomes a var: another digest.
+        val callback = "  property onOpen public val receiver=- field=true delegated=false compared=true type=kotlin/Function0<kotlin/Unit> function=true slot=false"
+        assertNotEquals(PluginMetadata.digest(surface), PluginMetadata.digest(surface + callback))
+        assertNotEquals(PluginMetadata.digest(surface), PluginMetadata.digest(listOf(header, name.replace("kotlin/String", "kotlin/String?"), details, nested)))
+        assertNotEquals(PluginMetadata.digest(surface), PluginMetadata.digest(listOf(header, name.replace(" val ", " var "), details, nested)))
+        // The order is part of it: a walk reports the first callback it finds.
+        assertNotEquals(PluginMetadata.digest(surface), PluginMetadata.digest(listOf(header, details, name, nested)))
     }
 }

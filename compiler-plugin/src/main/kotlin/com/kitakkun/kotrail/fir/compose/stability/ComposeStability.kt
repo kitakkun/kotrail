@@ -2,6 +2,7 @@
 
 package com.kitakkun.kotrail.fir.compose.stability
 
+import com.kitakkun.kotrail.fir.ModelSurface
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.fir.FirSession
@@ -181,8 +182,7 @@ class StabilityInferencer(private val session: FirSession, private val stableTyp
         }
 
         var stability = Stability.Stable
-        for (member in symbol.declarationSymbols) {
-            if (member !is FirPropertySymbol) continue
+        for (member in ModelSurface.properties(symbol)) {
             val fieldType = when {
                 // The field of a delegated property holds the delegate; a library property has no delegate expression to read.
                 member.isDelegatedProperty -> member.delegateType() ?: continue
@@ -226,10 +226,7 @@ class StabilityInferencer(private val session: FirSession, private val stableTyp
             .filter { (parameter, argument) -> (argument as? ConeTypeParameterType)?.lookupTag?.typeParameterSymbol != parameter }
             .toMap()
 
-    private fun FirRegularClassSymbol.hasStableMarker(): Boolean = resolvedAnnotationsWithClassIds.any { annotation ->
-        val annotationClass = annotation.toAnnotationClassLikeSymbol(session) ?: return@any false
-        annotationClass.classId in KnownStableConstructs.stableMarkers || annotationClass.hasAnnotation(STABLE_MARKER, session)
-    }
+    private fun FirRegularClassSymbol.hasStableMarker(): Boolean = hasComposeStableMarker(session)
 
     private fun FirRegularClassSymbol.hasStableMarkedAncestor(visited: MutableSet<ClassId>): Boolean {
         if (!visited.add(classId)) return false
@@ -261,9 +258,20 @@ class StabilityInferencer(private val session: FirSession, private val stableTyp
         fir.primaryConstructorIfAny(session)?.valueParameterSymbols?.singleOrNull()?.resolvedReturnType
 
     private companion object {
-        val STABLE_MARKER = ClassId(FqName("androidx.compose.runtime"), Name.identifier("StableMarker"))
         val STABILITY_INFERRED = ClassId(FqName("androidx.compose.runtime.internal"), Name.identifier("StabilityInferred"))
     }
+}
+
+private val STABLE_MARKER = ClassId(FqName("androidx.compose.runtime"), Name.identifier("StableMarker"))
+
+/**
+ * Whether the class itself carries an annotation that the Compose compiler takes for a promise of
+ * stability: one that is meta-annotated `@StableMarker` (`@Stable`, `@Immutable`), or a known
+ * stable marker from outside Compose.
+ */
+fun FirRegularClassSymbol.hasComposeStableMarker(session: FirSession): Boolean = resolvedAnnotationsWithClassIds.any { annotation ->
+    val annotationClass = annotation.toAnnotationClassLikeSymbol(session) ?: return@any false
+    annotationClass.classId in KnownStableConstructs.stableMarkers || annotationClass.hasAnnotation(STABLE_MARKER, session)
 }
 
 /**
