@@ -289,6 +289,12 @@ out of every build, for a project that would rather not pay for those two compil
 publishes; its incremental builds then leave a use site's findings as they were until its file
 is compiled again.
 
+**Multiplatform JVM targets.** A JVM compilation of a multiplatform module (a `jvm()` target with common
+sources) is not compiled incrementally by Kotlin at all: the Kotlin Gradle plugin recompiles the whole
+module on every change (see KT-62686 in its build report, "Incremental compilation might be incorrect"),
+so every finding there is always the clean-build result and the plugin metadata brings nothing. The
+incremental behavior above applies to plain Kotlin/JVM and Android modules.
+
 **What still needs a full build.** A few findings depend on the bodies of many files at once,
 which no metadata of one declaration describes: duplicates of a
 [named condition](rules/named-condition.md) across a file the build compiles and one it does
