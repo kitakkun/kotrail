@@ -198,6 +198,9 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Arguments: the property, the function that starts the work (`launch`), the class or file being built; reported on the call that starts it. */
     val ASYNC_WORK_IN_INITIALIZER = tunable3<KtElement, String, String, String>("ASYNC_WORK_IN_INITIALIZER", KotrailRule.NO_ASYNC_WORK_IN_INITIALIZER, WHOLE)
 
+    /** Arguments: the property, the function that starts the work (`launch`); reported on the call that starts it inside a `by lazy { }` body. */
+    val ASYNC_WORK_IN_LAZY = tunable2<KtElement, String, String>("ASYNC_WORK_IN_LAZY", KotrailRule.NO_ASYNC_WORK_IN_INITIALIZER, WHOLE)
+
     /** Argument: the test's name; reported on a test function that asserts nothing. */
     val TEST_WITHOUT_ASSERTION = tunable1<KtNamedFunction, String>("TEST_WITHOUT_ASSERTION", KotrailRule.TEST_MUST_ASSERT, NAME)
 
@@ -817,6 +820,12 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             "[Kotrail] ''{0}'' starts asynchronous work (''{1}'') while ''{2}'' is being built: it begins at a time nobody " +
                 "reading the property expects, before the properties below it exist, and nothing keeps a handle to stop " +
                 "it or see it fail. Build the value here; start the work in init or in a start function the owner calls.",
+        )
+        map.put2(
+            KotrailDiagnostics.ASYNC_WORK_IN_LAZY,
+            "[Kotrail] ''{0}'' starts asynchronous work (''{1}'') on its first read: whichever code reads ''{0}'' first " +
+                "starts it, at a time nobody reading that code expects, and nothing keeps a handle to stop it or see it " +
+                "fail. Build the value here; start the work in init or in a start function the owner calls.",
         )
         map.put1(
             KotrailDiagnostics.TEST_WITHOUT_ASSERTION,

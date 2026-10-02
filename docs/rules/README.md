@@ -74,7 +74,7 @@ Failures that get hidden, waits that guess, and work that starts where nobody lo
 | Must close | on | `KOTRAIL_RESOURCE_NOT_CLOSED` | [must-close.md](must-close.md) |
 | No external mutation | on | `KOTRAIL_MUTATED_OUTSIDE_OWNER` | [no-external-mutation.md](no-external-mutation.md) |
 | Delay for completion | on | `KOTRAIL_DELAY_WAITS_FOR_ASYNC_WORK` | [delay-for-completion.md](delay-for-completion.md) |
-| No async work in initializer | on | `KOTRAIL_ASYNC_WORK_IN_INITIALIZER` | [no-async-work-in-initializer.md](no-async-work-in-initializer.md) |
+| No async work in initializer | on | `KOTRAIL_ASYNC_WORK_IN_INITIALIZER`, `KOTRAIL_ASYNC_WORK_IN_LAZY` | [no-async-work-in-initializer.md](no-async-work-in-initializer.md) |
 | Preconditions | on | `KOTRAIL_PRECONDITION_VIOLATED` | [preconditions.md](preconditions.md) |
 | No-op call | on | `KOTRAIL_CALL_DOES_NOTHING` | [no-op-call.md](no-op-call.md) |
 | No unimplemented code | on | `KOTRAIL_UNIMPLEMENTED_CODE` | [no-unimplemented.md](no-unimplemented.md) |

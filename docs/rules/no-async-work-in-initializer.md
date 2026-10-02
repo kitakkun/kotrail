@@ -1,6 +1,6 @@
 # No async work in initializer
 
-**Diagnostic:** `KOTRAIL_ASYNC_WORK_IN_INITIALIZER` (error, on the call that starts the work)
+**Diagnostics:** `KOTRAIL_ASYNC_WORK_IN_INITIALIZER` (error, on the call that starts the work), `KOTRAIL_ASYNC_WORK_IN_LAZY` (error, on the call that starts the work in a `by lazy { }` body)
 **Key:** `rules.noAsyncWorkInInitializer` (on by default)
 **Settings:** `functions` (default: `kotlinx.coroutines.launch`, `async`, `flow.launchIn`, `kotlin.concurrent.thread`, `java.lang.Thread.start`, `Executor.execute`, `ExecutorService.submit`, `android.os.Handler.post`, `postDelayed`, `java.util.Timer.schedule`, `scheduleAtFixedRate`, the `kotlin.concurrent` `schedule`, `scheduleAtFixedRate`, `timer` and `fixedRateTimer`, `SwingUtilities.invokeLater`, `EventQueue.invokeLater`)
 **Fix:** none (where the work starts, and who starts it, is the owner's decision)
@@ -53,16 +53,26 @@ and the value the property holds is just the value.
   initializer, the initializer of its explicit backing field (`field = ...`), or its delegate
   expression contains a call to one of `functions`, matched as globs against the callee's fully
   qualified name.
-- `by lazy { ... }` counts its lambda as the initializer: the work then starts on first access,
-  which is even harder to foresee than construction.
+- `by lazy { ... }` (with or without a mode) counts its lambda as the initializer, and a start
+  found there is reported as `KOTRAIL_ASYNC_WORK_IN_LAZY`: the work starts on the first read of
+  the property, which is even harder to foresee than construction. A start in any other delegate
+  expression (`Delegates.observable(...)`), which is evaluated while the owner is built, is
+  reported as `KOTRAIL_ASYNC_WORK_IN_INITIALIZER`.
 - The call is found at any depth of lambdas that an inline function runs in place: `also`,
   `apply`, `let`, `run`, `with`, `takeIf`, `buildList`, `forEach`, any inline function's lambda
   that is neither `noinline` nor `crossinline`.
 - The call is not the property's value (below).
 
-The message names the property, the function that starts the work, and the class being built
-(`Captures`, `Captures.Companion`), or the file for a top-level property, whose initializers run
-when the file is first used.
+`KOTRAIL_ASYNC_WORK_IN_INITIALIZER` names the property, the function that starts the work, and
+the class being built (`Captures`, `Captures.Companion`), or the file for a top-level property,
+whose initializers run when the file is first used.
+
+`KOTRAIL_ASYNC_WORK_IN_LAZY` names the property and the function that starts the work, and says
+that the work starts on the property's first read rather than while the owner is built: a lazy
+body runs when some code reads the property for the first time, so whichever code reads it first
+starts the work, at a time nobody reading that code expects. The owner's construction does not
+start it, and a test that only constructs the object does not either; a test or a caller that
+happens to read the property does.
 
 ## When it stays quiet
 

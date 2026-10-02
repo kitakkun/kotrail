@@ -13,6 +13,7 @@ import java.util.Timer
 import java.util.concurrent.Executor
 import kotlin.concurrent.schedule
 import kotlin.concurrent.thread
+import kotlin.properties.Delegates
 
 class Request
 
@@ -33,10 +34,18 @@ class Captures(private val scope: CoroutineScope, private val executor: Executor
         <!KOTRAIL_ASYNC_WORK_IN_INITIALIZER!>thread { frames.close() }<!>
     }
 
-    // Reported: lazy defers the start to the first access, which is even harder to foresee.
+    // Reported with the lazy message: lazy defers the start to the first read, whichever code makes it.
     private val updates by lazy {
-        Channel<Int>().also { updates -> <!KOTRAIL_ASYNC_WORK_IN_INITIALIZER!>scope.launch { updates.send(1) }<!> }
+        Channel<Int>().also { updates -> <!KOTRAIL_ASYNC_WORK_IN_LAZY!>scope.launch { updates.send(1) }<!> }
     }
+
+    // Reported with the lazy message: also when lazy is given a mode.
+    private val drained by lazy(LazyThreadSafetyMode.NONE) {
+        ArrayDeque<Int>().also { <!KOTRAIL_ASYNC_WORK_IN_LAZY!>thread { log("drain") }<!> }
+    }
+
+    // Reported with the initializer message: any other delegate is built with the object.
+    private var latest by Delegates.observable(Channel<Int>().also { latest -> <!KOTRAIL_ASYNC_WORK_IN_INITIALIZER!>scope.launch { latest.send(0) }<!> }) { _, _, _ -> }
 
     // Reported: through any depth of inline lambdas.
     private val workers = mutableListOf<Int>().apply {

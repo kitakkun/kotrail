@@ -54,11 +54,12 @@ import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
  *
  * Inspected are member and top-level properties: the initializer, an explicit backing field's
  * initializer, and the delegate expression, where `by lazy { }` counts its lambda as the
- * initializer. Inside, a call to one of `noAsyncWorkInInitializer.functions` is reported, also
- * through the lambdas an inline function runs in place (`also`, `apply`, `let`, `buildList`). A
- * lambda that runs later (a non-inline, `noinline` or `crossinline` one, a local function, an
- * object's members) is not looked into. A call whose result is the property's value is not
- * reported: the type says that work begins.
+ * initializer and is reported with a message of its own, since that work starts on the first read
+ * rather than while the owner is built. Inside, a call to one of
+ * `noAsyncWorkInInitializer.functions` is reported, also through the lambdas an inline function
+ * runs in place (`also`, `apply`, `let`, `buildList`). A lambda that runs later (a non-inline,
+ * `noinline` or `crossinline` one, a local function, an object's members) is not looked into. A
+ * call whose result is the property's value is not reported: the type says that work begins.
  */
 object NoAsyncWorkInInitializerChecker : FirPropertyChecker(MppCheckerKind.Common) {
     private const val LAZY = "kotlin.lazy"
@@ -86,17 +87,29 @@ object NoAsyncWorkInInitializerChecker : FirPropertyChecker(MppCheckerKind.Commo
         declaration.initializer?.let(roots::add)
         declaration.backingField?.initializer?.let(roots::add)
         val delegate = declaration.delegate?.let { (it as? FirWrappedDelegateExpression)?.expression ?: it }
-        if (delegate != null) roots += delegate.lazyInitializer() ?: delegate
+        // A lazy body runs on the first read rather than while the owner is built, and its message says so.
+        val lazyBody = delegate?.lazyInitializer()
+        if (delegate != null && lazyBody == null) roots += delegate
 
+        val property = declaration.name.asString()
+        for ((call, starter) in startsIn(roots, functions)) {
+            reportKotrail(call.source, KotrailDiagnostics.ASYNC_WORK_IN_INITIALIZER, property, starter, owner)
+        }
+        if (lazyBody != null) {
+            for ((call, starter) in startsIn(listOf(lazyBody), functions)) {
+                reportKotrail(call.source, KotrailDiagnostics.ASYNC_WORK_IN_LAZY, property, starter)
+            }
+        }
+    }
+
+    /** The calls in [roots] that start work, with the name of the function each one calls, other than those whose result is a root's value. */
+    private fun startsIn(roots: List<FirExpression>, functions: List<Glob>): Map<FirFunctionCall, String> {
         val starts = LinkedHashMap<FirFunctionCall, String>()
         for (root in roots) {
             val values = HashSet<FirStatement>().also { collectValues(root, it) }
             root.accept(StartFinder(functions, values, starts))
         }
-        val property = declaration.name.asString()
-        for ((call, starter) in starts) {
-            reportKotrail(call.source, KotrailDiagnostics.ASYNC_WORK_IN_INITIALIZER, property, starter, owner)
-        }
+        return starts
     }
 
     /** The class the property belongs to, as it is written in its file, or the file of a top-level one; null for an anonymous object's member. */
