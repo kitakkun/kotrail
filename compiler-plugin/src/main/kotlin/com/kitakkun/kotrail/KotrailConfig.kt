@@ -446,6 +446,12 @@ data class KotrailAsyncWork(
     val starters: List<String>,
 )
 
+/** Tunables of the no-async-work-in-initializer rule. From `rules.noAsyncWorkInInitializer`. */
+data class KotrailNoAsyncWorkInInitializer(
+    /** Globs over fully qualified functions that start asynchronous work: a coroutine, a thread, a posted task. */
+    val functions: List<String>,
+)
+
 /** One `requiredSupertype` policy: declarations matching [predicate] must extend or implement [supertype]. */
 data class KotrailSupertypePolicy(
     val name: String,
@@ -552,6 +558,7 @@ data class KotrailConfig(
     val unretained: KotrailUnretained,
     val requiredSupertypes: List<KotrailSupertypePolicy>,
     val asyncWork: KotrailAsyncWork,
+    val noAsyncWorkInInitializer: KotrailNoAsyncWorkInInitializer,
     val dependencyPolicies: List<KotrailDependencyPolicy>,
     val functionLength: KotrailFunctionLength,
     val fileLength: KotrailFileLength,
@@ -643,6 +650,26 @@ data class KotrailConfig(
             "java.util.concurrent.Executor.execute",
             "java.util.concurrent.ExecutorService.submit",
             "java.util.Timer.schedule",
+        )
+        /** What starts asynchronous work from a property initializer: coroutines, threads, executors, posted tasks and timers. */
+        val DEFAULT_INITIALIZER_ASYNC_FUNCTIONS: List<String> = listOf(
+            "kotlinx.coroutines.launch",
+            "kotlinx.coroutines.async",
+            "kotlinx.coroutines.flow.launchIn",
+            "kotlin.concurrent.thread",
+            "java.lang.Thread.start",
+            "java.util.concurrent.Executor.execute",
+            "java.util.concurrent.ExecutorService.submit",
+            "android.os.Handler.post",
+            "android.os.Handler.postDelayed",
+            "java.util.Timer.schedule",
+            "java.util.Timer.scheduleAtFixedRate",
+            "kotlin.concurrent.schedule",
+            "kotlin.concurrent.scheduleAtFixedRate",
+            "kotlin.concurrent.timer",
+            "kotlin.concurrent.fixedRateTimer",
+            "javax.swing.SwingUtilities.invokeLater",
+            "java.awt.EventQueue.invokeLater",
         )
         val DEFAULT_RESOURCE_FACTORIES: List<String> = listOf(
             "kotlin.io.inputStream", "kotlin.io.outputStream", "kotlin.io.reader", "kotlin.io.writer",
@@ -1161,6 +1188,9 @@ data class KotrailConfig(
                 asyncWork = KotrailAsyncWork(
                     delays = list(KotrailRule.DELAY_FOR_COMPLETION, "delays") ?: DEFAULT_DELAYS,
                     starters = list(KotrailRule.DELAY_FOR_COMPLETION, "starters") ?: DEFAULT_ASYNC_STARTERS,
+                ),
+                noAsyncWorkInInitializer = KotrailNoAsyncWorkInInitializer(
+                    functions = list(KotrailRule.NO_ASYNC_WORK_IN_INITIALIZER, "functions") ?: DEFAULT_INITIALIZER_ASYNC_FUNCTIONS,
                 ),
                 requiredSupertypes = entries(KotrailRule.REQUIRED_SUPERTYPE, "policies") { node -> node }
                     .map { (name, node) -> policy(name, node, "supertype", "a fully qualified class or interface name").let { (predicate, value) -> KotrailSupertypePolicy(name, predicate, value) } },

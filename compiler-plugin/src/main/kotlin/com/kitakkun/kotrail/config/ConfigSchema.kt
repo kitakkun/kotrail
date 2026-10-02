@@ -173,6 +173,9 @@ object ConfigSchema {
             Setting("delays", Kind.LIST, "Fully qualified functions that wait a fixed time; replaces the default list.", default = "kotlinx.coroutines.delay, java.lang.Thread.sleep, android.os.SystemClock.sleep"),
             Setting("starters", Kind.LIST, "Fully qualified functions that start work that outlives the call (coroutines, threads, posted runnables); replaces the default list.", default = "kotlinx.coroutines.launch, kotlinx.coroutines.async, kotlinx.coroutines.flow.launchIn, java.lang.Thread.start, kotlin.concurrent.thread, android.os.Handler.post, android.os.Handler.postDelayed, java.util.concurrent.Executor.execute, java.util.concurrent.ExecutorService.submit, java.util.Timer.schedule"),
         ),
+        KotrailRule.NO_ASYNC_WORK_IN_INITIALIZER to listOf(
+            Setting("functions", Kind.LIST, "Globs over fully qualified functions that start asynchronous work (a coroutine, a thread, a posted task); a call to one inside a property initializer is reported unless it is the property's value. Replaces the default list.", default = "kotlinx.coroutines.launch, kotlinx.coroutines.async, kotlinx.coroutines.flow.launchIn, kotlin.concurrent.thread, java.lang.Thread.start, java.util.concurrent.Executor.execute, java.util.concurrent.ExecutorService.submit, android.os.Handler.post, android.os.Handler.postDelayed, java.util.Timer.schedule, java.util.Timer.scheduleAtFixedRate, kotlin.concurrent.schedule, kotlin.concurrent.scheduleAtFixedRate, kotlin.concurrent.timer, kotlin.concurrent.fixedRateTimer, javax.swing.SwingUtilities.invokeLater, java.awt.EventQueue.invokeLater"),
+        ),
         KotrailRule.REQUIRED_SUPERTYPE to listOf(
             Setting("policies", Kind.ENTRIES, "Named policies; matching classes must extend or implement the supertype.",
                 entryHint = "a mapping with where (a predicate) and supertype (a fully qualified name), or '<predicate> -> <fqn>'"),

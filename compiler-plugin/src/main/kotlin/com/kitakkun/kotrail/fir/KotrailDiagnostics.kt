@@ -5,6 +5,7 @@ import org.jetbrains.kotlin.diagnostics.AbstractSourceElementPositioningStrategy
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory1
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory2
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory3
+import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactory4
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticFactoryToRendererMap
 import org.jetbrains.kotlin.diagnostics.KtDiagnosticsContainer
 import org.jetbrains.kotlin.diagnostics.Severity
@@ -59,6 +60,15 @@ class TunableDiagnostic2<A, B>(
     val warning: KtDiagnosticFactory3<A, B, String>,
 ) {
     fun at(severity: Severity): KtDiagnosticFactory3<A, B, String> = if (severity == Severity.WARNING) warning else error
+}
+
+class TunableDiagnostic3<A, B, C>(
+    val rule: KotrailRule,
+    val baseName: String,
+    val error: KtDiagnosticFactory4<A, B, C, String>,
+    val warning: KtDiagnosticFactory4<A, B, C, String>,
+) {
+    fun at(severity: Severity): KtDiagnosticFactory4<A, B, C, String> = if (severity == Severity.WARNING) warning else error
 }
 
 object KotrailDiagnostics : KtDiagnosticsContainer() {
@@ -184,6 +194,9 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
 
     /** Arguments: the wait as written, what started the work and how to wait for it properly; reported on a fixed delay that follows a call starting asynchronous work. */
     val DELAY_WAITS_FOR_ASYNC_WORK = tunable2<KtElement, String, String>("DELAY_WAITS_FOR_ASYNC_WORK", KotrailRule.DELAY_FOR_COMPLETION, WHOLE)
+
+    /** Arguments: the property, the function that starts the work (`launch`), the class or file being built; reported on the call that starts it. */
+    val ASYNC_WORK_IN_INITIALIZER = tunable3<KtElement, String, String, String>("ASYNC_WORK_IN_INITIALIZER", KotrailRule.NO_ASYNC_WORK_IN_INITIALIZER, WHOLE)
 
     /** Argument: the test's name; reported on a test function that asserts nothing. */
     val TEST_WITHOUT_ASSERTION = tunable1<KtNamedFunction, String>("TEST_WITHOUT_ASSERTION", KotrailRule.TEST_MUST_ASSERT, NAME)
@@ -403,6 +416,17 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
         baseName = PREFIX + name,
         error = KtDiagnosticFactory3(name.withSuffix(Severity.ERROR, rule.defaultSeverity), Severity.ERROR, strategy, P::class, KotrailDiagnosticRenderers),
         warning = KtDiagnosticFactory3(name.withSuffix(Severity.WARNING, rule.defaultSeverity), Severity.WARNING, strategy, P::class, KotrailDiagnosticRenderers),
+    )
+
+    private inline fun <reified P : KtElement, A, B, C> tunable3(
+        name: String,
+        rule: KotrailRule,
+        strategy: AbstractSourceElementPositioningStrategy,
+    ): TunableDiagnostic3<A, B, C> = TunableDiagnostic3(
+        rule = rule,
+        baseName = PREFIX + name,
+        error = KtDiagnosticFactory4(name.withSuffix(Severity.ERROR, rule.defaultSeverity), Severity.ERROR, strategy, P::class, KotrailDiagnosticRenderers),
+        warning = KtDiagnosticFactory4(name.withSuffix(Severity.WARNING, rule.defaultSeverity), Severity.WARNING, strategy, P::class, KotrailDiagnosticRenderers),
     )
 
     /** The name every Kotrail diagnostic starts with. */
@@ -788,6 +812,12 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             "[Kotrail] ''{0}'' waits a fixed time for what {1}. Too short and the code after it runs before the work is " +
                 "done; too long and it waits for nothing.",
         )
+        map.put3(
+            KotrailDiagnostics.ASYNC_WORK_IN_INITIALIZER,
+            "[Kotrail] ''{0}'' starts asynchronous work (''{1}'') while ''{2}'' is being built: it begins at a time nobody " +
+                "reading the property expects, before the properties below it exist, and nothing keeps a handle to stop " +
+                "it or see it fail. Build the value here; start the work in init or in a start function the owner calls.",
+        )
         map.put1(
             KotrailDiagnostics.TEST_WITHOUT_ASSERTION,
             "[Kotrail] ''{0}'' asserts nothing: it passes as long as nothing throws. Assert on the result, or verify an " +
@@ -915,5 +945,12 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         val template = "$message (${diagnostic.baseName}){2}"
         put(diagnostic.error, template, renderer, renderer, renderer)
         put(diagnostic.warning, template, renderer, renderer, renderer)
+    }
+
+    private fun KtDiagnosticFactoryToRendererMap.put3(diagnostic: TunableDiagnostic3<String, String, String>, message: String) {
+        val renderer: DiagnosticParameterRenderer<String> = CommonRenderers.STRING
+        val template = "$message (${diagnostic.baseName}){3}"
+        put(diagnostic.error, template, renderer, renderer, renderer, renderer)
+        put(diagnostic.warning, template, renderer, renderer, renderer, renderer)
     }
 }

@@ -10,12 +10,15 @@ import org.jetbrains.kotlin.diagnostics.KtDiagnostic
 import org.jetbrains.kotlin.diagnostics.KtLightDiagnosticWithParameters1
 import org.jetbrains.kotlin.diagnostics.KtLightDiagnosticWithParameters2
 import org.jetbrains.kotlin.diagnostics.KtLightDiagnosticWithParameters3
+import org.jetbrains.kotlin.diagnostics.KtLightDiagnosticWithParameters4
 import org.jetbrains.kotlin.diagnostics.KtOffsetsOnlyDiagnosticWithParameters1
 import org.jetbrains.kotlin.diagnostics.KtOffsetsOnlyDiagnosticWithParameters2
 import org.jetbrains.kotlin.diagnostics.KtOffsetsOnlyDiagnosticWithParameters3
+import org.jetbrains.kotlin.diagnostics.KtOffsetsOnlyDiagnosticWithParameters4
 import org.jetbrains.kotlin.diagnostics.KtPsiDiagnosticWithParameters1
 import org.jetbrains.kotlin.diagnostics.KtPsiDiagnosticWithParameters2
 import org.jetbrains.kotlin.diagnostics.KtPsiDiagnosticWithParameters3
+import org.jetbrains.kotlin.diagnostics.KtPsiDiagnosticWithParameters4
 import org.jetbrains.kotlin.diagnostics.Severity
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 
@@ -43,6 +46,16 @@ internal fun reportKotrail(source: KtSourceElement?, diagnostic: TunableDiagnost
 context(context: CheckerContext, reporter: DiagnosticReporter)
 internal fun reportKotrail(source: KtSourceElement?, diagnostic: TunableDiagnostic2<String, String>, a: String, b: String) =
     reportKotrail(source, diagnostic, a, b, emptyList())
+
+context(context: CheckerContext, reporter: DiagnosticReporter)
+internal fun reportKotrail(source: KtSourceElement?, diagnostic: TunableDiagnostic3<String, String, String>, a: String, b: String, c: String) =
+    report(source, diagnostic.rule, diagnostic.baseName, diagnostic::at, emptyList()) { element, note, severity, factory ->
+        when (element) {
+            is KtPsiSourceElement -> KtPsiDiagnosticWithParameters4(element, a, b, c, note, severity, factory, factory.defaultPositioningStrategy, context)
+            is KtLightSourceElement -> KtLightDiagnosticWithParameters4(element, a, b, c, note, severity, factory, factory.defaultPositioningStrategy, context)
+            else -> KtOffsetsOnlyDiagnosticWithParameters4(element, a, b, c, note, severity, factory, factory.defaultPositioningStrategy, context)
+        }
+    }
 
 /**
  * The variants with [fix]: the edits that make the diagnostic go away, applied by `kotrailFix`.
