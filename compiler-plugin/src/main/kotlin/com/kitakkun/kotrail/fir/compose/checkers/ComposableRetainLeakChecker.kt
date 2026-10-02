@@ -90,9 +90,9 @@ import org.jetbrains.kotlin.types.AbstractTypeChecker
  * project class stores (its properties with a backing field or a delegate, private ones included,
  * and those of its project superclasses), and the type arguments of a library class (a collection's
  * elements, `MutableState<View>`, `StateFlow<View>`, `Lazy<Context>`) other than one of
- * `nonRetainingTypes` (a weak or a soft reference). A project's own generic class is walked with its
- * type arguments in place of its type parameters. A library class without type arguments ends the
- * walk: what it holds is not visible from its type.
+ * `nonRetainingTypes` (a weak or a soft reference, a class, a comparator, a reflection handle). A
+ * project's own generic class is walked with its type arguments in place of its type parameters. A
+ * library class without type arguments ends the walk: what it holds is not visible from its type.
  *
  * A value that is a `RememberObserver` but not a `RetainObserver` is reported too: `retain` throws
  * for it.
@@ -281,8 +281,9 @@ object ComposableRetainLeakChecker : FirFunctionCallChecker(MppCheckerKind.Commo
          * The first leak among the type arguments of a library class. What it stores is not visible
          * from its members, and a generic holds what its type arguments are: a collection its
          * elements, `MutableState<View>` and `StateFlow<View>` their value, `Lazy<Context>` what it
-         * computes. One of [nonRetainingTypes] (a weak or a soft reference) holds nothing, and a star
-         * projection or a type parameter holds nothing known.
+         * computes. One of [nonRetainingTypes] (a weak or a soft reference, `KClass<View>`,
+         * `Comparator<View>`) holds nothing, and a star projection or a type parameter holds
+         * nothing known.
          */
         private fun leakInArguments(
             classSymbol: FirRegularClassSymbol,

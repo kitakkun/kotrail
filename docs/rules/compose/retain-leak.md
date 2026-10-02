@@ -2,7 +2,7 @@
 
 **Diagnostics:** `KOTRAIL_RETAINED_LEAK` (error, on the calculation or the key), `KOTRAIL_RETAINED_REMEMBER_OBSERVER` (error, on the calculation)
 **Key:** `rules.compose.retainLeak` (on by default)
-**Settings:** `functions` (default `retain`, `RetainedEffect`, `RetainedValuesStoreRegistry.LocalRetainedValuesStoreProvider`), `leakTypes` (default `android.content.Context`, `android.view.View`), `nonRetainingTypes` (default `java.lang.ref.Reference`, `kotlin.native.ref.WeakReference`)
+**Settings:** `functions` (default `retain`, `RetainedEffect`, `RetainedValuesStoreRegistry.LocalRetainedValuesStoreProvider`), `leakTypes` (default `android.content.Context`, `android.view.View`), `nonRetainingTypes` (default `java.lang.ref.Reference`, `kotlin.native.ref.WeakReference`, `kotlin.reflect.KClass`, `java.lang.Class`, `kotlin.Comparator`, `java.util.Comparator`, `kotlin.reflect.KProperty`, `kotlin.reflect.KFunction`)
 
 ## What it rejects
 
@@ -91,17 +91,17 @@ and throws.
     one), and the stored properties of its project superclasses. A library class holds what its
     type arguments are: a collection or an array its elements, `MutableState<View>` and
     `StateFlow<View>` their value, `Lazy<Context>` what it computes, `Optional<View>` what it
-    wraps, unless it is one of `nonRetainingTypes` (a weak or a soft reference). A project's own
-    generic class is walked with its type arguments in place of its type parameters (`Box(view)`
-    holds a View through `Box.value`). A platform type (`Context!`, as `WeakReference.get()`
-    returns) holds what its Kotlin type does.
+    wraps, unless it is one of `nonRetainingTypes` (a weak or a soft reference, a class, a
+    comparator, a reflection handle). A project's own generic class is walked with its type
+    arguments in place of its type parameters (`Box(view)` holds a View through `Box.value`). A
+    platform type (`Context!`, as `WeakReference.get()` returns) holds what its Kotlin type does.
 - The message names what is held and how: `android.content.Context` for the value itself,
   `AppContext (android.content.Context)` for a subclass, `Holder.view (android.view.View)` for a
   property, `MutableState<View> (android.view.View)` for a type argument, `StateFlow<Holder>
   (Holder.view: android.view.View)` for a property reached through one, `@DoNotRetain Session`
   for an annotated class.
-- A library generic that does not hold its type arguments is reported too: a `Comparator<View>`,
-  a `KClass<View>`. Add such a class to `nonRetainingTypes`.
+- A library generic that does not hold its type arguments and is not one of `nonRetainingTypes`
+  is reported too. Add such a class to `nonRetainingTypes`.
 - `KOTRAIL_RETAINED_REMEMBER_OBSERVER` is reported on the calculation when the value's type is a
   `RememberObserver` and not a `RetainObserver`. Keys may be either: the runtime does not dispatch
   to them.
@@ -114,6 +114,11 @@ and throws.
 - A weak or a soft reference does not keep what it refers to: `retain { WeakReference(context) }`
   and `retain { SoftReference(view) }` are quiet, and so is a project class that stores one.
   `nonRetainingTypes` lists them, subclasses included.
+- A class, a comparator and a reflection handle name a type without holding an instance of it:
+  `retain { View::class }` (a `KClass<View>`), `retain { View::class.java }`,
+  `retain { Comparator<View> { a, b -> ... } }` and `retain { Holder::view }` (a
+  `KProperty1<Holder, View>`) are quiet. `kotlin.Comparator` is `java.util.Comparator` on the
+  JVM, so the default list names both.
 - The type arguments hold only data: `retain { mutableStateOf(count) }`.
 - A library class without type arguments ends the walk: what it holds is not visible from its
   type.
@@ -144,6 +149,12 @@ rules:
       - java.lang.ref.Reference
       - kotlin.native.ref.WeakReference
       - kotlin.reflect.KClass
+      - java.lang.Class
+      - kotlin.Comparator
+      - java.util.Comparator
+      - kotlin.reflect.KProperty
+      - kotlin.reflect.KFunction
+      - com.example.ui.Selector   # holds no instance of its type argument
 ```
 
 ## Related rules

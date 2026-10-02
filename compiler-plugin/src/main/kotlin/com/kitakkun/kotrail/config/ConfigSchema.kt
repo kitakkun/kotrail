@@ -247,8 +247,8 @@ object ConfigSchema {
                 default = "androidx.compose.runtime.retain.retain, androidx.compose.runtime.retain.RetainedEffect, androidx.compose.runtime.retain.RetainedValuesStoreRegistry.LocalRetainedValuesStoreProvider"),
             Setting("leakTypes", Kind.LIST, "Fully qualified classes (subclasses included) that a retained value or key must never be or hold; classes annotated @DoNotRetain always count. Replaces the default list.",
                 default = "android.content.Context, android.view.View"),
-            Setting("nonRetainingTypes", Kind.LIST, "Fully qualified library classes (subclasses included) that do not hold their type arguments, such as weak and soft references; every other library class with type arguments (MutableState<View>, StateFlow<View>, Lazy<Context>) holds what they are. Replaces the default list.",
-                default = "java.lang.ref.Reference, kotlin.native.ref.WeakReference"),
+            Setting("nonRetainingTypes", Kind.LIST, "Fully qualified library classes (subclasses included) that do not hold their type arguments, such as weak and soft references, classes, comparators and reflection handles; every other library class with type arguments (MutableState<View>, StateFlow<View>, Lazy<Context>) holds what they are. Replaces the default list.",
+                default = "java.lang.ref.Reference, kotlin.native.ref.WeakReference, kotlin.reflect.KClass, java.lang.Class, kotlin.Comparator, java.util.Comparator, kotlin.reflect.KProperty, kotlin.reflect.KFunction"),
         ),
         KotrailRule.COMPOSE_NO_GLOBAL_MUTABLE_STATE to listOf(
             Setting("handlerWrites", Kind.BOOLEAN, "Whether an assignment to a global var from a composable's event handler or effect (onClick = { Session.user = null }) is reported; assignments during composition always are. Off, only writes during composition count.", default = "true"),

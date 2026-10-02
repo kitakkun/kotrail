@@ -830,7 +830,17 @@ data class KotrailConfig(
             "androidx.compose.runtime.retain.RetainedValuesStoreRegistry.LocalRetainedValuesStoreProvider",
         )
         val DEFAULT_RETAIN_LEAK_TYPES: List<String> = listOf("android.content.Context", "android.view.View")
-        val DEFAULT_NON_RETAINING_TYPES: List<String> = listOf("java.lang.ref.Reference", "kotlin.native.ref.WeakReference")
+        val DEFAULT_NON_RETAINING_TYPES: List<String> = listOf(
+            "java.lang.ref.Reference",
+            "kotlin.native.ref.WeakReference",
+            "kotlin.reflect.KClass",
+            "java.lang.Class",
+            // kotlin.Comparator is a typealias of java.util.Comparator on the JVM, and a class of its own elsewhere.
+            "kotlin.Comparator",
+            "java.util.Comparator",
+            "kotlin.reflect.KProperty",
+            "kotlin.reflect.KFunction",
+        )
         val DEFAULT_TEST_ASSERTIONS: List<String> = listOf(
             "kotlin.test.*", "org.junit.Assert.*", "org.junit.jupiter.api.Assertions.*", "assertk.*", "io.kotest.*",
             "com.google.common.truth.*", "dev.mokkery.verify*", "io.mockk.verify*", "org.mockito.*verify*",

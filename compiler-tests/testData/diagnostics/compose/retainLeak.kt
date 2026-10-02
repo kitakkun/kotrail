@@ -177,6 +177,15 @@ fun GenericData(context: Context, count: Int) {
     retain<Unit> { context }
 }
 
+// Quiet: a class, a comparator and a reflection handle name a type without holding an instance of it.
+@Composable
+fun Handles() {
+    retain { View::class }
+    retain { View::class.java }
+    retain { Comparator<View> { _, _ -> 0 } }
+    retain { Holder::view }
+}
+
 // Quiet: what a lambda captures is not in its type.
 @Composable
 fun Captured(view: View) {
