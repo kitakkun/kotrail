@@ -132,7 +132,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
         JvmSyntheticForInternalChecker,
         ParameterOrderChecker,
         UnretainedChecker,
-        SuppressReasonChecker,
+        SuppressReasonChecker.Declarations,
     )
     override val fileCheckers: Set<FirFileChecker> = setOf(
         // First, so that a file's fix record is fresh before any rule reports on the file.
@@ -208,6 +208,7 @@ object KotrailExpressionCheckers : ExpressionCheckers() {
     )
     override val basicExpressionCheckers: Set<FirBasicExpressionChecker> = setOf(
         SizeComparisonIdiomChecker,
+        SuppressReasonChecker.Statements,
     )
     override val booleanOperatorExpressionCheckers: Set<FirBooleanOperatorExpressionChecker> = setOf(
         NullOrEmptyIdiomChecker,

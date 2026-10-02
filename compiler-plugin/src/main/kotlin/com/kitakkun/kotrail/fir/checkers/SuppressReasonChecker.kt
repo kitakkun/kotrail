@@ -14,12 +14,14 @@ import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirBasicDeclarationChecker
+import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirBasicExpressionChecker
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirFile
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassIdSafe
 import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirAnnotationCall
 import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
+import org.jetbrains.kotlin.fir.expressions.FirStatement
 import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
@@ -39,44 +41,82 @@ import org.jetbrains.kotlin.types.ConstantValueKind
  *
  * @Suppress("UNCHECKED_CAST") // the map is built above with String keys   // fine
  *
+ * @Suppress("DEPRECATION") legacy()                         // reported: a statement owes one too
+ *
  * @Suppress("unused")                                       // fine: exempt
  * ```
  *
  * A suppression silences a check for every later reader, who then has to guess why; the reason
  * belongs next to the annotation. The annotations checked are `suppressReason.annotations`
- * (`kotlin.Suppress` and `android.annotation.SuppressLint`), on any declaration and on the file.
- * Every suppression owes a reason (`suppressReason.ids` is `*`) except those whose ids all match
- * `suppressReason.exemptIds` (`unused`, `UNUSED`, `UNUSED_*`: a member invoked through a framework carries
+ * (`kotlin.Suppress` and `android.annotation.SuppressLint`), on any declaration and on the file
+ * ([Declarations]), and on a statement or an expression ([Statements]). Every suppression owes a
+ * reason (`suppressReason.ids` is `*`) except those whose ids all match `suppressReason.exemptIds`
+ * (`unused`, `UNUSED`, `UNUSED_*`: a member invoked through a framework carries
  * `@Suppress("unused")` for a reason that is always the same); an annotation that mixes an exempt
  * id with another is checked, as decided by [SuppressedIds]. Whether a reason is there is decided
  * from the file's text by [SuppressionReason]: a comment on the annotation's line or the line
  * above, or a comment above the group of annotated declarations it belongs to.
  */
-object SuppressReasonChecker : FirBasicDeclarationChecker(MppCheckerKind.Common) {
+object SuppressReasonChecker {
     private val STRING_LITERAL = Regex("\"([^\"\\\\]*)\"")
 
-    context(context: CheckerContext, reporter: DiagnosticReporter)
-    override fun check(declaration: FirDeclaration) {
-        val config = context.session.kotrailConfig
-        if (!config.isEnabled(KotrailRule.SUPPRESS_REASON)) return
-        if (declaration.annotations.isEmpty()) return
-        val source = declaration.source ?: return
-        val kind = source.kind
-        // A property made from a constructor parameter shares the parameter's annotations, and a
-        // default accessor holds the `@get:` / `@set:` annotations written on its property: on
-        // those, only the targeted annotations are their own.
-        val onlyTargeted = kind is KtFakeSourceElementKind.PropertyFromParameter || kind is KtFakeSourceElementKind.DefaultAccessor
-        if (kind is KtFakeSourceElementKind && !onlyTargeted) return
-        val text = ((declaration as? FirFile)?.source ?: context.containingFileSymbol?.source)?.text ?: return
-        val settings = config.suppressReason
-        val checked = Checked(settings.annotations, SuppressedIds(settings.ids, settings.exemptIds))
+    /** Suppressions on a declaration, a local one and a lambda included, and on the file. */
+    object Declarations : FirBasicDeclarationChecker(MppCheckerKind.Common) {
+        context(context: CheckerContext, reporter: DiagnosticReporter)
+        override fun check(declaration: FirDeclaration) {
+            if (declaration.annotations.isEmpty()) return
+            if (!context.session.kotrailConfig.isEnabled(KotrailRule.SUPPRESS_REASON)) return
+            val source = declaration.source ?: return
+            val kind = source.kind
+            // A property made from a constructor parameter shares the parameter's annotations, and a
+            // default accessor holds the `@get:` / `@set:` annotations written on its property: on
+            // those, only the targeted annotations are their own.
+            val onlyTargeted = kind is KtFakeSourceElementKind.PropertyFromParameter || kind is KtFakeSourceElementKind.DefaultAccessor
+            if (kind is KtFakeSourceElementKind && !onlyTargeted) return
+            val text = ((declaration as? FirFile)?.source ?: context.containingFileSymbol?.source)?.text ?: return
+            val own = declaration.annotations.filter { annotation ->
+                val target = annotation.useSiteTarget
+                !onlyTargeted || (target != null && target != AnnotationUseSiteTarget.CONSTRUCTOR_PARAMETER)
+            }
+            reportWithoutReason(own, text)
+        }
+    }
 
-        for (annotation in declaration.annotations) {
+    /**
+     * Suppressions written on a statement or an expression: `@Suppress("DEPRECATION") legacy()`,
+     * `@Suppress("UNCHECKED_CAST") (raw as List<T>).first()`, an annotated assignment, an
+     * annotated block (`if (ready) @Suppress("DEPRECATION") { ... }`). The raw FIR builder puts
+     * the annotations of an annotated expression on the expression itself. An annotated lambda's
+     * annotations are its anonymous function's, and a local property's are the property's, not
+     * its initializer's: both are declarations, which [Declarations] checks.
+     */
+    object Statements : FirBasicExpressionChecker(MppCheckerKind.Common) {
+        context(context: CheckerContext, reporter: DiagnosticReporter)
+        override fun check(expression: FirStatement) {
+            if (expression.annotations.isEmpty()) return
+            if (!context.session.kotrailConfig.isEnabled(KotrailRule.SUPPRESS_REASON)) return
+            val text = context.containingFileSymbol?.source?.text ?: return
+            // An augmented assignment is desugared into an assignment around its operator call
+            // (`count += x`), inside a block when it has a receiver (`holder.total += x`), and each
+            // of them carries the annotations written on the statement: the outermost reports them.
+            val enclosing = context.annotationContainers.filter { it !== expression }
+            val own = expression.annotations.filter { annotation ->
+                val start = annotation.source?.startOffset
+                enclosing.none { container -> container.annotations.any { it.source?.startOffset == start } }
+            }
+            reportWithoutReason(own, text)
+        }
+    }
+
+    context(context: CheckerContext, reporter: DiagnosticReporter)
+    private fun reportWithoutReason(annotations: List<FirAnnotation>, text: CharSequence) {
+        if (annotations.isEmpty()) return
+        val settings = context.session.kotrailConfig.suppressReason
+        val checked = Checked(settings.annotations, SuppressedIds(settings.ids, settings.exemptIds))
+        for (annotation in annotations) {
             val at = annotation.source ?: continue
             // A `@get:` annotation reaches the accessor as a copy with a fake source that keeps the written offsets.
             if (at.kind is KtFakeSourceElementKind && at.kind !is KtFakeSourceElementKind.FromUseSiteTarget) continue
-            val target = annotation.useSiteTarget
-            if (onlyTargeted && (target == null || target == AnnotationUseSiteTarget.CONSTRUCTOR_PARAMETER)) continue
             if (!checked.matches(annotation, context.session)) continue
             if (SuppressionReason.hasReason(text, at.startOffset, at.endOffset, checked::lineCarriesOne)) continue
             val written = at.text?.toString()?.replace(Regex("\\s+"), " ") ?: continue

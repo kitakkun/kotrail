@@ -96,6 +96,67 @@ class Accessors {
 <!KOTRAIL_SUPPRESS_WITHOUT_REASON!>@Suppress("KOTRAIL_CATCH_TOO_BROAD")<!>
 fun stacked() {}
 
+@Deprecated("old")
+fun legacy(): Int = 0
+
+class Counter {
+    var total = 0
+}
+
+// A suppression written on a statement owes a reason as much as one on a declaration.
+fun <T> castStatement(raw: Any) {
+    <!KOTRAIL_SUPPRESS_WITHOUT_REASON!>@Suppress("UNCHECKED_CAST")<!>
+    (raw as List<T>).forEach { println(it) }
+}
+
+fun callStatement() {
+    <!KOTRAIL_SUPPRESS_WITHOUT_REASON!>@Suppress("DEPRECATION")<!> legacy()
+}
+
+fun <T> castWithReasonAbove(raw: Any) {
+    // The caller hands in the list it built from the same type.
+    @Suppress("UNCHECKED_CAST")
+    (raw as List<T>).forEach { println(it) }
+}
+
+fun callWithReasonOnLine() {
+    @Suppress("DEPRECATION") legacy() // kept until the old callers migrate
+}
+
+// An assignment, also one desugared into a block around it, is reported once.
+fun assignments(counter: Counter): Int {
+    var count = 0
+    <!KOTRAIL_SUPPRESS_WITHOUT_REASON!>@Suppress("DEPRECATION")<!>
+    count = legacy()
+    println(count)
+    <!KOTRAIL_SUPPRESS_WITHOUT_REASON!>@Suppress("DEPRECATION")<!>
+    count += legacy()
+    println(count)
+    <!KOTRAIL_SUPPRESS_WITHOUT_REASON!>@Suppress("DEPRECATION")<!>
+    counter.total += legacy()
+    println(count)
+    <!KOTRAIL_SUPPRESS_WITHOUT_REASON!>@Suppress("DEPRECATION")<!> count++
+    return count
+}
+
+// An annotated block, and an annotated lambda, whose annotations are its anonymous function's.
+fun blocks(ready: Boolean) {
+    if (ready) <!KOTRAIL_SUPPRESS_WITHOUT_REASON!>@Suppress("DEPRECATION")<!> {
+        legacy()
+    }
+    println(ready)
+    run <!KOTRAIL_SUPPRESS_WITHOUT_REASON!>@Suppress("DEPRECATION")<!> { legacy() }
+}
+
+// A local property's annotation is the property's, not its initializer's: reported once.
+fun <T> localProperty(raw: Any): T {
+    <!KOTRAIL_SUPPRESS_WITHOUT_REASON!>@Suppress("UNCHECKED_CAST")<!>
+    val first = (raw as List<T>).first()
+    return first
+}
+
+val initializerExpression: List<String> = <!KOTRAIL_SUPPRESS_WITHOUT_REASON!>@Suppress("UNCHECKED_CAST")<!> (Any() as List<String>)
+
 /* GENERATED_FIR_TAGS: annotationUseSiteTargetFile, annotationUseSiteTargetPropertyGetter, asExpression,
 classDeclaration, classReference, functionDeclaration, getter, integerLiteral, localProperty, primaryConstructor,
 propertyDeclaration, stringLiteral */
