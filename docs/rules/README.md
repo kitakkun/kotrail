@@ -9,7 +9,7 @@ reason to keep it off, and the **Default** column names that reason; an `off` ru
 per project, and an `experimental` rule may change shape.
 A rule can belong to two groups; it is listed once, under the one it serves first.
 
-## Readability and structure (15)
+## Readability and structure (16)
 
 How a body reads: its length, how much is in play at once, the order of what it declares.
 
@@ -30,6 +30,7 @@ How a body reads: its length, how much is in play at once, the order of what it 
 | No literal loop | on | `KOTRAIL_LITERAL_LOOP` | [no-literal-loop.md](no-literal-loop.md) |
 | Named condition | on | `KOTRAIL_CONDITION_DUPLICATED`, `KOTRAIL_CONDITION_TOO_COMPOUND` | [named-condition.md](named-condition.md) |
 | Suppress reason | on | `KOTRAIL_SUPPRESS_WITHOUT_REASON` | [suppress-reason.md](suppress-reason.md) |
+| No swap through also | on | `KOTRAIL_SWAP_THROUGH_ALSO` | [no-swap-through-also.md](no-swap-through-also.md) |
 
 ## Naming and style (9)
 

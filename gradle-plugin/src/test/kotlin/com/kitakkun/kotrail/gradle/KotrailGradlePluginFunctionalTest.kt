@@ -198,6 +198,13 @@ class KotrailGradlePluginFunctionalTest {
         assertTrue(text.contains("move(x = 1, y = 2, z = 3)"), text)
         // Two declarations moved into one branch keep their order, so the second may still read the first.
         assertTrue(text.contains("} else {\n        val base = count\n        val next = count + 1\n        println(base + next)"), text)
+        for (expected in listOf(
+            "        val replaced = ready\n        ready = frame\n        counter++\n        return replaced\n",
+            "        counter++\n        val previous = ready\n        ready = frame\n        return previous\n",
+            "synchronized(lock) {\n        val previous = ready\n        ready = frame\n        previous\n    }",
+        )) {
+            assertTrue(text.contains(expected), "expected `$expected` in:\n$text")
+        }
 
         val again = runBuild("kotrailFix")
         assertTrue(again.output.contains("changed since compiled"), again.output)
@@ -700,6 +707,31 @@ class KotrailGradlePluginFunctionalTest {
             }
 
             fun referenceProducer(): () -> Int = run { { compute() } }
+
+            class Swaps {
+                private val lock = Any()
+                private var ready: String? = null
+                private var counter = 0
+
+                fun swapInitializer(frame: String): String? {
+                    val replaced = ready.also {
+                        ready = frame
+                        counter++
+                    }
+                    return replaced
+                }
+
+                fun swapReturn(frame: String): String? {
+                    counter++
+                    return ready.also { ready = frame }
+                }
+
+                fun swapLast(frame: String): String? = synchronized(lock) {
+                    ready.also {
+                        ready = frame
+                    }
+                }
+            }
         """.trimIndent()
     }
 }

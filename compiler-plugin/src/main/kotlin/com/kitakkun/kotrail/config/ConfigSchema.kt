@@ -152,6 +152,9 @@ object ConfigSchema {
             Setting("ids", Kind.LIST, "Globs over the suppressed ids (the annotation's string arguments); an annotation is checked when one of its ids matches and is not exempt. Replaces the default list.", default = "*"),
             Setting("exemptIds", Kind.LIST, "Globs over ids that owe no reason; an annotation whose ids all match one is skipped, while one that mixes in another id is checked. Replaces the default list.", default = "unused, UNUSED, UNUSED_*"),
         ),
+        KotrailRule.NO_SWAP_THROUGH_ALSO to listOf(
+            Setting("functions", Kind.LIST, "Fully qualified scope functions whose receiver is reported when it is a variable that the block assigns; replaces the default list.", default = "kotlin.also, kotlin.apply, kotlin.let, kotlin.run"),
+        ),
         KotrailRule.NATIVE_ALLOCATION_IN_LOOP to listOf(
             Setting("types", Kind.LIST, "Fully qualified types (subtypes included) whose instances hold native memory that only a cleaner frees; replaces the default list.", default = "org.jetbrains.skia.impl.Managed, java.awt.image.VolatileImage"),
             Setting("factories", Kind.LIST, "Fully qualified factory functions that return such an instance; replaces the default list.", default = "java.nio.ByteBuffer.allocateDirect, org.jetbrains.skia.Image.Companion.makeFromEncoded, org.jetbrains.skia.Image.Companion.makeRaster, org.jetbrains.skia.Surface.Companion.makeRaster, ..."),

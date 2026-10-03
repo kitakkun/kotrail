@@ -37,11 +37,11 @@ The compiler is the one gate every line of code has to pass. Kotrail puts your c
 
 ## Rules
 
-77 rules ship today, grouped by what they protect. Full pages, with every condition and
+78 rules ship today, grouped by what they protect. Full pages, with every condition and
 fixture, live under [`docs/rules/`](docs/rules/README.md); the index there lists each rule with
 its diagnostic and whether it is on by default.
 
-- **Readability and structure** (15): [Function length](docs/rules/function-length.md) and a [Live variable budget](docs/rules/live-variable-budget.md) keep a
+- **Readability and structure** (16): [Function length](docs/rules/function-length.md) and a [Live variable budget](docs/rules/live-variable-budget.md) keep a
   body small enough to hold in mind, and [File length](docs/rules/file-length.md) keeps a file from becoming a flat list of
   unrelated names; [No literal loop](docs/rules/no-literal-loop.md) unfolds `listOf(false, true).forEach { if (it) ... }`
   back into the two calls it was; [Named condition](docs/rules/named-condition.md) gives a compound `if` condition a name,
@@ -49,7 +49,8 @@ its diagnostic and whether it is on by default.
   their first caller and data before callbacks; [Narrow local scope](docs/rules/narrow-local-scope.md), [Prefer val](docs/rules/prefer-val.md) and
   [Prefer idiom](docs/rules/prefer-idiom.md) tidy what is left; [Suppress reason](docs/rules/suppress-reason.md) asks every
   `@Suppress` for a comment that says why; [Named condition](docs/rules/named-condition.md)
-  asks for one named definition of a compound condition written in several places.
+  asks for one named definition of a compound condition written in several places; [No swap through also](docs/rules/no-swap-through-also.md)
+  spells out `ready.also { ready = frame }` as `val previous = ready` and an assignment of its own.
 - **Naming and style** (9): [Prefer function references](docs/rules/prefer-function-references.md) over `{ transform(it) }`,
   [Named arguments for repeated types](docs/rules/named-arguments-for-repeated-types.md) for `Padding(8, 16, 8, 16)`, no comments longer than five lines
   and no fully qualified names inline; [Prefer duration](docs/rules/prefer-duration.md) wants `500.milliseconds`, not `delay(500)`,

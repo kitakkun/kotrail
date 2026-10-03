@@ -404,6 +404,12 @@ data class KotrailSuppressReason(
     val exemptIds: List<String>,
 )
 
+/** Tunables for the no-swap-through-also rule. From `rules.noSwapThroughAlso`. */
+data class KotrailNoSwapThroughAlso(
+    /** Fully qualified scope functions whose receiver, when it is a variable the block assigns, is reported. */
+    val functions: List<String>,
+)
+
 /** Tunables for the native-allocation-in-loop rule. From `rules.nativeAllocationInLoop`. */
 data class KotrailNativeAllocation(
     /** Fully qualified types (subtypes included) whose instances hold native memory freed only by a cleaner. */
@@ -552,6 +558,7 @@ data class KotrailConfig(
     val mustClose: KotrailMustClose,
     val noExternalMutation: KotrailNoExternalMutation,
     val suppressReason: KotrailSuppressReason,
+    val noSwapThroughAlso: KotrailNoSwapThroughAlso,
     val objcThrows: KotrailObjCThrows,
     val weakOnlyReference: KotrailWeakOnlyReference,
     val catchTooBroad: KotrailCatchTooBroad,
@@ -694,6 +701,8 @@ data class KotrailConfig(
         val DEFAULT_SUPPRESSION_IDS: List<String> = listOf("*")
         /** A member invoked through a framework carries `@Suppress("unused")` for a reason that is always the same. */
         val DEFAULT_SUPPRESSION_EXEMPT_IDS: List<String> = listOf("unused", "UNUSED", "UNUSED_*")
+        /** The receiver forms of the standard scope functions, which hand the block the value they were called on. */
+        val DEFAULT_SWAP_SCOPE_FUNCTIONS: List<String> = listOf("kotlin.also", "kotlin.apply", "kotlin.let", "kotlin.run")
         val DEFAULT_NATIVE_TYPES: List<String> = listOf("org.jetbrains.skia.impl.Managed", "java.awt.image.VolatileImage")
         val DEFAULT_NATIVE_FACTORIES: List<String> = listOf(
             "java.nio.ByteBuffer.allocateDirect",
@@ -1171,6 +1180,9 @@ data class KotrailConfig(
                     annotations = list(KotrailRule.SUPPRESS_REASON, "annotations") ?: DEFAULT_SUPPRESSION_ANNOTATIONS,
                     ids = list(KotrailRule.SUPPRESS_REASON, "ids") ?: DEFAULT_SUPPRESSION_IDS,
                     exemptIds = list(KotrailRule.SUPPRESS_REASON, "exemptIds") ?: DEFAULT_SUPPRESSION_EXEMPT_IDS,
+                ),
+                noSwapThroughAlso = KotrailNoSwapThroughAlso(
+                    functions = list(KotrailRule.NO_SWAP_THROUGH_ALSO, "functions") ?: DEFAULT_SWAP_SCOPE_FUNCTIONS,
                 ),
                 objcThrows = KotrailObjCThrows(packages = list(KotrailRule.NATIVE_OBJC_THROWS, "packages").orEmpty().map(::Glob)),
                 weakOnlyReference = KotrailWeakOnlyReference(

@@ -70,6 +70,7 @@ enum class KotrailRule(
     DELAY_FOR_COMPLETION("delayForCompletion", Severity.ERROR),
     NO_ASYNC_WORK_IN_INITIALIZER("noAsyncWorkInInitializer", Severity.ERROR),
     SUPPRESS_REASON("suppressReason", Severity.ERROR),
+    NO_SWAP_THROUGH_ALSO("noSwapThroughAlso", Severity.ERROR),
     /** The class-shaped finding of the same rule, a warning: nothing can hide an internal class from Java. */
     JVM_SYNTHETIC_FOR_INTERNAL_CLASS("jvmSyntheticForInternalClass", Severity.WARNING, hasSwitch = false),
 

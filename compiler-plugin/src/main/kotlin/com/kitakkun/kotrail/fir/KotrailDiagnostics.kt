@@ -168,6 +168,9 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: the annotation as written (`@Suppress("KOTRAIL_CATCH_TOO_BROAD")`); reported on a suppression annotation with no comment on its line, above it, or above its group. */
     val SUPPRESS_WITHOUT_REASON = tunable1<KtElement, String>("SUPPRESS_WITHOUT_REASON", KotrailRule.SUPPRESS_REASON, WHOLE)
 
+    /** Arguments: the function with what it does with the value (`also returns`, `let hands its block`), the variable; reported on the function's name. */
+    val SWAP_THROUGH_ALSO = tunable2<KtElement, String, String>("SWAP_THROUGH_ALSO", KotrailRule.NO_SWAP_THROUGH_ALSO, REFERENCED_NAME)
+
     /** Argument: what was wrapped; reported on a weak reference built from an object nothing else holds. */
     val WEAK_REFERENCE_TO_FRESH_OBJECT = tunable1<KtElement, String>("WEAK_REFERENCE_TO_FRESH_OBJECT", KotrailRule.WEAK_ONLY_REFERENCE, WHOLE)
 
@@ -758,6 +761,12 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         map.put1(
             KotrailDiagnostics.SUPPRESS_WITHOUT_REASON,
             "[Kotrail] ''{0}'' silences a check without saying why: put the reason in a comment on this line or the line above.",
+        )
+        map.put2(
+            KotrailDiagnostics.SWAP_THROUGH_ALSO,
+            "[Kotrail] This {0} the previous value of ''{1}'' while its block assigns ''{1}'': the old value comes out and " +
+                "the new one goes in, in one expression that reads as neither. Name the previous value (val previous = {1}) " +
+                "and assign on its own line.",
         )
         map.put1(
             KotrailDiagnostics.NATIVE_ALLOCATION_IN_LOOP,
