@@ -47,6 +47,14 @@ because nothing in the code it is looking at says the object is a resource.
   created (a parameter, `this`, a property, the result of a call that is not a creation).
   Closing the wrapper would close the lender's stream, so the wrapper is not the function's to
   close. [Wrappers over borrowed streams](#wrappers-over-borrowed-streams) lists the forms.
+- The resource wraps a stream its source owns:
+  - a stream of a `Process` (`process.inputStream`, `errorStream`, `outputStream`, directly or
+    through a local): the process closes its pipes as it ends, so
+    `process.inputStream.bufferedReader().readText()` needs no `close()`;
+  - a stream of an `HttpURLConnection` (`connection.inputStream`, `errorStream`,
+    `outputStream`) when the function calls `connection.disconnect()`, in a `finally` or
+    anywhere else in the body: the connection closes what it handed out. Without the
+    `disconnect()`, a reader over `connection.inputStream` is still the function's to close.
 - The type is on `ignoredTypes`: an in-memory buffer holds nothing a close would free, and a
   project's `AutoCloseable` registration handles (an uninstall token) go there too:
 
@@ -85,7 +93,8 @@ The rule does not track a resource created over a borrowed stream:
 Two forms stay tracked. A wrapper whose innermost stream is a fresh creation,
 `BufferedReader(FileReader(path))` or `BufferedReader(InputStreamReader(FileInputStream(path)))`,
 carries the obligation of what it wraps. A wrapper chained on a stream pulled out of an object,
-`process.inputStream.bufferedReader()`, is the function's to close.
+`request.body.bufferedReader()`, is the function's to close, unless the object is a source that
+owns the stream (see [When it stays quiet](#when-it-stays-quiet)).
 
 ## Pointers without a deallocator
 
@@ -121,3 +130,8 @@ wrapping a borrowed stream itself, wraps a borrowed stream and is not collected,
 creation whose closeable receiver is itself a wrapper over a borrowed stream, a parameter, or
 rooted at `this` through property accesses. The question recurses through nested creations,
 with a visited set so a creation met again answers no.
+A stream is its source's when it is `inputStream`, `errorStream` or `outputStream` (or the
+getter) of an expression typed `java.lang.Process`, or of one typed `java.net.HttpURLConnection`
+that reads a local, parameter or property the body calls `disconnect()` on; a pass before the
+walk collects those, so a `disconnect()` in a `finally` below the read counts. A creation whose
+closeable receiver is such a stream is not collected either.

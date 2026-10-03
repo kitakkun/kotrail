@@ -21,6 +21,7 @@ import org.jetbrains.kotlin.fir.expressions.FirElvisExpression
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
+import org.jetbrains.kotlin.fir.expressions.FirQualifiedAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirReturnExpression
 import org.jetbrains.kotlin.fir.expressions.FirSafeCallExpression
 import org.jetbrains.kotlin.fir.expressions.FirSmartCastExpression
@@ -76,6 +77,12 @@ import org.jetbrains.kotlin.types.AbstractTypeChecker
  * (`Wrapper(parameterStream).bufferedReader()`), or on a stream reached from a parameter or `this`
  * (`parameterStream.bufferedReader()`, `this.stream.buffered()`), wraps a borrowed stream too, and
  * so does a creation around such a wrapper (`BufferedReader(InputStreamReader(parameterStream))`).
+ *
+ * A stream its source owns is not the function's to close either: the streams of a `Process`
+ * (`process.inputStream.bufferedReader()`), which the process closes, and the streams of an
+ * `HttpURLConnection` the function disconnects (`connection.inputStream` with
+ * `connection.disconnect()` anywhere in the body), which the connection closes. A wrapper over one
+ * of them is not tracked either.
  */
 object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
     private val CLOSEABLE = listOf(
@@ -97,6 +104,15 @@ object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
     )
     private val RESULT_OF_LAMBDA = USE + setOf("kotlin.let", "kotlin.run", "kotlin.with")
 
+    private val PROCESS = ClassId(FqName("java.lang"), org.jetbrains.kotlin.name.Name.identifier("Process"))
+    private val HTTP_URL_CONNECTION = ClassId(FqName("java.net"), org.jetbrains.kotlin.name.Name.identifier("HttpURLConnection"))
+    private val DISCONNECT = org.jetbrains.kotlin.name.Name.identifier("disconnect")
+
+    /** The streams a process or a connection hands out, read as properties or through their getters. */
+    private val SOURCE_STREAMS = setOf(
+        "inputStream", "errorStream", "outputStream", "getInputStream", "getErrorStream", "getOutputStream",
+    )
+
     context(context: CheckerContext, reporter: DiagnosticReporter)
     override fun check(declaration: FirNamedFunction) {
         val config = context.session.kotrailConfig
@@ -105,6 +121,7 @@ object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
         if (source.kind is KtFakeSourceElementKind) return
         val body = declaration.body ?: return
         val finder = Finder(context.session, config.mustClose.factories.toSet(), config.mustClose.ignoredTypes)
+        finder.collectDisconnects(body)
         body.accept(finder)
         for ((call, type) in finder.leaked()) {
             val at = call.source ?: continue
@@ -121,6 +138,12 @@ object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
         private val settledLocals = HashSet<FirBasedSymbol<*>>()
         private val ancestors = ArrayList<FirElement>()
 
+        /** Every local's initializer, a stream taken from a source included. */
+        private val localInitializers = HashMap<FirBasedSymbol<*>, FirExpression>()
+
+        /** The connections the body calls `disconnect()` on. */
+        private val disconnected = HashSet<FirBasedSymbol<*>>()
+
         fun leaked(): List<Pair<FirFunctionCall, String>> = created.entries
             .filter { (call, _) -> call !in settled && locals.entries.none { (local, creation) -> creation === call && local in settledLocals } }
             .map { (call, type) -> call to type }
@@ -131,7 +154,27 @@ object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
             ancestors.removeAt(ancestors.lastIndex)
         }
 
+        /** Records the connections the body calls `disconnect()` on, wherever the call sits; it runs before the walk. */
+        fun collectDisconnects(body: FirElement) {
+            body.accept(object : FirVisitorVoid() {
+                override fun visitElement(element: FirElement) {
+                    element.acceptChildren(this)
+                }
+
+                override fun visitFunctionCall(functionCall: FirFunctionCall) {
+                    val callee = functionCall.calleeReference.toResolvedCallableSymbol()
+                    val receiver = functionCall.explicitReceiver
+                    if (callee?.name == DISCONNECT && functionCall.argumentList.arguments.isEmpty() && receiver != null) {
+                        // The type as smart cast; the symbol behind the cast.
+                        if (receiver.resolvedType.isSubtypeOf(HTTP_URL_CONNECTION)) receiver.referencedSymbol()?.let { disconnected += it }
+                    }
+                    functionCall.acceptChildren(this)
+                }
+            })
+        }
+
         override fun visitProperty(property: FirProperty) {
+            property.initializer?.let { localInitializers[property.symbol] = it }
             val initializer = property.initializer?.let { unwrapScopeChain(it) } as? FirFunctionCall
             if (initializer != null) locals[property.symbol] = initializer
             visitElement(property)
@@ -223,14 +266,16 @@ object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
 
         /**
          * `Wrapper(parameterStream).bufferedReader()`, `parameterStream.bufferedReader()`, `this.stream.buffered()`:
-         * a creation that wraps its receiver, where the receiver is itself a wrapper over a borrowed stream or a
-         * stream reached from a parameter or `this`, wraps a borrowed stream its lender closes. `File(path).bufferedReader()` and
-         * `process.inputStream.bufferedReader()` on a local stay tracked.
+         * a creation that wraps its receiver, where the receiver is itself a wrapper over a borrowed stream, a
+         * stream reached from a parameter or `this`, or a stream its source owns ([isOwnedBySource]), wraps a
+         * stream someone else closes. `File(path).bufferedReader()` and `request.body.bufferedReader()` on a
+         * local stay tracked.
          */
         private fun isChainedOnBorrowed(call: FirFunctionCall, visited: MutableSet<FirFunctionCall>): Boolean {
             var receiver = call.explicitReceiver?.unwrapped() ?: return false
             if (receiver is FirCheckedSafeCallSubject) receiver = receiver.originalReceiverRef.value.unwrapped()
             if (!receiver.resolvedType.isCloseable()) return false
+            if (isOwnedBySource(receiver)) return true
             val local = receiver.localSymbol()
             if (local != null) return wrapsBorrowed(locals.getValue(local), visited)
             val inner = unwrapScopeChain(receiver)
@@ -239,8 +284,36 @@ object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
         }
 
         /**
+         * `process.inputStream`, `connection.errorStream` where the body disconnects `connection`, or a local
+         * holding one: a stream its source closes (a process its pipes, a connection its socket), so it is not
+         * the function's to close.
+         */
+        private fun isOwnedBySource(expression: FirExpression): Boolean {
+            var stream = unwrapScopeChain(expression)
+            val held = (stream as? FirPropertyAccessExpression)?.calleeReference?.toResolvedCallableSymbol()?.let { localInitializers[it] }
+            if (held != null) stream = unwrapScopeChain(held)
+            if (stream is FirSafeCallExpression) stream = stream.selector as? FirExpression ?: return false
+            val access: FirQualifiedAccessExpression = when {
+                stream is FirPropertyAccessExpression -> stream
+                stream is FirFunctionCall && stream.argumentList.arguments.isEmpty() -> stream
+                else -> return false
+            }
+            if (access.calleeReference.toResolvedCallableSymbol()?.name?.asString() !in SOURCE_STREAMS) return false
+            var source = access.explicitReceiver ?: return false
+            if (source is FirCheckedSafeCallSubject) source = source.originalReceiverRef.value
+            if (source.resolvedType.isSubtypeOf(PROCESS)) return true
+            return source.resolvedType.isSubtypeOf(HTTP_URL_CONNECTION) && source.referencedSymbol() in disconnected
+        }
+
+        /** The local, parameter or property this expression reads, through a smart cast or a safe call. */
+        private fun FirExpression.referencedSymbol(): FirBasedSymbol<*>? {
+            val read = unwrapped().let { if (it is FirCheckedSafeCallSubject) it.originalReceiverRef.value.unwrapped() else it }
+            return (read as? FirPropertyAccessExpression)?.calleeReference?.toResolvedCallableSymbol()
+        }
+
+        /**
          * `parameterStream`, `this`, `this.stream`, `stream` (a member), `this.holder?.stream`: rooted at `this`
-         * through property accesses, or a parameter itself. A property of a parameter (`process.inputStream`)
+         * through property accesses, or a parameter itself. A property of a parameter (`request.body`)
          * is a stream this function pulled out, so it stays the function's to close.
          */
         private fun isRootedAtParameterOrThis(expression: FirExpression): Boolean {

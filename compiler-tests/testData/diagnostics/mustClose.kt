@@ -7,6 +7,8 @@ import java.io.InputStream
 import java.io.InputStreamReader
 import java.io.Reader
 import java.io.StringReader
+import java.net.HttpURLConnection
+import java.net.URI
 import kotlin.concurrent.thread
 
 class Pooled : AutoCloseable {
@@ -86,9 +88,47 @@ fun consumes(path: String, process: Process): String {
     // Not reported: an in-memory buffer holds nothing a close would free.
     val bytes = ByteArrayOutputStream().also { it.write(1) }.toByteArray()
 
-    // Reported: readText leaves the reader, and the pipe behind it, open.
-    val text = <!KOTRAIL_RESOURCE_NOT_CLOSED!>process.inputStream.bufferedReader()<!>.readText()
+    // Reported: readText leaves the reader, and the file behind it, open.
+    val text = <!KOTRAIL_RESOURCE_NOT_CLOSED!>File(path).bufferedReader()<!>.readText()
     return "$lines $all $text ${bytes.size}"
+}
+
+fun runs(command: String): String {
+    // Not reported: a process owns its pipes, and closes them as it ends.
+    val process = ProcessBuilder(command).start()
+    val out = process.inputStream.bufferedReader().readText()
+    val err = process.errorStream.bufferedReader().readText()
+    process.outputStream.bufferedWriter().write("q")
+    val held = process.inputStream
+    val again = held.bufferedReader().readText()
+    val exec = Runtime.getRuntime().exec(arrayOf(command)).inputStream.bufferedReader().readText()
+    return out + err + again + exec
+}
+
+fun fetch(url: String): String {
+    // Not reported: the connection owns its streams, and the body disconnects it.
+    val connection = URI(url).toURL().openConnection() as HttpURLConnection
+    try {
+        if (connection.responseCode >= 400) return connection.errorStream.bufferedReader().readText()
+        val body = connection.inputStream.bufferedReader().readText()
+        val input = connection.inputStream
+        val again = input.bufferedReader().readText()
+        return body + again
+    } finally {
+        connection.disconnect()
+    }
+}
+
+fun post(connection: HttpURLConnection, payload: String) {
+    // Not reported: disconnected later on the path.
+    connection.outputStream.bufferedWriter().write(payload)
+    connection.disconnect()
+}
+
+fun fetchKept(url: String): String {
+    // Reported: nothing disconnects the connection, so the reader is this function's to close.
+    val connection = URI(url).toURL().openConnection() as HttpURLConnection
+    return <!KOTRAIL_RESOURCE_NOT_CLOSED!>connection.inputStream.bufferedReader()<!>.readText()
 }
 
 fun openNarrowed(path: String): BufferedReader = File(path).takeIf { it.exists() }?.bufferedReader() ?: error("missing")
@@ -143,7 +183,8 @@ fun chainedOnBorrowed(parameterStream: InputStream): String {
     // Not reported: a wrapper chained on a wrapper over a borrowed stream, or on a parameter, closes a stream the caller owns.
     val chained = Wrapper(parameterStream).bufferedReader()
     val direct = parameterStream.bufferedReader()
-    return chained.readLine() + direct.readLine()
+    val nested = BufferedReader(InputStreamReader(parameterStream))
+    return chained.readLine() + direct.readLine() + nested.readLine()
 }
 
 fun nestedWrappers(parameterStream: InputStream, path: String): String {
