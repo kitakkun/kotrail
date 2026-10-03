@@ -202,6 +202,8 @@ class KotrailGradlePluginFunctionalTest {
             "        val replaced = ready\n        ready = frame\n        counter++\n        return replaced\n",
             "        counter++\n        val previous = ready\n        ready = frame\n        return previous\n",
             "synchronized(lock) {\n        val previous = ready\n        ready = frame\n        previous\n    }",
+            // In a braced branch, the statements go inside the branch's block.
+            "} else {\n            val previous = ready\n            ready = frame\n            previous\n        }",
         )) {
             assertTrue(text.contains(expected), "expected `$expected` in:\n$text")
         }
@@ -729,6 +731,16 @@ class KotrailGradlePluginFunctionalTest {
                 fun swapLast(frame: String): String? = synchronized(lock) {
                     ready.also {
                         ready = frame
+                    }
+                }
+
+                fun swapBranch(frame: String, keep: Boolean): String? = synchronized(lock) {
+                    if (keep) {
+                        null
+                    } else {
+                        ready.also {
+                            ready = frame
+                        }
                     }
                 }
             }

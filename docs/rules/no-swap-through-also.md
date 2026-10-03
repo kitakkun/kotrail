@@ -3,7 +3,7 @@
 **Diagnostic:** `KOTRAIL_SWAP_THROUGH_ALSO` (error, on the function's name)
 **Key:** `rules.noSwapThroughAlso` (on by default)
 **Settings:** `functions` (default: `kotlin.also`, `kotlin.apply`, `kotlin.let`, `kotlin.run`)
-**Fix:** automatic for `also` and `apply` as a local's initializer, a `return`'s operand, or a lambda's last expression (see [Fix](#fix))
+**Fix:** automatic for `also` and `apply` as a local's initializer, a `return`'s operand, or the last expression of a lambda or a braced branch (see [Fix](#fix))
 
 ## What it rejects
 
@@ -58,13 +58,21 @@ spelled-out form is one line longer.
 - The lambda assigns that same variable: `x = ...`, `this.x = ...`, `x += ...`, `x++`, at any
   depth that runs before the call returns: the block itself and inline lambdas inside it
   (`ready.also { repeat(1) { ready = frame } }`).
-- Whether the block reads `it` or `this` does not matter: `ready.also { it?.close(); ready = null }`
-  is reported, and reading the old value next to the assignment only makes it harder to follow.
+- The call's value is used: it initializes a variable, is returned, is passed on, or is the last
+  expression of a lambda or an `if`/`when` branch whose own value is used.
+- Whether the block reads `it` or `this` does not matter once the value is used:
+  `fun take() = ready.also { log(it); ready = null }` is reported, and reading the old value next
+  to the assignment only makes it harder to follow.
 - The message says what comes out: `also` and `apply` return the previous value; `let` and `run`
   hand it to their block, which overwrites the variable it came from.
 
 ## When it stays quiet
 
+- The call's value is dropped: a statement that is not its block's last, the last statement of a
+  function body or of a lambda that returns Unit, a loop body, or a branch of an `if`/`when` in
+  statement position. With the value dropped, nothing old comes out, and
+  `ready?.let { newer -> front?.close(); front = newer; ready = null }` reads as using the variable
+  and then replacing it.
 - The block does not assign the receiver's variable: `result.also { log(it) }`,
   `ready.also { frameCounter++ }`, `x.also { listOf(x).forEach { y = it } }`.
 - The assignment is in code that runs later, if at all: a lambda stored for later
@@ -81,21 +89,23 @@ spelled-out form is one line longer.
 ## Fix
 
 `kotrailFix` reads the variable first and lets the block's statements follow on their own lines,
-for a function that returns its receiver (`also`, `apply`) in three places:
+for a function that returns its receiver (`also`, `apply`) in four places:
 
 | Written | Becomes |
 |---|---|
 | `val replaced = ready.also { ... }` | `val replaced = ready`, then the statements |
 | `return ready.also { ... }` | `val previous = ready`, the statements, `return previous` |
 | `ready.also { ... }` as the last expression of a lambda whose value is used | `val previous = ready`, the statements, `previous` |
+| `ready.also { ... }` as the last expression of a braced `if`/`when` branch whose value is used | `val previous = ready`, the statements, `previous`, inside the branch |
 
 The fix is recorded only when moving the statements out of the lambda keeps their meaning: the
 lambda reads neither `it` nor its receiver (written or implicit) and has no explicit parameter
 list, does not `return@also`, declares nothing at its top level, and contains no raw string; the
 call is written `ready.also { ... }` (no safe call, label or parentheses) with the block on one
-line or its braces on lines of their own; the statement has its line to itself; and the name
-`previous` appears nowhere in the enclosing function. Everything else, `let` and `run` included,
-is reported without a fix.
+line or its braces on lines of their own; a branch is written with braces
+(`else { ready.also { ... } }`, not `else ready.also { ... }`); the statement has its line to
+itself; and the name `previous` appears nowhere in the enclosing function. Everything else, `let`
+and `run` included, is reported without a fix.
 
 ## Settings
 
@@ -128,6 +138,12 @@ by its property symbol and the owners of the `this` receivers it is read on, so 
 `this.ready` are the same variable while `other.ready` is none. The block is walked with a
 visitor that enters an anonymous function only when it runs in place (`inlineStatus` is
 `Inline`, or its `invocationKind` is set by a contract) and never enters a local function or
-class. The fix finds its place from the checker's containing elements (a local property, an
-explicit `return`, or the implicit return of a lambda's last statement) and rebuilds the text from
-the receiver and the lambda's source, re-indented at the statement's indentation.
+class. Whether the value is used is read from the checker's containing elements, walking up from
+the call: a block takes the value only from its last statement, a function or initializer body,
+a loop body and a `finally` block drop it, a branch passes it to its `if`/`when` or `try`, a safe
+call passes on its selector's, and a `return` uses it unless its target returns Unit. FIR wraps
+a lambda's last statement in an implicit return only when the lambda's return type is not Unit,
+so the last statement of a Unit lambda reaches the lambda itself and counts as dropped. The fix
+finds its place from the same elements (a local property, an explicit `return`, the implicit
+return of a lambda's last statement, or the last statement of a braced branch block) and rebuilds
+the text from the receiver and the lambda's source, re-indented at the statement's indentation.

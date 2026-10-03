@@ -15,6 +15,7 @@ import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirFunctionCallChecker
 import org.jetbrains.kotlin.fir.declarations.FirAnonymousFunction
+import org.jetbrains.kotlin.fir.declarations.FirAnonymousInitializer
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirFunction
@@ -22,17 +23,24 @@ import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.InlineStatus
 import org.jetbrains.kotlin.fir.expressions.FirAnonymousFunctionExpression
 import org.jetbrains.kotlin.fir.expressions.FirBlock
+import org.jetbrains.kotlin.fir.expressions.FirCatch
 import org.jetbrains.kotlin.fir.expressions.FirCheckedSafeCallSubject
 import org.jetbrains.kotlin.fir.expressions.FirDesugaredAssignmentValueReferenceExpression
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
+import org.jetbrains.kotlin.fir.expressions.FirLoop
 import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirQualifiedAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirReturnExpression
+import org.jetbrains.kotlin.fir.expressions.FirSafeCallExpression
 import org.jetbrains.kotlin.fir.expressions.FirSmartCastExpression
 import org.jetbrains.kotlin.fir.expressions.FirThisReceiverExpression
+import org.jetbrains.kotlin.fir.expressions.FirTryExpression
 import org.jetbrains.kotlin.fir.expressions.FirVariableAssignment
+import org.jetbrains.kotlin.fir.expressions.FirWhenBranch
+import org.jetbrains.kotlin.fir.expressions.FirWhenExpression
 import org.jetbrains.kotlin.fir.expressions.arguments
+import org.jetbrains.kotlin.fir.expressions.impl.FirSingleExpressionBlock
 import org.jetbrains.kotlin.fir.expressions.unwrapArgument
 import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
 import org.jetbrains.kotlin.fir.references.toResolvedPropertySymbol
@@ -43,6 +51,8 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.types.ConeTypeParameterType
+import org.jetbrains.kotlin.fir.types.coneType
+import org.jetbrains.kotlin.fir.types.isUnit
 import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
 
 /**
@@ -68,13 +78,15 @@ import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
  * counts when it is a local variable or a property read on `this` or at top level (smart casts
  * and safe calls included), and the assignment counts at any depth that runs before the call
  * returns: the block itself and the in-place lambdas inside it, not a lambda stored for later,
- * a local function or a local class. Test source sets are not looked at.
+ * a local function or a local class. A call whose value nobody consumes is left alone: with the
+ * value dropped, nothing old comes out, and the block reads as using the variable and then
+ * replacing it. Test source sets are not looked at.
  *
  * The fix is recorded for a function that returns its receiver (`also`, `apply`) whose trailing
  * lambda reads neither its parameter nor its receiver and declares nothing at its top level, when
  * the call is the initializer of a local, the operand of a `return`, or the last expression of a
- * lambda whose value is used, and that statement has its line to itself. It reads the variable
- * first and lets the block's statements follow on their own lines.
+ * lambda or of a braced `if`/`when` branch whose value is used, and that statement has its line to
+ * itself. It reads the variable first and lets the block's statements follow on their own lines.
  */
 object NoSwapThroughAlsoChecker : FirFunctionCallChecker(MppCheckerKind.Common) {
     private const val PREVIOUS = "previous"
@@ -96,6 +108,7 @@ object NoSwapThroughAlsoChecker : FirFunctionCallChecker(MppCheckerKind.Common) 
         val lambdas = expression.arguments.mapNotNull { (it.unwrapArgument() as? FirAnonymousFunctionExpression)?.anonymousFunction }
             .filter { it.runsInPlace() }
         if (lambdas.none { it.assigns(variable) }) return
+        if (!isValueUsed(context.containingElements)) return
         val path = context.containingFileSymbol?.sourceFile?.path
         if (path != null && isTestSourcePath(path)) return
 
@@ -112,6 +125,35 @@ object NoSwapThroughAlsoChecker : FirFunctionCallChecker(MppCheckerKind.Common) 
         val dispatchOwner: FirBasedSymbol<*>?,
         val extensionOwner: FirBasedSymbol<*>?,
     )
+
+    /**
+     * Whether anything consumes the value of the call [elements] ends with. It is dropped when the
+     * call is a statement that is not its block's last, or the last statement of a block whose own
+     * value is dropped: a function body, a lambda that returns Unit (FIR wraps a lambda's last
+     * statement in an implicit return only otherwise), a loop body, a `finally` block, or a branch
+     * of an `if`/`when` or a `try` whose value is dropped in turn. A safe call yields what its
+     * selector does. Any other parent consumes the value.
+     */
+    private fun isValueUsed(elements: List<FirElement>): Boolean {
+        var child = elements.lastOrNull() ?: return true
+        for (index in elements.size - 2 downTo 0) {
+            val parent = elements[index]
+            when (parent) {
+                is FirSafeCallExpression -> if (parent.selector !== child) return true
+                is FirBlock -> if (parent.statements.lastOrNull() !== child) return false
+                is FirWhenBranch -> if (parent.result !== child) return true
+                is FirWhenExpression -> if (child !is FirWhenBranch) return true
+                is FirCatch -> if (parent.block !== child) return true
+                is FirTryExpression -> if (parent.finallyBlock === child) return false
+                is FirLoop -> return parent.condition === child
+                is FirFunction, is FirAnonymousInitializer -> return false
+                is FirReturnExpression -> return !parent.target.labeledElement.returnTypeRef.coneType.isUnit
+                else -> return true
+            }
+            child = parent
+        }
+        return true
+    }
 
     /**
      * The variable this expression reads or assigns: a local, a top-level property, or a property
@@ -189,8 +231,8 @@ object NoSwapThroughAlsoChecker : FirFunctionCallChecker(MppCheckerKind.Common) 
      *
      * - `val y = x.also { ... }` becomes `val y = x` and the statements;
      * - `return x.also { ... }` becomes `val previous = x`, the statements and `return previous`;
-     * - `x.also { ... }` as the last expression of a lambda whose value is used becomes
-     *   `val previous = x`, the statements and `previous`.
+     * - `x.also { ... }` as the last expression of a lambda whose value is used, or of a braced
+     *   `if`/`when` branch, becomes `val previous = x`, the statements and `previous`.
      *
      * Empty for any other place, and whenever moving the statements out of the lambda could change
      * what they mean or where they run.
@@ -238,6 +280,15 @@ object NoSwapThroughAlsoChecker : FirFunctionCallChecker(MppCheckerKind.Common) 
                     ?: return emptyList()
                 val replacement = "val $PREVIOUS = $receiverText${lines.under(indent)}\n$indent$keyword $PREVIOUS"
                 listOf(builder.replaceRange(returnSource.startOffset, callSource.endOffset, replacement))
+            }
+            // Only a used value is reported, so the branch's value is used as well.
+            parent is FirBlock && grandparent is FirWhenBranch && grandparent.result === parent && parent.statements.lastOrNull() === call -> {
+                // An unbraced branch has no block to take the new statements.
+                if (parent is FirSingleExpressionBlock || FixBuilder.textOf(parent.source)?.startsWith("{") != true) return emptyList()
+                if (PREVIOUS_NAME.containsMatchIn(builder.text)) return emptyList()
+                val indent = lineIndent(builder, callSource, callSource) ?: return emptyList()
+                val replacement = "val $PREVIOUS = $receiverText${lines.under(indent)}\n$indent$PREVIOUS"
+                listOf(builder.replaceRange(callSource.startOffset, callSource.endOffset, replacement))
             }
             else -> emptyList()
         }

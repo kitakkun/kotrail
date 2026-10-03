@@ -48,18 +48,89 @@ class FrameSlot {
     }
 
     // Reported: let does the same with it.
-    fun swapLet(frame: Bitmap) {
-        ready.<!KOTRAIL_SWAP_THROUGH_ALSO!>let<!> {
+    fun swapLet(frame: Bitmap): Boolean = ready.<!KOTRAIL_SWAP_THROUGH_ALSO!>let<!> {
+        it?.close()
+        ready = frame
+        it != null
+    }
+
+    // Reported: the value is used, even though the block reads it as well.
+    fun takeLogged(): Bitmap? = ready.<!KOTRAIL_SWAP_THROUGH_ALSO!>also<!> {
+        log(it)
+        ready = null
+    }
+
+    // Reported: the last expression of a braced branch whose value is used.
+    fun publishUnlessKept(frame: Bitmap, keep: Boolean) {
+        val replaced = synchronized(lock) {
+            if (keep) {
+                null
+            } else {
+                ready.<!KOTRAIL_SWAP_THROUGH_ALSO!>also<!> {
+                    ready = frame
+                }
+            }
+        }
+        replaced?.close()
+    }
+
+    // Reported: a when branch whose value is returned.
+    fun swapWhen(frame: Bitmap, mode: Int): Bitmap? = when (mode) {
+        0 -> null
+        else -> ready.<!KOTRAIL_SWAP_THROUGH_ALSO!>also<!> { ready = frame }
+    }
+
+    // Not reported: the last statement of a Unit function drops the value; the block closes the old value and clears the variable.
+    fun clear() {
+        ready.also {
             it?.close()
-            ready = frame
+            ready = null
         }
     }
 
-    // Reported: closes the old value and clears the variable in one expression.
-    fun clear() {
-        ready.<!KOTRAIL_SWAP_THROUGH_ALSO!>also<!> {
-            it?.close()
+    // Not reported: a statement whose value nobody reads.
+    fun promote(front: Holder) {
+        ready?.let { newer ->
+            front.value?.close()
+            front.value = newer
             ready = null
+        }
+        frameCounter++
+    }
+
+    // Not reported: a branch of an if in statement position.
+    fun clearIf(force: Boolean) {
+        if (force) {
+            ready.also {
+                it?.close()
+                ready = null
+            }
+        } else {
+            frameCounter++
+        }
+        log(force)
+    }
+
+    // Not reported: the last expression of a lambda that returns Unit.
+    fun clearEach(frames: List<Bitmap>) {
+        frames.forEach { frame ->
+            ready.also {
+                it?.close()
+                ready = frame
+            }
+        }
+    }
+
+    // Not reported: a loop body and a when branch in statement position drop the value.
+    fun clearLoop(times: Int) {
+        var left = times
+        while (left > 0) {
+            ready.let { ready = null }
+            left--
+        }
+        when (left) {
+            0 -> ready.also { ready = null }
+            else -> log(left)
         }
     }
 
