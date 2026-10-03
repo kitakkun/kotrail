@@ -28,7 +28,9 @@ that change the exposed type.
 
 Inside one class, a `val` named `foo` whose getter is exactly `get() = _foo`, where `_foo` is a
 `var` declared in the same class with strictly narrower visibility, and the two have the same
-type. `foo` must be final and not an extension, since those cannot take the rewrite either.
+type. `foo` must be final and not an extension, since those cannot take the rewrite either. An
+`override val` in a final class or an object counts as final: nothing can override it again, and
+the compiler accepts a private setter there.
 
 ## When it stays quiet
 
@@ -38,7 +40,8 @@ type. `foo` must be final and not an extension, since those cannot take the rewr
 - The getter converts (`_name.uppercase()`) or the value is copied by an initializer.
 - The backing property is a `val`.
 - Both sides have the same visibility.
-- `foo` is `open`, `abstract`, `override`, `expect`, or an extension property.
+- `foo` is `open`, `abstract`, `expect`, an extension property, or an `override` without
+  `final` in a class that is not final (a subclass could override it again).
 
 One pair gets one diagnostic: a pair is either this rule's or the explicit-backing-field rule's,
 never both.

@@ -1,4 +1,8 @@
 // KOTRAIL_CONFIG: rules.preferExplicitBackingField=on
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+
 abstract class Base {
     // Not reported: open property.
     private val _label = "x"
@@ -51,5 +55,47 @@ class Cases {
     fun use() { _d; _c; _i = 1; _j = mutableListOf() }
 }
 
-/* GENERATED_FIR_TAGS: classDeclaration, explicitBackingField, functionDeclaration, getter, integerLiteral,
-propertyDeclaration, propertyWithExtensionReceiver, stringLiteral */
+interface Source {
+    // Not reported: an abstract declaration.
+    val overridden: StateFlow<Int>
+
+    // Not reported: an interface member cannot carry an explicit backing field.
+    private val _fromInterface: MutableList<Int> get() = mutableListOf()
+    val fromInterface: List<Int> get() = _fromInterface
+}
+
+class FinalOverride : Source {
+    // Reported: an override in a final class is effectively final.
+    private val _overridden = MutableStateFlow(0)
+    override val <!KOTRAIL_PREFER_EXPLICIT_BACKING_FIELD!>overridden<!>: StateFlow<Int> = _overridden.asStateFlow()
+}
+
+object ObjectOverride : Source {
+    // Reported: an object is final too.
+    private val _overridden = MutableStateFlow(0)
+    override val <!KOTRAIL_PREFER_EXPLICIT_BACKING_FIELD!>overridden<!>: StateFlow<Int> = _overridden.asStateFlow()
+}
+
+open class OpenOverride : Source {
+    // Not reported: a subclass may override it again, so it is not final.
+    private val _overridden = MutableStateFlow(0)
+    override val overridden: StateFlow<Int> = _overridden.asStateFlow()
+}
+
+open class FinalOverrideInOpenClass : Source {
+    // Reported: `final override` is final by itself.
+    private val _overridden = MutableStateFlow(0)
+    final override val <!KOTRAIL_PREFER_EXPLICIT_BACKING_FIELD!>overridden<!>: StateFlow<Int> = _overridden.asStateFlow()
+}
+
+enum class EnumOverride : Source {
+    ONE;
+
+    // Not reported: the compiler does not treat an enum class as final.
+    private val _overridden = MutableStateFlow(0)
+    override val overridden: StateFlow<Int> = _overridden.asStateFlow()
+}
+
+/* GENERATED_FIR_TAGS: assignment, classDeclaration, enumDeclaration, enumEntry, explicitBackingField,
+functionDeclaration, getter, integerLiteral, interfaceDeclaration, objectDeclaration, override, propertyDeclaration,
+propertyWithExtensionReceiver, stringLiteral */

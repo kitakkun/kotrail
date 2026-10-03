@@ -16,7 +16,10 @@ import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirPropertyChecker
 import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.declaredProperties
 import org.jetbrains.kotlin.fir.declarations.utils.hasExplicitBackingField
+import org.jetbrains.kotlin.fir.declarations.utils.isEnumClass
 import org.jetbrains.kotlin.fir.declarations.utils.isExpect
+import org.jetbrains.kotlin.fir.declarations.utils.isFinal
+import org.jetbrains.kotlin.fir.declarations.utils.isInterface
 import org.jetbrains.kotlin.fir.declarations.utils.modality
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.languageVersionSettings
@@ -48,7 +51,8 @@ import org.jetbrains.kotlin.types.AbstractTypeChecker
  *
  * A pair is reported when, inside the same class, a `val` named `foo` references a
  * property named `_foo` whose visibility is strictly narrower than `foo`'s, and `foo`
- * can legally carry an explicit backing field (final, not `expect`, not an extension).
+ * can legally carry an explicit backing field (effectively final, not `expect`, not an
+ * extension). An `override val` in a final class counts: nothing can override it further.
  *
  * The same pair with a `var` behind a getter that returns it as is,
  *
@@ -73,12 +77,12 @@ object PreferExplicitBackingFieldChecker : FirPropertyChecker(MppCheckerKind.Com
         val source = declaration.source ?: return
         if (source.kind is KtFakeSourceElementKind) return
         if (!declaration.origin.fromSource) return
-        if (!canCarryExplicitBackingField(declaration)) return
+        val containingClass = context.containingDeclarations.lastOrNull() as? FirClassSymbol<*> ?: return
+        if (!canCarryExplicitBackingField(declaration, containingClass)) return
 
         val name = declaration.name.asString()
         if (name.startsWith(BACKING_PREFIX)) return
 
-        val containingClass = context.containingDeclarations.lastOrNull() as? FirClassSymbol<*> ?: return
         val backingName = BACKING_PREFIX + name
         val backing = containingClass.declaredProperties(context.session)
             .firstOrNull { it.name.asString() == backingName }
@@ -121,14 +125,25 @@ object PreferExplicitBackingFieldChecker : FirPropertyChecker(MppCheckerKind.Com
         )
     }
 
-    private fun canCarryExplicitBackingField(property: FirProperty): Boolean {
+    /**
+     * Whether the compiler accepts `field = ...` on [property], following
+     * `FirExplicitBackingFieldForbiddenChecker` (Kotlin 2.4.10,
+     * compiler/fir/checkers/src/org/jetbrains/kotlin/fir/analysis/checkers/declaration/FirExplicitBackingFieldForbiddenChecker.kt:30-44):
+     * not in an interface, not abstract, not an extension, not `expect`, and effectively final. Effectively
+     * final (`isEffectivelyFinal`, declarationUtils.kt:53-63 in the same directory) is final by modality, or
+     * a member of a final class that is not an enum class. So an `override val` without `final`, which
+     * resolves to open modality, still takes the field inside a final class or an object.
+     */
+    private fun canCarryExplicitBackingField(property: FirProperty, containingClass: FirClassSymbol<*>): Boolean {
         if (property.isLocal) return false
         if (!property.isVal) return false
         if (property.isExpect) return false
         if (property.receiverParameter != null) return false
-        if (property.modality != Modality.FINAL) return false
         if (property.symbol.hasExplicitBackingField) return false
-        return true
+        if (containingClass.isInterface) return false
+        if (property.modality == Modality.ABSTRACT) return false
+        if (property.modality == Modality.FINAL) return true
+        return containingClass.isFinal && !containingClass.isEnumClass
     }
 
     /** Whether the initializer, delegate, or getter of [property] reads [target]. */

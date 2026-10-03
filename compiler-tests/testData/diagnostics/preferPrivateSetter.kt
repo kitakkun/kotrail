@@ -52,5 +52,25 @@ abstract class Base {
     open val open: Int get() = _open
 }
 
+interface Countable {
+    val total: Int
+}
+
+class FinalCountable : Countable {
+    // Reported: an override in a final class can take a private setter.
+    private var _total = 0
+    override val <!KOTRAIL_PREFER_PRIVATE_SETTER!>total<!>: Int get() = _total
+
+    fun bump() { _total++ }
+}
+
+open class OpenCountable : Countable {
+    // Not reported: a subclass may override it again, and a private setter needs a final property.
+    private var _total = 0
+    override val total: Int get() = _total
+
+    fun bump() { _total++ }
+}
+
 /* GENERATED_FIR_TAGS: assignment, classDeclaration, functionDeclaration, getter, incrementDecrementExpression,
-integerLiteral, propertyDeclaration, stringLiteral */
+integerLiteral, interfaceDeclaration, override, propertyDeclaration, stringLiteral */
