@@ -28,9 +28,12 @@ that change the exposed type.
 
 Inside one class, a `val` named `foo` whose getter is exactly `get() = _foo`, where `_foo` is a
 `var` declared in the same class with strictly narrower visibility, and the two have the same
-type. `foo` must be final and not an extension, since those cannot take the rewrite either. An
-`override val` in a final class or an object counts as final: nothing can override it again, and
-the compiler accepts a private setter there.
+type. The var may have any name when it is private and the class only writes it elsewhere
+(`count = 0`, `count++`, `count += 2`), as
+[prefer explicit backing field](prefer-explicit-backing-field.md) describes for its backing
+properties. `foo` must be final and not an extension, since those cannot take the rewrite
+either. An `override val` in a final class or an object counts as final: nothing can override it
+again, and the compiler accepts a private setter there.
 
 ## When it stays quiet
 
@@ -40,6 +43,8 @@ the compiler accepts a private setter there.
 - The getter converts (`_name.uppercase()`) or the value is copied by an initializer.
 - The backing property is a `val`.
 - Both sides have the same visibility.
+- A var without the `_` prefix is read elsewhere in the class (`println(hits)`): it is more than
+  the property's storage.
 - `foo` is `open`, `abstract`, `expect`, an extension property, or an `override` without
   `final` in a class that is not final (a subclass could override it again).
 
@@ -52,7 +57,7 @@ never both.
 
 ## Implementation notes
 
-Shares `fir/checkers/PreferExplicitBackingFieldChecker.kt`, which finds the `_foo` / `foo` pairs
-once and routes each to the rule whose rewrite fits: a `var` returned as is with equal types
+Shares `fir/checkers/PreferExplicitBackingFieldChecker.kt`, which finds the backing property
+pairs once and routes each to the rule whose rewrite fits: a `var` returned as is with equal types
 (compared with `AbstractTypeChecker.equalTypes`) comes here, everything else goes to the
 explicit backing field.

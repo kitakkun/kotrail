@@ -72,5 +72,26 @@ open class OpenCountable : Countable {
     fun bump() { _total++ }
 }
 
-/* GENERATED_FIR_TAGS: assignment, classDeclaration, functionDeclaration, getter, incrementDecrementExpression,
-integerLiteral, interfaceDeclaration, override, propertyDeclaration, stringLiteral */
+class ByUseCounter {
+    // Reported: any private name works when the class only writes the var elsewhere.
+    private var level = 0
+    val <!KOTRAIL_PREFER_PRIVATE_SETTER!>currentLevel<!>: Int get() = level
+
+    // Not reported: log() reads the var as well, so it is not only a backing property.
+    private var hits = 0
+    val hitCount: Int get() = hits
+
+    fun raise() {
+        level++
+        level += 2
+        level = 0
+        hits++
+    }
+
+    fun log() {
+        println(hits)
+    }
+}
+
+/* GENERATED_FIR_TAGS: additiveExpression, assignment, classDeclaration, functionDeclaration, getter,
+incrementDecrementExpression, integerLiteral, interfaceDeclaration, override, propertyDeclaration, stringLiteral */
