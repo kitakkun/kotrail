@@ -171,6 +171,22 @@ internal class ProbeA : ProbeSource {
     fun snapshot() = shared
 }
 
+class CompoundUse {
+    // Reported: an increment through the property reads it only as the receiver of value.
+    private val mutableNamed = MutableStateFlow(0)
+    val <!KOTRAIL_PREFER_EXPLICIT_BACKING_FIELD!>named<!> = mutableNamed.asStateFlow()
+
+    // Reported: a compound assignment through the property does the same.
+    private val mutableTotal = MutableStateFlow(0)
+    val <!KOTRAIL_PREFER_EXPLICIT_BACKING_FIELD!>total<!>: StateFlow<Int> = mutableTotal.asStateFlow()
+
+    fun bump() {
+        mutableNamed.value++
+        --mutableNamed.value
+        mutableTotal.value += 1
+    }
+}
+
 /* GENERATED_FIR_TAGS: additiveExpression, assignment, classDeclaration, enumDeclaration, enumEntry,
 explicitBackingField, functionDeclaration, functionalType, getter, integerLiteral, interfaceDeclaration, lambdaLiteral,
 multiplicativeExpression, objectDeclaration, override, propertyDeclaration, propertyWithExtensionReceiver, stringLiteral */

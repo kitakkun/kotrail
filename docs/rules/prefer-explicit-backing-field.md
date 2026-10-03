@@ -32,7 +32,8 @@ its use shows it is one:
   (`state`, `state.asStateFlow()`);
 - its type is a subtype of `foo`'s type, as an explicit backing field's type has to be;
 - nothing else in the class reads it, except to call on it or assign to it: `state.value = 1`,
-  `state.update { }`, `state.emit(x)`, `list.add(x)`, `count = 0` and `count++` are writes.
+  `state.value++`, `state.value += 1`, `state.update { }`, `state.emit(x)`, `list.add(x)`,
+  `count = 0` and `count++` are writes.
 
 ```kotlin
 private val mutableState = MutableStateFlow(0)
@@ -92,6 +93,8 @@ initializer/delegate/getter with a `FirVisitorVoid` for a property access resolv
 Without `_foo`, it takes the property that `foo`'s value reads (as is or through one
 argument-free call), checks the type with `AbstractTypeChecker.isSubtypeOf`, and walks the class
 for accesses to it outside `foo`: each one has to be an explicit receiver, a safe-call receiver,
-or an assignment target (including the desugared target of `x += 1` and `x++`).
+or an assignment target (including the desugared target of `x += 1` and `x++`). FIR resolves
+`x.value++` and `x.value += 1` into a block that stores `x` in a temporary `<receiver>` first,
+so the initializer of that temporary counts as a receiver too.
 Whether `foo` can carry the field follows the compiler's `FirExplicitBackingFieldForbiddenChecker`:
 final by modality, or a member of a final class that is not an enum class.

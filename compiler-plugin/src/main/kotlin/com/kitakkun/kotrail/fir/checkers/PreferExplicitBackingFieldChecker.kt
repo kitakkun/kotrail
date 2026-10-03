@@ -40,6 +40,7 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.types.typeContext
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
+import org.jetbrains.kotlin.name.SpecialNames
 import org.jetbrains.kotlin.types.AbstractTypeChecker
 import java.util.Collections
 import java.util.IdentityHashMap
@@ -177,9 +178,9 @@ object PreferExplicitBackingFieldChecker : FirPropertyChecker(MppCheckerKind.Com
 
     /**
      * Whether [containingClass], outside [exposing], reads [backing] for anything but a call on it
-     * or an assignment to it. `backing.value = 1`, `backing.update { }`, `backing.add(x)`,
-     * `backing = x` and `backing++` keep the object inside the class; `return backing`,
-     * `consume(backing)` and `val alias = backing` hand it out.
+     * or an assignment to it. `backing.value = 1`, `backing.value++`, `backing.value += 1`,
+     * `backing.update { }`, `backing.add(x)`, `backing = x` and `backing++` keep the object inside
+     * the class; `return backing`, `consume(backing)` and `val alias = backing` hand it out.
      */
     @OptIn(SymbolInternals::class)
     private fun handsOut(containingClass: FirClassSymbol<*>, exposing: FirProperty, backing: FirPropertySymbol): Boolean {
@@ -263,6 +264,11 @@ object PreferExplicitBackingFieldChecker : FirPropertyChecker(MppCheckerKind.Com
      * Collects every access to [target] outside the property [exposing], and every expression used
      * as a receiver or as an assignment target. An access that is not among the latter hands the
      * object out.
+     *
+     * FIR resolves `x.value++` and `x.value += 1` into a block that first stores `x` in a temporary
+     * `<receiver>` and then reads and writes `<receiver>.value`
+     * (`generateExplicitReceiverTemporaryVariable`, compiler/fir/tree/src/org/jetbrains/kotlin/fir/FirGeneration.kt
+     * in Kotlin 2.4.10), so the initializer of that temporary is a receiver use as well.
      */
     private class BackingUseFinder(
         private val target: FirPropertySymbol,
@@ -276,6 +282,9 @@ object PreferExplicitBackingFieldChecker : FirPropertyChecker(MppCheckerKind.Com
         override fun visitElement(element: FirElement) {
             if (element is FirProperty && element.symbol == exposing) return
             when (element) {
+                is FirProperty -> if (element.isLocal && element.name == SpecialNames.RECEIVER) {
+                    element.initializer?.let { containedUses += it.unwrapSmartcastExpression() }
+                }
                 is FirQualifiedAccessExpression -> {
                     if (element.calleeReference.toResolvedPropertySymbol() == target) reads += element
                     element.explicitReceiver?.let { containedUses += it.unwrapSmartcastExpression() }
