@@ -2,7 +2,7 @@
 
 **Diagnostic:** `KOTRAIL_NULL_STORED_FROM_PARAMETER` (error, on the property's name, or on the constructor parameter for a property declared in the primary constructor)
 **Key:** `rules.noNullStateFromParameter` (on by default)
-**Settings:** none
+**Settings:** none of its own; the functions a bail-out may log through come from the [`catchTooBroad`](catch-too-broad.md) `loggers` setting
 
 ## What it rejects
 
@@ -73,9 +73,12 @@ All of these hold:
   - `x!!`, and the argument of `requireNotNull` or `checkNotNull`;
   - a null test (`x == null`, `x != null`, `x is T`, `x !is T`) that is the condition of an
     `if` or `when` branch, directly or through `!`, `&&` and `||` as long as a null alone settles
-    the condition, and the null leaves: the branch a null selects exits, or, when a null makes the
-    condition false, nothing follows the branch (`if (x != null) run(x)`) or only an `else` that
-    exits. The same test as the condition of `require` or `check` counts when a null fails it;
+    the condition, and the null leaves: the branch a null selects does nothing but exit, or, when
+    a null makes the condition false, nothing follows the branch (`if (x != null) run(x)`) or only
+    an `else` that does nothing but exit. Doing nothing but exit allows logging on the way out:
+    every statement before the exit is a call to a function in the `catchTooBroad` `loggers`
+    list (`if (x == null) { log.warning("no x"); return }`). The same test as the condition of
+    `require` or `check` counts when a null fails it;
   - a safe call, or a chain of safe calls, on the property whose value is dropped
     (`x?.let { run(it) }` as a statement), whose value meets an elvis that exits
     (`x?.trim()?.length ?: return 0`), or meets `!!`;
@@ -88,7 +91,9 @@ All of these hold:
 
 - Any read uses the null as a value: `x ?: "(none)"`, `x != null` returned or assigned, a null
   test whose null branch does work (`if (x == null) log("missing")`) or reaches an `else` that
-  does, `x` passed to a nullable parameter, returned, stored, string-templated, compared with
+  does, a null branch that does work before it exits
+  (`if (x == null) { copyAsText(capture); return }`: the branch is the other way of doing the
+  job, not a bail-out), `x` passed to a nullable parameter, returned, stored, string-templated, compared with
   something other than `null`, a call on the nullable receiver (`x.orEmpty()`), a callable
   reference to it, or a safe call whose value is used (`val length = x?.length`). Anything the
   rule does not recognize as a bail-out counts as a use as a value.
@@ -139,7 +144,10 @@ the primary constructor. The class is walked once per candidate with a visitor t
 chain of parents; each read of the property or of the parameter is judged from its parents,
 skipping argument lists and argument wrappers. An exit is an expression of type `Nothing`, which
 covers `return`, `throw`, `break`, `continue` and calls such as `error()`; a block takes the type
-of its last statement, so a braced branch that ends in `return` exits too. Whether a safe call's
+of its last statement, so a braced branch that ends in `return` exits too. A branch bails out
+only when every statement before that last one is a `FirFunctionCall` whose callee's fully
+qualified name matches a `catchTooBroad.loggers` glob; the exit itself is taken whole, so
+`return fallback()` still counts as an exit. Whether a safe call's
 value is dropped is decided by the same walk up the parents as in
 [No swap through also](no-swap-through-also.md) (`fir/ValueUse.kt`). The diagnostic of a
 property declared in the constructor is reported on the value parameter's source, so it lands on

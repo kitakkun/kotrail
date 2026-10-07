@@ -1,6 +1,7 @@
 package com.kitakkun.kotrail.fir.checkers
 
 import com.kitakkun.kotrail.KotrailRule
+import com.kitakkun.kotrail.exclude.Glob
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.isValueUsed
 import com.kitakkun.kotrail.fir.kotrailConfig
@@ -27,6 +28,7 @@ import org.jetbrains.kotlin.fir.declarations.utils.isInlineOrValue
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.expressions.FirArgumentList
+import org.jetbrains.kotlin.fir.expressions.FirBlock
 import org.jetbrains.kotlin.fir.expressions.FirBooleanOperatorExpression
 import org.jetbrains.kotlin.fir.expressions.FirCheckNotNullCall
 import org.jetbrains.kotlin.fir.expressions.FirDesugaredAssignmentValueReferenceExpression
@@ -48,6 +50,7 @@ import org.jetbrains.kotlin.fir.expressions.arguments
 import org.jetbrains.kotlin.fir.expressions.impl.FirElseIfTrueCondition
 import org.jetbrains.kotlin.fir.expressions.unwrapArgument
 import org.jetbrains.kotlin.fir.expressions.unwrapSmartcastExpression
+import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
 import org.jetbrains.kotlin.fir.references.toResolvedNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.references.toResolvedPropertySymbol
 import org.jetbrains.kotlin.fir.references.toResolvedValueParameterSymbol
@@ -173,7 +176,8 @@ object NoNullStateFromParameterChecker : FirPropertyChecker(MppCheckerKind.Commo
         parameter: FirValueParameterSymbol,
         session: FirSession,
     ): Boolean {
-        val finder = UseFinder(property, parameter, session)
+        val loggers = session.kotrailConfig.catchTooBroad.loggers.map(::Glob)
+        val finder = UseFinder(property, parameter, loggers, session)
         owner.fir.accept(finder)
         return !finder.keepsNull && finder.reads > 0
     }
@@ -181,11 +185,13 @@ object NoNullStateFromParameterChecker : FirPropertyChecker(MppCheckerKind.Commo
     /**
      * Walks the class for the reads of [property] and of [parameter] outside [property] itself,
      * and for the assignments to [property]. [keepsNull] turns true on the first read that uses
-     * the null as a value or the first assignment of anything but a nullable parameter.
+     * the null as a value or the first assignment of anything but a nullable parameter. A branch
+     * may log through [loggers] on its way out and still only bail out.
      */
     private class UseFinder(
         private val property: FirProperty,
         private val parameter: FirValueParameterSymbol,
+        private val loggers: List<Glob>,
         private val session: FirSession,
     ) : FirVisitorVoid() {
         var reads = 0
@@ -346,18 +352,33 @@ object NoNullStateFromParameterChecker : FirPropertyChecker(MppCheckerKind.Commo
 
         /**
          * Whether a null leaves through [whenExpression] when it settles [branch]'s condition to
-         * [nullSelects]: the branch it selects exits, or, with the condition false, nothing
-         * follows the branch or only an `else` that exits.
+         * [nullSelects]: the branch it selects only exits, or, with the condition false, nothing
+         * follows the branch or only an `else` that only exits.
          */
         private fun branchUse(whenExpression: FirWhenExpression, branch: FirWhenBranch, nullSelects: Boolean): Use {
-            if (nullSelects) return if (branch.result.exits()) Use.BAIL_OUT else Use.VALUE
+            if (nullSelects) return if (branch.result.onlyExits()) Use.BAIL_OUT else Use.VALUE
             val following = whenExpression.branches.dropWhile { it !== branch }.drop(1)
             val otherwise = following.singleOrNull()
             return when {
                 following.isEmpty() -> Use.BAIL_OUT
-                otherwise != null && otherwise.condition is FirElseIfTrueCondition && otherwise.result.exits() -> Use.BAIL_OUT
+                otherwise != null && otherwise.condition is FirElseIfTrueCondition && otherwise.result.onlyExits() -> Use.BAIL_OUT
                 else -> Use.VALUE
             }
+        }
+
+        /**
+         * A branch that exits and does nothing on the way but log: `{ return }`,
+         * `{ log.warning("no path"); return }`. A branch that does other work before it exits,
+         * `{ copyAsText(); return }`, is another way of doing the job, not a bail-out.
+         */
+        private fun FirBlock.onlyExits(): Boolean {
+            if (!exits()) return false
+            return statements.dropLast(1).all { statement -> statement is FirFunctionCall && statement.isLogging() }
+        }
+
+        private fun FirFunctionCall.isLogging(): Boolean {
+            val callee = calleeReference.toResolvedCallableSymbol()?.callableId?.asSingleFqName()?.asString() ?: return false
+            return loggers.any { it.matches(callee) }
         }
 
         /** The nearest index at or below [index] that is not an argument list or an argument wrapper. */

@@ -1,10 +1,12 @@
 // KOTRAIL_CONFIG: rules.noNullStateFromParameter=on
 // RENDER_DIAGNOSTICS_FULL_TEXT
+import java.util.logging.Logger
 import kotlinx.serialization.Serializable
 
 fun execute(path: String) {}
 fun probe(path: String): Boolean = path.isNotEmpty()
 fun use(text: String?) {}
+fun putContents(text: String) {}
 
 // Reported: the constructor's null is copied into the object, and every use bails out on it.
 class InitializedRecorder(ffmpegPath: String?) {
@@ -113,6 +115,51 @@ class Deferred(private val <!KOTRAIL_NULL_STORED_FROM_PARAMETER!>path<!>: String
         later {
             val current = path ?: return@later
             execute(current)
+        }
+    }
+}
+
+// Reported: a branch that only logs on its way out still bails out.
+class Logged(private val <!KOTRAIL_NULL_STORED_FROM_PARAMETER!>path<!>: String?) {
+    private val log = Logger.getLogger("Logged")
+
+    fun run() {
+        if (path == null) {
+            log.warning("no path")
+            return
+        }
+        execute(path)
+    }
+
+    fun stop() {
+        if (path != null) {
+            execute(path)
+        } else {
+            println("nothing to stop")
+            return
+        }
+    }
+}
+
+// Not reported: the null branch copies the text itself before it returns, the other way of doing the job.
+class CaptureClipboard(private val osascriptPath: String?) {
+    fun copy(capture: String) {
+        if (osascriptPath == null) {
+            putContents(capture)
+            return
+        }
+        execute(osascriptPath)
+    }
+}
+
+// Not reported: the else branch a null reaches does work before it exits.
+class CaptureFallback(private val osascriptPath: String?) {
+    fun copy(capture: String) {
+        if (osascriptPath != null) {
+            execute(osascriptPath)
+        } else {
+            putContents(capture)
+            return
         }
     }
 }
