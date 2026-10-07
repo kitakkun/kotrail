@@ -65,9 +65,10 @@ import org.jetbrains.kotlin.types.AbstractTypeChecker
  * `inputStream` property, a pooled connection) is not one, since the rule cannot tell whether
  * the caller owns it. The resource is fine when it is the receiver of `use { }` (through scope
  * functions and safe calls), a local the body closes with `close()` or `use`, or when it leaves
- * the function: returned, assigned to a property, passed as an argument, or the receiver of a
- * bound callable reference (`thread(block = reader::close)`), where whoever receives it is the
- * owner. Everything else is a leak on every path, reported at the creation.
+ * the function: returned, assigned to a property (directly or through a local, a Java setter's
+ * property form such as `thread.contextClassLoader = loader` included), passed as an argument,
+ * or the receiver of a bound callable reference (`thread(block = reader::close)`), where whoever
+ * receives it is the owner. Everything else is a leak on every path, reported at the creation.
  *
  * A creation that takes, as an argument, a resource this function did not create (a parameter,
  * `this`, a property, a call that is not a creation) is a wrapper over a borrowed stream: borrowed
@@ -233,6 +234,18 @@ object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
                 (unwrapScopeChain(expression) as? FirFunctionCall)?.let { settled += it }
             }
             visitElement(functionCall)
+        }
+
+        /**
+         * `registry.current = reader`, `thread.contextClassLoader = loader`: a local stored in a property, a Java
+         * setter's property form included, leaves the function like one passed as an argument.
+         */
+        override fun visitVariableAssignment(variableAssignment: FirVariableAssignment) {
+            val target = (variableAssignment.lValue as? FirPropertyAccessExpression)?.calleeReference?.toResolvedCallableSymbol()
+            if (target is FirPropertySymbol && !target.isLocal) {
+                unwrapScopeChain(variableAssignment.rValue).localSymbol()?.let { settledLocals += it }
+            }
+            visitElement(variableAssignment)
         }
 
         /** `thread(block = reader::close)`, `onDispose(reader::stop)`: the reference escapes the object, so whoever holds it closes it. */

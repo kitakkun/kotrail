@@ -40,9 +40,14 @@ because nothing in the code it is looking at says the object is a resource.
 ## When it stays quiet
 
 - The resource leaves the function: returned (`fun open() = File(p).bufferedReader()`),
-  assigned to a property (also through `also { installed = it }`), passed as an argument, or
-  the receiver of a bound callable reference (`thread(block = surface::close)`,
-  `onDispose(surface::close)`). Whoever receives it is the owner; the rule does not follow it.
+  assigned to a property (also through `also { installed = it }`, or through a local:
+  `val reader = ...; registry.current = reader`), passed as an argument, or the receiver of a
+  bound callable reference (`thread(block = surface::close)`, `onDispose(surface::close)`).
+  Whoever receives it is the owner; the rule does not follow it. A Java setter counts in both
+  forms: a class loader handed to a thread, `Thread.currentThread().contextClassLoader = loader`
+  or `thread.setContextClassLoader(loader)`, lives as long as the thread and is not the
+  function's to close. Every call that takes the resource as an argument takes it over, so there
+  is no list of ownership-taking functions to configure.
 - The resource is a wrapper over a borrowed stream: a stream the function received rather than
   created (a parameter, `this`, a property, the result of a call that is not a creation).
   Closing the wrapper would close the lender's stream, so the wrapper is not the function's to
@@ -143,7 +148,9 @@ off the heap, in a loop, following the helpers a loop calls; this rule covers an
 creations, what the elements above each one do with it (`use`, return, assignment, argument),
 the locals initialized from a creation (through scope functions, safe calls, `?:` and the
 result of a `use` / `let` / `run` lambda), the `close()` / `use` calls on those locals and the
-bound callable references whose receiver is one of them. A creation with a closeable argument
+bound callable references whose receiver is one of them. An assignment whose target resolves
+to a non-local property symbol (a Java synthetic property, whose setter is the Java method,
+included) settles the local its right side reads. A creation with a closeable argument
 that is not itself a creation (directly or through a local holding one), or that is a creation
 wrapping a borrowed stream itself, wraps a borrowed stream and is not collected, and so is a
 creation whose closeable receiver is itself a wrapper over a borrowed stream, a parameter, or

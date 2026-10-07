@@ -8,8 +8,11 @@ import java.io.InputStreamReader
 import java.io.Reader
 import java.io.StringReader
 import java.net.HttpURLConnection
+import java.lang.reflect.Method
 import java.net.Socket
 import java.net.URI
+import java.net.URL
+import java.net.URLClassLoader
 import java.util.jar.JarFile
 import java.util.zip.ZipFile
 import kotlin.concurrent.thread
@@ -192,6 +195,25 @@ fun entryText(path: String, name: String): String {
     } finally {
         zip.close()
     }
+}
+
+fun launch(urls: Array<URL>, parent: ClassLoader, mainMethod: Method, args: Array<String>) {
+    // Not reported: the thread keeps the loader for as long as it runs; this function cannot close it.
+    val loader = URLClassLoader(urls, parent)
+    Thread.currentThread().contextClassLoader = loader
+    mainMethod.invoke(null, args)
+}
+
+fun launchThroughSetter(urls: Array<URL>, parent: ClassLoader, worker: Thread) {
+    // Not reported: the same through the setter.
+    val loader = URLClassLoader(urls, parent)
+    worker.setContextClassLoader(loader)
+}
+
+fun keeps(path: String, registry: Registry) {
+    // Not reported: stored in a property through a local; the property's owner closes it.
+    val reader = File(path).bufferedReader()
+    registry.current = reader
 }
 
 fun openNarrowed(path: String): BufferedReader = File(path).takeIf { it.exists() }?.bufferedReader() ?: error("missing")
