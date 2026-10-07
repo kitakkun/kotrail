@@ -42,6 +42,7 @@ import com.kitakkun.kotrail.fir.checkers.NoExternalMutationChecker
 import com.kitakkun.kotrail.fir.checkers.PreferDurationChecker
 import com.kitakkun.kotrail.fir.checkers.NoAsyncWorkInInitializerChecker
 import com.kitakkun.kotrail.fir.checkers.NoSwapThroughAlsoChecker
+import com.kitakkun.kotrail.fir.checkers.NoNullStateFromParameterChecker
 import com.kitakkun.kotrail.fir.checkers.SuppressReasonChecker
 import com.kitakkun.kotrail.fir.checkers.NativeAllocationInLoopChecker
 import com.kitakkun.kotrail.fir.inferred.InferredFactWarmup
@@ -167,6 +168,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
         PreferStateDelegationChecker,
         ComposableUnwrittenStateChecker,
         NoAsyncWorkInInitializerChecker,
+        NoNullStateFromParameterChecker,
     )
     override val namedFunctionCheckersCompat: Set<NamedFunctionChecker> = setOf(
         // First: every inferred fact is computed while bodies are available, for the metadata writer.

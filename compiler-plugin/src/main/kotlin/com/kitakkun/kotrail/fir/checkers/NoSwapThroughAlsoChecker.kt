@@ -4,6 +4,7 @@ import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.FixEdit
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.fix.FixBuilder
+import com.kitakkun.kotrail.fir.isValueUsed
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.reportKotrail
 import com.kitakkun.kotrail.fir.test.isTestSourcePath
@@ -15,7 +16,6 @@ import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirFunctionCallChecker
 import org.jetbrains.kotlin.fir.declarations.FirAnonymousFunction
-import org.jetbrains.kotlin.fir.declarations.FirAnonymousInitializer
 import org.jetbrains.kotlin.fir.declarations.FirClass
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirFunction
@@ -23,22 +23,17 @@ import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.InlineStatus
 import org.jetbrains.kotlin.fir.expressions.FirAnonymousFunctionExpression
 import org.jetbrains.kotlin.fir.expressions.FirBlock
-import org.jetbrains.kotlin.fir.expressions.FirCatch
 import org.jetbrains.kotlin.fir.expressions.FirCheckedSafeCallSubject
 import org.jetbrains.kotlin.fir.expressions.FirDesugaredAssignmentValueReferenceExpression
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
-import org.jetbrains.kotlin.fir.expressions.FirLoop
 import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirQualifiedAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirReturnExpression
-import org.jetbrains.kotlin.fir.expressions.FirSafeCallExpression
 import org.jetbrains.kotlin.fir.expressions.FirSmartCastExpression
 import org.jetbrains.kotlin.fir.expressions.FirThisReceiverExpression
-import org.jetbrains.kotlin.fir.expressions.FirTryExpression
 import org.jetbrains.kotlin.fir.expressions.FirVariableAssignment
 import org.jetbrains.kotlin.fir.expressions.FirWhenBranch
-import org.jetbrains.kotlin.fir.expressions.FirWhenExpression
 import org.jetbrains.kotlin.fir.expressions.arguments
 import org.jetbrains.kotlin.fir.expressions.impl.FirSingleExpressionBlock
 import org.jetbrains.kotlin.fir.expressions.unwrapArgument
@@ -51,8 +46,6 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirCallableSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.types.ConeTypeParameterType
-import org.jetbrains.kotlin.fir.types.coneType
-import org.jetbrains.kotlin.fir.types.isUnit
 import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
 
 /**
@@ -134,35 +127,6 @@ object NoSwapThroughAlsoChecker : FirFunctionCallChecker(MppCheckerKind.Common) 
         val dispatchOwner: FirBasedSymbol<*>?,
         val extensionOwner: FirBasedSymbol<*>?,
     )
-
-    /**
-     * Whether anything consumes the value of the call [elements] ends with. It is dropped when the
-     * call is a statement that is not its block's last, or the last statement of a block whose own
-     * value is dropped: a function body, a lambda that returns Unit (FIR wraps a lambda's last
-     * statement in an implicit return only otherwise), a loop body, a `finally` block, or a branch
-     * of an `if`/`when` or a `try` whose value is dropped in turn. A safe call yields what its
-     * selector does. Any other parent consumes the value.
-     */
-    private fun isValueUsed(elements: List<FirElement>): Boolean {
-        var child = elements.lastOrNull() ?: return true
-        for (index in elements.size - 2 downTo 0) {
-            val parent = elements[index]
-            when (parent) {
-                is FirSafeCallExpression -> if (parent.selector !== child) return true
-                is FirBlock -> if (parent.statements.lastOrNull() !== child) return false
-                is FirWhenBranch -> if (parent.result !== child) return true
-                is FirWhenExpression -> if (child !is FirWhenBranch) return true
-                is FirCatch -> if (parent.block !== child) return true
-                is FirTryExpression -> if (parent.finallyBlock === child) return false
-                is FirLoop -> return parent.condition === child
-                is FirFunction, is FirAnonymousInitializer -> return false
-                is FirReturnExpression -> return !parent.target.labeledElement.returnTypeRef.coneType.isUnit
-                else -> return true
-            }
-            child = parent
-        }
-        return true
-    }
 
     /**
      * The variable this expression reads or assigns: a local, a top-level property, or a property

@@ -37,7 +37,7 @@ The compiler is the one gate every line of code has to pass. Kotrail puts your c
 
 ## Rules
 
-80 rules ship today, grouped by what they protect. Full pages, with every condition and
+81 rules ship today, grouped by what they protect. Full pages, with every condition and
 fixture, live under [`docs/rules/`](docs/rules/README.md); the index there lists each rule with
 its diagnostic and whether it is on by default.
 
@@ -55,9 +55,10 @@ its diagnostic and whether it is on by default.
   [Named arguments for repeated types](docs/rules/named-arguments-for-repeated-types.md) for `Padding(8, 16, 8, 16)`, no comments longer than five lines
   and no fully qualified names inline; [Prefer duration](docs/rules/prefer-duration.md) wants `500.milliseconds`, not `delay(500)`,
   wherever the callee also takes a `Duration`.
-- **API design** (7): [Prefer explicit backing fields](docs/rules/prefer-explicit-backing-field.md) instead of `_items`,
-  [Prefer value class](docs/rules/prefer-value-class.md) over a one-field data class, no mutable collection or data class in a
-  public API.
+- **API design** (8): [Prefer explicit backing fields](docs/rules/prefer-explicit-backing-field.md) instead of `_items`,
+  [Prefer value class](docs/rules/prefer-value-class.md) over a one-field data class, and no mutable collection or data class
+  in a public API; [No null state from parameter](docs/rules/no-null-state-from-parameter.md) for a constructor's
+  `ffmpegPath: String?` kept as a property that every use answers with `?: return` or `!!`.
 - **Errors and concurrency** (12): [Must close](docs/rules/must-close.md) for a reader or stream created and never closed;
   [No external mutation](docs/rules/no-external-mutation.md) for `scene.capturing.value = true` from outside `Scene`;
   [Catch too broad](docs/rules/catch-too-broad.md) and [No swallowed cancellation](docs/rules/no-swallowed-cancellation.md) for

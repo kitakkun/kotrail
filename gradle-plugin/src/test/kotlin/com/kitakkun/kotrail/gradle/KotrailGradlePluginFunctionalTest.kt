@@ -2021,8 +2021,8 @@ class KotrailGradlePluginFunctionalTest {
         // A violation of a rule that behaves the same on every supported Kotlin version, so that
         // these tests are about the Gradle wiring rather than about a language feature.
         val NOT_NULL_ASSERTION_VIOLATION = """
-            class Cases(private val name: String?) {
-                fun length(): Int = name!!.length
+            class Cases {
+                fun length(name: String?): Int = name!!.length
             }
         """.trimIndent()
 

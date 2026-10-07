@@ -48,7 +48,7 @@ Spelling that the reviewer would otherwise correct by hand.
 | No pass-through return | on | `KOTRAIL_PASS_THROUGH_RETURN` | [no-pass-through-return.md](no-pass-through-return.md) |
 | Prefer duration | on | `KOTRAIL_PREFER_DURATION` | [prefer-duration.md](prefer-duration.md) |
 
-## API design (7)
+## API design (8)
 
 What a declaration exposes, and how.
 
@@ -60,6 +60,7 @@ What a declaration exposes, and how.
 | Prefer value class | on | `KOTRAIL_PREFER_VALUE_CLASS` | [prefer-value-class.md](prefer-value-class.md) |
 | No mutable collection in public API | on | `KOTRAIL_MUTABLE_COLLECTION_IN_PUBLIC_API` | [no-mutable-collection-in-public-api.md](no-mutable-collection-in-public-api.md) |
 | No data class in public API | on | `KOTRAIL_DATA_CLASS_IN_PUBLIC_API` | [no-data-class-in-public-api.md](no-data-class-in-public-api.md) |
+| No null state from parameter | on | `KOTRAIL_NULL_STORED_FROM_PARAMETER` | [no-null-state-from-parameter.md](no-null-state-from-parameter.md) |
 | JvmSynthetic for internal | off: only a JVM library with Java consumers needs it | `KOTRAIL_INTERNAL_VISIBLE_TO_JAVA`, `KOTRAIL_INTERNAL_CLASS_VISIBLE_TO_JAVA` | [jvm-synthetic-for-internal.md](jvm-synthetic-for-internal.md) |
 
 ## Errors and concurrency (12)

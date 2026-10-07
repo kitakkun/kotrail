@@ -192,6 +192,10 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
      */
     val SWAP_THROUGH_ALSO = tunable3<KtElement, String, String, String>("SWAP_THROUGH_ALSO", KotrailRule.NO_SWAP_THROUGH_ALSO, REFERENCED_NAME)
 
+    /** Arguments: the property, the constructor parameter it stores; reported on the property's name, or on the parameter for a property declared in the primary constructor. */
+    val NULL_STORED_FROM_PARAMETER =
+        tunable2<KtNamedDeclaration, String, String>("NULL_STORED_FROM_PARAMETER", KotrailRule.NO_NULL_STATE_FROM_PARAMETER, NAME)
+
     /** Argument: what was wrapped; reported on a weak reference built from an object nothing else holds. */
     val WEAK_REFERENCE_TO_FRESH_OBJECT = tunable1<KtElement, String>("WEAK_REFERENCE_TO_FRESH_OBJECT", KotrailRule.WEAK_ONLY_REFERENCE, WHOLE)
 
@@ -805,6 +809,12 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         map.put1(
             KotrailDiagnostics.SUPPRESS_WITHOUT_REASON,
             "[Kotrail] ''{0}'' silences a check without saying why: put the reason in a comment on this line or the line above.",
+        )
+        map.put2(
+            KotrailDiagnostics.NULL_STORED_FROM_PARAMETER,
+            "[Kotrail] ''{0}'' is stored nullable only because the constructor takes a nullable ''{1}'', and every use of it " +
+                "just bails out on null. Decide at the boundary: take a non-null ''{1}'' and let the caller handle the missing " +
+                "value, or name the absence with a type if it is a real state.",
         )
         map.put3(
             KotrailDiagnostics.SWAP_THROUGH_ALSO,
