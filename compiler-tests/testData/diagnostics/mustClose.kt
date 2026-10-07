@@ -8,7 +8,10 @@ import java.io.InputStreamReader
 import java.io.Reader
 import java.io.StringReader
 import java.net.HttpURLConnection
+import java.net.Socket
 import java.net.URI
+import java.util.jar.JarFile
+import java.util.zip.ZipFile
 import kotlin.concurrent.thread
 
 class Pooled : AutoCloseable {
@@ -129,6 +132,66 @@ fun fetchKept(url: String): String {
     // Reported: nothing disconnects the connection, so the reader is this function's to close.
     val connection = URI(url).toURL().openConnection() as HttpURLConnection
     return <!KOTRAIL_RESOURCE_NOT_CLOSED!>connection.inputStream.bufferedReader()<!>.readText()
+}
+
+fun ping(host: String, port: Int): String {
+    // Not reported: use closes the socket, and the socket closes the streams it handed out.
+    return Socket(host, port).use { socket ->
+        socket.getOutputStream().write(1)
+        socket.getOutputStream().bufferedWriter().write("ping")
+        val reply = BufferedReader(InputStreamReader(socket.getInputStream())).readLine()
+        reply + socket.inputStream.bufferedReader().readLine()
+    }
+}
+
+fun pingImplicit(host: String, port: Int): String =
+    // Not reported: the same through it.
+    Socket(host, port).use { it.getInputStream().bufferedReader().readLine() }
+
+fun pingClosed(host: String, port: Int): String {
+    // Not reported: the socket is closed in a finally, and it closes its streams.
+    val socket = Socket(host, port)
+    try {
+        socket.outputStream.bufferedWriter().write("ping")
+        val input = socket.getInputStream()
+        return input.bufferedReader().readLine()
+    } finally {
+        socket.close()
+    }
+}
+
+fun serve(client: Socket): String {
+    // Not reported: the function closes the caller's socket, and with it the streams.
+    try {
+        return client.inputStream.bufferedReader().readLine()
+    } finally {
+        client.close()
+    }
+}
+
+fun pingLeaked(host: String, port: Int): String {
+    // Reported on the socket: nothing closes it, and closing it is what would close its streams.
+    val socket = <!KOTRAIL_RESOURCE_NOT_CLOSED!>Socket(host, port)<!>
+    return socket.getInputStream().bufferedReader().readLine()
+}
+
+fun readFrom(socket: Socket): String {
+    // Reported: nothing here closes the caller's socket, so the reader is this function's to close.
+    return <!KOTRAIL_RESOURCE_NOT_CLOSED!>socket.getInputStream().bufferedReader()<!>.readLine()
+}
+
+fun manifest(path: String): String =
+    // Not reported: use closes the archive, and the archive closes the entry streams it handed out.
+    JarFile(path).use { jar -> jar.getInputStream(jar.getEntry("META-INF/MANIFEST.MF")).bufferedReader().readText() }
+
+fun entryText(path: String, name: String): String {
+    // Not reported: the archive is closed in a finally.
+    val zip = ZipFile(path)
+    try {
+        return zip.getInputStream(zip.getEntry(name)).bufferedReader().readText()
+    } finally {
+        zip.close()
+    }
 }
 
 fun openNarrowed(path: String): BufferedReader = File(path).takeIf { it.exists() }?.bufferedReader() ?: error("missing")

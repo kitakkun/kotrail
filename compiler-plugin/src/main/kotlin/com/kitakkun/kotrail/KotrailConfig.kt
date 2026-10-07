@@ -392,6 +392,11 @@ data class KotrailMustClose(
     val factories: List<String>,
     /** `AutoCloseable` types (subtypes included) that hold nothing worth closing: in-memory buffers, a project's registration handles. */
     val ignoredTypes: List<String>,
+    /**
+     * Types (subtypes included) whose streams they close themselves: a stream of one is not the function's to
+     * close when the function closes the source (a `Process` always, an `HttpURLConnection` when disconnected).
+     */
+    val streamOwners: List<String>,
 )
 
 /** Tunables for the no-external-mutation rule. From `rules.noExternalMutation`. */
@@ -716,6 +721,10 @@ data class KotrailConfig(
         val DEFAULT_IN_MEMORY_RESOURCES: List<String> = listOf(
             "java.io.ByteArrayInputStream", "java.io.ByteArrayOutputStream", "java.io.StringReader", "java.io.StringWriter",
             "java.io.CharArrayReader", "java.io.CharArrayWriter", "okio.Buffer",
+        )
+        /** Sources that close the streams they hand out: a socket, a connection, a process, an archive. */
+        val DEFAULT_STREAM_OWNERS: List<String> = listOf(
+            "java.net.Socket", "java.net.HttpURLConnection", "java.lang.Process", "java.util.zip.ZipFile", "java.util.jar.JarFile",
         )
         val DEFAULT_SUPPRESSION_ANNOTATIONS: List<String> = listOf("kotlin.Suppress", "android.annotation.SuppressLint")
         /** Every suppression owes a reason by default, apart from [DEFAULT_SUPPRESSION_EXEMPT_IDS]. */
@@ -1203,6 +1212,7 @@ data class KotrailConfig(
                 mustClose = KotrailMustClose(
                     factories = list(KotrailRule.MUST_CLOSE, "factories") ?: DEFAULT_RESOURCE_FACTORIES,
                     ignoredTypes = list(KotrailRule.MUST_CLOSE, "ignoredTypes") ?: DEFAULT_IN_MEMORY_RESOURCES,
+                    streamOwners = list(KotrailRule.MUST_CLOSE, "streamOwners") ?: DEFAULT_STREAM_OWNERS,
                 ),
                 noExternalMutation = KotrailNoExternalMutation(
                     types = list(KotrailRule.NO_EXTERNAL_MUTATION, "types") ?: DEFAULT_STATE_HOLDER_TYPES,

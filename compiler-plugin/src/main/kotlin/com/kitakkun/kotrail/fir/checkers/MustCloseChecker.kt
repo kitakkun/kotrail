@@ -78,11 +78,17 @@ import org.jetbrains.kotlin.types.AbstractTypeChecker
  * (`parameterStream.bufferedReader()`, `this.stream.buffered()`), wraps a borrowed stream too, and
  * so does a creation around such a wrapper (`BufferedReader(InputStreamReader(parameterStream))`).
  *
- * A stream its source owns is not the function's to close either: the streams of a `Process`
- * (`process.inputStream.bufferedReader()`), which the process closes, and the streams of an
- * `HttpURLConnection` the function disconnects (`connection.inputStream` with
- * `connection.disconnect()` anywhere in the body), which the connection closes. A wrapper over one
- * of them is not tracked either.
+ * A stream its source owns is not the function's to close either. A source is an instance of a
+ * class on `mustClose.streamOwners`; its streams are the `inputStream`, `outputStream` and
+ * `errorStream` properties and their getters, `getInputStream(entry)` of an archive included.
+ * The streams of a `Process` (`process.inputStream.bufferedReader()`) are always the process's.
+ * Those of an `HttpURLConnection` are the connection's when the function disconnects it
+ * (`connection.disconnect()` anywhere in the body). Those of any other source, a `Socket` or a
+ * `ZipFile`, are the source's when the function closes it: the source reads a local, parameter
+ * or property the body calls `close()` or `use` on, or the parameter of a `use { }` lambda
+ * (`Socket(host, port).use { it.getInputStream().bufferedReader() }`). They are the source's as
+ * well when the source is a local holding a creation of this function, which carries the
+ * obligation itself and is reported if nothing settles it. A wrapper over such a stream is not tracked either.
  */
 object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
     private val CLOSEABLE = listOf(
@@ -95,6 +101,8 @@ object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
         "kotlin.use", "kotlin.io.use", "kotlin.AutoCloseable.use",
         "kotlin.io.useLines", "kotlin.io.forEachLine", "kotlin.io.readLines", "kotlin.io.path.useLines", "kotlin.io.path.forEachLine",
     )
+    /** Closes the receiver when the lambda ends; the lambda's parameter is that receiver under another name. */
+    private val CLOSING_USE = setOf("kotlin.use", "kotlin.io.use", "kotlin.AutoCloseable.use")
     private val SCOPE_FUNCTIONS = setOf("kotlin.apply", "kotlin.also", "kotlin.let", "kotlin.run", "kotlin.takeIf", "kotlin.takeUnless")
 
     /** Wraps the receiver in another resource whose closing closes it: settling the wrapper settles what it wraps. */
@@ -108,7 +116,7 @@ object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
     private val HTTP_URL_CONNECTION = ClassId(FqName("java.net"), org.jetbrains.kotlin.name.Name.identifier("HttpURLConnection"))
     private val DISCONNECT = org.jetbrains.kotlin.name.Name.identifier("disconnect")
 
-    /** The streams a process or a connection hands out, read as properties or through their getters. */
+    /** The streams a source hands out, read as properties or through their getters (`ZipFile.getInputStream(entry)` takes the entry). */
     private val SOURCE_STREAMS = setOf(
         "inputStream", "errorStream", "outputStream", "getInputStream", "getErrorStream", "getOutputStream",
     )
@@ -120,8 +128,9 @@ object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
         val source = declaration.source ?: return
         if (source.kind is KtFakeSourceElementKind) return
         val body = declaration.body ?: return
-        val finder = Finder(context.session, config.mustClose.factories.toSet(), config.mustClose.ignoredTypes)
-        finder.collectDisconnects(body)
+        val streamOwners = config.mustClose.streamOwners.map { ClassId.topLevel(FqName(it)) }
+        val finder = Finder(context.session, config.mustClose.factories.toSet(), config.mustClose.ignoredTypes, streamOwners)
+        finder.collectReleases(body)
         body.accept(finder)
         for ((call, type) in finder.leaked()) {
             val at = call.source ?: continue
@@ -131,7 +140,12 @@ object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
     }
 
     /** Finds the resources a body creates and which of them are closed or handed on. */
-    private class Finder(private val session: FirSession, private val factories: Set<String>, private val ignoredTypes: List<String>) : FirVisitorVoid() {
+    private class Finder(
+        private val session: FirSession,
+        private val factories: Set<String>,
+        private val ignoredTypes: List<String>,
+        private val streamOwners: List<ClassId>,
+    ) : FirVisitorVoid() {
         private val created = LinkedHashMap<FirFunctionCall, String>()
         private val settled = HashSet<FirFunctionCall>()
         private val locals = HashMap<FirBasedSymbol<*>, FirFunctionCall>()
@@ -144,6 +158,9 @@ object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
         /** The connections the body calls `disconnect()` on. */
         private val disconnected = HashSet<FirBasedSymbol<*>>()
 
+        /** What the body calls `close()` or `use` on, and the parameters of `use { }` lambdas, each the closed receiver by another name. */
+        private val closed = HashSet<FirBasedSymbol<*>>()
+
         fun leaked(): List<Pair<FirFunctionCall, String>> = created.entries
             .filter { (call, _) -> call !in settled && locals.entries.none { (local, creation) -> creation === call && local in settledLocals } }
             .map { (call, type) -> call to type }
@@ -154,8 +171,11 @@ object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
             ancestors.removeAt(ancestors.lastIndex)
         }
 
-        /** Records the connections the body calls `disconnect()` on, wherever the call sits; it runs before the walk. */
-        fun collectDisconnects(body: FirElement) {
+        /**
+         * Records the connections the body calls `disconnect()` on and what it closes, wherever the call sits,
+         * so a release in a `finally` below a read counts; it runs before the walk.
+         */
+        fun collectReleases(body: FirElement) {
             body.accept(object : FirVisitorVoid() {
                 override fun visitElement(element: FirElement) {
                     element.acceptChildren(this)
@@ -167,6 +187,11 @@ object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
                     if (callee?.name == DISCONNECT && functionCall.argumentList.arguments.isEmpty() && receiver != null) {
                         // The type as smart cast; the symbol behind the cast.
                         if (receiver.resolvedType.isSubtypeOf(HTTP_URL_CONNECTION)) receiver.referencedSymbol()?.let { disconnected += it }
+                    }
+                    if (functionCall.settlesReceiver()) receiver?.referencedSymbol()?.let { closed += it }
+                    if (functionCall.fqName() in CLOSING_USE) {
+                        val lambda = functionCall.argumentList.arguments.lastOrNull()?.unwrapArgument() as? FirAnonymousFunctionExpression
+                        lambda?.anonymousFunction?.valueParameters?.forEach { closed += it.symbol }
                     }
                     functionCall.acceptChildren(this)
                 }
@@ -284,25 +309,31 @@ object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
         }
 
         /**
-         * `process.inputStream`, `connection.errorStream` where the body disconnects `connection`, or a local
-         * holding one: a stream its source closes (a process its pipes, a connection its socket), so it is not
-         * the function's to close.
+         * `process.inputStream`, `connection.errorStream` where the body disconnects `connection`,
+         * `socket.getInputStream()` where the body closes `socket`, or a local holding one: a stream its source
+         * closes (a process its pipes, a connection or a socket its streams, an archive its entries), so it is
+         * not the function's to close.
          */
         private fun isOwnedBySource(expression: FirExpression): Boolean {
             var stream = unwrapScopeChain(expression)
             val held = (stream as? FirPropertyAccessExpression)?.calleeReference?.toResolvedCallableSymbol()?.let { localInitializers[it] }
             if (held != null) stream = unwrapScopeChain(held)
             if (stream is FirSafeCallExpression) stream = stream.selector as? FirExpression ?: return false
-            val access: FirQualifiedAccessExpression = when {
-                stream is FirPropertyAccessExpression -> stream
-                stream is FirFunctionCall && stream.argumentList.arguments.isEmpty() -> stream
-                else -> return false
-            }
+            val access = stream as? FirQualifiedAccessExpression ?: return false
             if (access.calleeReference.toResolvedCallableSymbol()?.name?.asString() !in SOURCE_STREAMS) return false
             var source = access.explicitReceiver ?: return false
             if (source is FirCheckedSafeCallSubject) source = source.originalReceiverRef.value
-            if (source.resolvedType.isSubtypeOf(PROCESS)) return true
-            return source.resolvedType.isSubtypeOf(HTTP_URL_CONNECTION) && source.referencedSymbol() in disconnected
+            val sourceType = source.resolvedType
+            if (streamOwners.none { sourceType.isSubtypeOf(it) }) return false
+            if (sourceType.isSubtypeOf(PROCESS)) return true
+            val symbol = source.referencedSymbol() ?: return false
+            return symbol in disconnected || symbol in closed || holdsTrackedCreation(symbol)
+        }
+
+        /** A local holding a creation this function tracks: the creation carries the obligation, and is reported if nothing settles it. */
+        private fun holdsTrackedCreation(local: FirBasedSymbol<*>): Boolean {
+            val creation = locals[local] ?: return false
+            return resourceType(creation) != null && !wrapsBorrowed(creation, HashSet())
         }
 
         /** The local, parameter or property this expression reads, through a smart cast or a safe call. */

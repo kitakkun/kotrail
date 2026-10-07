@@ -2,7 +2,7 @@
 
 **Diagnostic:** `KOTRAIL_RESOURCE_NOT_CLOSED` (error, on the creation)
 **Key:** `rules.mustClose` (on by default)
-**Settings:** `factories` (default: the `kotlin.io` and `kotlin.io.path` stream, reader and writer factories, `java.nio.file.Files.new*`, `Files.lines`, `Files.walk`, `Files.list`, `FileChannel.open`, `ServerSocket.accept`), `ignoredTypes` (default: the in-memory `ByteArray*`, `String*` and `CharArray*` streams and `okio.Buffer`)
+**Settings:** `factories` (default: the `kotlin.io` and `kotlin.io.path` stream, reader and writer factories, `java.nio.file.Files.new*`, `Files.lines`, `Files.walk`, `Files.list`, `FileChannel.open`, `ServerSocket.accept`), `ignoredTypes` (default: the in-memory `ByteArray*`, `String*` and `CharArray*` streams and `okio.Buffer`), `streamOwners` (default: `java.net.Socket`, `java.net.HttpURLConnection`, `java.lang.Process`, `java.util.zip.ZipFile`, `java.util.jar.JarFile`)
 
 ## What it rejects
 
@@ -47,14 +47,33 @@ because nothing in the code it is looking at says the object is a resource.
   created (a parameter, `this`, a property, the result of a call that is not a creation).
   Closing the wrapper would close the lender's stream, so the wrapper is not the function's to
   close. [Wrappers over borrowed streams](#wrappers-over-borrowed-streams) lists the forms.
-- The resource wraps a stream its source owns:
-  - a stream of a `Process` (`process.inputStream`, `errorStream`, `outputStream`, directly or
-    through a local): the process closes its pipes as it ends, so
+- The resource wraps a stream its source owns. A source is an instance of a type on
+  `streamOwners`, and its streams are `inputStream`, `outputStream` and `errorStream` (or their
+  getters), directly or through a local, and an archive's `getInputStream(entry)`:
+  - a stream of a `Process`: the process closes its pipes as it ends, so
     `process.inputStream.bufferedReader().readText()` needs no `close()`;
-  - a stream of an `HttpURLConnection` (`connection.inputStream`, `errorStream`,
-    `outputStream`) when the function calls `connection.disconnect()`, in a `finally` or
-    anywhere else in the body: the connection closes what it handed out. Without the
-    `disconnect()`, a reader over `connection.inputStream` is still the function's to close.
+  - a stream of an `HttpURLConnection` when the function calls `connection.disconnect()`, in a
+    `finally` or anywhere else in the body: the connection closes what it handed out. Without
+    the `disconnect()`, a reader over `connection.inputStream` is still the function's to close;
+  - a stream of any other source, a `Socket`, a `ZipFile` or a `JarFile`, when the function
+    closes the source: the source is the receiver of a `use { }` around the read
+    (`Socket(host, port).use { socket -> socket.getInputStream().bufferedReader().readLine() }`,
+    through `it` too), or the body calls `close()` or `use` on the same local, parameter or
+    property anywhere, a `finally` included. Closing a socket or an archive closes every stream
+    it handed out;
+  - a stream of a source that is a local holding a creation of this function
+    (`val socket = Socket(host, port)`): the source carries the obligation, so when nothing
+    closes it, the rule reports the socket, once, and not each reader over its streams.
+
+  A source the function neither closes nor creates, such as a `Socket` parameter, leaves the
+  reader over its stream the function's to close, and that reader is reported. A project's own
+  sources go on the list, which replaces the default:
+
+  ```yaml
+  rules:
+    mustClose:
+      streamOwners: [java.net.Socket, java.lang.Process, com.acme.net.Channel]
+  ```
 - The type is on `ignoredTypes`: an in-memory buffer holds nothing a close would free, and a
   project's `AutoCloseable` registration handles (an uninstall token) go there too:
 
@@ -130,8 +149,11 @@ wrapping a borrowed stream itself, wraps a borrowed stream and is not collected,
 creation whose closeable receiver is itself a wrapper over a borrowed stream, a parameter, or
 rooted at `this` through property accesses. The question recurses through nested creations,
 with a visited set so a creation met again answers no.
-A stream is its source's when it is `inputStream`, `errorStream` or `outputStream` (or the
-getter) of an expression typed `java.lang.Process`, or of one typed `java.net.HttpURLConnection`
-that reads a local, parameter or property the body calls `disconnect()` on; a pass before the
-walk collects those, so a `disconnect()` in a `finally` below the read counts. A creation whose
-closeable receiver is such a stream is not collected either.
+A creation whose closeable receiver is a stream its source owns is not collected either. A
+stream is its source's when it is `inputStream`, `errorStream` or `outputStream` (or the
+getter, with any arguments) of an expression whose type is a subtype of a `streamOwners` entry,
+and that source is a `java.lang.Process`, or reads a local, parameter or property the body calls
+`disconnect()` (an `HttpURLConnection`), `close()` or `use` on, or is the parameter of a
+`use { }` lambda, or is a local whose initializer is a tracked creation. A pass before the walk
+collects the `disconnect()`, `close()` and `use` receivers and the `use` lambda parameters, so a
+release in a `finally` below the read counts.
