@@ -73,7 +73,10 @@ internal class FactsFiles(
     /** Whether the compilation of this name writes its facts (the `inferredMetadata` setting). */
     private val writesFacts: (String) -> Boolean,
 ) {
-    /** Registers the attribute rules that let a consumer pick a dependency's facts variant. Once per project. */
+    /**
+     * Registers the attribute rules that let a consumer pick a dependency's facts variant, and its
+     * unloadable-records variant ([UnloadableRecords]), which has the same attributes. Once per project.
+     */
     fun registerAttributeSchema() {
         project.dependencies.attributesSchema { schema ->
             schema.attribute(PLATFORM_ATTRIBUTE) {
@@ -318,7 +321,7 @@ internal class FactsFiles(
         override fun apply(first: List<SubpluginOption>, second: List<SubpluginOption>): List<SubpluginOption> = first + second
     }
 
-    /** A consumer on Android also takes the facts of a JVM library, as it takes its classes. */
+    /** A consumer on Android also takes the facts and records of a JVM library, as it takes its classes. */
     abstract class PlatformCompatibility : AttributeCompatibilityRule<String> {
         override fun execute(details: CompatibilityCheckDetails<String>) {
             if (details.consumerValue == KotlinPlatformType.androidJvm.name && details.producerValue == KotlinPlatformType.jvm.name) {
@@ -334,7 +337,7 @@ internal class FactsFiles(
         }
     }
 
-    /** A test compilation reads the facts of its dependencies' main compilations, an Android variant those of a JVM `main`. */
+    /** A test compilation reads the facts and records of its dependencies' main compilations, an Android variant those of a JVM `main`. */
     abstract class AnyCompilation : AttributeCompatibilityRule<String> {
         override fun execute(details: CompatibilityCheckDetails<String>) {
             details.compatible()
@@ -363,10 +366,10 @@ internal class FactsFiles(
         /** The usage of the facts variant, which no Java or Kotlin consumer requests. */
         const val USAGE = "kotrail-facts"
 
-        /** The platform of the compilation that wrote the facts: `jvm` or `androidJvm`. */
+        /** The platform of the compilation that wrote the facts, or the unloadable records: `jvm` or `androidJvm`. */
         val PLATFORM_ATTRIBUTE: Attribute<String> = Attribute.of("com.kitakkun.kotrail.facts", String::class.java)
 
-        /** The name of the compilation that wrote the facts: `main`, or an Android variant. */
+        /** The name of the compilation that wrote the facts, or the unloadable records: `main`, or an Android variant. */
         val COMPILATION_ATTRIBUTE: Attribute<String> = Attribute.of("com.kitakkun.kotrail.facts.compilation", String::class.java)
 
         const val FACTS_OUT_OPTION = "factsOut"
@@ -397,11 +400,11 @@ internal class FactsFiles(
         /** `<module>.facts`, with the name reduced to characters safe in a file name, as the compiler plugin names it. */
         fun fileName(module: String): String = "${module.replace(Regex("[^A-Za-z0-9._-]"), "_")}.$EXTENSION"
 
-        private fun KotlinCompilation<*>.isJvmLike(): Boolean =
+        fun KotlinCompilation<*>.isJvmLike(): Boolean =
             platformType == KotlinPlatformType.jvm || platformType == KotlinPlatformType.androidJvm
 
-        /** A compilation whose facts other modules read: `main`, or an Android variant (not its unit or instrumented tests). */
-        private fun KotlinCompilation<*>.isProducing(): Boolean =
+        /** A compilation whose facts and records other modules read: `main`, or an Android variant (not its unit or instrumented tests). */
+        fun KotlinCompilation<*>.isProducing(): Boolean =
             name == KotlinCompilation.MAIN_COMPILATION_NAME ||
                 (platformType == KotlinPlatformType.androidJvm && !name.endsWith("Test"))
 
@@ -413,7 +416,7 @@ internal class FactsFiles(
          * `kotrailFacts` for Kotlin/JVM `main`, `testKotrailFacts`, `jvmKotrailFactsElements`,
          * `jvmTestKotrailFacts`, `releaseKotrailFactsElements`.
          */
-        private fun KotlinCompilation<*>.configurationName(suffix: String): String {
+        fun KotlinCompilation<*>.configurationName(suffix: String): String {
             val parts = listOf(target.name, name.takeUnless { it == KotlinCompilation.MAIN_COMPILATION_NAME }.orEmpty(), suffix).filter { it.isNotEmpty() }
             return parts.mapIndexed { index, part ->
                 if (index == 0) part.replaceFirstChar { it.lowercaseChar() } else part.replaceFirstChar { it.uppercaseChar() }

@@ -3,7 +3,6 @@ package com.kitakkun.kotrail.gradle
 import org.gradle.api.Action
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
-import org.gradle.api.artifacts.component.ProjectComponentIdentifier
 import org.gradle.api.file.Directory
 import org.gradle.api.provider.Provider
 import org.gradle.api.tasks.TaskProvider
@@ -15,10 +14,7 @@ import org.jetbrains.kotlin.gradle.plugin.FilesSubpluginOption
 import org.jetbrains.kotlin.gradle.plugin.KotlinBasePlugin
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilation
 import org.jetbrains.kotlin.gradle.plugin.KotlinCompilerPluginSupportPlugin
-import org.jetbrains.kotlin.gradle.dsl.KotlinAndroidExtension
-import org.jetbrains.kotlin.gradle.dsl.KotlinJvmExtension
 import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
-import org.jetbrains.kotlin.gradle.plugin.KotlinTarget
 import org.jetbrains.kotlin.gradle.plugin.KotlinTargetsContainer
 import org.jetbrains.kotlin.gradle.plugin.SubpluginArtifact
 import org.jetbrains.kotlin.gradle.plugin.SubpluginOption
@@ -37,6 +33,7 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
     private lateinit var project: Project
     private lateinit var extension: KotrailExtension
     private lateinit var factsFiles: FactsFiles
+    private lateinit var unloadableRecords: UnloadableRecords
     private lateinit var publishing: Provider<Boolean>
 
     override fun apply(target: Project) {
@@ -48,6 +45,7 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
             inferredMetadata.convention(true)
             incrementalMetadata.convention(true)
             packagingExcludes.convention(true)
+            bundlesRuntimeClasspath.convention(true)
             publishingTasks.convention(PublishingBuild.DEFAULT_TASK_NAMES)
         }
         publishing = PublishingBuild.of(target, extension.publishingTasks)
@@ -55,6 +53,7 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
             specsFor(compilationName).lastOrNull { it.inferredMetadata.isPresent }?.inferredMetadata?.get() ?: true
         }
         factsFiles.registerAttributeSchema()
+        unloadableRecords = UnloadableRecords(target, ::bundledConfigurations, ::bundlesRuntimeClasspath)
         addAnnotationsDependency(target)
         addConsumerRules(target)
         addPackagingExcludes(target)
@@ -79,7 +78,8 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
         wireFixRecords(kotlinCompilation)
         wireComposableRecords(kotlinCompilation)
         wireComplexityRecords(kotlinCompilation)
-        wireUnloadableRecords(kotlinCompilation)
+        // The unloadable-code records this compilation writes, and those of the projects it bundles.
+        val unloadableOptions = unloadableRecords.wire(kotlinCompilation)
         // The facts file this compilation writes and those of its dependencies, and whether the facts also go into
         // the class files' Kotlin metadata for incremental compilation (JVM and Android only).
         val factsOptions = factsFiles.wire(kotlinCompilation)?.zip(incrementalMetadataOption(compilationName), FactsFiles.ConcatOptions())
@@ -91,14 +91,13 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
                 kotlinCompilation.allAssociatedCompilations.map {
                     SubpluginOption("associatedComposablesDir", composablesDirectoryFor(it).get().asFile.path)
                 } +
-                SubpluginOption("rootDir", project.rootDir.path) +
-                SubpluginOption("unloadableDir", unloadableDirectoryFor(kotlinCompilation).get().asFile.path) +
-                bundledRecordDirectories(kotlinCompilation).map { SubpluginOption("bundledUnloadableDir", it.path) }
+                SubpluginOption("rootDir", project.rootDir.path)
             // `--info` shows what each compilation was handed, for a consumer to check its wiring.
             project.logger.info("Kotrail: options for ${kotlinCompilation.compileKotlinTaskName}: ${options.joinToString { "${it.key}=${it.value}" }}")
             options
         }
-        return if (factsOptions == null) options else options.zip(factsOptions, FactsFiles.ConcatOptions())
+        val withRecords = options.zip(unloadableOptions, FactsFiles.ConcatOptions())
+        return if (factsOptions == null) withRecords else withRecords.zip(factsOptions, FactsFiles.ConcatOptions())
     }
 
     /**
@@ -169,34 +168,9 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
         }
     }
 
-    /**
-     * Every compilation records the outbound references the unloadableCode rule looks for under
-     * `build/kotrail/unloadable`, and a compilation with the rule on reads the records of the
-     * projects on its runtime class path: a plugin that is unloaded with its class loader bundles
-     * them, so one switch on the plugin module covers whatever it bundles.
-     */
-    private fun wireUnloadableRecords(kotlinCompilation: KotlinCompilation<*>) {
-        val directory = unloadableDirectoryFor(kotlinCompilation)
-        kotlinCompilation.compileTaskProvider.configure { task ->
-            task.outputs.dir(directory).withPropertyName("kotrailUnloadable")
-            // Everything below is settled while the task is configured, as plain files: the configuration cache
-            // then has nothing of the plugin or the project to serialize with the task.
-            // The artifacts of the bundled configurations: their project dependencies' compile tasks then run first,
-            // so that their records exist when this task reads them.
-            task.inputs.files(bundledConfigurations(kotlinCompilation))
-                .withPropertyName("kotrailBundledConfigurations")
-                .withPathSensitivity(PathSensitivity.RELATIVE)
-                .optional()
-            task.inputs.files(bundledRecordDirectories(kotlinCompilation))
-                .withPropertyName("kotrailBundledUnloadable")
-                .withPathSensitivity(PathSensitivity.RELATIVE)
-                .optional()
-        }
-    }
-
     /** The configurations named under `bundledConfigurations` for this compilation, across the project's settings and its overrides. */
-    private fun bundledConfigurations(kotlinCompilation: KotlinCompilation<*>): List<Configuration> =
-        specsFor(kotlinCompilation.name)
+    private fun bundledConfigurations(compilationName: String): List<Configuration> =
+        specsFor(compilationName)
             .flatMap { it.bundledConfigurations.getOrElse(emptyList()) }
             .distinct()
             .map { name ->
@@ -204,60 +178,9 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
                     ?: error("Kotrail: bundledConfigurations names '$name', which is not a configuration of ${project.path}.")
             }
 
-    /**
-     * The `*-main` record directories of the bundled projects for the targets of the consumer's
-     * platform, and only those: the compile task of a consumer depends on the main compilation
-     * of a dependency for its own platform through its classes, so those records exist by the
-     * time the task runs, while a `test` or `preview` compilation, or the main compilation of
-     * another target of a multiplatform dependency, is not a task the consumer depends on, and
-     * its records must not be an input. The targets are read from each bundled project's Kotlin
-     * extension, so the set is known while the task is configured. An Android consumer of a
-     * library with no Android target gets the library's JVM variant, and its JVM records. A
-     * common (metadata) compilation bundles nothing.
-     */
-    private fun bundledRecordDirectories(kotlinCompilation: KotlinCompilation<*>): List<File> {
-        if (kotlinCompilation.platformType == KotlinPlatformType.common) return emptyList()
-        val wanted = platformKey(kotlinCompilation.target)
-        val fallback = if (kotlinCompilation.platformType == KotlinPlatformType.androidJvm) KotlinPlatformType.jvm.name else null
-        return bundledProjects(kotlinCompilation).flatMap { bundled ->
-            val targets = bundled.kotlinTargets()
-            val matching = targets.filter { platformKey(it) == wanted }.ifEmpty { targets.filter { fallback != null && platformKey(it) == fallback } }
-            matching.map { bundled.layout.buildDirectory.dir("kotrail/unloadable/${it.name.ifEmpty { "jvm" }}-main").get().asFile }
-        }
-    }
-
-    /** The Kotlin targets a project declares: one for a JVM or Android project, several for a multiplatform one, none without Kotlin. */
-    private fun Project.kotlinTargets(): List<KotlinTarget> = when (val extension = extensions.findByName("kotlin")) {
-        is KotlinTargetsContainer -> extension.targets.toList()
-        is KotlinJvmExtension -> listOf(extension.target)
-        is KotlinAndroidExtension -> listOf(extension.target)
-        else -> emptyList()
-    }
-
-    /** A target's platform for matching records: the platform type, and the target's name for the types that have several. */
-    private fun platformKey(target: KotlinTarget): String = when (val type = target.platformType) {
-        KotlinPlatformType.native, KotlinPlatformType.wasm -> "${type.name}:${target.name}"
-        else -> type.name
-    }
-
-    /**
-     * The projects whose classes the compilation's artifact bundles: those on its runtime class
-     * path, and those of the configurations named under `bundledConfigurations`, transitively.
-     */
-    private fun bundledProjects(kotlinCompilation: KotlinCompilation<*>): List<Project> {
-        val runtime = kotlinCompilation.runtimeDependencyConfigurationName?.let { project.configurations.findByName(it) }
-        val configurations = listOfNotNull(runtime) + bundledConfigurations(kotlinCompilation)
-        return configurations
-            .flatMap { it.incoming.resolutionResult.allComponents }
-            .mapNotNull { (it.id as? ProjectComponentIdentifier)?.projectPath }
-            .filter { it != project.path }
-            .distinct()
-            .sorted()
-            .map { project.project(it) }
-    }
-
-    private fun unloadableDirectoryFor(kotlinCompilation: KotlinCompilation<*>): Provider<Directory> =
-        project.layout.buildDirectory.dir("kotrail/unloadable/${kotlinCompilation.directoryName()}")
+    /** `bundlesRuntimeClasspath` for this compilation, across the project's settings and its overrides. */
+    private fun bundlesRuntimeClasspath(compilationName: String): Boolean =
+        specsFor(compilationName).lastOrNull { it.bundlesRuntimeClasspath.isPresent }?.bundlesRuntimeClasspath?.get() ?: true
 
     /** The complexity records are an output of the compile task, for the kotrailComplexity report to read. */
     private fun wireComplexityRecords(kotlinCompilation: KotlinCompilation<*>) {

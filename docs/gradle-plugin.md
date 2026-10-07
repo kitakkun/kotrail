@@ -45,6 +45,7 @@ kotrail {
     // publishingTasks = listOf("publish*") // publishToMavenLocal also leaves that metadata out
     // consumerRules = false     // ship no shrinker rules to consumers
     // packagingExcludes = false // keep older libraries' facts files in an Android app's APK
+    // bundlesRuntimeClasspath = false // a host that is never unloaded; see unloadable code
 }
 ```
 
@@ -59,6 +60,7 @@ kotrail {
 | `consumerRules` | `true` | Whether the module ships `-dontwarn com.kitakkun.kotrail.**` to its consumers. The JVM and Android outputs of this version reference no Kotrail class (the facts are in a separate artifact), so the rule is only needed by consumers that also shrink JVM libraries built by earlier versions, whose class files carry the annotations. See [Consumer rules](#consumer-rules). |
 | `packagingExcludes` | `true` | Whether an Android application (`com.android.application`) leaves `META-INF/kotrail/**` out of its APK and bundle, through `android.packaging.resources.excludes`. Only libraries built by earlier versions of Kotrail carry facts files there; this version publishes them as a separate artifact, so the exclude matters only for those older libraries. See [Publishing a library](inferred-metadata.md#publishing-a-library). |
 | `bundledConfigurations` | empty | Configurations whose projects this compilation's artifact bundles, for unloadable code. Per compilation. |
+| `bundlesRuntimeClasspath` | `true` | Whether this compilation's artifact bundles the projects on its runtime class path, for unloadable code: their records are inputs of the compile task, which then depends on their compile tasks, `runtimeOnly` ones included. `false` leaves them out (`bundledConfigurations` still count), for a host that is never unloaded and loads a project at runtime that compiles against it; see [A task cycle](rules/unloadable-code.md#a-task-cycle). Per compilation. |
 
 Rule switches, severities, rule settings, and the project's own notes on why a rule exists are
 **not** part of this DSL. They live in `kotrail.yaml`, whose keys are listed in
@@ -149,10 +151,20 @@ Next to the fixes, every compilation records the UI composables it declares unde
 `build/kotrail/composables`, and a compilation reads the records of the compilations it is
 associated with (`main`, for `test` or for a `preview` compilation): that is how
 [preview coverage](rules/compose/preview-coverage.md#a-preview-compilation-next-to-main) sees
-`main` from a compilation that only has its class files. Likewise every compilation records
-what [unloadable code](rules/unloadable-code.md) looks for under `build/kotrail/unloadable`, and
-a compilation with that rule on reads the records of the projects on its runtime class path and
-of the configurations named under `bundledConfigurations`.
+`main` from a compilation that only has its class files.
+
+Likewise every compilation records what [unloadable code](rules/unloadable-code.md) looks for
+under `build/kotrail/unloadable`, and every JVM or Android compilation takes as inputs the
+records of the main compilations of the projects on its runtime class path (unless
+`bundlesRuntimeClasspath` is off) and on the configurations named under
+`bundledConfigurations`, which the compiler reports where the rule is on. Each project offers
+its records through the consumable configuration `kotrailUnloadableElements`
+(`jvmKotrailUnloadableElements` for a multiplatform target, `releaseKotrailUnloadableElements`
+for an Android variant), built by its compile task and included in no publication, so the
+compile task depends on the compile tasks that write them, for `implementation` and
+`runtimeOnly` dependencies alike. A project on the runtime class path that compiles against the
+module (a plugin its host loads at runtime) therefore makes a task cycle; see
+[A task cycle](rules/unloadable-code.md#a-task-cycle).
 
 ## Multiplatform
 

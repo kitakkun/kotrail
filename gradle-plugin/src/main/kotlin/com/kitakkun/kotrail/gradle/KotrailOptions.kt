@@ -63,4 +63,15 @@ abstract class KotrailOptions {
      * compilations recorded is reported here.
      */
     abstract val bundledConfigurations: ListProperty<String>
+
+    /**
+     * Whether this compilation's artifact bundles the projects on its runtime class path, so that
+     * with `unloadableCode` on, what their main compilations recorded is reported here. Default
+     * `true`. The records are inputs of the compile task whether or not the rule is on, so the
+     * compile task depends on the compile tasks of those projects, `runtimeOnly` ones included.
+     * `false` leaves them out, for a host that is never unloaded and loads a project at runtime
+     * that compiles against the host, which would otherwise be a task cycle.
+     * [bundledConfigurations] are read either way.
+     */
+    abstract val bundlesRuntimeClasspath: Property<Boolean>
 }

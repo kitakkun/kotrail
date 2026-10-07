@@ -40,16 +40,25 @@ Everything bundled into the same class loader is subject to the same hazard, and
 module's artifact bundles the projects on its runtime class path. So every compilation the
 Gradle plugin configures records the findings the rule looks for under
 `build/kotrail/unloadable/<target>-<compilation>` (whether or not the rule is on there), and a
-compilation with the rule on reads the `*-main` records of every project on its runtime class
-path, transitively, for the targets of its own platform (those directories alone are its inputs,
-since a dependency's `test` or `preview` compilation, or another target's, is not a task the
-consumer depends on), and reports them on the package directive of its first file by name as
-`KOTRAIL_OUTBOUND_REFERENCE_IN_BUNDLED_CODE`, with the file (relative to the build's root
-directory) and line. One switch on the plugin
-module covers whatever it bundles, and the set follows the dependency graph. A plugin that
-bundles code through a configuration of its own rather than the runtime class path (an IDE
-plugin that copies a `hostRuntime` configuration into its directory and loads it through its
-own class loader) names it in the Gradle plugin:
+JVM or Android compilation with the rule on reports what the main compilations (`main`, or an
+Android variant) of the projects on its runtime class path recorded, transitively, on the
+package directive of its first file by name as `KOTRAIL_OUTBOUND_REFERENCE_IN_BUNDLED_CODE`,
+with the file (relative to the build's root directory) and line. One switch on the plugin
+module covers whatever it bundles, and the set follows the dependency graph, `implementation`
+and `runtimeOnly` dependencies alike.
+
+Each project offers its records as a variant of its own, the consumable configuration
+`kotrailUnloadableElements` (`jvmKotrailUnloadableElements` for a multiplatform target,
+`releaseKotrailUnloadableElements` for an Android variant), which no publication includes, and
+Gradle picks the one for the consumer's platform as it picks the
+[facts variant](../inferred-metadata.md#how-it-is-resolved): a multiplatform dependency's
+target of that platform, and for an Android consumer of a library without an Android target,
+its JVM target. A dependency's `test` or `preview` compilation is
+never read, a project without Kotrail gives nothing, and a common compilation, or one of
+another platform, bundles nothing: the hazard is a JVM class loader's. A plugin that bundles
+code through a configuration of its own rather than the runtime class path (an IDE plugin that
+copies a `hostRuntime` configuration into its directory and loads it through its own class
+loader) names it in the Gradle plugin:
 
 ```kotlin
 kotrail {
@@ -61,6 +70,27 @@ kotrail {
 
 Outside Gradle, the compiler plugin's `unloadableDir` and `bundledUnloadableDir` options do
 the same.
+
+### A task cycle
+
+The records are inputs of the compile task whether or not the rule is on there (the Gradle
+plugin does not read `kotrail.yaml`), and the compile tasks that write them run first. So a
+compilation's compile task depends on the compile tasks of every project on its runtime class
+path, those it only loads at runtime (`runtimeOnly`) included. When such a project compiles
+against the module that loads it (a host with `runtimeOnly(project(":plugin"))` whose plugin
+declares `compileOnly(project(":host"))`), the two compile tasks depend on each other and
+Gradle stops with a circular dependency between them. Switching the rule off does not break
+the cycle; the module that is never unloaded leaves its runtime class path out instead:
+
+```kotlin
+// The host's build script
+kotrail {
+    bundlesRuntimeClasspath = false
+}
+```
+
+`bundledConfigurations` still count with it off, so a module that is unloaded itself and loads
+such a project names what it does bundle there.
 
 ## When it fires
 
@@ -109,4 +139,6 @@ keys); see [Dynamic Plugins](https://plugins.jetbrains.com/docs/intellij/dynamic
 report when the rule is on and record when the compilation names an `unloadableDir`.
 `BundledChecker`, a `FirFileChecker`, reads the bundled records (`fir/UnloadableRecords.kt`)
 once per session and reports them from the anchor file. The registration's arguments are tested
-by subtype against `disposableTypes`.
+by subtype against `disposableTypes`. The Gradle side, the consumable configuration and the
+artifact views that wire the records between projects, is `UnloadableRecords.kt` in the Gradle
+plugin.

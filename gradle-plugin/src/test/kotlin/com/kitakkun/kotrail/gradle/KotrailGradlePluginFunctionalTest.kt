@@ -401,6 +401,70 @@ class KotrailGradlePluginFunctionalTest {
     }
 
     @Test
+    fun `a runtime-only project dependency's records are read after its compile task, by main and by a compilation of its own`() {
+        writeHostAndPlugin(
+            appBuild = """
+                kotlin {
+                    // A compilation of its own next to main, which loads the plugin as well.
+                    target.compilations.create("docs") {
+                        associateWith(target.compilations.getByName("main"))
+                    }
+                }
+
+                dependencies {
+                    // Loaded at runtime only: no compile task of app depends on the plugin's classes.
+                    runtimeOnly(project(":plugin"))
+                    "docsRuntimeOnly"(project(":plugin"))
+                }
+            """.trimIndent(),
+            pluginBuild = "",
+        )
+        writeFile("app/src/docs/kotlin/Sample.kt", "class Sample")
+
+        // The plugin's compile task is in the graph too (`build` there), so Gradle validates that app's compile tasks,
+        // which read its records, depend on it. With the configuration cache, which stores that wiring.
+        val result = runBuild("build", ":app:compileDocsKotlin", "--configuration-cache")
+        assertEquals(TaskOutcome.SUCCESS, result.task(":plugin:compileKotlin")?.outcome, result.output)
+        assertEquals(TaskOutcome.SUCCESS, result.task(":app:compileKotlin")?.outcome, result.output)
+        assertEquals(TaskOutcome.SUCCESS, result.task(":app:compileDocsKotlin")?.outcome, result.output)
+        assertFalse(result.output.contains("implicit dependency"), result.output)
+        assertFalse(result.output.contains("Configuration cache problems"), result.output)
+        // The rule is on in app and off in the plugin: both of app's compilations report what the plugin recorded.
+        assertTrue(result.output.contains("KOTRAIL_OUTBOUND_REFERENCE_IN_BUNDLED_CODE"), result.output)
+        val reports = result.output.lines().filter { "'currentBuilder' (a ThreadLocal) at plugin/src/main/kotlin/Buffers.kt:2," in it }
+        assertTrue(reports.any { "app/src/main/kotlin/Host.kt" in it }, result.output)
+        assertTrue(reports.any { "app/src/docs/kotlin/Sample.kt" in it }, result.output)
+    }
+
+    @Test
+    fun `bundlesRuntimeClasspath false breaks the task cycle of a runtime-only dependency that compiles against its host`() {
+        writeHostAndPlugin(
+            appBuild = """
+                dependencies {
+                    runtimeOnly(project(":plugin"))
+                }
+            """.trimIndent(),
+            pluginBuild = """
+                dependencies {
+                    // The plugin compiles against the host that loads it.
+                    compileOnly(project(":app"))
+                }
+            """.trimIndent(),
+        )
+
+        // app's compile task reads the plugin's records, and the plugin's compile task needs app's classes.
+        val cycle = runBuild(":app:compileKotlin", expectFailure = true)
+        assertTrue(cycle.output.contains("Circular dependency between the following tasks"), cycle.output)
+
+        // app is the host and is never unloaded, so nothing it loads at runtime is bundled into an unloadable class loader.
+        File(projectDir, "app/build.gradle.kts").appendText("\nkotrail {\n    bundlesRuntimeClasspath = false\n}\n")
+        val result = runBuild(":app:compileKotlin", ":plugin:compileKotlin", "--configuration-cache")
+        assertEquals(TaskOutcome.SUCCESS, result.task(":app:compileKotlin")?.outcome, result.output)
+        assertEquals(TaskOutcome.SUCCESS, result.task(":plugin:compileKotlin")?.outcome, result.output)
+        assertFalse(result.output.contains("KOTRAIL_OUTBOUND_REFERENCE_IN_BUNDLED_CODE"), result.output)
+    }
+
+    @Test
     fun `a multiplatform library's helper is seen through the metadata by a consumer in another module`() {
         writeSettings(include = listOf("lib", "jsapp"))
         writeFile("kotrail.yaml", "severity: warning\n")
@@ -1596,6 +1660,44 @@ class KotrailGradlePluginFunctionalTest {
             header.startsWith("{\"module\": \"com.example:lib\", \"kotrail\": ") || header.startsWith("{\"module\": \"lib\", \"kotrail\": "),
             facts.readText(),
         )
+    }
+
+    /**
+     * Two Kotlin/JVM projects: `:app`, a host with unloadableCode on, and `:plugin`, whose main
+     * compilation declares a ThreadLocal with the rule off. [appBuild] and [pluginBuild] end
+     * their build scripts.
+     */
+    private fun writeHostAndPlugin(appBuild: String, pluginBuild: String) {
+        writeSettings(include = listOf("app", "plugin"))
+        writeFile(
+            "build.gradle.kts",
+            """
+            plugins {
+                kotlin("jvm") version "$kotlinVersion" apply false
+                id("com.kitakkun.kotrail") apply false
+            }
+            """.trimIndent(),
+        )
+        val common = """
+            plugins {
+                kotlin("jvm")
+                id("com.kitakkun.kotrail")
+            }
+
+            repositories {
+                maven { url = uri("$repository") }
+                mavenCentral()
+            }
+
+            kotlin {
+                jvmToolchain(21)
+            }
+        """.trimIndent()
+        writeFile("app/build.gradle.kts", "$common\n\nkotrail {\n    configFile = file(\"kotrail.yaml\")\n}\n\n$appBuild\n")
+        writeFile("plugin/build.gradle.kts", "$common\n\n$pluginBuild\n")
+        writeFile("app/kotrail.yaml", "severity: warning\nrules:\n  unloadableCode: on\n")
+        writeFile("app/src/main/kotlin/Host.kt", "class Host")
+        writeFile("plugin/src/main/kotlin/Buffers.kt", "object Buffers {\n    val currentBuilder: ThreadLocal<StringBuilder> = ThreadLocal()\n}\n")
     }
 
     /** Neither the Gradle module metadata nor the POM of anything published to [repo] names Kotrail, in any case. */
