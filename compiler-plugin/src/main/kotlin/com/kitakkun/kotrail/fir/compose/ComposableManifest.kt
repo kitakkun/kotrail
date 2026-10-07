@@ -12,20 +12,28 @@ import java.security.MessageDigest
  * again, the `drawsUi` facts the module's own facts file kept); the compilation that has the
  * previews sees `main` as class files only, which no symbol provider enumerates.
  *
- * One record per source file, `<sha1 of the path>.jsonl`: a header line naming the file, then
- * one line per composable, `{"name": "com.acme.ui.Card", "package": "com.acme.ui", "visibility": "public"}`,
- * and one line per composable the file's previews call, `{"callee": "com.acme.ui.Card"}`. A
- * file's record is rewritten whenever the file is compiled, so with incremental compilation
- * the records of untouched files keep what the build that last saw them found; that is what
- * lets the preview-coverage rule count the previews of files an incremental build did not
- * recompile. A record whose file no longer exists is ignored when read.
+ * One record per source file, `<sha1 of the path>.jsonl`: a header line naming the file by its
+ * absolute path, then one line per composable, `{"name": "com.acme.ui.Card", "package": "com.acme.ui", "visibility": "public"}`,
+ * and one line per function the file's previews call, `{"callee": "com.acme.ui.Card"}`. Every
+ * file the compilation compiles gets a record, one without composables or previews a header
+ * alone, and the record is rewritten whenever the file is compiled. With incremental compilation
+ * the records of untouched files keep what the build that last compiled them found; that is what
+ * lets the preview-coverage rule of the compilation itself count the previews and composables of
+ * the files an incremental build does not compile again ([ownRecords]). A record whose file no
+ * longer exists is skipped, and deleted by the compilation that owns the directory.
  */
 object ComposableManifest {
-    class Entry(val name: String, val packageName: String, val visibility: String)
+    class Entry(val name: String, val packageName: String, val visibility: String) {
+        /** Whether the composable is declared at the top level of its file, rather than in a class. */
+        val isTopLevel: Boolean get() = name.substringBeforeLast('.', "") == packageName
+    }
+
+    /** One source file's record: its path, the composables it declares, and what its previews call. */
+    class Record(val file: String, val entries: List<Entry>, val previewCallees: Set<String>)
 
     private val lock = Any()
 
-    fun write(directory: String, file: String, entries: List<Entry>, previewCallees: Collection<String> = emptyList()) {
+    fun write(directory: String, file: String, entries: List<Entry>, previewCallees: Collection<String>) {
         val text = buildString {
             append("{\"file\": ").append(quote(file)).append("}\n")
             for (entry in entries) {
@@ -42,30 +50,34 @@ object ComposableManifest {
         }
     }
 
-    /** Every entry recorded under [directories], from records whose source file still exists. */
-    fun read(directories: List<String>): List<Entry> = directories.flatMap { directory ->
-        records(directory).flatMap { (_, lines) ->
-            lines.mapNotNull { entry ->
+    /**
+     * Every entry recorded under [directories], the record directories of the associated
+     * compilations, from records whose source file still exists.
+     */
+    fun read(directories: List<String>): List<Entry> = directories.flatMap { directory -> records(directory, deleteStale = false).flatMap { it.entries } }
+
+    /**
+     * The records under [directory], the compilation's own (`composablesDir`), whose source file
+     * still exists. A record whose source file is gone is deleted: nothing will compile that file
+     * to rewrite it, and only this compilation writes the directory.
+     */
+    fun ownRecords(directory: String?): List<Record> = if (directory == null) emptyList() else records(directory, deleteStale = true)
+
+    private fun records(directory: String, deleteStale: Boolean): List<Record> = synchronized(lock) {
+        val records = File(directory).listFiles { file -> file.isFile && file.extension == "jsonl" }.orEmpty().sortedBy { it.name }
+        records.mapNotNull { record ->
+            val lines = record.readLines().filter { it.isNotBlank() }.map(::fields)
+            val source = lines.firstOrNull()?.get("file") ?: return@mapNotNull null
+            if (!File(source).isFile) {
+                if (deleteStale) record.delete()
+                return@mapNotNull null
+            }
+            val body = lines.drop(1)
+            val entries = body.mapNotNull { entry ->
                 val name = entry["name"] ?: return@mapNotNull null
                 Entry(name, entry["package"].orEmpty(), entry["visibility"] ?: "public")
             }
-        }
-    }
-
-    /** What the previews of each recorded file call, by source file path, from records whose file still exists. */
-    fun readPreviewCallees(directory: String?): Map<String, Set<String>> {
-        if (directory == null) return emptyMap()
-        return records(directory).associate { (file, lines) -> file to lines.mapNotNullTo(HashSet()) { it["callee"] } }
-    }
-
-    /** The records under [directory] whose source file still exists: the file's path and the parsed lines after the header. */
-    private fun records(directory: String): List<Pair<String, List<Map<String, String>>>> {
-        val records = File(directory).listFiles { file -> file.isFile && file.extension == "jsonl" }.orEmpty().sortedBy { it.name }
-        return records.mapNotNull { record ->
-            val lines = record.readLines().filter { it.isNotBlank() }
-            val source = lines.firstOrNull()?.let(::fields)?.get("file") ?: return@mapNotNull null
-            if (!File(source).isFile) return@mapNotNull null
-            source to lines.drop(1).map(::fields)
+            Record(source, entries, body.mapNotNullTo(HashSet()) { it["callee"] })
         }
     }
 

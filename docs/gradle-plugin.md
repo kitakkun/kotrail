@@ -325,11 +325,13 @@ module on every change (see KT-62686 in its build report, "Incremental compilati
 so every finding there is always the clean-build result and the plugin metadata brings nothing. The
 incremental behavior above applies to plain Kotlin/JVM and Android modules.
 
-**What still needs a full build.** A few findings depend on the bodies of many files at once,
-which no metadata of one declaration describes: duplicates of a
-[named condition](rules/named-condition.md) across a file the build compiles and one it does
-not, and [preview coverage](rules/compose/preview-coverage.md), whose previews in untouched files
-are not read again. With `incrementalMetadata = false`, so does every cross-file finding above.
+**What still needs a full build.** Duplicates of a [named condition](rules/named-condition.md)
+across a file the build compiles and one it does not: they depend on the bodies of many files at
+once, which no metadata of one declaration describes. With `incrementalMetadata = false`, every
+cross-file finding above needs one too. [Preview coverage](rules/compose/preview-coverage.md),
+which also looks at the bodies of many files, does not: the previews and composables of the
+files a build does not compile come from the records the compilation wrote when it last compiled
+them (see [Incremental builds](rules/compose/preview-coverage.md#incremental-builds)).
 CI usually builds from a clean state and gets the exact result; when CI reports such a finding
 the local build does not, or before relying on an incremental build to say one is gone, build
 again with `--rerun-tasks` (or after `./gradlew clean`). `kotlin.incremental=false` in

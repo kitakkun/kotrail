@@ -21,6 +21,8 @@ import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirFileChecker
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
+import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
+import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirFile
 import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
@@ -28,6 +30,7 @@ import org.jetbrains.kotlin.fir.declarations.FirRegularClass
 import org.jetbrains.kotlin.fir.declarations.utils.isExpect
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
+import org.jetbrains.kotlin.fir.lookupTracker
 import org.jetbrains.kotlin.fir.references.toResolvedNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.resolve.providers.firProvider
 import org.jetbrains.kotlin.fir.resolve.providers.impl.FirCompositeSymbolProvider
@@ -54,12 +57,19 @@ import java.util.WeakHashMap
  * screenshot-test compilation reaches it as class files only, which no symbol provider
  * enumerates, so `main` writes what it declares; see [ComposableManifest]). Either way they are
  * found by package, so a package is named exactly rather than by pattern; a package in which
- * nothing is found is reported as such rather than counted as covered. Previews from every file
- * of the compilation count: those of the files being compiled from their bodies, and those of
- * the files an incremental build left alone from the records the last build that saw them wrote
- * (see [ComposableManifest]). What is missing is reported on the package directive of one file,
- * the first by name among those that contain previews, so that a compilation without any
- * preview still fails at a definite place.
+ * nothing is found is reported as such rather than counted as covered. Previews and composables
+ * from every file of the compilation count: those of the files being compiled from their bodies,
+ * and those of the files an incremental build leaves alone from the records the compilation
+ * wrote when it last compiled them (see [ComposableManifest]).
+ *
+ * What is missing is reported on the package directive of one file, the anchor, so that a
+ * compilation without any preview still fails at a definite place: the first file by name among
+ * the files being compiled that contain previews, else the first file being compiled. In a full
+ * build that is the first preview file of the compilation, which incremental compilation is then
+ * asked to compile again whenever it compiles or removes anything in the compilation, so an
+ * incremental build reports where a full one does. When that file is not being compiled (it was
+ * deleted, or the last build was made by an older Kotrail), the same choice among the files
+ * being compiled puts the findings on one of them, never on a file the build does not compile.
  *
  * Off by default: it is the library and screenshot-test counterpart of
  * [ComposablePreviewRequiredChecker], enabled only in the compilation that carries previews.
@@ -127,20 +137,25 @@ object ComposablePreviewCoverageChecker : FirFileChecker(MppCheckerKind.Common) 
     }
 
     /**
-     * What the compilation's previews call, which file carries the report, and the composables the
-     * associated compilations recorded (see [ComposableManifest]); computed once per session.
+     * What the compilation's previews call, the composables recorded for it, and which file
+     * carries the report; computed once per session. An incremental build compiles some of the
+     * compilation's files: the previews and composables of the others come from the records the
+     * compilation wrote when it last compiled them, and a file being compiled counts as it is now,
+     * whatever its record says. The associated compilations' composables come from their records
+     * (see [ComposableManifest]).
      */
     private class Index(session: FirSession) {
         val previewed: Set<String>
         val anchorName: String?
-        val recorded: List<ComposableManifest.Entry> = ComposableManifest.read(session.kotrailConfig.associatedComposablesDirs)
+        val recorded: List<ComposableManifest.Entry>
 
         init {
+            val config = session.kotrailConfig
             val provider = session.firProvider
             val packages = provider.symbolProvider.symbolNamesProvider.getPackageNames().orEmpty()
             val files = packages.flatMap { provider.getFirFilesByPackage(FqName(it)) }.distinct().sortedBy { it.name }
             val callees = mutableSetOf<String>()
-            var anchor: String? = null
+            var anchor: FirFile? = null
             for (file in files) {
                 val functions = mutableListOf<FirNamedFunction>()
                 collectFunctions(file.declarations, functions)
@@ -150,15 +165,31 @@ object ComposablePreviewCoverageChecker : FirFileChecker(MppCheckerKind.Common) 
                     hasPreview = true
                     callees += calleesOf(function).map { it.asSingleFqName().asString() }
                 }
-                if (hasPreview && anchor == null) anchor = file.name
+                if (hasPreview && anchor == null) anchor = file
             }
-            // An incremental build compiles a subset of the files; the previews of the rest are in their records.
             val compiled = files.mapNotNullTo(HashSet()) { it.sourceFile?.path }
-            for ((path, recordedCallees) in ComposableManifest.readPreviewCallees(session.kotrailConfig.composablesDir)) {
-                if (path !in compiled) callees += recordedCallees
-            }
+            val untouched = ComposableManifest.ownRecords(config.composablesDir).filter { it.file !in compiled }
+            untouched.flatMapTo(callees) { it.previewCallees }
             previewed = callees
-            anchorName = anchor ?: files.firstOrNull()?.name
+            // Of the own records, the top-level composables only: the symbol providers, which enumerate the files being
+            // compiled, see no class member.
+            recorded = ComposableManifest.read(config.associatedComposablesDirs) + untouched.flatMap { record -> record.entries.filter { it.isTopLevel } }
+            val reportedOn = anchor ?: files.firstOrNull()
+            anchorName = reportedOn?.name
+            reportedOn?.let { compileInEveryIncrementalBuild(session, it) }
+        }
+
+        /**
+         * Has Kotlin's incremental compilation compile [file] again whenever it compiles or
+         * removes anything in this compilation, as it does for the files whose declarations a
+         * compiler plugin looks up by annotation. A build that only deletes a preview file would
+         * otherwise compile nothing, and report nothing until the next edit. A no-op outside
+         * incremental compilation.
+         */
+        private fun compileInEveryIncrementalBuild(session: FirSession, file: FirFile) {
+            val tracker = session.lookupTracker ?: return
+            val declaration = file.declarations.firstOrNull { it is FirClassLikeDeclaration || it is FirCallableDeclaration } ?: return
+            tracker.recordDirtyDeclaration(declaration.symbol)
         }
 
         private fun collectFunctions(declarations: List<FirDeclaration>, into: MutableList<FirNamedFunction>) {

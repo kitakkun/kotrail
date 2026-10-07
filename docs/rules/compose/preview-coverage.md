@@ -39,7 +39,8 @@ A public, `Unit`-returning, top-level `@Composable` function declared in one of 
 no `@Preview` (or multipreview) function of this compilation calls, directly or at any call depth
 inside the preview's body. Findings are reported together on one file's package directive, the
 first file by name among those that contain a preview, so that a compilation with no preview at
-all still fails at a definite place:
+all still fails at a definite place (an incremental build picks it among the files it compiles;
+see [Incremental builds](#incremental-builds)):
 
 ```
 e: Previews.kt:1:1 [Kotrail] 'com.acme.ui.UserCard' has no preview in this compilation: no @Preview function here calls it. …
@@ -72,6 +73,38 @@ compilation reads the records of the compilations it is associated with. `previe
 draw, since `main` had the bodies. The records are an output of `main`'s compile task and an input
 of `preview`'s, so they are always current; nothing has to be switched on in `main`. Outside
 Gradle, the compiler plugin's `composablesDir` and `associatedComposablesDir` options do the same.
+
+## Incremental builds
+
+Kotlin's incremental compilation compiles the files that changed and those that depend on them,
+so a build after an edit to `CardPreviews.kt` has that file's previews and nothing else to
+read. The records above serve here too. A compilation's record of a source file also lists what
+the file's previews call, and every file the compilation compiles gets its record rewritten, a
+file without previews or composables included, so the record of a file that lost its last
+preview says so. The rule takes the previews and the composables of the files being compiled
+from their sources, and those of the compilation's other files from their records, as the build
+that last compiled them left them: the edit to `CardPreviews.kt` still counts the previews
+of `ListPreviews.kt`, and a composable declared in an untouched file of the compilation is
+still checked. A file being compiled counts as it is now, whatever its record says.
+
+A record whose source file no longer exists is skipped, and the compilation deletes it from its
+own record directory: after `ListPreviews.kt` is deleted, its previews no longer count.
+
+The findings go to one file of the build, the anchor: the first file by name among the files
+being compiled that contain a preview, else the first file being compiled. In a full build that
+is the compilation's first preview file. The rule then asks Kotlin's incremental compilation to
+compile that file again whenever it compiles or removes anything in the compilation (the
+mechanism Kotlin has for a file a compiler plugin depends on), so an incremental build reports
+where a full build does, and a build that only deletes `ListPreviews.kt`, which by itself would
+compile nothing, still compiles the anchor and reports what `ListPreviews.kt` covered. That is one
+extra file in each incremental build of a compilation where the rule is on. When the full
+build's anchor is not among the files being compiled (it was just deleted, or the previous build
+was made by an older Kotrail), the same choice among the files being compiled picks another
+one; a finding never goes to a file the build does not compile.
+
+One case still waits for a later build: deleting the anchor itself, with nothing else changed,
+leaves the build no file to compile, so the findings of that deletion come with the next build
+that compiles a file of the compilation, or with `--rerun-tasks`.
 
 ## Settings
 
@@ -117,3 +150,17 @@ anchor file. The composables to cover come from
 `symbolProvider.symbolNamesProvider.getTopLevelCallableNamesInPackage` followed by
 `getTopLevelFunctionSymbols`, filtered to public (or internal) `Unit`-returning composables that
 are not previews.
+
+The records are written by `fir/compose/checkers/ComposableManifestChecker.kt` for every file of
+a compilation that has a `composablesDir`, and read and written by
+`fir/compose/ComposableManifest.kt`: one `<sha1 of the path>.jsonl` per source file, a header
+line with the file's absolute path, a `{"name", "package", "visibility"}` line per UI composable
+the file declares (class members included), and a `{"callee"}` line per function its previews
+call. The index adds, for every record of the compilation's own directory whose file is not in
+the session, the callees to the previewed set and the top-level composables to the ones to cover
+(the symbol providers enumerate top-level functions only, so a class member of the compilation
+itself counts in neither kind of build), and deletes the records whose file is gone. The anchor
+is kept for later builds through `session.lookupTracker?.recordDirtyDeclaration` on one of its
+declarations, the call `FirPredicateBasedProvider` makes for the declarations it finds by
+annotation; Kotlin's incremental compiler adds the files so recorded to each later compile round
+(`CompilerPluginFilesCache`), and a build has a round whenever a file was changed or removed.

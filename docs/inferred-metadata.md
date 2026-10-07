@@ -344,17 +344,15 @@ then behave as described under [The own facts file](#the-own-facts-file), withou
 propagation above.
 
 What remains out of reach of incremental compilation, because no declaration's metadata or name
-lookup describes it:
+lookup describes it, is `namedCondition` duplicates: the conditions of a module are indexed while
+its files are checked, so an incremental build matches a condition against the files it
+compiles, not the untouched ones; a duplicate across a recompiled and an untouched file is found
+by the next full build. For those, CI's clean build is the reference, and `--rerun-tasks` gets
+the same result locally.
 
-- `namedCondition` duplicates: the conditions of a module are indexed while its files are
-  checked, so an incremental build matches a condition against the files it compiles, not the
-  untouched ones; a duplicate across a recompiled and an untouched file is found by the next
-  full build.
-- `compose.previewCoverage` across untouched files: whether some preview calls a composable is
-  read from the previews' bodies, and an incremental build sees the bodies of the files it
-  compiles only.
-
-For those, CI's clean build is the reference, and `--rerun-tasks` gets the same result locally.
+`compose.previewCoverage` also reads bodies across files, but takes the previews and composables
+of the files a build does not compile from the records the compilation wrote when it last
+compiled them; see [Incremental builds](rules/compose/preview-coverage.md#incremental-builds).
 
 ### Without the Gradle plugin
 

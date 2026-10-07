@@ -308,6 +308,119 @@ class KotrailGradlePluginFunctionalTest {
     }
 
     @Test
+    fun `an incremental build of a preview compilation counts the previews and composables of the files it does not compile`() {
+        writeSettings()
+        writeFile("kotrail.yaml", "severity: warning\nrules:\n  compose.previewRequired: off\n")
+        // A warning rather than an error, so that every build succeeds and the class files show what was compiled.
+        writeFile("kotrail-preview.yaml", "rules:\n  compose.previewCoverage:\n    enabled: true\n    severity: warning\n    packages: [com.acme.ui]\n    excludeNames: [com.acme.ui.Text]\n")
+        writeBuild(
+            """
+            kotlin {
+                target.compilations.create("preview") {
+                    associateWith(target.compilations.getByName("main"))
+                }
+            }
+
+            kotrail {
+                configFile = file("kotrail.yaml")
+                compilation("preview") {
+                    configFile = file("kotrail-preview.yaml")
+                }
+            }
+            """.trimIndent(),
+        )
+        writeFile("src/main/kotlin/androidx/compose/runtime/Composable.kt", COMPOSABLE_STUB)
+        writeFile("src/main/kotlin/androidx/compose/ui/tooling/preview/Preview.kt", PREVIEW_STUB)
+        writeFile(
+            "src/main/kotlin/com/acme/ui/Cards.kt",
+            """
+            package com.acme.ui
+
+            import androidx.compose.runtime.Composable
+
+            @Composable
+            fun Text(text: String, content: @Composable () -> Unit = {}) {
+                content()
+            }
+
+            @Composable
+            fun A() {
+                Text("a")
+            }
+
+            @Composable
+            fun B() {
+                Text("b")
+            }
+            """.trimIndent(),
+        )
+        // A composable of the preview compilation itself, in the listed package: it needs a preview too.
+        writeFile(
+            "src/preview/kotlin/com/acme/ui/Swatch.kt",
+            """
+            package com.acme.ui
+
+            import androidx.compose.runtime.Composable
+
+            @Composable
+            fun Swatch() {
+                Text("swatch")
+            }
+            """.trimIndent(),
+        )
+        fun preview(name: String, calls: List<String>) =
+            "package com.acme.ui\n\nimport androidx.compose.runtime.Composable\nimport androidx.compose.ui.tooling.preview.Preview\n\n" +
+                "@Preview\n@Composable\nprivate fun $name() {\n" + calls.joinToString("") { "    $it\n" } + "}\n"
+        writeFile("src/preview/kotlin/com/acme/ui/APreview.kt", preview("APreview", listOf("A()")))
+        writeFile("src/preview/kotlin/com/acme/ui/BPreview.kt", preview("BPreview", listOf("B()", "Swatch()")))
+        val classes = File(projectDir, "build/classes/kotlin/preview/com/acme/ui")
+        val aPreviewClass = File(classes, "APreviewKt.class")
+        val bPreviewClass = File(classes, "BPreviewKt.class")
+        val swatchClass = File(classes, "SwatchKt.class")
+        fun findings(result: BuildResult) = result.output.lines().filter { "has no preview in this compilation" in it }
+
+        val full = runBuild("compilePreviewKotlin")
+        assertEquals(TaskOutcome.SUCCESS, full.task(":compilePreviewKotlin")?.outcome, full.output)
+        assertTrue(findings(full).isEmpty(), full.output)
+
+        // Only APreview.kt changes. The incremental build compiles it alone; the preview of BPreview.kt still covers B
+        // and Swatch, from the record the full build wrote for that file.
+        writeFile("src/preview/kotlin/com/acme/ui/APreview.kt", preview("APreview", listOf("A()", "Text(\"edited\")")))
+        val untouchedStamps = listOf(bPreviewClass, swatchClass).map { it.lastModified() }
+        val edited = runBuild("compilePreviewKotlin")
+        assertEquals(TaskOutcome.SUCCESS, edited.task(":compilePreviewKotlin")?.outcome, edited.output)
+        assertEquals(untouchedStamps, listOf(bPreviewClass, swatchClass).map { it.lastModified() }, "BPreview.kt or Swatch.kt was compiled again\n" + edited.output)
+        assertTrue(findings(edited).isEmpty(), edited.output)
+
+        // BPreview.kt goes. Kotlin compiles no other file for a removed one; the rule had it compile the file it reports
+        // on, APreview.kt, again in every incremental build, so B and Swatch, which the record of untouched Swatch.kt
+        // declares, are reported there, and the stale record of BPreview.kt is gone.
+        File(projectDir, "src/preview/kotlin/com/acme/ui/BPreview.kt").delete()
+        val swatchStamp = swatchClass.lastModified()
+        val aPreviewStamp = aPreviewClass.lastModified()
+        val removed = runBuild("compilePreviewKotlin")
+        assertEquals(TaskOutcome.SUCCESS, removed.task(":compilePreviewKotlin")?.outcome, removed.output)
+        assertEquals(swatchStamp, swatchClass.lastModified(), "Swatch.kt was compiled again\n" + removed.output)
+        assertTrue(aPreviewClass.lastModified() != aPreviewStamp, "APreview.kt was not compiled again\n" + removed.output)
+        assertMissingPreviews(findings(removed), removed.output)
+        val records = File(projectDir, "build/kotrail/composables/jvm-preview").listFiles().orEmpty().map { it.readText() }
+        assertTrue(records.none { "BPreview.kt" in it }, records.joinToString("\n"))
+
+        // Compiling every file again gives the same findings.
+        val rerun = runBuild("compilePreviewKotlin", "--rerun-tasks")
+        assertEquals(TaskOutcome.SUCCESS, rerun.task(":compilePreviewKotlin")?.outcome, rerun.output)
+        assertMissingPreviews(findings(rerun), rerun.output)
+    }
+
+    /** B and Swatch are reported, on APreview.kt, and A is not. */
+    private fun assertMissingPreviews(findings: List<String>, output: String) {
+        assertEquals(2, findings.size, output)
+        assertTrue(findings.all { "APreview.kt" in it }, output)
+        assertTrue(findings.any { "'com.acme.ui.B' has no preview" in it }, output)
+        assertTrue(findings.any { "'com.acme.ui.Swatch' has no preview" in it }, output)
+    }
+
+    @Test
     fun `an unloadable module reports what the modules it bundles recorded`() {
         writeSettings(include = listOf("lib"))
         writeFile("kotrail.yaml", "severity: warning\nrules:\n  unloadableCode: on\n")

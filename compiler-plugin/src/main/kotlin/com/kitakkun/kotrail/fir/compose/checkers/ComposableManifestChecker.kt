@@ -24,9 +24,9 @@ import org.jetbrains.kotlin.fir.types.isUnit
 
 /**
  * Writes, for every file of a compilation that names a `composablesDir`, the public and internal
- * UI composables the file declares (see [ComposableManifest]). Not a rule: it reports nothing and
- * runs whatever rules are on, so that a `preview` compilation can hold `main` to
- * `compose.previewCoverage` without `main` opting in.
+ * UI composables the file declares and what its previews call (see [ComposableManifest]). Not a
+ * rule: it reports nothing and runs whatever rules are on, so that a `preview` compilation can
+ * hold `main` to `compose.previewCoverage` without `main` opting in.
  */
 object ComposableManifestChecker : FirFileChecker(MppCheckerKind.Common) {
     context(context: CheckerContext, reporter: DiagnosticReporter)
