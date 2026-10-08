@@ -47,7 +47,7 @@ object ConfigSchema {
 
     /** What counts as generated code, which every rule skips; under a `generated` mapping. */
     val GENERATED = listOf(
-        Setting("paths", Kind.LIST, "Globs over source file paths (with / separators) of generated code, which every rule skips; replaces the default.", default = "*/build/generated/*"),
+        Setting("paths", Kind.LIST, "Globs over source file paths (with / separators) of generated code, which every rule skips; replaces the default, which covers Gradle plugins' output and the Kotlin bridges of Swift export.", default = "*/build/generated/*, */build/SwiftExport/*"),
         Setting("annotations", Kind.LIST, "Fully qualified annotations that mark a file or declaration as generated, which every rule skips; replaces the default list.",
             default = "javax.annotation.processing.Generated, javax.annotation.Generated, jakarta.annotation.Generated"),
     )

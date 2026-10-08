@@ -57,7 +57,7 @@ schema is generated from the same table the plugin validates against.
 | `exclude` | A predicate over locations; matching diagnostics of every rule are dropped. See [Excluding by pattern](#excluding-by-pattern). |
 | `fix` | `false` stops every rule from recording fixes for `kotrailFix`; the diagnostics are still reported. A rule's own `fix` wins. |
 | `predicates.<name>` | A predicate under a name of the project's own (`screen: composable && name(*Screen)`), which `exclude`, the policy rules and `forbiddenCall` then use by that name. See [Named predicates](#named-predicates). |
-| `generated.paths` | Globs over source file paths (`/` separated) of generated code, which every rule skips. Default `[*/build/generated/*]`; replaces the default. See [Generated code](#generated-code). |
+| `generated.paths` | Globs over source file paths (`/` separated) of generated code, which every rule skips. Default `[*/build/generated/*, */build/SwiftExport/*]`; replaces the default. See [Generated code](#generated-code). |
 | `generated.annotations` | Fully qualified annotations that mark a file (`@file:Generated`) or a declaration as generated, which every rule skips. Default: `javax.annotation.processing.Generated`, `javax.annotation.Generated`, `jakarta.annotation.Generated`; replaces the default list. |
 | `test.annotations` | Fully qualified annotations that mark a function as a test; shared by the test rules and the `test` predicate. Replaces the default list. |
 | `rules.<rule>` | One entry per rule, named by the rule's full key (`functionLength`, `compose.nesting`, `test.naming`), as a shorthand or a mapping. |
@@ -238,17 +238,21 @@ that rule; leading and trailing whitespace is trimmed and a separating space is 
 
 ## Generated code
 
-Code that a tool wrote (KSP and kapt output, Compose resources, SQLDelight, protobuf) is not
-anyone's to fix, so every rule skips it. A file is generated when its path matches one of
-`generated.paths` (`*/build/generated/*` by default, which is where Gradle plugins put their
-output) or when it, or a declaration enclosing the location, carries one of
-`generated.annotations`. Generated code is skipped entirely: nothing is reported in it, no fix is
-recorded for it, and a rule that records findings for another compilation (unloadable code)
-records nothing from it. A generator that writes somewhere else is covered by adding its path:
+Code that a tool wrote (KSP and kapt output, Compose resources, SQLDelight, protobuf, the Kotlin
+bridges of Swift export) is not anyone's to fix, so every rule skips it. A file is generated when
+its path matches one of `generated.paths` or when it, or a declaration enclosing the location,
+carries one of `generated.annotations`. The default paths are `*/build/generated/*`, where Gradle
+plugins put their output, and `*/build/SwiftExport/*`, where the Kotlin Gradle plugin's Swift
+export writes the bridges its `swiftExportMain` compilation compiles. The Gradle plugin leaves that
+compilation alone by default (see [Multiplatform](gradle-plugin.md#multiplatform)), so the second
+path matters to a build that enables it there or wires the compiler plugin some other way.
+Generated code is skipped entirely: nothing is reported in it, no fix is recorded for it, and a
+rule that records findings for another compilation (unloadable code) records nothing from it.
+A generator that writes somewhere else is covered by adding its path:
 
 ```yaml
 generated:
-  paths: ["*/build/generated/*", "*/src/*/generatedKotlin/*"]   # quoted: a bare * starts a YAML alias
+  paths: ["*/build/generated/*", "*/build/SwiftExport/*", "*/src/*/generatedKotlin/*"]   # quoted: a bare * starts a YAML alias
 ```
 
 ## Excluding by pattern

@@ -86,6 +86,15 @@ class KotrailConfigTest {
     }
 
     @Test
+    fun `the default generated paths cover Gradle's generated sources and Swift export's bridges`() {
+        val generated = load().generated
+        assertTrue(generated.matchesPath("/repo/app/build/generated/ksp/main/kotlin/Foo.kt"))
+        assertTrue(generated.matchesPath("/x/build/SwiftExport/iosArm64/Debug/Bridge.kt"))
+        assertTrue(generated.matchesPath("C:\\x\\build\\SwiftExport\\iosArm64\\Debug\\files\\Bridge.kt"))
+        assertFalse(generated.matchesPath("/repo/app/src/iosMain/kotlin/SwiftExport.kt"))
+    }
+
+    @Test
     fun `a later file merges key by key and a null takes an entry away`() {
         val config = load(
             """

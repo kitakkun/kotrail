@@ -1,6 +1,7 @@
 # The Gradle plugin
 
-`com.kitakkun.kotrail` applies the compiler plugin to every Kotlin compilation of a project and
+`com.kitakkun.kotrail` applies the compiler plugin to every Kotlin compilation of a project (but
+the one Swift export compiles its generated bridges in, see [Multiplatform](#multiplatform)) and
 tells it which configuration files to read.
 
 ## Applying it
@@ -52,7 +53,7 @@ kotrail {
 | Property | Default | What it does |
 | --- | --- | --- |
 | `configFile` | none | The `kotrail.yaml` with rule settings; layered per compilation (below). |
-| `enabled` | `true` | Whether the compiler plugin is applied at all. Per compilation. |
+| `enabled` | `true` | Whether the compiler plugin is applied at all. Per compilation. Swift export's `swiftExportMain` compilation is left alone unless `compilation("swiftExportMain") { enabled = true }`; see [Multiplatform](#multiplatform). |
 | `annotations` | `true` | Whether `kotrail-annotations` is added as `compileOnly` (Kotlin/JVM and Kotlin/Android). |
 | `inferredMetadata` | `true` | Whether the inferred facts are written for the modules that compile against this one: the facts file `build/kotrail/facts/<target>-<compilation>/<project>.facts` on the JVM and Android (published as the `kotrail-facts` artifact), annotations (`@InferredStartsAsyncWork` and the rest) in a klib. `false` writes and publishes neither, for a library whose consumers do not use Kotrail; callers in other modules then see the module as if it had been compiled without Kotrail, while analysis within it is unchanged. Per compilation. See [Inferred metadata](inferred-metadata.md). |
 | `incrementalMetadata` | `true` | Whether a JVM or Android compilation also writes its inferred facts, and a digest of what the model rules read of each class, into the Kotlin metadata of its class files, where Kotlin's incremental compilation compares them, so that a changed fact or model compiles the files of the module that depend on it again (the `icMetadata` compiler option). Off by itself in a build that publishes to a repository (its task graph holds a task named `publish` or matching `publish*Repository`, or a `PublishToMavenRepository` task; see `publishingTasks`), so class files published there carry nothing of Kotrail; such a build compiles the module completely, and the next ordinary build once more. `publishToMavenLocal` keeps it by default: the metadata names no class and does consumers no harm, and a local trial loop pays no extra compilation. `false` keeps the metadata out always. Off as well when `inferredMetadata` is. Per compilation. See [Incremental compilation](#incremental-compilation). |
@@ -168,11 +169,28 @@ module (a plugin its host loads at runtime) therefore makes a task cycle; see
 
 ## Multiplatform
 
-Rules apply to every compilation of every target. The annotations artifact is multiplatform, but
-it is added automatically (as `compileOnly`) only for Kotlin/JVM and Kotlin/Android, since the
-Kotlin Gradle plugin does not support `compileOnly` on the other targets; a multiplatform build
-that writes `@HandlesWindowInsets` or `@Unretained` adds `com.kitakkun.kotrail:kotrail-annotations`
-to the source sets that need it, as `api` or `implementation`.
+Rules apply to every compilation of every target but one: the `swiftExportMain` compilation the
+Kotlin Gradle plugin adds to an Apple target for Swift export (`kotlin { swiftExport { } }`).
+It compiles nothing but the Kotlin bridges Swift export generates under
+`build/SwiftExport/<target>/<configuration>`, which are not the project's to fix and would fail a
+build with `allWarningsAsErrors`, so the compiler plugin is not applied there, whatever
+`enabled` says in the `kotrail { }` block. A build that wants it there anyway says so for that
+compilation alone; the bridges then still count as generated code through the default
+[`generated.paths`](configuration.md#generated-code):
+
+```kotlin
+kotrail {
+    compilation("swiftExportMain") {
+        enabled = true
+    }
+}
+```
+
+The annotations artifact is multiplatform, but it is added automatically (as `compileOnly`) only
+for Kotlin/JVM and Kotlin/Android, since the Kotlin Gradle plugin does not support `compileOnly`
+on the other targets; a multiplatform build that writes `@HandlesWindowInsets` or `@Unretained`
+adds `com.kitakkun.kotrail:kotrail-annotations` to the source sets that need it, as `api` or
+`implementation`.
 
 The facts the compiler plugin writes for callers in other modules never need the artifact. On
 the JVM and Android they go to a facts file under `build/kotrail/facts`, outside the class

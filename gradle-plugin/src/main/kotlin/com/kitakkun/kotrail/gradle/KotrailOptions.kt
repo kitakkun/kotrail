@@ -14,7 +14,9 @@ import org.gradle.api.provider.Property
 abstract class KotrailOptions {
     /**
      * Whether the plugin runs at all. Default `true`. A compilation this is `false` for does not
-     * get the compiler plugin on its classpath.
+     * get the compiler plugin on its classpath. Swift export's bridge compilation,
+     * `swiftExportMain`, is left alone unless `compilation("swiftExportMain") { }` sets this to
+     * `true`: the setting of the `kotrail { }` block does not reach it.
      */
     abstract val enabled: Property<Boolean>
 

@@ -21,8 +21,9 @@ import org.jetbrains.kotlin.gradle.plugin.SubpluginOption
 import java.io.File
 
 /**
- * Applies the Kotrail compiler plugin to every Kotlin compilation of the project and forwards the
- * `kotrail { }` block to it as plugin options.
+ * Applies the Kotrail compiler plugin to the Kotlin compilations of the project, every one but
+ * Swift export's bridge compilation by default ([CompilationSelection]), and forwards the
+ * `kotrail { }` block to them as plugin options.
  *
  * The compiler plugin links against the Kotlin compiler's internal API, so it is published once
  * per supported Kotlin version, with the Kotlin version leading the artifact version
@@ -69,8 +70,19 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
     override fun getPluginArtifact(): SubpluginArtifact =
         SubpluginArtifact(GROUP, COMPILER_PLUGIN_ARTIFACT, compilerPluginVersion())
 
-    override fun isApplicable(kotlinCompilation: KotlinCompilation<*>): Boolean =
-        specsFor(kotlinCompilation.name).lastOrNull { it.enabled.isPresent }?.enabled?.get() ?: true
+    /**
+     * Every per-compilation wiring happens in [applyToCompilation], which the Kotlin plugin calls
+     * only for a compilation this accepts, so a compilation left alone gets no options, outputs or
+     * inputs of Kotrail either.
+     */
+    override fun isApplicable(kotlinCompilation: KotlinCompilation<*>): Boolean {
+        val compilationName = kotlinCompilation.name
+        val compilationEnabled = extension.overrides
+            .filter { it.matches(compilationName) }
+            .lastOrNull { it.options.enabled.isPresent }
+            ?.options?.enabled?.get()
+        return CompilationSelection.isApplicable(compilationName, extension.enabled.getOrElse(true), compilationEnabled)
+    }
 
     override fun applyToCompilation(kotlinCompilation: KotlinCompilation<*>): Provider<List<SubpluginOption>> {
         val compilationName = kotlinCompilation.name
@@ -416,6 +428,29 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
         const val ANNOTATIONS_ARTIFACT = "kotrail-annotations"
         const val COMPILER_PLUGIN_VERSION_PROPERTY = "kotrail.compilerPluginVersion"
     }
+}
+
+/** Which compilations get the compiler plugin, from the compilation's name and the `enabled` settings that reach it. */
+internal object CompilationSelection {
+    /**
+     * The compilation the Kotlin Gradle plugin adds to an Apple target for Swift export
+     * (`SwiftExportConstants.SWIFT_EXPORT_COMPILATION` in its `SwiftExport.kt`). It compiles the
+     * Kotlin bridges the Swift export task generates under
+     * `build/SwiftExport/<target>/<configuration>`, against the `main` it is associated with, so
+     * none of its sources are the project's own.
+     */
+    const val SWIFT_EXPORT_COMPILATION: String = "swiftExportMain"
+
+    /**
+     * Whether the compiler plugin is applied to the compilation named [compilationName].
+     * [compilationEnabled] is the last `enabled` set by an override that matches the compilation
+     * (`test { }`, `compilation(name) { }`), null when none sets one, and wins over
+     * [projectEnabled], the `enabled` of the `kotrail { }` block. Without it,
+     * [SWIFT_EXPORT_COMPILATION] is left alone whatever [projectEnabled] says: only
+     * `compilation("swiftExportMain") { enabled = true }` brings the plugin there.
+     */
+    fun isApplicable(compilationName: String, projectEnabled: Boolean, compilationEnabled: Boolean?): Boolean =
+        compilationEnabled ?: (projectEnabled && compilationName != SWIFT_EXPORT_COMPILATION)
 }
 
 /** Leaves the facts files that libraries built by earlier versions carry out of an Android application's packaging. */

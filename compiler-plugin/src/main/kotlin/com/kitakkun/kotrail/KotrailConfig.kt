@@ -764,7 +764,8 @@ data class KotrailConfig(
             "*.assert*", "*.verify*", "*.expect*", "*.should*",
             "*.waitUntil*", "*.captureRoboImage*", "kotlinx.coroutines.withTimeout",
         )
-        val DEFAULT_GENERATED_PATHS: List<String> = listOf("*/build/generated/*")
+        // What Gradle plugins generate, and the Kotlin bridges of the Kotlin Gradle plugin's Swift export.
+        val DEFAULT_GENERATED_PATHS: List<String> = listOf("*/build/generated/*", "*/build/SwiftExport/*")
         val DEFAULT_GENERATED_ANNOTATIONS: List<String> = listOf(
             "javax.annotation.processing.Generated",
             "javax.annotation.Generated",
