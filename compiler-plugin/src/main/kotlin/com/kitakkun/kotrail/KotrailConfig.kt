@@ -326,6 +326,14 @@ data class KotrailFileLength(
     val maxTopLevelDeclarations: Int,
 )
 
+/** Tunables for the narrative-order rule's distance check. From `rules.narrativeOrder`. */
+data class KotrailNarrativeOrder(
+    /** A private helper more than this many lines from its only caller, the caller's other helpers between them aside, may be reported; `0` switches the distance check off. */
+    val maxCallerDistance: Int,
+    /** Percent of the lines between a helper and its only caller, both included, that belong neither to the pair nor to what the caller uses, from which it is reported. */
+    val maxHelperNoise: Int,
+)
+
 /** Tunables for the named-condition rule. From `rules.namedCondition`. */
 data class KotrailNamedCondition(
     /** Fewest `&&` / `||` operators a condition needs before a second copy of it elsewhere in the module is reported. */
@@ -579,6 +587,7 @@ data class KotrailConfig(
     val dependencyPolicies: List<KotrailDependencyPolicy>,
     val functionLength: KotrailFunctionLength,
     val fileLength: KotrailFileLength,
+    val narrativeOrder: KotrailNarrativeOrder,
     val literalLoop: KotrailLiteralLoop,
     val namedCondition: KotrailNamedCondition,
     val noDataClassInPublicApi: KotrailNoDataClassInPublicApi,
@@ -653,6 +662,8 @@ data class KotrailConfig(
         const val DEFAULT_CONDITION_MIN_OPERATORS = 2
         const val DEFAULT_CONDITION_MAX_OPERATORS = 3
         const val DEFAULT_FILE_MAX_TOP_LEVEL = 15
+        const val DEFAULT_MAX_CALLER_DISTANCE = 100
+        const val DEFAULT_MAX_HELPER_NOISE = 60
         val DEFAULT_NO_DATA_CLASS_SCOPE = PublicApiScope.EXPLICIT_API
         const val DEFAULT_COMPOSABLE_MAX_LINES = 80
         val DEFAULT_DELAYS: List<String> = listOf("kotlinx.coroutines.delay", "java.lang.Thread.sleep", "android.os.SystemClock.sleep")
@@ -1253,6 +1264,10 @@ data class KotrailConfig(
                 fileLength = KotrailFileLength(
                     maxLines = int(KotrailRule.FILE_LENGTH, "maxLines") ?: DEFAULT_FILE_MAX_LINES,
                     maxTopLevelDeclarations = int(KotrailRule.FILE_LENGTH, "maxTopLevelDeclarations") ?: DEFAULT_FILE_MAX_TOP_LEVEL,
+                ),
+                narrativeOrder = KotrailNarrativeOrder(
+                    maxCallerDistance = int(KotrailRule.NARRATIVE_ORDER, "maxCallerDistance") ?: DEFAULT_MAX_CALLER_DISTANCE,
+                    maxHelperNoise = int(KotrailRule.NARRATIVE_ORDER, "maxHelperNoise") ?: DEFAULT_MAX_HELPER_NOISE,
                 ),
                 noDataClassInPublicApi = KotrailNoDataClassInPublicApi(
                     scope = enumValue(KotrailRule.NO_DATA_CLASS_IN_PUBLIC_API, "scope", PublicApiScope.entries.map { it.key })?.let { PublicApiScope.fromKey(it)!! } ?: DEFAULT_NO_DATA_CLASS_SCOPE,

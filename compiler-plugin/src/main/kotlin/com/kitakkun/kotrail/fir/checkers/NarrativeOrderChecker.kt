@@ -1,5 +1,3 @@
-@file:OptIn(DirectDeclarationsAccess::class)
-
 package com.kitakkun.kotrail.fir.checkers
 
 import com.kitakkun.kotrail.KotrailRule
@@ -8,30 +6,25 @@ import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.fix.FixBuilder
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.reportKotrail
+import com.kitakkun.kotrail.fir.reportingAt
+import com.kitakkun.kotrail.fir.test.isTestSourcePath
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.KtSourceElement
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
-import org.jetbrains.kotlin.fir.FirElement
+import org.jetbrains.kotlin.diagnostics.Severity
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirFileChecker
-import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirRegularClassChecker
-import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
+import org.jetbrains.kotlin.fir.analysis.collectors.AbstractDiagnosticCollector
 import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirFile
 import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
-import org.jetbrains.kotlin.fir.declarations.FirRegularClass
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
-import org.jetbrains.kotlin.fir.expressions.FirCallableReferenceAccess
-import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
-import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
-import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
-import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
 
 /**
- * Keeps a file or class readable from the top down: a private function is declared after the
- * first declaration that uses it.
+ * Keeps a file readable from the top down, the story first and the details after: a private
+ * helper comes after the code that calls it, and close to it. See `docs/rules/narrative-order.md`.
  *
  * ```kotlin
  * private fun parseHeader(bytes: ByteArray): Header { ... }     // reported: load() is below and calls it
@@ -41,70 +34,77 @@ import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
  * }
  * ```
  *
- * Read from the top, the file then tells the story first and the details after, the way a
- * newspaper article does; helpers placed before their callers make the reader hold every
- * detail before learning what it is for. A private function's callers are all in the same
- * container, so the order is decidable: the function must come after the earliest declaration
- * (function, property initializer, or `init`) that calls or references it. A function that
- * nothing in the container uses, or that is in mutual recursion with its first caller, is left
- * alone. The fix moves the whole declaration to just after its first caller.
+ * The order check (`KOTRAIL_HELPER_BEFORE_FIRST_USE`) looks at every container, the file and
+ * every class: a private function's callers are all in the same container, so the order is
+ * decidable, and the function must come after the earliest declaration (function, property
+ * initializer, `init` block) that calls or references it. A function that nothing in the
+ * container uses, or that is in mutual recursion with its first caller, is left alone. The fix
+ * moves the whole declaration to just after its first caller.
+ *
+ * The distance check ([HelperDistanceChecker]) reports a helper that, in the right order, still
+ * sits far from its only caller; `maxCallerDistance: 0` switches it off, and test source sets
+ * are left to the order check alone. Both checks read one walk over the file
+ * ([DeclarationUses]). As a file checker this runs with the file's context, so a `@Suppress` on
+ * a helper or on a declaration around it is also read from the declarations ([isSuppressedOn]).
  */
-object NarrativeOrderChecker {
-    object ClassChecker : FirRegularClassChecker(MppCheckerKind.Common) {
-        context(context: CheckerContext, reporter: DiagnosticReporter)
-        override fun check(declaration: FirRegularClass) {
-            checkContainer(declaration.declarations, declaration.source)
-        }
-    }
-
-    object FileChecker : FirFileChecker(MppCheckerKind.Common) {
-        context(context: CheckerContext, reporter: DiagnosticReporter)
-        override fun check(declaration: FirFile) {
-            checkContainer(declaration.declarations, declaration.source)
-        }
+object NarrativeOrderChecker : FirFileChecker(MppCheckerKind.Common) {
+    context(context: CheckerContext, reporter: DiagnosticReporter)
+    override fun check(declaration: FirFile) {
+        val config = context.session.kotrailConfig
+        if (!config.isEnabled(KotrailRule.NARRATIVE_ORDER)) return
+        val path = declaration.sourceFile?.path
+        if (path != null && config.generated.matchesPath(path)) return
+        val uses = DeclarationUses.of(declaration)
+        for (container in uses.containers) checkOrder(container, uses)
+        val settings = config.narrativeOrder
+        if (settings.maxCallerDistance > 0 && path != null && !isTestSourcePath(path)) HelperDistanceChecker.check(declaration, uses, settings)
     }
 
     context(context: CheckerContext, reporter: DiagnosticReporter)
-    private fun checkContainer(declarations: List<FirDeclaration>, container: KtSourceElement?) {
-        if (!context.session.kotrailConfig.isEnabled(KotrailRule.NARRATIVE_ORDER)) return
-        val ordered = declarations.filter { it.source != null && it.source?.kind !is KtFakeSourceElementKind }.sortedBy { it.source!!.startOffset }
+    private fun checkOrder(container: DeclarationUses.Container, uses: DeclarationUses) {
+        val ordered = container.declarations
+            .filter { it.source != null && it.source?.kind !is KtFakeSourceElementKind }
+            .sortedBy { it.source!!.startOffset }
         val helpers = ordered.filterIsInstance<FirNamedFunction>().filter { it.visibility == Visibilities.Private && it.body != null }
-        if (helpers.isEmpty()) return
-
-        // Who uses whom, among the container's own declarations.
-        val uses = ordered.associateWith { member -> UseCollector().also { member.accept(it) }.used }
         for (helper in helpers) {
             val helperSource = helper.source ?: continue
-            val firstUser = ordered.firstOrNull { member -> member !== helper && helper.symbol in uses.getValue(member) } ?: continue
+            val firstUser = ordered.firstOrNull { member -> member !== helper && helper.symbol in uses.of(member) } ?: continue
             val userSource = firstUser.source ?: continue
             if (userSource.startOffset < helperSource.startOffset) continue
             // Mutual recursion: the helper uses its first user too, and neither order tells the story.
-            if ((firstUser as? FirNamedFunction)?.symbol?.let { it in uses.getValue(helper) } == true) continue
+            if ((firstUser as? FirNamedFunction)?.symbol?.let { it in uses.of(helper) } == true) continue
+            val site = container.enclosing + helper
+            val diagnostic = KotrailDiagnostics.HELPER_BEFORE_FIRST_USE
+            if (isSuppressedOn(site, diagnostic.baseName, diagnostic.rule)) continue
             val userName = (firstUser as? FirNamedFunction)?.name?.asString() ?: "the declaration below"
-            reportKotrail(helperSource, KotrailDiagnostics.HELPER_BEFORE_FIRST_USE, helper.name.asString(), userName, moveAfterFix(helperSource, userSource, container))
-        }
-    }
-
-    /** The named functions a declaration calls or references. */
-    private class UseCollector : FirVisitorVoid() {
-        val used = mutableSetOf<FirNamedFunctionSymbol>()
-
-        override fun visitElement(element: FirElement) {
-            element.acceptChildren(this)
-        }
-
-        override fun visitFunctionCall(functionCall: FirFunctionCall) {
-            (functionCall.calleeReference.toResolvedCallableSymbol() as? FirNamedFunctionSymbol)?.let { used += it }
-            functionCall.acceptChildren(this)
-        }
-
-        override fun visitCallableReferenceAccess(callableReferenceAccess: FirCallableReferenceAccess) {
-            (callableReferenceAccess.calleeReference.toResolvedCallableSymbol() as? FirNamedFunctionSymbol)?.let { used += it }
-            callableReferenceAccess.acceptChildren(this)
+            reportingAt(site) {
+                reportKotrail(helperSource, diagnostic, helper.name.asString(), userName, moveAfterFix(helperSource, userSource, container.source))
+            }
         }
     }
 
     /** Deletes the helper (its lines, and one blank line after it) and inserts it after the user, separated by a blank line and indented alike. */
     private fun moveAfterFix(helper: KtSourceElement, user: KtSourceElement, container: KtSourceElement?): List<FixEdit> =
         FixBuilder.over(container)?.moveAfter(helper, user) ?: emptyList()
+}
+
+/**
+ * Whether a `@Suppress` on one of [declarations] names the diagnostic [baseName], or every error
+ * or warning at the severity [rule] is reported at. A file checker runs with the file's context,
+ * which holds the file's own suppressions only. The compiler still drops a diagnostic that a
+ * `@Suppress` around it names once it reaches that declaration, but only by the factory's name,
+ * which carries a `_WARNING` / `_ERROR` suffix at a severity the project moved, and only after
+ * the fix is recorded; reading the declarations here settles both.
+ */
+context(context: CheckerContext)
+internal fun isSuppressedOn(declarations: List<FirDeclaration>, baseName: String, rule: KotrailRule): Boolean {
+    val all = if (context.session.kotrailConfig.severity(rule) == Severity.WARNING) {
+        AbstractDiagnosticCollector.SUPPRESS_ALL_WARNINGS
+    } else {
+        AbstractDiagnosticCollector.SUPPRESS_ALL_ERRORS
+    }
+    return declarations.any { declaration ->
+        val suppressed = AbstractDiagnosticCollector.getDiagnosticsSuppressedForContainer(declaration).orEmpty()
+        baseName in suppressed || all in suppressed
+    }
 }

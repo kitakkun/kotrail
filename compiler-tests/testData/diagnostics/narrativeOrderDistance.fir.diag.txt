@@ -1,0 +1,15 @@
+/narrativeOrderDistance.kt:(259,267): error: [Kotrail] Only 'register' uses 'registry', 142 lines away: put it right next to 'register' so the reader who follows the call finds it without scrolling past unrelated code. (KOTRAIL_HELPER_FAR_FROM_CALLER)
+
+/narrativeOrderDistance.kt:(1463,1474): error: [Kotrail] Only 'load' uses the run of 'parseHeader' and the helper after it, 27 lines away: put it right next to 'load' so the reader who follows the call finds it without scrolling past unrelated code. (KOTRAIL_HELPER_FAR_FROM_CALLER)
+
+/narrativeOrderDistance.kt:(2177,2183): error: [Kotrail] Only 'read' uses 'decode', 20 lines away: put it right next to 'read' so the reader who follows the call finds it without scrolling past unrelated code. (KOTRAIL_HELPER_FAR_FROM_CALLER)
+
+/narrativeOrderDistance.kt:(3403,3410): error: [Kotrail] 'whisper' is declared before 'quiet', which is the first to use it. Declare it after, so that the file reads from the top down: the story first, the details after. (KOTRAIL_HELPER_BEFORE_FIRST_USE)
+
+/narrativeOrderDistance.kt:(4898,4906): error: [Kotrail] Only 'statusBar' uses the run of 'wifiIcon' and the helper after it, 11 lines away: put it right next to 'statusBar' so the reader who follows the call finds it without scrolling past unrelated code. (KOTRAIL_HELPER_FAR_FROM_CALLER)
+
+/narrativeOrderDistance.kt:(5418,5426): error: [Kotrail] Only 'navigationBar' uses the run of 'homeIcon' and the 3 helpers after it, 11 lines away: put it right next to 'navigationBar' so the reader who follows the call finds it without scrolling past unrelated code. (KOTRAIL_HELPER_FAR_FROM_CALLER)
+
+/narrativeOrderDistance.kt:(6134,6142): error: [Kotrail] Only 'parse' of 'Parser' uses 'tokenize': make it a private member of 'Parser' right after 'parse', where the reader who follows the call finds it. (KOTRAIL_HELPER_OUTSIDE_CALLER_CLASS)
+
+/narrativeOrderDistance.kt:(6369,6379): error: [Kotrail] Only 'reset' uses 'tokenCache', 19 lines away: put it right next to 'reset' so the reader who follows the call finds it without scrolling past unrelated code. (KOTRAIL_HELPER_FAR_FROM_CALLER)

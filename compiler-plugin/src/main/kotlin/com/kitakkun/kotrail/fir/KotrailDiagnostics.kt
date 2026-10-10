@@ -144,6 +144,23 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Arguments: the helper's name, the first declaration that uses it; reported on a private function declared before its first user. */
     val HELPER_BEFORE_FIRST_USE = tunable2<KtNamedFunction, String, String>("HELPER_BEFORE_FIRST_USE", KotrailRule.NARRATIVE_ORDER, NAME)
 
+    /**
+     * Arguments: the helper, quoted (`'parseHeader'`), or a run of helpers written one after
+     * another (`the run of 'homeIcon' and the 3 helpers after it`), its only caller, the distance
+     * in lines; reported on a private helper far below its only caller, or a private top-level
+     * property far above it, with mostly unrelated code between the two, and on the first member
+     * of a run.
+     */
+    val HELPER_FAR_FROM_CALLER = tunable3<KtNamedDeclaration, String, String, String>("HELPER_FAR_FROM_CALLER", KotrailRule.NARRATIVE_ORDER, NAME)
+
+    /**
+     * Arguments: the helper, quoted, or a run of helpers as for [HELPER_FAR_FROM_CALLER], its only
+     * caller, and the caller's class (`Loader`, `Outer.Inner`); reported instead of
+     * [HELPER_FAR_FROM_CALLER] on a top-level private function far from its only caller, a member
+     * of a class.
+     */
+    val HELPER_OUTSIDE_CALLER_CLASS = tunable3<KtNamedFunction, String, String, String>("HELPER_OUTSIDE_CALLER_CLASS", KotrailRule.NARRATIVE_ORDER, NAME)
+
     /** Argument: the property, or `ThreadLocal()`; reported on a property of a ThreadLocal type, or a bare construction, in a compilation that is unloaded. */
     val THREAD_LOCAL_IN_UNLOADABLE_CODE = tunable1<KtElement, String>("THREAD_LOCAL_IN_UNLOADABLE_CODE", KotrailRule.UNLOADABLE_CODE, WHOLE)
 
@@ -853,6 +870,16 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             KotrailDiagnostics.HELPER_BEFORE_FIRST_USE,
             "[Kotrail] ''{0}'' is declared before ''{1}'', which is the first to use it. Declare it after, so that " +
                 "the file reads from the top down: the story first, the details after.",
+        )
+        map.put3(
+            KotrailDiagnostics.HELPER_FAR_FROM_CALLER,
+            "[Kotrail] Only ''{1}'' uses {0}, {2} lines away: put it right next to ''{1}'' so the reader who " +
+                "follows the call finds it without scrolling past unrelated code.",
+        )
+        map.put3(
+            KotrailDiagnostics.HELPER_OUTSIDE_CALLER_CLASS,
+            "[Kotrail] Only ''{1}'' of ''{2}'' uses {0}: make it a private member of ''{2}'' right after ''{1}'', " +
+                "where the reader who follows the call finds it.",
         )
         map.put1(
             KotrailDiagnostics.NARROW_LOCAL_SCOPE,

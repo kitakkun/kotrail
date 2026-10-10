@@ -147,6 +147,8 @@ own; a rule not listed has none.
 | `unloadableCode` (off by default) | `registrations` | JVM, AWT and IntelliJ hooks (see the rule page) | Globs over fully qualified functions that register something with the platform for the rest of its life; a call without a disposable argument is reported. Replaces the default list. |
 | | `disposableTypes` | `[com.intellij.openapi.Disposable]` | Fully qualified types an argument of which scopes a registration to a lifetime. Replaces the default list. |
 | `narrowLocalScope` | `maxDistance` | `5` | Lines of code allowed between a local's declaration and the statement that first uses it (blank and comment-only lines not counted); `0` switches the distance check off. |
+| `narrativeOrder` | `maxCallerDistance` | `100` | Lines a private helper may sit from its only caller, first line to first line, before it is reported; lines of the caller's other helpers between the two do not count. `0` switches the distance check off; the order check remains. |
+| | `maxHelperNoise` | `60` | Percent of the lines from the caller to the helper that belong neither to the pair nor to the declarations the caller uses, from which a helper past `maxCallerDistance` is reported. |
 | `liveVariableBudget` | `max` | `7` | Variables (locals and parameters) that may be live at one statement of a function; `0` disables. |
 | `noDataClassInPublicApi` | `scope` | `explicitApi` | `explicitApi` applies the rule only to modules compiled with explicit API mode; `all` everywhere. |
 | `visibilityPolicy` | `private` | | A predicate; matching declarations must be `private`. |

@@ -155,7 +155,7 @@ class KotrailGradlePluginFunctionalTest {
     @Test
     fun `kotrailFix applies the recorded fixes without compiling again`() {
         writeSettings()
-        writeFile("kotrail.yaml", "severity: warning\n")
+        writeFile("kotrail.yaml", "severity: warning\nrules:\n  narrativeOrder:\n    maxCallerDistance: 10\n    maxHelperNoise: 50\n")
         writeBuild(
             """
             kotrail {
@@ -164,10 +164,12 @@ class KotrailGradlePluginFunctionalTest {
             """.trimIndent(),
         )
         writeFile("src/main/kotlin/Cases.kt", FIXABLE_CASES)
+        writeFile("src/main/kotlin/Icons.kt", FAR_RUN_CASES)
 
         val compiled = runBuild("compileKotlin")
         assertEquals(TaskOutcome.SUCCESS, compiled.task(":compileKotlin")?.outcome, compiled.output)
         assertTrue(compiled.output.contains("KOTRAIL_PREFER_FUNCTION_REFERENCE"), compiled.output)
+        assertEquals(1, Regex("KOTRAIL_HELPER_FAR_FROM_CALLER").findAll(compiled.output).count(), compiled.output)
 
         val fixed = runBuild("kotrailFix")
         assertNull(fixed.task(":compileKotlin"), "kotrailFix must not compile: ${fixed.output}")
@@ -199,6 +201,17 @@ class KotrailGradlePluginFunctionalTest {
         assertTrue(text.contains("move(x = 1, y = 2, z = 3)"), text)
         // Two declarations moved into one branch keep their order, so the second may still read the first.
         assertTrue(text.contains("} else {\n        val base = count\n        val next = count + 1\n        println(base + next)"), text)
+        // The far run moves right after its caller as one block, in its order.
+        val icons = File(projectDir, "src/main/kotlin/Icons.kt").readText()
+        assertTrue(
+            icons.contains(
+                "fun navigationBar(): String = homeIcon() + searchIcon() + inboxIcon() + profileIcon()\n\n" +
+                    "private fun homeIcon(): String = \"home\"\n\nprivate fun searchIcon(): String = \"search\"\n\n" +
+                    "private fun inboxIcon(): String = \"inbox\"\n\nprivate fun profileIcon(): String = \"profile\"\n\n" +
+                    "fun beforeNavigationIcons(value: Int): String {",
+            ),
+            icons,
+        )
         for (expected in listOf(
             "        val replaced = ready\n        ready = frame\n        counter++\n        return replaced\n",
             "        counter++\n        val previous = ready\n        ready = frame\n        return previous\n",
@@ -217,6 +230,7 @@ class KotrailGradlePluginFunctionalTest {
         val recompiled = runBuild("compileKotlin")
         assertEquals(TaskOutcome.SUCCESS, recompiled.task(":compileKotlin")?.outcome, recompiled.output)
         assertFalse(recompiled.output.contains("KOTRAIL_PREFER_FUNCTION_REFERENCE"), recompiled.output)
+        assertFalse(recompiled.output.contains("KOTRAIL_HELPER_FAR_FROM_CALLER"), recompiled.output)
     }
 
     @Test
@@ -2003,6 +2017,28 @@ class KotrailGradlePluginFunctionalTest {
             fun Missing() {
                 Text("missing")
             }
+        """.trimIndent()
+
+        // Four helpers of one caller, written one after another past an unrelated function: one finding, moved as a block.
+        val FAR_RUN_CASES = """
+            fun navigationBar(): String = homeIcon() + searchIcon() + inboxIcon() + profileIcon()
+
+            fun beforeNavigationIcons(value: Int): String {
+                val first = value + 1
+                val second = value + 2
+                val third = value + 3
+                val fourth = value + 4
+                val fifth = value + 5
+                return "${'$'}first ${'$'}second ${'$'}third ${'$'}fourth ${'$'}fifth"
+            }
+
+            private fun homeIcon(): String = "home"
+
+            private fun searchIcon(): String = "search"
+
+            private fun inboxIcon(): String = "inbox"
+
+            private fun profileIcon(): String = "profile"
         """.trimIndent()
 
         // One case per rule that offers a fix; every fix is exercised by the kotrailFix test.

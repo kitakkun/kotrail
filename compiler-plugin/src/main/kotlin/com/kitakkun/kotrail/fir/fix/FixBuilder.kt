@@ -97,13 +97,41 @@ class FixBuilder private constructor(
     }
 
     /**
+     * Moves the declaration [source] before [anchor], separated from it by a blank line and
+     * indented like it: the declaration's lines and the blank line that follows them are
+     * deleted, and its text inserted before the anchor. Empty when the declaration has no text.
+     */
+    fun moveDeclarationBefore(source: KtSourceElement, anchor: KtSourceElement): List<FixEdit> = moveDeclarationsBefore(listOf(source), anchor)
+
+    /**
+     * Moves the declarations [sources], in their order, before [anchor] as one block, like
+     * [moveDeclarationBefore] does one: each one's lines and the blank line that follows them are
+     * deleted, and their texts inserted before the anchor, each followed by a blank line and the
+     * anchor's indentation. Empty when one of them has no text.
+     */
+    fun moveDeclarationsBefore(sources: List<KtSourceElement>, anchor: KtSourceElement): List<FixEdit> {
+        val moved = sources.map { textOf(it) ?: return emptyList() }
+        val indent = indentAt(anchor.startOffset)
+        return sources.map { deleteLines(it, trailingBlankLine = true) } + insertBefore(anchor, moved.joinToString("") { "$it\n\n$indent" })
+    }
+
+    /**
      * Moves the declaration [source] after [anchor], separated from it by a blank line and
      * indented like it: the declaration's lines and the blank line that follows them are
      * deleted, and its text inserted after the anchor. Empty when the declaration has no text.
      */
-    fun moveAfter(source: KtSourceElement, anchor: KtSourceElement): List<FixEdit> {
-        val moved = textOf(source) ?: return emptyList()
-        return listOf(deleteLines(source, trailingBlankLine = true), insertAfter(anchor, "\n\n${indentAt(anchor.startOffset)}$moved"))
+    fun moveAfter(source: KtSourceElement, anchor: KtSourceElement): List<FixEdit> = moveDeclarationsAfter(listOf(source), anchor)
+
+    /**
+     * Moves the declarations [sources], in their order, after [anchor] as one block, like
+     * [moveAfter] does one: each one's lines and the blank line that follows them are deleted,
+     * and their texts inserted after the anchor, each preceded by a blank line and the anchor's
+     * indentation. Empty when one of them has no text.
+     */
+    fun moveDeclarationsAfter(sources: List<KtSourceElement>, anchor: KtSourceElement): List<FixEdit> {
+        val moved = sources.map { textOf(it) ?: return emptyList() }
+        val indent = indentAt(anchor.startOffset)
+        return sources.map { deleteLines(it, trailingBlankLine = true) } + insertAfter(anchor, moved.joinToString("") { "\n\n$indent$it" })
     }
 
     companion object {

@@ -98,6 +98,10 @@ object ConfigSchema {
             Setting("maxLines", Kind.INT, "Most lines of code a file may have; blank, brace-only, comment, package and import lines do not count. 0 for unlimited.", default = "500"),
             Setting("maxTopLevelDeclarations", Kind.INT, "Most distinct top-level names a file may declare: classes, functions, public properties and type aliases, overloads once; previews, private properties, actual declarations and private implementations of a same-file interface do not count. 0 for unlimited.", default = "15"),
         ),
+        KotrailRule.NARRATIVE_ORDER to listOf(
+            Setting("maxCallerDistance", Kind.INT, "Lines a private helper may sit from its only caller, first line to first line, before it is reported; lines of the caller's other helpers between the two do not count. 0 switches the distance check off; the order check remains.", default = "100"),
+            Setting("maxHelperNoise", Kind.INT, "Percent of the lines from the caller to the helper that belong neither to the pair nor to the declarations the caller uses, from which a helper past maxCallerDistance is reported.", default = "60"),
+        ),
         KotrailRule.FUNCTION_LENGTH to listOf(
             Setting("maxLines", Kind.INT, "Most lines of code a function body may have; 0 for unlimited.", default = "50"),
             Setting("maxComposableLines", Kind.INT, "The same limit for @Composable functions.", default = "80"),

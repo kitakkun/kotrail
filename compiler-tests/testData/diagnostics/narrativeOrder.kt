@@ -35,5 +35,15 @@ fun normalize(s: String): String = trim(s).lowercase()
 // Not reported: after its caller.
 private fun lower(s: String): String = s.lowercase()
 
+// Reported: a local class is a container of its own.
+fun describe(n: Int): String {
+    class Formatter {
+        private fun <!KOTRAIL_HELPER_BEFORE_FIRST_USE!>pad<!>(s: String): String = s.padStart(4)
+
+        fun format(): String = pad(n.toString())
+    }
+    return Formatter().format()
+}
+
 /* GENERATED_FIR_TAGS: additiveExpression, callableReference, classDeclaration, equalityExpression, functionDeclaration,
 functionalType, ifExpression, integerLiteral, localProperty, multiplicativeExpression, propertyDeclaration */

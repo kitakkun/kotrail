@@ -45,8 +45,8 @@ its diagnostic and whether it is on by default.
   body small enough to hold in mind, and [File length](docs/rules/file-length.md) keeps a file from becoming a flat list of
   unrelated names; [No literal loop](docs/rules/no-literal-loop.md) unfolds `listOf(false, true).forEach { if (it) ... }`
   back into the two calls it was; [Named condition](docs/rules/named-condition.md) gives a compound `if` condition a name,
-  once, instead of the same `a && b && c` in three files; [Narrative order](docs/rules/narrative-order.md) and [Parameter order](docs/rules/parameter-order.md) put helpers after
-  their first caller and data before callbacks; [Narrow local scope](docs/rules/narrow-local-scope.md), [Prefer val](docs/rules/prefer-val.md) and
+  once, instead of the same `a && b && c` in three files; [Narrative order](docs/rules/narrative-order.md) puts a helper after its caller and
+  close to it, and [Parameter order](docs/rules/parameter-order.md) puts data before callbacks; [Narrow local scope](docs/rules/narrow-local-scope.md), [Prefer val](docs/rules/prefer-val.md) and
   [Prefer idiom](docs/rules/prefer-idiom.md) tidy what is left; [Suppress reason](docs/rules/suppress-reason.md) asks every
   `@Suppress` for a comment that says why; [Named condition](docs/rules/named-condition.md)
   asks for one named definition of a compound condition written in several places; [No swap through also](docs/rules/no-swap-through-also.md)

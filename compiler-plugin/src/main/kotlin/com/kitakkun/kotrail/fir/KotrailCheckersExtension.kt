@@ -142,7 +142,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
         UnloadableCodeChecker.BundledChecker,
         DependencyRulesChecker,
         CommentLengthChecker,
-        NarrativeOrderChecker.FileChecker,
+        NarrativeOrderChecker,
         ParameterCommentChecker,
         ComposablePreviewRequiredChecker,
         ComposablePreviewCoverageChecker,
@@ -152,7 +152,6 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
     )
     override val regularClassCheckers: Set<FirRegularClassChecker> = setOf(
         InferredFactWarmup.ClassChecker,
-        NarrativeOrderChecker.ClassChecker,
         RequiredSupertypeChecker,
         PreferValueClassChecker,
         NoDataClassInPublicApiChecker,
