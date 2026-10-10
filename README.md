@@ -77,8 +77,9 @@ its diagnostic and whether it is on by default.
   [Required supertype](docs/rules/required-supertype.md), [Required annotation](docs/rules/required-annotation.md) and [Visibility policy](docs/rules/visibility-policy.md) turn a project's own
   conventions into predicates over receivers, packages, names and annotations.
 - **Compose** (21): [Remember keys](docs/rules/compose/remember-keys.md) for a `remember` or `LaunchedEffect` that freezes a value its keys
-  do not cover, checked through helpers in other modules; [Retain leak](docs/rules/compose/retain-leak.md) for a `retain` whose value or key
-  keeps a Context or a View alive past its composable; [No global mutable state](docs/rules/compose/no-global-mutable-state.md) for a
+  do not cover, checked through helpers in other modules, or that lists a key that never changes;
+  [Retain leak](docs/rules/compose/retain-leak.md) for a `retain` whose value or key keeps a Context or a View alive past its composable;
+  [No global mutable state](docs/rules/compose/no-global-mutable-state.md) for a
   top-level or `object` `var` a composable reads and never recomposes on; [Unwritten state](docs/rules/compose/unwritten-state.md) for a
   `mutableStateOf` that nothing writes or nothing reads; [Complexity](docs/rules/compose/complexity.md) scores the state,
   effects and branches a composable makes a reader hold at once and names the block to extract;

@@ -227,7 +227,7 @@ object ConfigSchema {
             Setting("minPreviews", Kind.INT, "How many @Preview functions of one file must build the same model inline before they are reported; 1 reports every one.", default = "2"),
         ),
         KotrailRule.COMPOSE_REMEMBER_KEYS to listOf(
-            Setting("functions", Kind.LIST, "Fully qualified functions whose trailing lambda is keyed by their other arguments; replaces the default list.", default = "androidx.compose.runtime.remember, androidx.compose.runtime.saveable.rememberSaveable, androidx.compose.runtime.LaunchedEffect, androidx.compose.runtime.DisposableEffect, androidx.compose.runtime.produceState"),
+            Setting("functions", Kind.LIST, "Fully qualified functions whose trailing lambda is keyed by their other arguments; replaces the default list. Both the missing keys and the constant keys are checked on these calls.", default = "androidx.compose.runtime.remember, androidx.compose.runtime.saveable.rememberSaveable, androidx.compose.runtime.LaunchedEffect, androidx.compose.runtime.DisposableEffect, androidx.compose.runtime.produceState"),
         ),
         KotrailRule.COMPOSE_COMPLEXITY to listOf(
             Setting("maxScore", Kind.INT, "Most points a composable may score (state sources, effects, branches, coupling); 0 switches the limit off while the records for kotrailComplexity are still written.", default = "15"),

@@ -125,7 +125,7 @@ Rules a project declares in its configuration: what may call, extend, depend on 
 | No hardcoded string | off: only a project that localizes through resources can act on it | `KOTRAIL_COMPOSABLE_HARDCODED_STRING` | [compose/no-hardcoded-string.md](compose/no-hardcoded-string.md) |
 | Preview coverage | off: needs `packages`, for a library's preview or screenshot-test compilation | `KOTRAIL_COMPOSABLE_NOT_COVERED_BY_PREVIEW` | [compose/preview-coverage.md](compose/preview-coverage.md) |
 | Preview parameter | on | `KOTRAIL_PREVIEW_MODEL_BUILT_INLINE` | [compose/preview-parameter.md](compose/preview-parameter.md) |
-| Remember keys | on | `KOTRAIL_EFFECT_KEY_MISSING` | [compose/remember-keys.md](compose/remember-keys.md) |
+| Remember keys | on | `KOTRAIL_EFFECT_KEY_MISSING`, `KOTRAIL_EFFECT_CAPTURED_BY_CALLEE`, `KOTRAIL_REDUNDANT_KEY` | [compose/remember-keys.md](compose/remember-keys.md) |
 | No global mutable state | on | `KOTRAIL_GLOBAL_VAR_READ_IN_COMPOSITION`, `KOTRAIL_GLOBAL_VAR_WRITTEN_IN_COMPOSABLE` | [compose/no-global-mutable-state.md](compose/no-global-mutable-state.md) |
 | Retain leak | on | `KOTRAIL_RETAINED_LEAK`, `KOTRAIL_RETAINED_REMEMBER_OBSERVER` | [compose/retain-leak.md](compose/retain-leak.md) |
 | Unwritten state | on | `KOTRAIL_STATE_NEVER_WRITTEN`, `KOTRAIL_STATE_NEVER_READ` | [compose/unwritten-state.md](compose/unwritten-state.md) |

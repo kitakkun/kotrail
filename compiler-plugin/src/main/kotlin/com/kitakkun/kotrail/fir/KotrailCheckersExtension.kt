@@ -52,6 +52,7 @@ import com.kitakkun.kotrail.fir.checkers.ParameterOrderChecker
 import com.kitakkun.kotrail.fir.checkers.RequiredSupertypeChecker
 import com.kitakkun.kotrail.fir.checkers.UnretainedChecker
 import com.kitakkun.kotrail.fir.checkers.WeakOnlyReferenceChecker
+import com.kitakkun.kotrail.fir.compose.checkers.ComposableConstantKeyChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposableRememberKeysChecker
 import com.kitakkun.kotrail.fir.compose.checkers.ComposableRetainLeakChecker
 import com.kitakkun.kotrail.fir.test.checkers.TestMustAssertChecker
@@ -231,6 +232,7 @@ object KotrailExpressionCheckers : ExpressionCheckers() {
         DelayForCompletionChecker,
         WeakOnlyReferenceChecker,
         ComposableRememberKeysChecker,
+        ComposableConstantKeyChecker,
         ComposableRetainLeakChecker,
         PreconditionChecker,
         NoOpCallChecker,

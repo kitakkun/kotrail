@@ -176,7 +176,7 @@ own; a rule not listed has none.
 | | `visibility` | `public` | Which composables of those packages count: `public`, or `internal` (public and internal). |
 | | `excludeNames` | `[]` | Globs over fully qualified composable names to leave out. |
 | `compose.previewParameter` | `minPreviews` | `2` | How many `@Preview` functions of one file must build the same model inline before they are reported; `1` reports every one. |
-| `compose.rememberKeys` | `functions` | `remember`, `rememberSaveable`, `LaunchedEffect`, `DisposableEffect`, `produceState` | Functions whose trailing lambda is keyed by their other arguments. Replaces the default list. |
+| `compose.rememberKeys` | `functions` | `remember`, `rememberSaveable`, `LaunchedEffect`, `DisposableEffect`, `produceState` | Functions whose trailing lambda is keyed by their other arguments. Both the missing keys and the constant keys are checked on these calls. Replaces the default list. |
 | `compose.noCallbackInModel` | `allowComposableSlots` | `true` | Whether a `@Composable` function-typed property (a content slot such as a table column's cell renderer) in a model handed to a UI composable is allowed; other function types are always reported. |
 | `compose.composablesPerFile` | `max` | `3` | Maximum non-private UI composables in one file, previews excluded; `0` disables. |
 | | `countOverloadsSeparately` | `false` | Whether overloads of one composable name count one each; by default they count as one component. |

@@ -164,11 +164,15 @@ class KotrailGradlePluginFunctionalTest {
             """.trimIndent(),
         )
         writeFile("src/main/kotlin/Cases.kt", FIXABLE_CASES)
+        writeFile("src/main/kotlin/androidx/compose/runtime/Composable.kt", COMPOSABLE_STUB)
+        writeFile("src/main/kotlin/androidx/compose/runtime/Remember.kt", REMEMBER_STUB)
+        writeFile("src/main/kotlin/Keys.kt", REDUNDANT_KEY_CASES)
         writeFile("src/main/kotlin/Icons.kt", FAR_RUN_CASES)
 
         val compiled = runBuild("compileKotlin")
         assertEquals(TaskOutcome.SUCCESS, compiled.task(":compileKotlin")?.outcome, compiled.output)
         assertTrue(compiled.output.contains("KOTRAIL_PREFER_FUNCTION_REFERENCE"), compiled.output)
+        assertTrue(compiled.output.contains("KOTRAIL_REDUNDANT_KEY"), compiled.output)
         assertEquals(1, Regex("KOTRAIL_HELPER_FAR_FROM_CALLER").findAll(compiled.output).count(), compiled.output)
 
         val fixed = runBuild("kotrailFix")
@@ -201,6 +205,10 @@ class KotrailGradlePluginFunctionalTest {
         assertTrue(text.contains("move(x = 1, y = 2, z = 3)"), text)
         // Two declarations moved into one branch keep their order, so the second may still read the first.
         assertTrue(text.contains("} else {\n        val base = count\n        val next = count + 1\n        println(base + next)"), text)
+        // A key that never changes goes with its comma; the only key becomes Unit.
+        val keys = File(projectDir, "src/main/kotlin/Keys.kt").readText()
+        assertTrue(keys.contains("remember(id, page) { id + page }"), keys)
+        assertTrue(keys.contains("remember(Unit) { id }"), keys)
         // The far run moves right after its caller as one block, in its order.
         val icons = File(projectDir, "src/main/kotlin/Icons.kt").readText()
         assertTrue(
@@ -230,6 +238,7 @@ class KotrailGradlePluginFunctionalTest {
         val recompiled = runBuild("compileKotlin")
         assertEquals(TaskOutcome.SUCCESS, recompiled.task(":compileKotlin")?.outcome, recompiled.output)
         assertFalse(recompiled.output.contains("KOTRAIL_PREFER_FUNCTION_REFERENCE"), recompiled.output)
+        assertFalse(recompiled.output.contains("KOTRAIL_REDUNDANT_KEY"), recompiled.output)
         assertFalse(recompiled.output.contains("KOTRAIL_HELPER_FAR_FROM_CALLER"), recompiled.output)
     }
 
@@ -2033,6 +2042,30 @@ class KotrailGradlePluginFunctionalTest {
 
             @Target(AnnotationTarget.FUNCTION, AnnotationTarget.TYPE)
             annotation class Composable
+        """.trimIndent()
+
+        val REMEMBER_STUB = """
+            package androidx.compose.runtime
+
+            @Composable
+            fun <T> remember(key1: Any?, calculation: () -> T): T = calculation()
+
+            @Composable
+            fun <T> remember(vararg keys: Any?, calculation: () -> T): T = calculation()
+        """.trimIndent()
+
+        // Constant keys of remember: one between two changing keys, and one alone.
+        val REDUNDANT_KEY_CASES = """
+            import androidx.compose.runtime.Composable
+            import androidx.compose.runtime.remember
+
+            object Registry
+
+            @Composable
+            fun middleKey(id: String, page: Int): String = remember(id, Registry, page) { id + page }
+
+            @Composable
+            fun onlyKey(id: String): String = remember(Registry) { id }
         """.trimIndent()
 
         val SIDE_EFFECT_STUB = """

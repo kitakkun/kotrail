@@ -19,8 +19,9 @@ import org.jetbrains.kotlin.fir.expressions.resolvedArgumentMapping
 import org.jetbrains.kotlin.fir.references.toResolvedNamedFunctionSymbol
 
 /**
- * Asks that the lambda of `remember`, `LaunchedEffect` and their kin not freeze a value of the
- * enclosing composable that its keys do not cover:
+ * The missing-key half of `compose.rememberKeys`: asks that the lambda of `remember`,
+ * `LaunchedEffect` and their kin not freeze a value of the enclosing composable that its keys do
+ * not cover ([ComposableConstantKeyChecker] reports the other half, a key that never changes):
  *
  * ```kotlin
  * @Composable
@@ -38,8 +39,10 @@ import org.jetbrains.kotlin.fir.references.toResolvedNamedFunctionSymbol
  * report at all. Where one choice is the usual answer, the value carries it: a callback captured
  * by an effect is read through `rememberUpdatedState`, since restarting the effect because a
  * lambda changed identity is itself the classic bug; a data value a `remember { }` computes from
- * belongs in the keys. What counts as captured, and what does not, is decided by
- * [EffectCaptureAnalysis].
+ * belongs in the keys. A snapshot collection whose contents the lambda reads gets neither: it keeps
+ * its identity while its contents change, so a key on it never restarts anything, and the message
+ * asks for `derivedStateOf` or `snapshotFlow`, or a key on a snapshot of it. What counts as
+ * captured, and what does not, is decided by [EffectCaptureAnalysis].
  *
  * The same applies through a helper that hides the effect:
  *
@@ -60,6 +63,8 @@ import org.jetbrains.kotlin.fir.references.toResolvedNamedFunctionSymbol
 object ComposableRememberKeysChecker : FirFunctionCallChecker(MppCheckerKind.Common) {
     private const val ADVICE_KEYS = "add it to the keys"
     private const val ADVICE_UPDATED_STATE = "read it through rememberUpdatedState"
+    private const val ADVICE_OBSERVE = "read it inside derivedStateOf or snapshotFlow, or key on a snapshot of it: " +
+        "as a key it never changes when its contents do"
 
     context(context: CheckerContext, reporter: DiagnosticReporter)
     override fun check(expression: FirFunctionCall) {
@@ -81,6 +86,8 @@ object ComposableRememberKeysChecker : FirFunctionCallChecker(MppCheckerKind.Com
                 // A data value in a long-lived effect body takes either fix; the message lays out both.
                 when {
                     value.isFunctionTyped -> "${value.name} ($ADVICE_UPDATED_STATE)"
+                    // A snapshot collection keeps its identity while its contents change: a key on it would never restart anything.
+                    value.readsSnapshotContents -> "${value.name} ($ADVICE_OBSERVE)"
                     !keyed.isEffect -> "${value.name} ($ADVICE_KEYS)"
                     else -> value.name
                 }

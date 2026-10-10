@@ -8,6 +8,7 @@ import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
 import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.utils.isSuspend
 import org.jetbrains.kotlin.fir.expressions.FirAnonymousFunctionExpression
+import org.jetbrains.kotlin.fir.expressions.FirArgumentList
 import org.jetbrains.kotlin.fir.expressions.FirCheckedSafeCallSubject
 import org.jetbrains.kotlin.fir.expressions.FirDesugaredAssignmentValueReferenceExpression
 import org.jetbrains.kotlin.fir.expressions.FirDoWhileLoop
@@ -60,24 +61,44 @@ import org.jetbrains.kotlin.types.AbstractTypeChecker
  * `CompositionLocal.current`, all stable for the composition; a local derived only from values
  * the keys cover; writes; the initial value handed to `mutableStateOf(...)`; reads inside
  * `snapshotFlow { }` and `derivedStateOf { }`, which observe on their own. A read is covered by
- * a key that reads the same value, or whose text is the property path the read roots
+ * a key that reads the same value, a key that copies it (`remember(items.toList()) { }`), or
+ * whose text is the property path the read roots
  * (`remember(tx.request.url) { parse(tx.request.url) }`), at any depth of the lambda and through
  * safe calls. In an effect, a data value read only by a one-shot body is left alone, and so is
  * a callback called before the body's first suspension point or long-lived construct: both read
  * this composition's value once, which is what such effects are for. In a `remember { }`, an
  * argument handed to a constructor (`remember { SplitState(initialFraction) }`) is a seed like
- * the one handed to `mutableStateOf`.
+ * the one handed to `mutableStateOf`. A snapshot collection whose contents the lambda reads is
+ * marked ([Missing.readsSnapshotContents]): a key on it never changes when its contents do.
  */
 internal object EffectCaptureAnalysis {
     private val STATE = ClassId(FqName("androidx.compose.runtime"), Name.identifier("State"))
+    private val SNAPSHOT_COLLECTIONS = listOf("SnapshotStateList", "SnapshotStateMap", "SnapshotStateSet")
+        .map { ClassId(FqName("androidx.compose.runtime.snapshots"), Name.identifier(it)) }
+    private val SNAPSHOT_FACTORIES = setOf("mutableStateListOf", "mutableStateMapOf", "mutableStateSetOf", "toMutableStateList", "toMutableStateMap")
     private val OBSERVING_LAMBDAS = setOf("androidx.compose.runtime.snapshotFlow", "androidx.compose.runtime.derivedStateOf")
     private val SEEDS = setOf("mutableStateOf", "mutableIntStateOf", "mutableLongStateOf", "mutableFloatStateOf", "mutableDoubleStateOf")
     private val LONG_LIVED_LAMBDAS = setOf("collect", "collectLatest", "collectIndexed", "onEach", "onDispose", "awaitPointerEventScope", "withFrameNanos", "withFrameMillis")
     private val AWAIT_FOREVER = setOf("awaitCancellation")
     private val EFFECT_NAMES = setOf("LaunchedEffect", "DisposableEffect", "produceState")
 
-    /** A value a keyless lambda would freeze: its name, whether it is a callback, and whether some read sits in a long-lived body. */
-    class Missing(val symbol: FirBasedSymbol<*>, val name: String, val isFunctionTyped: Boolean, val longLived: Boolean)
+    /** Whether [type] is a `SnapshotStateList`, `SnapshotStateMap` or `SnapshotStateSet`, which changes in place and keeps its identity. */
+    private fun isSnapshotCollection(session: FirSession, type: ConeKotlinType): Boolean {
+        val expanded = type.fullyExpandedType(session)
+        if (expanded.isNullableNothing) return false
+        return SNAPSHOT_COLLECTIONS.any { classId ->
+            val symbol = session.symbolProvider.getClassLikeSymbolByClassId(classId) ?: return@any false
+            val superType = classId.constructClassLikeType(Array(symbol.typeParameterSymbols.size) { ConeStarProjection }, isMarkedNullable = true)
+            AbstractTypeChecker.isSubtypeOf(session.typeContext, expanded, superType)
+        }
+    }
+
+    /**
+     * A value a keyless lambda would freeze: its name, whether it is a callback, whether some read
+     * sits in a long-lived body, and whether it is a snapshot collection whose contents the lambda
+     * reads (as the receiver of a call or a property read, or as an argument of a call).
+     */
+    class Missing(val symbol: FirBasedSymbol<*>, val name: String, val isFunctionTyped: Boolean, val longLived: Boolean, val readsSnapshotContents: Boolean)
 
     /** What one keyed call freezes: the callee, whether it is an effect, and the values its keys do not cover. */
     class KeyedCall(val callee: FirNamedFunctionSymbol, val isEffect: Boolean, val missing: List<Missing>)
@@ -101,7 +122,7 @@ internal object EffectCaptureAnalysis {
 
         val flagged = flaggedBefore(session, keyedFunctions, function, before = source.startOffset, except = lambda)
         val coverage = Coverage(
-            symbols = keys.mapNotNullTo(HashSet()) { it.unwrapped().readSymbol() },
+            symbols = keys.mapNotNullTo(HashSet()) { it.unwrapped().readSymbol() } + keys.mapNotNull { it.copiedSymbol() },
             texts = keys.mapNotNullTo(HashSet()) { it.source?.text?.toString()?.trim() } + keys.mapNotNullTo(HashSet()) { it.canonicalPath() },
             flagged = flagged,
         )
@@ -112,7 +133,9 @@ internal object EffectCaptureAnalysis {
         lambda.body?.accept(reads)
         // A body that waits for cancellation keeps everything it read for as long as the effect lives.
         if (reads.awaitForever) reads.found.values.forEach { it.longLived = true }
-        val missing = reads.found.values.sortedBy { it.offset }.map { Missing(it.symbol, it.name, flagged.isFunctionTyped(it.symbol), it.longLived) }
+        val missing = reads.found.values.sortedBy { it.offset }.map {
+            Missing(it.symbol, it.name, flagged.isFunctionTyped(it.symbol), it.longLived, it.readsContents && flagged.isSnapshotCollection(it.symbol))
+        }
         return KeyedCall(callee, isEffect, missing)
     }
 
@@ -209,17 +232,20 @@ internal object EffectCaptureAnalysis {
      * recompositions.
      */
     private class Flagged(private val session: FirSession, private val keyedFunctions: List<String>) {
-        private class Info(val name: String, val isFunctionTyped: Boolean, val dependsOn: Set<FirBasedSymbol<*>>)
+        private class Info(val name: String, val isFunctionTyped: Boolean, val isSnapshotCollection: Boolean, val dependsOn: Set<FirBasedSymbol<*>>)
 
         private val infos = linkedMapOf<FirBasedSymbol<*>, Info>()
 
         fun addParameter(symbol: FirBasedSymbol<*>, name: String, type: ConeKotlinType) {
             if (type.isState()) return
-            infos[symbol] = Info(name, type.isSomeFunctionType(session), emptySet())
+            infos[symbol] = Info(name, type.isSomeFunctionType(session), EffectCaptureAnalysis.isSnapshotCollection(session, type), emptySet())
         }
 
-        fun addLocal(symbol: FirBasedSymbol<*>, name: String, type: ConeKotlinType, dependsOn: Set<FirBasedSymbol<*>>) {
-            infos[symbol] = Info(name, type.isSomeFunctionType(session), dependsOn)
+        /** A local is a snapshot collection by its type or, under a wider declared type, by the factory that made it. */
+        fun addLocal(symbol: FirBasedSymbol<*>, name: String, type: ConeKotlinType, initializer: FirExpression, dependsOn: Set<FirBasedSymbol<*>>) {
+            val factory = (initializer.unwrapped() as? FirFunctionCall)?.calleeReference?.toResolvedNamedFunctionSymbol()?.name?.asString()
+            val isSnapshotCollection = EffectCaptureAnalysis.isSnapshotCollection(session, type) || factory in SNAPSHOT_FACTORIES
+            infos[symbol] = Info(name, type.isSomeFunctionType(session), isSnapshotCollection, dependsOn)
         }
 
         fun nameOf(symbol: FirBasedSymbol<*>): String? = infos[symbol]?.name
@@ -227,6 +253,8 @@ internal object EffectCaptureAnalysis {
         fun contains(symbol: FirBasedSymbol<*>): Boolean = symbol in infos
 
         fun isFunctionTyped(symbol: FirBasedSymbol<*>): Boolean = infos[symbol]?.isFunctionTyped == true
+
+        fun isSnapshotCollection(symbol: FirBasedSymbol<*>): Boolean = infos[symbol]?.isSnapshotCollection == true
 
         /** What a local was computed from, so that one derived only from covered values counts as covered. */
         fun dependenciesOf(symbol: FirBasedSymbol<*>): Set<FirBasedSymbol<*>> = infos[symbol]?.dependsOn.orEmpty()
@@ -281,7 +309,7 @@ internal object EffectCaptureAnalysis {
                 if (start < before && initializer != null && !flagged.isStable(initializer)) {
                     val type = property.returnTypeRef.coneType
                     val dependsOn = with(flagged) { if (type.isState()) emptySet() else initializer.flaggedReads() }
-                    if (dependsOn.isNotEmpty()) flagged.addLocal(property.symbol, property.name.asString(), type, dependsOn)
+                    if (dependsOn.isNotEmpty()) flagged.addLocal(property.symbol, property.name.asString(), type, initializer, dependsOn)
                 }
             }
             property.acceptChildren(this)
@@ -310,7 +338,10 @@ internal object EffectCaptureAnalysis {
         }
     }
 
-    private class Read(val symbol: FirBasedSymbol<*>, val name: String, val offset: Int, var longLived: Boolean)
+    private class Read(val symbol: FirBasedSymbol<*>, val name: String, val offset: Int, var longLived: Boolean) {
+        /** Whether some read uses the value for what it holds rather than for its identity. */
+        var readsContents = false
+    }
 
     /**
      * The flagged values a lambda body reads and does not cover: each with its first offset and
@@ -400,8 +431,34 @@ internal object EffectCaptureAnalysis {
             if (symbol != null && flagged.contains(symbol) && !oneShotCallback && !coverage.coversSymbol(symbol) && pathsRootedAt(propertyAccessExpression).none { coverage.coversPath(it) }) {
                 val read = found.getOrPut(symbol) { Read(symbol, flagged.nameOf(symbol)!!, offset, longLived = false) }
                 if (longLivedDepth > 0 || everythingLongLived) read.longLived = true
+                if (readsContents(propertyAccessExpression)) read.readsContents = true
             }
             visitElement(propertyAccessExpression)
+        }
+
+        /**
+         * Whether [read] is used for what it holds: the receiver of a call or a property read
+         * (`items.filter { }`, `items.size`, `for (item in items)`), or an argument of a call. The
+         * read itself is not on [ancestors] yet; argument wrappers and smart casts are looked through.
+         */
+        private fun readsContents(read: FirPropertyAccessExpression): Boolean {
+            for (ancestor in ancestors.asReversed()) {
+                when (ancestor) {
+                    is FirSmartCastExpression, is FirWrappedArgumentExpression, is FirVarargArgumentsExpression, is FirArgumentList -> continue
+                    is FirSafeCallExpression -> return ancestor.receiver.unwrapped() === read
+                    is FirQualifiedAccessExpression -> {
+                        if (ancestor.explicitReceiver?.unwrapped() === read) return true
+                        return ancestor is FirFunctionCall && ancestor.argumentList.arguments.any { it.isOrHolds(read) }
+                    }
+                    else -> return false
+                }
+            }
+            return false
+        }
+
+        private fun FirExpression.isOrHolds(read: FirExpression): Boolean = when (val argument = unwrapArgument()) {
+            is FirVarargArgumentsExpression -> argument.arguments.any { it.isOrHolds(read) }
+            else -> argument.unwrapped() === read
         }
 
         /** Once the body reaches `awaitCancellation()`, everything it read stays captured for as long as the effect lives. */
@@ -511,4 +568,16 @@ internal object EffectCaptureAnalysis {
     fun FirExpression.unwrapArgument(): FirExpression = if (this is FirWrappedArgumentExpression) expression else this
 
     private fun FirExpression.readSymbol(): FirCallableSymbol<*>? = (this as? FirPropertyAccessExpression)?.calleeReference?.toResolvedCallableSymbol()
+
+    /**
+     * The value a key copies whole, `items` for `items.toList()` (any `to...()` call without
+     * arguments): the copy changes whenever the contents do, which is what keying on a snapshot
+     * collection needs, since the collection itself keeps its identity.
+     */
+    private fun FirExpression.copiedSymbol(): FirCallableSymbol<*>? {
+        val call = unwrapArgument().unwrapped() as? FirFunctionCall ?: return null
+        val name = call.calleeReference.toResolvedNamedFunctionSymbol()?.name?.asString() ?: return null
+        if (!name.startsWith("to") || call.argumentList.arguments.isNotEmpty()) return null
+        return call.explicitReceiver?.unwrapped()?.readSymbol()
+    }
 }

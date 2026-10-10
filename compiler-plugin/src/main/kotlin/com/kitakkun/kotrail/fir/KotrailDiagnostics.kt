@@ -223,6 +223,9 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Arguments: the callee and its parameter, the values the passed lambda reads; reported on the argument of a call to a composable that keeps that parameter in a long-lived effect. */
     val EFFECT_CAPTURED_BY_CALLEE = tunable2<KtElement, String, String>("EFFECT_CAPTURED_BY_CALLEE", KotrailRule.COMPOSE_REMEMBER_KEYS, WHOLE)
 
+    /** Argument: the key as written; reported on a key of `remember`, `LaunchedEffect` and their kin that never changes while the composable lives. */
+    val REDUNDANT_KEY = tunable1<KtElement, String>("REDUNDANT_KEY", KotrailRule.COMPOSE_REMEMBER_KEYS, WHOLE)
+
     /** Arguments: the wait as written, what started the work and how to wait for it properly; reported on a fixed delay that follows a call starting asynchronous work. */
     val DELAY_WAITS_FOR_ASYNC_WORK = tunable2<KtElement, String, String>("DELAY_WAITS_FOR_ASYNC_WORK", KotrailRule.DELAY_FOR_COMPLETION, WHOLE)
 
@@ -866,7 +869,8 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         map.put2(
             KotrailDiagnostics.EFFECT_KEY_MISSING,
             "[Kotrail] The lambda of ''{0}'' reads {1}, which its keys do not cover: when that changes, the lambda keeps " +
-                "the value it saw first. If ''{0}'' should run again when it changes, add it to the keys; if only the latest " +
+                "the value it saw first. If ''{0}'' should run again when it changes, add it to the keys (for a snapshot " +
+                "collection, which keeps its identity while its contents change, key on a snapshot of it); if only the latest " +
                 "value matters while it runs, read it through rememberUpdatedState (per value, or one lambda that does the " +
                 "work); if it never changes, say so with a stable holder (a remembered object or a member val) and the rule " +
                 "stays quiet.",
@@ -875,6 +879,11 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             KotrailDiagnostics.EFFECT_CAPTURED_BY_CALLEE,
             "[Kotrail] {0} keeps this lambda for the life of its effect, and the lambda reads {1}: when that changes, the " +
                 "effect keeps the value it saw first. Keep it current with rememberUpdatedState.",
+        )
+        map.put1(
+            KotrailDiagnostics.REDUNDANT_KEY,
+            "[Kotrail] ''{0}'' never changes while this composable lives, so it says nothing as a key: a key means " +
+                "\"restart when this changes\". Drop it (use Unit for once).",
         )
         map.put2(
             KotrailDiagnostics.DELAY_WAITS_FOR_ASYNC_WORK,
