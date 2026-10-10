@@ -46,6 +46,10 @@ import org.jetbrains.kotlin.fir.expressions.FirSmartCastExpression
 import org.jetbrains.kotlin.fir.expressions.FirStringConcatenationCall
 import org.jetbrains.kotlin.fir.expressions.FirThisReceiverExpression
 import org.jetbrains.kotlin.fir.expressions.FirVarargArgumentsExpression
+import org.jetbrains.kotlin.fir.expressions.FirWhenBranch
+import org.jetbrains.kotlin.fir.expressions.FirWhenExpression
+import org.jetbrains.kotlin.fir.expressions.impl.FirElseIfTrueCondition
+import org.jetbrains.kotlin.fir.expressions.isExhaustive
 import org.jetbrains.kotlin.fir.expressions.arguments
 import org.jetbrains.kotlin.fir.expressions.resolvedArgumentMapping
 import org.jetbrains.kotlin.fir.expressions.unwrapArgument
@@ -95,12 +99,20 @@ import java.util.WeakHashMap
  * `baseUrl`, `implClassName` pass, `ffmpeg` does not. A value read back from another class's
  * property is not followed.
  *
+ * A kind the value reaches only in some branches of a `when` or an `if` whose subject and
+ * conditions do not read the value is not one it holds: in
+ * `when (type) { JSON -> Json.parseToJsonElement(text); STRING -> JsonPrimitive(text) }`, `text`
+ * is JSON only when `type` says so. It holds the kind when it reaches it in every branch of a
+ * `when` that covers every case, or outside such branches.
+ *
  * Each API entry names the kind of text it takes; the kinds table gives each kind its words, the
  * first being the suggested suffix. The four path kinds share their words: the head of a path
  * constructor or factory given two or more parts (`File(parent, child)`, `Path.of(a, b)`), the start
  * of a `"$x/..."` template, and a file or path used as a directory right away
  * (`File(x).mkdirs()`) hold a directory, whose suggestion is `<name>Dir`. A value that reaches
  * several kinds passes with a word of any of them, and the suggestion follows the first reached.
+ * A name that is one word with no role of its own (`text`, `value`, `raw`, `s`; see
+ * [GENERIC_NAMES]) is asked for the kind's word alone (`json`, `path`), not `textJson`.
  *
  * The rename to the suggestion is recorded as a fix when every use is known: a local `val`, a
  * lambda parameter, a private `val` property that is not a constructor parameter, or a
@@ -164,6 +176,15 @@ object NoAmbiguousStringNameChecker {
 
     private val TEXT_TYPES = setOf(StandardClassIds.String, StandardClassIds.CharSequence)
 
+    /** Names that say only that the value is text, which the kind's word replaces rather than follows. */
+    private val GENERIC_NAMES = setOf("text", "value", "line", "string", "raw", "input", "content", "str", "s")
+
+    /** Hard keywords a kind's word can be, which cannot be a name on their own. */
+    private val KEYWORDS = setOf(
+        "as", "break", "class", "continue", "do", "else", "false", "for", "fun", "if", "in", "interface", "is", "null",
+        "object", "package", "return", "super", "this", "throw", "true", "try", "typealias", "typeof", "val", "var", "when", "while",
+    )
+
     /** Reports a property or a local that is a finding of its file. */
     object Properties : FirPropertyChecker(MppCheckerKind.Common) {
         context(context: CheckerContext, reporter: DiagnosticReporter)
@@ -207,18 +228,53 @@ object NoAmbiguousStringNameChecker {
 
         val findings = HashMap<Int, Finding>()
         for ((symbol, subject) in walker.subjects) {
-            val reaches = walker.reachesOf(symbol)
+            val reaches = walker.reachesOf(symbol).groupBy { it.use.kindIn(table).name }
+                .filterValues { reachesOfKind -> alwaysReached(reachesOfKind.map { it.branches }, level = 0) }
+                .values.flatten().sortedWith(compareBy({ it.order }, { it.use.at.startOffset }))
             if (reaches.isEmpty()) continue
             val kinds = reaches.map { it.use.kindIn(table) }.distinctBy { it.name }
             val nameWords = subject.name.words()
             if (kinds.any { it.isSaidBy(nameWords) }) continue
-            val suggestion = subject.name.withSuffix(kinds.first().suffix)
+            val suggestion = suggestedName(subject.name, kinds.first().suffix)
             val words = kinds.flatMap { it.words }.distinctBy { it.lowercase() }
             val advice = "'$suggestion', or any name that carries one of ${words.joinToString()}"
             val holds = describe(reaches, table, file)
             findings[subject.source.startOffset] = Finding(subject.source, subject.name, holds, advice, renameFix(symbol, subject, suggestion, walker))
         }
         return findings
+    }
+
+    /**
+     * Whether the uses whose branches are [chains] (outermost first, each list sharing the first
+     * [level] branches) reach the API whatever branches run: one of them runs in no further branch,
+     * or a `when` that covers every case has one in each of its branches, recursively.
+     */
+    private fun alwaysReached(chains: List<List<Branch>>, level: Int): Boolean {
+        if (chains.any { it.size == level }) return true
+        for ((whenExpression, inWhen) in chains.groupBy { it[level].whenExpression }) {
+            if (!whenExpression.coversEveryCase()) continue
+            val byBranch = inWhen.groupBy { it[level].index }
+            if (whenExpression.branches.indices.all { index -> byBranch[index]?.let { alwaysReached(it, level + 1) } == true }) return true
+        }
+        return false
+    }
+
+    /** Whether one of the branches always runs: an `else`, or an exhaustive `when` over a sealed type, an enum or a Boolean. */
+    private fun FirWhenExpression.coversEveryCase(): Boolean = isExhaustive || branches.any { it.condition is FirElseIfTrueCondition }
+
+    /**
+     * The name [name] is asked for: the kind's [word] alone for a name that says only that it is text
+     * (`text` gives `json`), as long as that is no keyword, else the name followed by it (`ffmpegPath`).
+     */
+    private fun suggestedName(name: String, word: String): String {
+        val words = name.words()
+        if (words.size != 1 || words.single() !in GENERIC_NAMES) return name.withSuffix(word)
+        val alone = if (name.any { it.isLetter() } && name.none { it.isLowerCase() }) {
+            word.words().joinToString("_").uppercase()
+        } else {
+            word.replaceFirstChar { it.lowercaseChar() }
+        }
+        return if (alone in KEYWORDS) name.withSuffix(word) else alone
     }
 
     /**
@@ -284,8 +340,17 @@ object NoAmbiguousStringNameChecker {
     /** An `apis` entry: the kind of text the callable takes, and which argument takes it. */
     private class Api(val kind: TextKind, val argument: KotrailStringArgument)
 
-    /** Where a subject's value reaches an API: the call site, the kind of text the API takes, and its short name. */
-    private class Use(val at: KtSourceElement, val kind: TextKind, val api: String) {
+    /**
+     * A branch of a `when` or an `if` (by its index in [whenExpression]) that code runs in only when the
+     * branch is taken, and whose subject and conditions do not read the value followed.
+     */
+    private class Branch(val whenExpression: FirWhenExpression, val index: Int)
+
+    /**
+     * Where a subject's value reaches an API: the call site, the kind of text the API takes, its short
+     * name, and the branches the call runs in (see [Branch]), outermost first.
+     */
+    private class Use(val at: KtSourceElement, val kind: TextKind, val api: String, val branches: List<Branch>) {
         /** Set when the created `File` or `Path` is used as a directory right away. */
         var usedAsDirectory = false
 
@@ -294,17 +359,31 @@ object NoAmbiguousStringNameChecker {
             if (usedAsDirectory && (kind.name == FILE || kind.name == PATH)) table.directory ?: kind else kind
 
         /** The same use reached through a path built on the value. */
-        fun underPath(table: KindTable): Use = Use(at, table.underPath(kindIn(table)), api)
+        fun underPath(table: KindTable): Use = Use(at, table.underPath(kindIn(table)), api, branches)
     }
 
-    /** A use a subject reaches, at [order]: the offset of the call for its own, of the hand-over for one a hop away. */
-    private class Reach(val use: Use, val order: Int)
+    /**
+     * A use a subject reaches, at [order]: the offset of the call for its own, of the hand-over for one a
+     * hop away; [branches], those the use runs in, the hand-over's included.
+     */
+    private class Reach(val use: Use, val order: Int, val branches: List<Branch>)
 
     /** How a hop hands a subject's value to its holder. */
     private enum class HopKind { LOCAL, PARAMETER, COMMAND_HEAD, TEMPLATE_HEAD }
 
-    /** [holder] (a local, a same-file parameter or function) carries [subject]'s value one hop on, handed over at [order]. */
-    private class Hop(val holder: FirBasedSymbol<*>, val subject: FirBasedSymbol<*>, val kind: HopKind, val order: Int)
+    /**
+     * [holder] (a local, a same-file parameter or function) carries [subject]'s value one hop on, handed
+     * over at [order], in [branches] (see [Branch]); [enclosing] are all the `when`s around the
+     * hand-over, which a local's uses inside them run in too and are judged by the hand-over.
+     */
+    private class Hop(
+        val holder: FirBasedSymbol<*>,
+        val subject: FirBasedSymbol<*>,
+        val kind: HopKind,
+        val order: Int,
+        val branches: List<Branch>,
+        val enclosing: Set<FirWhenExpression>,
+    )
 
     /**
      * One walk of the file: the subjects it declares, the API calls their values reach
@@ -340,7 +419,7 @@ object NoAmbiguousStringNameChecker {
          * directory of a path use.
          */
         fun reachesOf(symbol: FirBasedSymbol<*>): List<Reach> {
-            val own = direct[symbol].orEmpty().map { Reach(it, it.at.startOffset) }
+            val own = direct[symbol].orEmpty().map { Reach(it, it.at.startOffset, it.branches) }
             val hopped = hops.filter { it.subject == symbol }.flatMap { hop ->
                 val uses = direct[hop.holder].orEmpty()
                 val carried = when (hop.kind) {
@@ -348,7 +427,11 @@ object NoAmbiguousStringNameChecker {
                     HopKind.COMMAND_HEAD -> uses.filter { it.kind.name == EXECUTABLE }
                     HopKind.TEMPLATE_HEAD -> uses.map { it.underPath(table) }
                 }
-                carried.map { Reach(it, hop.order) }
+                // A branch around the hand-over is judged there; one whose condition reads the subject is about the value too.
+                carried.map { use ->
+                    val further = use.branches.filter { it.whenExpression !in hop.enclosing && !it.whenExpression.reads(hop.subject) }
+                    Reach(use, hop.order, hop.branches + further)
+                }
             }
             return (own + hopped).sortedWith(compareBy({ it.order }, { it.use.at.startOffset }))
         }
@@ -405,7 +488,7 @@ object NoAmbiguousStringNameChecker {
                     val parameter = function.valueParameters.firstOrNull() ?: return
                     if (parameter.source?.kind !is KtFakeSourceElementKind) {
                         val receiver = call.extensionReceiver ?: return
-                        receiver.subjectAccess(ownOnly = true)?.let { hops += Hop(parameter.symbol, it, HopKind.LOCAL, call.offset()) }
+                        receiver.subjectAccess(ownOnly = true)?.let { hops += hop(parameter.symbol, it, HopKind.LOCAL, call.offset()) }
                         return
                     }
                     (call.extensionReceiver ?: return) to parameter.symbol
@@ -443,16 +526,16 @@ object NoAmbiguousStringNameChecker {
         /** How [value], held by [holder], carries a subject: as itself ([plain]), as the head of a command list, or under a template. */
         private fun collectHops(holder: FirBasedSymbol<*>, value: FirExpression, plain: HopKind) {
             val order = value.offset()
-            value.subjectAccess(ownOnly = true)?.let { hops += Hop(holder, it, plain, order) }
-            commandHead(value)?.subjectAccess(ownOnly = true)?.let { hops += Hop(holder, it, HopKind.COMMAND_HEAD, order) }
-            value.templateHead(ownOnly = true)?.let { hops += Hop(holder, it, HopKind.TEMPLATE_HEAD, order) }
+            value.subjectAccess(ownOnly = true)?.let { hops += hop(holder, it, plain, order) }
+            commandHead(value)?.subjectAccess(ownOnly = true)?.let { hops += hop(holder, it, HopKind.COMMAND_HEAD, order) }
+            value.templateHead(ownOnly = true)?.let { hops += hop(holder, it, HopKind.TEMPLATE_HEAD, order) }
         }
 
         /** A named function that returns a command list headed by a subject: `fun command() = buildList { add(adb) }`. */
         private fun collectReturn(returned: FirReturnExpression) {
             val function = returned.target.labeledElement as? FirNamedFunction ?: return
             val head = commandHead(returned.result)?.subjectAccess(ownOnly = true) ?: return
-            hops += Hop(function.symbol, head, HopKind.COMMAND_HEAD, returned.offset())
+            hops += hop(function.symbol, head, HopKind.COMMAND_HEAD, returned.offset())
         }
 
         private fun collectParameter(parameter: FirValueParameter) {
@@ -517,10 +600,52 @@ object NoAmbiguousStringNameChecker {
                     multiPart && entry.kind.name == FILE -> table.directory ?: entry.kind
                     else -> entry.kind
                 }
-                val use = Use(at, kind, api)
+                val use = Use(at, kind, api, branchesFor(subject))
                 useByCall.getOrPut(call) { mutableListOf() } += use
                 direct.getOrPut(subject) { mutableListOf() } += use
             }
+        }
+
+        /** A hop handed over where the walk is now, with the branches it runs in. */
+        private fun hop(holder: FirBasedSymbol<*>, subject: FirBasedSymbol<*>, kind: HopKind, order: Int): Hop =
+            Hop(holder, subject, kind, order, branchesFor(subject), ancestors.filterIsInstance<FirWhenExpression>().toSet())
+
+        /**
+         * The branches of a `when` or an `if` that the element the walk is at runs in, outermost first:
+         * those whose result holds it (not their condition), of a `when` whose subject and conditions do
+         * not read [symbol].
+         */
+        private fun branchesFor(symbol: FirBasedSymbol<*>): List<Branch> {
+            val branches = ArrayList<Branch>()
+            for (at in 0 until ancestors.size - 1) {
+                val whenExpression = ancestors[at] as? FirWhenExpression ?: continue
+                val branch = ancestors[at + 1] as? FirWhenBranch ?: continue
+                if (ancestors.getOrNull(at + 2) !== branch.result) continue
+                if (whenExpression.reads(symbol)) continue
+                branches += Branch(whenExpression, whenExpression.branches.indexOf(branch))
+            }
+            return branches
+        }
+
+        /** Whether the subject or a condition of this `when` reads [symbol], as itself or through a scope function's `it` or `this`. */
+        private fun FirWhenExpression.reads(symbol: FirBasedSymbol<*>): Boolean {
+            var found = false
+            val visitor = object : FirVisitorVoid() {
+                override fun visitElement(element: FirElement) {
+                    if (found) return
+                    if (element is FirWhenBranch) {
+                        element.condition.accept(this)
+                        return
+                    }
+                    if (element is FirExpression && element !is FirFunctionCall && element.subjectAccess(ownOnly = false) == symbol) {
+                        found = true
+                        return
+                    }
+                    element.acceptChildren(this)
+                }
+            }
+            acceptChildren(visitor)
+            return found
         }
 
         /** `File(x).mkdirs()`, `File(x).isDirectory`: the path names a directory. */

@@ -42,7 +42,10 @@ tool, a command line or a path, and has to find the one line where the value rea
 flows into, and asks the name to carry a word of that kind. The message suggests the name with
 the kind's first word as a suffix (`ffmpegPath`, `baseUrl`, `ruleRegex`, `IMPL_CLASS_NAME` for a
 constant) and lists the other words that pass too: `ffmpegExecutable`, `homeEndpoint`,
-`rulePattern`.
+`rulePattern`. A name that is one word saying only that the value is text (`text`, `value`,
+`line`, `string`, `raw`, `input`, `content`, `str`, `s`) has no role to keep, so the suggestion is
+the kind's word alone: `text` handed to `decodeFromString` is asked for `json`, `value` handed to
+`File` for `path`, `RAW` for `JSON`.
 
 ## Kinds and APIs
 
@@ -117,6 +120,15 @@ follows the kind it reaches first, and the message names each kind it reaches.
     or `val sdk = "$userHome/sdk"; File(sdk)`, report `base` and `userHome` as directories, and
     `URI("$base/users")` reports `base` as a URL. A value later in the template is not
     followed: in `File("$top/$name")`, `name` is a file name and stays quiet.
+- It reaches the API whatever branches run. A use inside a branch of a `when` or an `if` whose
+  subject and conditions do not read the value counts only when every branch of a `when` that
+  covers every case (an `else`, or an exhaustive `when` over an enum, a sealed type or a
+  `Boolean`) reaches the same kind; a use outside such branches always counts. In
+  `when (type) { JSON -> format.decodeFromString(text); STRING -> text }`, `text` is JSON only
+  when `type` says so, and the rule does not ask its name to say JSON; in
+  `if (text.startsWith("[")) format.decodeFromString(text)` the condition reads the value itself,
+  and the use counts. This holds for every kind, and for the hops below: a local's use inside a
+  branch whose condition reads the value the local was initialized from counts too.
 - Its name carries no word of any kind it reaches.
 
 The message says what the value holds, the API it reaches and the line, the suggested name, and
@@ -150,6 +162,8 @@ files; the message still suggests the name.
 - A command list that never reaches a process API: `val arguments = listOf(tar, "-x"); println(arguments)`.
 - A string template the value does not start, or that does not continue with `/`
   (`"$stem.log"`, `"x$prefix/y"`).
+- The value reaches the API only in some branches of a `when` or an `if` that is not about the
+  value: `if (verbose) File(target).exists()`, or one branch of `when (type)` of several.
 - The declaration is not in the file: the parameters of the APIs themselves, or a property of a
   class in another file.
 - An `override`, `expect` or `actual` declaration, whose name the supertype or the other side
@@ -228,7 +242,8 @@ explain what a parameter holds, which is the name's job.
 ## Fixtures
 
 `compiler-tests/testData/diagnostics/noAmbiguousStringName.kt` for the path kinds and the flow
-tracking, `noAmbiguousStringNameKinds.kt` for the other kinds, `noAmbiguousStringNameApis.kt`
+tracking, `noAmbiguousStringNameKinds.kt` for the other kinds, `noAmbiguousStringNameBranches.kt`
+for uses in branches and names that say only that they hold text, `noAmbiguousStringNameApis.kt`
 for a replaced `apis` list, `noAmbiguousStringNameExtra.kt` for `extraApis` and `extraKinds`,
 each with its messages in the `.diag.txt` beside it; the rename of a local with its uses, a
 string template included, and one whose new name appears only in a comment and a string

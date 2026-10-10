@@ -1,0 +1,15 @@
+/noAmbiguousStringNameBranches.kt:(986,992): error: [Kotrail] 'target' holds a file path (it reaches 'File' at noAmbiguousStringNameBranches.kt:29), but its name does not say so: name it 'targetPath', or any name that carries one of path, file, dir, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringNameBranches.kt:(1156,1162): error: [Kotrail] 'target' holds a file path (it reaches 'File' at noAmbiguousStringNameBranches.kt:34), but its name does not say so: name it 'targetPath', or any name that carries one of path, file, dir, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringNameBranches.kt:(1349,1355): error: [Kotrail] 'target' holds a file path (it reaches 'File' at noAmbiguousStringNameBranches.kt:39), but its name does not say so: name it 'targetPath', or any name that carries one of path, file, dir, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringNameBranches.kt:(1600,1606): error: [Kotrail] 'target' holds a file path (it reaches 'File' at noAmbiguousStringNameBranches.kt:45), but its name does not say so: name it 'targetPath', or any name that carries one of path, file, dir, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringNameBranches.kt:(1795,1799): error: [Kotrail] 'text' holds JSON (it reaches 'StringFormat.decodeFromString' at noAmbiguousStringNameBranches.kt:50), but its name does not say so: name it 'json', or any name that carries one of json, body, payload, response, request. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringNameBranches.kt:(1881,1886): error: [Kotrail] 'value' holds a file path (it reaches 'File' at noAmbiguousStringNameBranches.kt:52), but its name does not say so: name it 'path', or any name that carries one of path, file, dir, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringNameBranches.kt:(1929,1930): error: [Kotrail] 's' holds a class name (it reaches 'Class.forName' at noAmbiguousStringNameBranches.kt:54), but its name does not say so: name it 'className', or any name that carries one of className, class. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringNameBranches.kt:(1978,1981): error: [Kotrail] 'RAW' holds a URL (it reaches 'URI' at noAmbiguousStringNameBranches.kt:58), but its name does not say so: name it 'URL', or any name that carries one of url, uri, endpoint, link, href. (KOTRAIL_STRING_NAME_HIDES_KIND)

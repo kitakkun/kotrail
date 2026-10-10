@@ -4,13 +4,13 @@
 
 /noAmbiguousStringNameKinds.kt:34:11: error: [Kotrail] 'separator' holds a regular expression (it reaches 'String.toRegex' at noAmbiguousStringNameKinds.kt:34), but its name does not say so: name it 'separatorRegex', or any name that carries one of regex, pattern, expression. (KOTRAIL_STRING_NAME_HIDES_KIND)
 
-/noAmbiguousStringNameKinds.kt:37:32: error: [Kotrail] 'raw' holds JSON (it reaches 'StringFormat.decodeFromString' at noAmbiguousStringNameKinds.kt:37), but its name does not say so: name it 'rawJson', or any name that carries one of json, body, payload, response, request. (KOTRAIL_STRING_NAME_HIDES_KIND)
+/noAmbiguousStringNameKinds.kt:37:32: error: [Kotrail] 'raw' holds JSON (it reaches 'StringFormat.decodeFromString' at noAmbiguousStringNameKinds.kt:37), but its name does not say so: name it 'json', or any name that carries one of json, body, payload, response, request. (KOTRAIL_STRING_NAME_HIDES_KIND)
 
 /noAmbiguousStringNameKinds.kt:39:89: error: [Kotrail] 'cached' holds JSON (it reaches 'StringFormat.decodeFromString' at noAmbiguousStringNameKinds.kt:40), but its name does not say so: name it 'cachedJson', or any name that carries one of json, body, payload, response, request. (KOTRAIL_STRING_NAME_HIDES_KIND)
 
 /noAmbiguousStringNameKinds.kt:46:13: error: [Kotrail] 'token' holds an identifier (it reaches 'UUID.fromString' at noAmbiguousStringNameKinds.kt:46), but its name does not say so: name it 'tokenId', or any name that carries one of id, uuid, identifier, key. (KOTRAIL_STRING_NAME_HIDES_KIND)
 
-/noAmbiguousStringNameKinds.kt:52:9: error: [Kotrail] 'input' holds a date or time (it reaches 'LocalDate.parse' at noAmbiguousStringNameKinds.kt:52), but its name does not say so: name it 'inputDate', or any name that carries one of date, time, timestamp, instant, iso. (KOTRAIL_STRING_NAME_HIDES_KIND)
+/noAmbiguousStringNameKinds.kt:52:9: error: [Kotrail] 'input' holds a date or time (it reaches 'LocalDate.parse' at noAmbiguousStringNameKinds.kt:52), but its name does not say so: name it 'date', or any name that carries one of date, time, timestamp, instant, iso. (KOTRAIL_STRING_NAME_HIDES_KIND)
 
 /noAmbiguousStringNameKinds.kt:58:15: error: [Kotrail] 'fmt' holds a format pattern (it reaches 'DateTimeFormatter.ofPattern' at noAmbiguousStringNameKinds.kt:58), but its name does not say so: name it 'fmtPattern', or any name that carries one of pattern, format, formatter. (KOTRAIL_STRING_NAME_HIDES_KIND)
 
