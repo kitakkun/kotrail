@@ -1,4 +1,5 @@
 // KOTRAIL_CONFIG: rules.noSwapThroughAlso=on
+// RENDER_DIAGNOSTICS_FULL_TEXT
 class Bitmap : AutoCloseable {
     override fun close() {}
 }
@@ -14,6 +15,7 @@ var shared: Bitmap? = null
 class FrameSlot {
     private val lock = Any()
     private var ready: Bitmap? = null
+    private var current = Bitmap()
     private var showingKeptFrame = true
     private var frameCounter = 0
     private var onReset: () -> Unit = {}
@@ -58,6 +60,18 @@ class FrameSlot {
     fun takeLogged(): Bitmap? = ready.<!KOTRAIL_SWAP_THROUGH_ALSO!>also<!> {
         log(it)
         ready = null
+    }
+
+    // Reported, and the message adds that the block never uses the value: the also is there only to keep the old one.
+    fun swapUnused(frame: Bitmap): Bitmap? = ready.<!KOTRAIL_SWAP_THROUGH_ALSO!>also<!> { ready = frame }
+
+    // Reported without that clause: the block reads it before clearing the variable.
+    fun closeAndTake(): Bitmap? = ready.<!KOTRAIL_SWAP_THROUGH_ALSO!>also<!> { it?.close(); ready = null }
+
+    // Reported without that clause: close() is called on apply's receiver, while current = frame assigns this class's property.
+    fun swapCurrent(frame: Bitmap): Bitmap = current.<!KOTRAIL_SWAP_THROUGH_ALSO!>apply<!> {
+        close()
+        current = frame
     }
 
     // Reported: the last expression of a braced branch whose value is used.

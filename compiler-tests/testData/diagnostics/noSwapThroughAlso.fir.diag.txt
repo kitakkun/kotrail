@@ -1,0 +1,31 @@
+/noSwapThroughAlso.kt:(693,697): error: [Kotrail] This also returns the previous value of 'ready' while its block assigns 'ready'; the block never uses it, so the also only keeps the old value. Name the previous value (val previous = ready) and assign on its own line. (KOTRAIL_SWAP_THROUGH_ALSO)
+
+/noSwapThroughAlso.kt:(969,973): error: [Kotrail] This also returns the previous value of 'ready' while its block assigns 'ready'; the block never uses it, so the also only keeps the old value. Name the previous value (val previous = ready) and assign on its own line. (KOTRAIL_SWAP_THROUGH_ALSO)
+
+/noSwapThroughAlso.kt:(1134,1139): error: [Kotrail] This apply returns the previous value of 'ready' while its block assigns 'ready'; the block never uses it, so the apply only keeps the old value. Name the previous value (val previous = ready) and assign on its own line. (KOTRAIL_SWAP_THROUGH_ALSO)
+
+/noSwapThroughAlso.kt:(1320,1323): error: [Kotrail] This run hands its block the previous value of 'ready' while its block assigns 'ready'; the block never uses it, so the run takes the old value only to drop it. Name the previous value (val previous = ready) and assign on its own line. (KOTRAIL_SWAP_THROUGH_ALSO)
+
+/noSwapThroughAlso.kt:(1486,1489): error: [Kotrail] This let hands its block the previous value of 'ready' while its block assigns 'ready': the old value comes out and the new one goes in, in one expression that reads as neither. Name the previous value (val previous = ready) and assign on its own line. (KOTRAIL_SWAP_THROUGH_ALSO)
+
+/noSwapThroughAlso.kt:(1674,1678): error: [Kotrail] This also returns the previous value of 'ready' while its block assigns 'ready': the old value comes out and the new one goes in, in one expression that reads as neither. Name the previous value (val previous = ready) and assign on its own line. (KOTRAIL_SWAP_THROUGH_ALSO)
+
+/noSwapThroughAlso.kt:(1895,1899): error: [Kotrail] This also returns the previous value of 'ready' while its block assigns 'ready'; the block never uses it, so the also only keeps the old value. Name the previous value (val previous = ready) and assign on its own line. (KOTRAIL_SWAP_THROUGH_ALSO)
+
+/noSwapThroughAlso.kt:(2045,2049): error: [Kotrail] This also returns the previous value of 'ready' while its block assigns 'ready': the old value comes out and the new one goes in, in one expression that reads as neither. Name the previous value (val previous = ready) and assign on its own line. (KOTRAIL_SWAP_THROUGH_ALSO)
+
+/noSwapThroughAlso.kt:(2263,2268): error: [Kotrail] This apply returns the previous value of 'current' while its block assigns 'current': the old value comes out and the new one goes in, in one expression that reads as neither. Name the previous value (val previous = current) and assign on its own line. (KOTRAIL_SWAP_THROUGH_ALSO)
+
+/noSwapThroughAlso.kt:(2585,2589): error: [Kotrail] This also returns the previous value of 'ready' while its block assigns 'ready'; the block never uses it, so the also only keeps the old value. Name the previous value (val previous = ready) and assign on its own line. (KOTRAIL_SWAP_THROUGH_ALSO)
+
+/noSwapThroughAlso.kt:(2865,2869): error: [Kotrail] This also returns the previous value of 'ready' while its block assigns 'ready'; the block never uses it, so the also only keeps the old value. Name the previous value (val previous = ready) and assign on its own line. (KOTRAIL_SWAP_THROUGH_ALSO)
+
+/noSwapThroughAlso.kt:(4387,4391): error: [Kotrail] This also returns the previous value of 'ready' while its block assigns 'ready'; the block never uses it, so the also only keeps the old value. Name the previous value (val previous = ready) and assign on its own line. (KOTRAIL_SWAP_THROUGH_ALSO)
+
+/noSwapThroughAlso.kt:(4568,4572): error: [Kotrail] This also returns the previous value of 'ready' while its block assigns 'ready'; the block never uses it, so the also only keeps the old value. Name the previous value (val previous = ready) and assign on its own line. (KOTRAIL_SWAP_THROUGH_ALSO)
+
+/noSwapThroughAlso.kt:(4701,4705): error: [Kotrail] This also returns the previous value of 'frameCounter' while its block assigns 'frameCounter'; the block never uses it, so the also only keeps the old value. Name the previous value (val previous = frameCounter) and assign on its own line. (KOTRAIL_SWAP_THROUGH_ALSO)
+
+/noSwapThroughAlso.kt:(5336,5340): error: [Kotrail] This also returns the previous value of 'current' while its block assigns 'current'; the block never uses it, so the also only keeps the old value. Name the previous value (val previous = current) and assign on its own line. (KOTRAIL_SWAP_THROUGH_ALSO)
+
+/noSwapThroughAlso.kt:(5800,5804): error: [Kotrail] This also returns the previous value of 'shared' while its block assigns 'shared'; the block never uses it, so the also only keeps the old value. Name the previous value (val previous = shared) and assign on its own line. (KOTRAIL_SWAP_THROUGH_ALSO)

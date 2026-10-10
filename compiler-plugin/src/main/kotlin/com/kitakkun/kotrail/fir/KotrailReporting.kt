@@ -48,14 +48,13 @@ internal fun reportKotrail(source: KtSourceElement?, diagnostic: TunableDiagnost
     reportKotrail(source, diagnostic, a, b, emptyList())
 
 context(context: CheckerContext, reporter: DiagnosticReporter)
-internal fun reportKotrail(source: KtSourceElement?, diagnostic: TunableDiagnostic3<String, String, String>, a: String, b: String, c: String) =
-    report(source, diagnostic.rule, diagnostic.baseName, diagnostic::at, emptyList()) { element, note, severity, factory ->
-        when (element) {
-            is KtPsiSourceElement -> KtPsiDiagnosticWithParameters4(element, a, b, c, note, severity, factory, factory.defaultPositioningStrategy, context)
-            is KtLightSourceElement -> KtLightDiagnosticWithParameters4(element, a, b, c, note, severity, factory, factory.defaultPositioningStrategy, context)
-            else -> KtOffsetsOnlyDiagnosticWithParameters4(element, a, b, c, note, severity, factory, factory.defaultPositioningStrategy, context)
-        }
-    }
+internal fun reportKotrail(
+    source: KtSourceElement?,
+    diagnostic: TunableDiagnostic3<String, String, String>,
+    a: String,
+    b: String,
+    c: String,
+) = reportKotrail(source, diagnostic, a, b, c, emptyList())
 
 /**
  * The variants with [fix]: the edits that make the diagnostic go away, applied by `kotrailFix`.
@@ -94,6 +93,22 @@ internal fun reportKotrail(
         is KtPsiSourceElement -> KtPsiDiagnosticWithParameters3(element, a, b, note, severity, factory, factory.defaultPositioningStrategy, context)
         is KtLightSourceElement -> KtLightDiagnosticWithParameters3(element, a, b, note, severity, factory, factory.defaultPositioningStrategy, context)
         else -> KtOffsetsOnlyDiagnosticWithParameters3(element, a, b, note, severity, factory, factory.defaultPositioningStrategy, context)
+    }
+}
+
+context(context: CheckerContext, reporter: DiagnosticReporter)
+internal fun reportKotrail(
+    source: KtSourceElement?,
+    diagnostic: TunableDiagnostic3<String, String, String>,
+    a: String,
+    b: String,
+    c: String,
+    fix: List<FixEdit>,
+) = report(source, diagnostic.rule, diagnostic.baseName, diagnostic::at, fix) { element, note, severity, factory ->
+    when (element) {
+        is KtPsiSourceElement -> KtPsiDiagnosticWithParameters4(element, a, b, c, note, severity, factory, factory.defaultPositioningStrategy, context)
+        is KtLightSourceElement -> KtLightDiagnosticWithParameters4(element, a, b, c, note, severity, factory, factory.defaultPositioningStrategy, context)
+        else -> KtOffsetsOnlyDiagnosticWithParameters4(element, a, b, c, note, severity, factory, factory.defaultPositioningStrategy, context)
     }
 }
 

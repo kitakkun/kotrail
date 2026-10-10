@@ -80,7 +80,9 @@ import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
  * returns: the block itself and the in-place lambdas inside it, not a lambda stored for later,
  * a local function or a local class. A call whose value nobody consumes is left alone: with the
  * value dropped, nothing old comes out, and the block reads as using the variable and then
- * replacing it. Test source sets are not looked at.
+ * replacing it. Test source sets are not looked at. When the block reads neither its parameter nor
+ * its receiver, the message says so: that unused value is the tell that the call is there only for
+ * the old value.
  *
  * The fix is recorded for a function that returns its receiver (`also`, `apply`) whose trailing
  * lambda reads neither its parameter nor its receiver and declares nothing at its top level, when
@@ -115,8 +117,15 @@ object NoSwapThroughAlsoChecker : FirFunctionCallChecker(MppCheckerKind.Common) 
         val returnsReceiver = callee.returnsReceiver()
         val name = callee.name.asString()
         val action = if (returnsReceiver) "$name returns" else "$name hands its block"
-        val fix = if (returnsReceiver) fixFor(expression, receiver, lambdas.singleOrNull()) else emptyList()
-        reportKotrail(source, KotrailDiagnostics.SWAP_THROUGH_ALSO, action, variable.symbol.name.asString(), fix)
+        val lambda = lambdas.singleOrNull()
+        val uses = lambda?.uses()
+        val rest = when {
+            uses == null || uses.readsValue -> ": the old value comes out and the new one goes in, in one expression that reads as neither"
+            returnsReceiver -> "; the block never uses it, so the $name only keeps the old value"
+            else -> "; the block never uses it, so the $name takes the old value only to drop it"
+        }
+        val fix = if (returnsReceiver && lambda != null && uses != null) fixFor(expression, receiver, lambda, uses) else emptyList()
+        reportKotrail(source, KotrailDiagnostics.SWAP_THROUGH_ALSO, action, variable.symbol.name.asString(), rest, fix)
     }
 
     /** A variable as one place in memory: its symbol and, for a member or an extension, the `this` it is read on. */
@@ -238,11 +247,11 @@ object NoSwapThroughAlsoChecker : FirFunctionCallChecker(MppCheckerKind.Common) 
      * what they mean or where they run.
      */
     context(context: CheckerContext)
-    private fun fixFor(call: FirFunctionCall, receiver: FirExpression, lambda: FirAnonymousFunction?): List<FixEdit> {
-        if (lambda == null || lambda.hasExplicitParameterList) return emptyList()
+    private fun fixFor(call: FirFunctionCall, receiver: FirExpression, lambda: FirAnonymousFunction, uses: LambdaUses): List<FixEdit> {
+        if (lambda.hasExplicitParameterList) return emptyList()
         val statements = lambda.body?.statements ?: return emptyList()
         if (statements.any { it is FirDeclaration }) return emptyList()
-        if (ParameterUseFinder(lambda).also { lambda.body?.accept(it) }.found) return emptyList()
+        if (uses.readsValue || uses.returnsToLambda) return emptyList()
         val callSource = call.source ?: return emptyList()
         // A fake source here is a safe call, whose block runs only for a non-null receiver; moved
         // out, the statements would always run.
@@ -350,37 +359,51 @@ object NoSwapThroughAlsoChecker : FirFunctionCallChecker(MppCheckerKind.Common) 
         return builder.indentAt(statement.startOffset)
     }
 
-    /** Finds a use of the lambda's parameter or receiver (written or implicit), or a return to the lambda itself. */
-    private class ParameterUseFinder(private val lambda: FirAnonymousFunction) : FirVisitorVoid() {
-        var found = false
+    /** What a lambda's body does with the value it is given, and whether it leaves the lambda by its label. */
+    private data class LambdaUses(
+        /** The body reads the lambda's parameter or its receiver, written (`it`, `this`) or implicit (a member call). */
+        val readsValue: Boolean,
+        /** The body returns to the lambda itself, as `return@also`. */
+        val returnsToLambda: Boolean,
+    )
+
+    private fun FirAnonymousFunction.uses(): LambdaUses {
+        val finder = LambdaUseFinder(this)
+        body?.accept(finder)
+        return LambdaUses(readsValue = finder.readsValue, returnsToLambda = finder.returnsToLambda)
+    }
+
+    /**
+     * Finds a use of the lambda's parameter or receiver and a return to the lambda itself. A call
+     * or property access counts as reading the receiver only when the receiver it resolves to is
+     * the lambda's: inside `ready.run { ... }`, `ready = frame` assigns the enclosing class's
+     * property and does not read the lambda's receiver.
+     */
+    private class LambdaUseFinder(private val lambda: FirAnonymousFunction) : FirVisitorVoid() {
+        var readsValue = false
+        var returnsToLambda = false
         private val parameters = lambda.valueParameters.map { it.symbol }.toSet()
         private val receiver = lambda.receiverParameter?.symbol
 
         override fun visitElement(element: FirElement) {
-            if (found) return
+            if (readsValue && returnsToLambda) return
             element.acceptChildren(this)
         }
 
         override fun visitPropertyAccessExpression(propertyAccessExpression: FirPropertyAccessExpression) {
-            if (found) return
-            if (propertyAccessExpression.calleeReference.toResolvedValueParameterSymbol() in parameters) {
-                found = true
-                return
-            }
-            propertyAccessExpression.acceptChildren(this)
+            if (propertyAccessExpression.calleeReference.toResolvedValueParameterSymbol() in parameters) readsValue = true
+            visitElement(propertyAccessExpression)
         }
 
         override fun visitThisReceiverExpression(thisReceiverExpression: FirThisReceiverExpression) {
-            if (receiver != null && thisReceiverExpression.calleeReference.boundSymbol == receiver) found = true
+            if (receiver != null && thisReceiverExpression.calleeReference.boundSymbol == receiver) readsValue = true
         }
 
         override fun visitReturnExpression(returnExpression: FirReturnExpression) {
-            if (found) return
             if (returnExpression.target.labeledElement === lambda && returnExpression.source?.kind !is KtFakeSourceElementKind) {
-                found = true
-                return
+                returnsToLambda = true
             }
-            returnExpression.acceptChildren(this)
+            visitElement(returnExpression)
         }
     }
 }

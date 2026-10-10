@@ -25,6 +25,16 @@ A reader sees `ready ... ready = frame` and misses that the old value is what co
 the `.also` then looks harmless, and it loses the old value: here a native bitmap that must be
 closed leaks once per frame.
 
+The tell is a block that never uses the value. In `ready.also { ready = frame }` the block does
+nothing with `it`: the `also` is there only to hand back the old value before the block
+overwrites it. When the block reads neither its parameter (`it` or a named one) nor its receiver
+(`this`, written or implicit through a member call), the message says so: "This also returns the
+previous value of 'ready' while its block assigns 'ready'; the block never uses it, so the also
+only keeps the old value." (for `let` and `run`: "so the run takes the old value only to drop
+it"). `ready = frame` inside `ready.run { ... }` assigns the enclosing property and does not read
+the receiver, while `ready.also { it?.close(); ready = null }` reads `it` and gets the message
+without the clause.
+
 ## What it asks for
 
 Name the previous value and assign on a line of its own:
