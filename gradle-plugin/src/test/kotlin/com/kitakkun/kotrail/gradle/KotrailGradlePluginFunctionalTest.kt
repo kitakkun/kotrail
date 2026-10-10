@@ -553,11 +553,11 @@ class KotrailGradlePluginFunctionalTest {
             "lib/src/jvmMain/kotlin/Buffers.kt",
             """
             object Buffers {
-                val current: ThreadLocal<StringBuilder> = ThreadLocal()
+                val currentBuilder: ThreadLocal<StringBuilder> = ThreadLocal()
 
                 // Opted out at the site: neither reported here nor recorded for the plugin.
                 @Suppress("KOTRAIL_THREAD_LOCAL_IN_UNLOADABLE_CODE")
-                val scratch: ThreadLocal<StringBuilder> = ThreadLocal()
+                val scratchBuilder: ThreadLocal<StringBuilder> = ThreadLocal()
             }
             """.trimIndent(),
         )
@@ -583,8 +583,8 @@ class KotrailGradlePluginFunctionalTest {
         // The rule is off in lib: its ThreadLocal is reported from the plugin module, with the file and line.
         assertFalse(result.output.contains("lib/src/main/kotlin/Buffers.kt:2:5"), result.output)
         assertTrue(result.output.contains("KOTRAIL_OUTBOUND_REFERENCE_IN_BUNDLED_CODE"), result.output)
-        assertTrue(result.output.contains("'current' (a ThreadLocal) at lib/src/jvmMain/kotlin/Buffers.kt:2,"), result.output)
-        assertFalse(result.output.contains("'scratch'"), result.output)
+        assertTrue(result.output.contains("'currentBuilder' (a ThreadLocal) at lib/src/jvmMain/kotlin/Buffers.kt:2,"), result.output)
+        assertFalse(result.output.contains("'scratchBuilder'"), result.output)
         assertFalse(result.output.contains("Configuration cache problems"), result.output)
         assertTrue(result.output.contains("KOTRAIL_UNSCOPED_REGISTRATION_IN_UNLOADABLE_CODE"), result.output)
     }

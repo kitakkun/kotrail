@@ -1,0 +1,105 @@
+/NameSaysType.kt:(2670,2677): error: [Kotrail] 'request' does not end with what it holds (PerformNodeAction): end the name with 'Action', as in 'requestAction'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(2714,2720): error: [Kotrail] 'source' does not end with what it holds (InputStream): end the name with 'Stream', as in 'sourceStream'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(2751,2759): error: [Kotrail] 'delegate' does not end with what it holds (UserRepository): end the name with 'Repository', as in 'delegateRepository'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(2793,2798): error: [Kotrail] 'limit' does not end with what it holds (McpParameter<Int>): end the name with 'Parameter', as in 'limitParameter'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(2893,2902): error: [Kotrail] 'processes' does not end with what it holds (ProcessTable): end the name with 'Table', as in 'processTable'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(2934,2942): error: [Kotrail] 'versions' does not end with what it holds (HostVersionsRepository): end the name with 'Repository', as in 'versionsRepository'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(3030,3049): error: [Kotrail] 'appearanceDataStore' does not end with what it holds (AppAppearanceRepository): end the name with 'Repository', as in 'appearanceDataStoreRepository'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(3124,3128): error: [Kotrail] 'repo' does not end with what it holds (UserRepository): end the name with 'Repository', as in 'userRepository'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(3162,3164): error: [Kotrail] 'vm' does not end with what it holds (LoginViewModel): end the name with 'Model', as in 'loginViewModel'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(3198,3201): error: [Kotrail] 'cfg' does not end with what it holds (AppConfig): end the name with 'Config', as in 'appConfig'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(3808,3812): error: [Kotrail] 'lock' does not end with what it holds (Mutex): end the name with 'Mutex', as in 'lockMutex'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(3839,3850): error: [Kotrail] 'installLock' does not end with what it holds (Mutex): end the name with 'Mutex', as in 'installLockMutex'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(4492,4496): error: [Kotrail] 'repo' does not end with what it holds (UserRepository): end the name with 'Repository', as in 'userRepository'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(4943,4948): error: [Kotrail] 'title' does not end with what it holds (TextStyle): end the name with 'Style', as in 'titleStyle'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(5401,5409): error: [Kotrail] 'children' does not end with what it holds (List<UiNode>): end the name with 'Nodes'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(6322,6329): error: [Kotrail] 'pending' does not end with what it holds (Channel<Request>): end the name with 'Channel', as in 'pendingChannel'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(6367,6372): error: [Kotrail] 'cache' does not end with what it holds (Map<String, User>): end the name with 'Map', as in 'cacheMap'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(6728,6739): error: [Kotrail] 'listenerRef' does not end with what it holds (WeakReference<LoginListener>?): end the name with 'Reference', as in 'listenerReference'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(6923,6927): error: [Kotrail] 'team' does not end with what it holds (Members): end the name with 'Members', as in 'teamMembers'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(7120,7127): error: [Kotrail] 'request' does not end with what it holds (HttpRequestBuilder): end the name with 'Builder', as in 'requestBuilder'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(7165,7177): error: [Kotrail] 'certificates' does not end with what it holds (List<CertificateUiEntry>): end the name with 'Entries'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(7317,7325): error: [Kotrail] 'executor' does not end with what it holds (ExecutorService): end the name with 'Service', as in 'executorService'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(8141,8147): error: [Kotrail] 'secret' does not end with what it holds (Token): end the name with 'Token', as in 'secretToken'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(8255,8264): error: [Kotrail] 'LongClick' does not end with what it holds (NodeActionHandler): end the name with 'Handler', as in 'LongClickHandler'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(8433,8447): error: [Kotrail] 'DEFAULT_SOURCE' does not end with what it holds (InputStream?): end the name with 'Stream', as in 'DEFAULT_SOURCE_STREAM'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(8660,8664): error: [Kotrail] 'repo' does not end with what it holds (UserRepository): end the name with 'Repository', as in 'userRepository'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(8936,8938): error: [Kotrail] 'vm' does not end with what it holds (LoginViewModel): end the name with 'Model', as in 'loginViewModel'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(9381,9388): error: [Kotrail] 'content' does not end with what it holds (PanelSlot): end the name with 'Slot', as in 'contentSlot'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(10657,10661): error: [Kotrail] 'type' does not end with what it holds (KClass<User>): end the name with 'Class', as in 'typeClass'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(11703,11707): error: [Kotrail] 'root' does not end with what it holds (UIWindow): end the name with 'Window', as in 'rootWindow'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(12225,12232): error: [Kotrail] 'current' does not end with what it holds (Variable): end the name with 'Variable', as in 'currentVariable'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(12321,12325): error: [Kotrail] 'jobs' does not end with what it holds (Map<Runnable, User>): end the name with 'Users'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(12702,12709): error: [Kotrail] 'pending' does not end with what it holds (CompletableDeferred<Reply>): end the name with 'Deferred', as in 'pendingDeferred'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(13070,13079): error: [Kotrail] 'appLocale' does not end with what it holds (ProvidableCompositionLocal<String>): end the name with 'Local', as in 'appLocaleLocal'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(13341,13349): error: [Kotrail] 'registry' does not end with what it holds (JmDNS): end the name with 'DNS', as in 'registryDns'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(14217,14226): error: [Kotrail] 'cacheById' does not end with what it holds (Map<String, User>): end the name with 'Map', as in 'cacheMapById'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(14255,14259): error: [Kotrail] 'host' does not end with what it holds (ViewRootForTest): end the name with 'Root', as in 'hostRoot'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(14286,14293): error: [Kotrail] 'pending' does not end with what it holds (SignInRequest): end the name with 'Request', as in 'pendingRequest'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(14763,14767): error: [Kotrail] 'base' does not end with what it holds (TextStyle): end the name with 'Style', as in 'baseStyle'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(15314,15321): error: [Kotrail] 'pending' does not end with what it holds (MutationObject<User>): end the name with 'Mutation', as in 'pendingMutation'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(15660,15669): error: [Kotrail] 'positions' does not end with what it holds (List<LayoutCoordinates>): end the name with 'Coordinates'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(15704,15710): error: [Kotrail] 'themes' does not end with what it holds (List<DesignTokens>): end the name with 'Tokens'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(15740,15747): error: [Kotrail] 'records' does not end with what it holds (List<UserData>): end the name with 'Data'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(15821,15827): error: [Kotrail] 'state1' does not end with what it holds (DataModel<T1>): end the name with 'Model', as in 'stateModel1'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(15852,15854): error: [Kotrail] 'r1' does not end with what it holds (Reply): end the name with 'Reply', as in 'reply1'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(15966,15970): error: [Kotrail] 'cert' does not end with what it holds (X509Certificate): end the name with 'Certificate', as in 'x509Certificate'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(16016,16018): error: [Kotrail] 'tx' does not end with what it holds (Transaction): end the name with 'Transaction', as in 'transaction'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(16094,16098): error: [Kotrail] 'path' does not end with what it holds (URL): end the name with 'URL', as in 'pathUrl'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(16203,16213): error: [Kotrail] 'SHA256_HEX' does not end with what it holds (Regex): end the name with 'Regex', as in 'SHA256_HEX_REGEX'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(16356,16371): error: [Kotrail] 'KEY_SERVER_PORT' does not end with what it holds (Key<Int>): end the name with 'Key', as in 'SERVER_PORT_KEY'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(16546,16550): error: [Kotrail] 'None' does not end with what it holds (NetworkRedactionRules): end the name with 'Rules', as in 'NoneRules'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(17426,17431): error: [Kotrail] 'Store' does not end with what it holds (UserRepository): end the name with 'Repository', as in 'StoreRepository'. (KOTRAIL_NAME_HIDES_TYPE)
+
+/NameSaysType.kt:(17592,17601): error: [Kotrail] 'LongClick' does not end with what it holds (NodeActionHandler): end the name with 'Handler', as in 'LongClickHandler'. (KOTRAIL_NAME_HIDES_TYPE)

@@ -423,6 +423,42 @@ data class KotrailSuppressReason(
     val exemptIds: List<String>,
 )
 
+/** Which declarations the name-says-type rule inspects. */
+enum class NameSaysTypeScope(val key: String) {
+    /** Member properties and the value parameters of constructors and member or top-level functions. */
+    MEMBERS("members"),
+
+    /** Those, plus top-level properties, locals, local functions' parameters and lambda parameters. */
+    ALL("all");
+
+    companion object {
+        fun fromKey(key: String): NameSaysTypeScope? = entries.firstOrNull { it.key == key.trim().lowercase() }
+    }
+}
+
+/** Tunables for the name-says-type rule. From `rules.nameSaysType`. */
+data class KotrailNameSaysType(
+    val scope: NameSaysTypeScope,
+    /**
+     * Whether the value parameters of public and protected functions and constructors are checked,
+     * a public constructor's `val` and `var` parameters included. A published library turns it
+     * off: renaming such a parameter breaks callers that pass the argument by name.
+     */
+    val publicParameters: Boolean,
+    /** Globs over names that need not say their type: conventional short forms such as `it`, `index`, `other`. */
+    val exempt: List<Glob>,
+    /** Globs over fully qualified types whose values any name may hold: primitives, strings, function types, units of measure. */
+    val valueTypes: List<Glob>,
+    /** Globs over fully qualified types whose subtypes, and themselves, any name may hold: `kotlin.Throwable`. */
+    val valueSupertypes: List<Glob>,
+    /** Globs over fully qualified generic containers, whose name may end with either the container or what it holds. */
+    val containers: List<Glob>,
+    /** Words at the end of a type's name that say nothing of what it is (`Impl`, `Values`), dropped before its head noun is taken. */
+    val typeSuffixes: List<String>,
+    /** Qualifiers at the end of a name (`OrNull`), dropped before its last word is compared with the type. */
+    val nameSuffixes: List<String>,
+)
+
 /** Tunables for the no-swap-through-also rule. From `rules.noSwapThroughAlso`. */
 data class KotrailNoSwapThroughAlso(
     /** Fully qualified scope functions whose receiver, when it is a variable the block assigns, is reported. */
@@ -608,6 +644,7 @@ data class KotrailConfig(
     val mustClose: KotrailMustClose,
     val noExternalMutation: KotrailNoExternalMutation,
     val suppressReason: KotrailSuppressReason,
+    val nameSaysType: KotrailNameSaysType,
     val noSwapThroughAlso: KotrailNoSwapThroughAlso,
     val objcThrows: KotrailObjCThrows,
     val weakOnlyReference: KotrailWeakOnlyReference,
@@ -759,6 +796,64 @@ data class KotrailConfig(
         val DEFAULT_SUPPRESSION_IDS: List<String> = listOf("*")
         /** A member invoked through a framework carries `@Suppress("unused")` for a reason that is always the same. */
         val DEFAULT_SUPPRESSION_EXEMPT_IDS: List<String> = listOf("unused", "UNUSED", "UNUSED_*")
+        val DEFAULT_NAME_SAYS_TYPE_SCOPE = NameSaysTypeScope.MEMBERS
+
+        /** Public API parameters are checked unless a project opts out: an application's callers are its own code and are renamed with them. */
+        const val DEFAULT_NAME_SAYS_TYPE_PUBLIC_PARAMETERS = true
+
+        /** Short names whose meaning is a convention rather than the type: loop indices, receivers, callbacks. */
+        val DEFAULT_NAME_EXEMPT: List<String> = listOf(
+            "it", "this", "self", "value", "result", "item", "element", "key", "index",
+            "i", "j", "k", "x", "y", "z", "e", "t", "other", "on*",
+        )
+
+        /**
+         * Types a value of which says nothing more than its name already must: primitives, text,
+         * functions, measures, files and paths, handles on running work, JSON trees, and the
+         * Objective-C root class, root protocol and opaque pointers, which play the role of `Any`
+         * (a subclass such as `UIView` keeps its head noun). Function types of any kind are value
+         * types besides these names.
+         */
+        val DEFAULT_VALUE_TYPES: List<String> = listOf(
+            "kotlin.Boolean", "kotlin.Byte", "kotlin.Short", "kotlin.Int", "kotlin.Long", "kotlin.Float", "kotlin.Double", "kotlin.Char",
+            "kotlin.UByte", "kotlin.UShort", "kotlin.UInt", "kotlin.ULong", "kotlin.Number",
+            "kotlin.BooleanArray", "kotlin.ByteArray", "kotlin.ShortArray", "kotlin.IntArray", "kotlin.LongArray",
+            "kotlin.FloatArray", "kotlin.DoubleArray", "kotlin.CharArray",
+            "kotlin.String", "kotlin.CharSequence", "kotlin.Unit", "kotlin.Any", "kotlin.Nothing",
+            "kotlin.Function*", "kotlin.jvm.functions.Function*", "kotlin.coroutines.SuspendFunction*",
+            "kotlin.reflect.KFunction*", "kotlin.reflect.KSuspendFunction*", "androidx.compose.runtime.internal.ComposableFunction*",
+            "kotlin.Pair", "kotlin.Triple", "kotlin.ranges.*",
+            "kotlin.time.Duration", "kotlin.time.Instant", "kotlinx.datetime.*", "java.time.*",
+            "java.io.File", "java.nio.file.Path", "okio.Path",
+            "java.util.concurrent.atomic.*", "kotlinx.coroutines.Job", "java.lang.Thread", "kotlinx.serialization.json.*",
+            "androidx.compose.ui.unit.Dp", "androidx.compose.ui.unit.TextUnit", "androidx.compose.ui.unit.IntOffset",
+            "androidx.compose.ui.unit.IntSize", "androidx.compose.ui.unit.DpSize", "androidx.compose.ui.geometry.*",
+            "androidx.compose.ui.graphics.Color",
+            "platform.darwin.NSObject", "platform.darwin.NSObjectProtocol", "kotlinx.cinterop.ObjCObject",
+            "kotlinx.cinterop.CPointer", "kotlinx.cinterop.COpaquePointer",
+        )
+
+        /**
+         * Types whose subtypes are value types too: an exception is named for its role (`error`,
+         * `cause`), text of any kind for what it says (`text: AnnotatedString`, `output:
+         * StringBuilder`), a time mark for the moment it marks (`started: TimeMark`).
+         */
+        val DEFAULT_VALUE_SUPERTYPES: List<String> = listOf("kotlin.Throwable", "kotlin.CharSequence", "kotlin.time.TimeMark")
+
+        /** Type name endings that carry no meaning: `UserRepositoryImpl` is a repository, `PaddingValues` a padding, `MutationObject` a mutation. */
+        val DEFAULT_TYPE_SUFFIXES: List<String> = listOf("Values", "Impl", "Object")
+
+        /** Name endings that qualify how a value is obtained rather than what it is: `selectedItemOrNull`. */
+        val DEFAULT_NAME_SUFFIXES: List<String> = listOf("OrNull", "OrDefault", "OrEmpty")
+
+        /** Generic types that hold values of their type arguments, or stand for them (`KClass<User>`). */
+        val DEFAULT_CONTAINERS: List<String> = listOf(
+            "kotlin.collections.*", "kotlin.sequences.Sequence", "kotlin.Array", "kotlin.Result", "kotlin.Lazy",
+            "kotlinx.collections.immutable.*",
+            "kotlinx.coroutines.flow.*", "kotlinx.coroutines.channels.*", "kotlinx.coroutines.Deferred",
+            "androidx.compose.runtime.State", "androidx.compose.runtime.MutableState", "androidx.compose.runtime.snapshots.*",
+            "java.util.*", "java.lang.ThreadLocal", "java.lang.ref.*", "kotlin.reflect.KClass", "java.lang.Class",
+        )
         /** The receiver forms of the standard scope functions, which hand the block the value they were called on. */
         val DEFAULT_SWAP_SCOPE_FUNCTIONS: List<String> = listOf("kotlin.also", "kotlin.apply", "kotlin.let", "kotlin.run")
         val DEFAULT_NATIVE_TYPES: List<String> = listOf("org.jetbrains.skia.impl.Managed", "java.awt.image.VolatileImage")
@@ -1288,6 +1383,16 @@ data class KotrailConfig(
                     annotations = list(KotrailRule.SUPPRESS_REASON, "annotations") ?: DEFAULT_SUPPRESSION_ANNOTATIONS,
                     ids = list(KotrailRule.SUPPRESS_REASON, "ids") ?: DEFAULT_SUPPRESSION_IDS,
                     exemptIds = list(KotrailRule.SUPPRESS_REASON, "exemptIds") ?: DEFAULT_SUPPRESSION_EXEMPT_IDS,
+                ),
+                nameSaysType = KotrailNameSaysType(
+                    scope = enumValue(KotrailRule.NAME_SAYS_TYPE, "scope", NameSaysTypeScope.entries.map { it.key })?.let { NameSaysTypeScope.fromKey(it)!! } ?: DEFAULT_NAME_SAYS_TYPE_SCOPE,
+                    publicParameters = boolean(ruleNode(KotrailRule.NAME_SAYS_TYPE), "publicParameters") ?: DEFAULT_NAME_SAYS_TYPE_PUBLIC_PARAMETERS,
+                    exempt = (list(KotrailRule.NAME_SAYS_TYPE, "exempt") ?: DEFAULT_NAME_EXEMPT).map(::Glob),
+                    valueTypes = (list(KotrailRule.NAME_SAYS_TYPE, "valueTypes") ?: DEFAULT_VALUE_TYPES).map(::Glob),
+                    valueSupertypes = (list(KotrailRule.NAME_SAYS_TYPE, "valueSupertypes") ?: DEFAULT_VALUE_SUPERTYPES).map(::Glob),
+                    containers = (list(KotrailRule.NAME_SAYS_TYPE, "containers") ?: DEFAULT_CONTAINERS).map(::Glob),
+                    typeSuffixes = list(KotrailRule.NAME_SAYS_TYPE, "typeSuffixes") ?: DEFAULT_TYPE_SUFFIXES,
+                    nameSuffixes = list(KotrailRule.NAME_SAYS_TYPE, "nameSuffixes") ?: DEFAULT_NAME_SUFFIXES,
                 ),
                 noSwapThroughAlso = KotrailNoSwapThroughAlso(
                     functions = list(KotrailRule.NO_SWAP_THROUGH_ALSO, "functions") ?: DEFAULT_SWAP_SCOPE_FUNCTIONS,

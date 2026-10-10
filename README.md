@@ -37,7 +37,7 @@ The compiler is the one gate every line of code has to pass. Kotrail puts your c
 
 ## Rules
 
-81 rules ship today, grouped by what they protect. Full pages, with every condition and
+82 rules ship today, grouped by what they protect. Full pages, with every condition and
 fixture, live under [`docs/rules/`](docs/rules/README.md); the index there lists each rule with
 its diagnostic and whether it is on by default.
 
@@ -51,7 +51,9 @@ its diagnostic and whether it is on by default.
   `@Suppress` for a comment that says why; [Named condition](docs/rules/named-condition.md)
   asks for one named definition of a compound condition written in several places; [No swap through also](docs/rules/no-swap-through-also.md)
   spells out `ready.also { ready = frame }` as `val previous = ready` and an assignment of its own.
-- **Naming and style** (9): [Prefer function references](docs/rules/prefer-function-references.md) over `{ transform(it) }`,
+- **Naming and style** (10): [Name says type](docs/rules/name-says-type.md) for `repo: UserRepository` and
+  `request: PerformNodeAction`, names that do not end with what they hold;
+  [Prefer function references](docs/rules/prefer-function-references.md) over `{ transform(it) }`,
   [Named arguments for repeated types](docs/rules/named-arguments-for-repeated-types.md) for `Padding(8, 16, 8, 16)`, no comments longer than five lines
   and no fully qualified names inline; [Prefer duration](docs/rules/prefer-duration.md) wants `500.milliseconds`, not `delay(500)`,
   wherever the callee also takes a `Duration`.

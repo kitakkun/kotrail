@@ -44,6 +44,7 @@ import com.kitakkun.kotrail.fir.checkers.NoAsyncWorkInInitializerChecker
 import com.kitakkun.kotrail.fir.checkers.NoSwapThroughAlsoChecker
 import com.kitakkun.kotrail.fir.checkers.NoNullStateFromParameterChecker
 import com.kitakkun.kotrail.fir.checkers.SuppressReasonChecker
+import com.kitakkun.kotrail.fir.checkers.NameSaysTypeChecker
 import com.kitakkun.kotrail.fir.checkers.NativeAllocationInLoopChecker
 import com.kitakkun.kotrail.fir.inferred.InferredFactWarmup
 import com.kitakkun.kotrail.fir.checkers.NamedConditionChecker
@@ -102,6 +103,7 @@ import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirCallableDeclara
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirFileChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirPropertyChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirRegularClassChecker
+import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirValueParameterChecker
 import com.kitakkun.kotrail.compat.CompatDeclarationCheckers
 import com.kitakkun.kotrail.compat.NamedFunctionChecker
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.ExpressionCheckers
@@ -169,6 +171,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
         PreferStateDelegationChecker,
         ComposableUnwrittenStateChecker,
         NoAsyncWorkInInitializerChecker,
+        NameSaysTypeChecker.Properties,
         NoNullStateFromParameterChecker,
     )
     override val namedFunctionCheckersCompat: Set<NamedFunctionChecker> = setOf(
@@ -196,6 +199,9 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
         ObjCThrowsChecker,
         MustCloseChecker,
         ComposableUnstableParameterChecker,
+    )
+    override val valueParameterCheckers: Set<FirValueParameterChecker> = setOf(
+        NameSaysTypeChecker.Parameters,
     )
     override val callableDeclarationCheckers: Set<FirCallableDeclarationChecker> = setOf(
         MutableCollectionInPublicApiChecker,

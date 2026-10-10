@@ -129,6 +129,14 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: how often, e.g. `3 times (limit 2)`. Reported on the outermost `?:` expression. */
     val ELVIS_CHAIN_TOO_LONG = tunable1<KtElement, String>("ELVIS_CHAIN_TOO_LONG", KotrailRule.NULL_CHAIN_LENGTH, WHOLE)
 
+    /**
+     * Arguments: the name, the type in short (`PerformNodeAction`), and the head noun to end the
+     * name with, quoted, with an example (`'Action', as in 'requestAction'`), or for a plural name
+     * of a container the element's plural alone (`'Nodes'`); reported on the name of a property or
+     * parameter whose name does not end with what it holds.
+     */
+    val NAME_HIDES_TYPE = tunable3<KtNamedDeclaration, String, String, String>("NAME_HIDES_TYPE", KotrailRule.NAME_SAYS_TYPE, NAME)
+
     /** Argument: the property name; reported on a `var` that nothing reassigns. */
     val PREFER_VAL = tunable1<KtProperty, String>("PREFER_VAL", KotrailRule.PREFER_VAL, NAME)
 
@@ -767,6 +775,10 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         map.put1(
             KotrailDiagnostics.PREFER_VAL,
             "[Kotrail] ''{0}'' is never reassigned. Declare it with ''val'', so that a reader need not watch for it changing.",
+        )
+        map.put3(
+            KotrailDiagnostics.NAME_HIDES_TYPE,
+            "[Kotrail] ''{0}'' does not end with what it holds ({1}): end the name with {2}.",
         )
         map.put2(
             KotrailDiagnostics.INTERNAL_VISIBLE_TO_JAVA,
