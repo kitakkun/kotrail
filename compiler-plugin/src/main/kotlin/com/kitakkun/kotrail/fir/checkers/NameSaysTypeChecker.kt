@@ -52,13 +52,14 @@ import org.jetbrains.kotlin.fir.types.type
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
+import org.jetbrains.kotlin.name.StandardClassIds
 
 /**
  * Reports a property or parameter whose name does not end with what it holds:
  *
  * ```kotlin
  * class NodeEditor(
- *     private val request: PerformNodeAction,   // reported: end it with 'Action', as in 'requestAction'
+ *     private val request: PerformNodeAction,   // reported: end it with 'Action', as in 'performNodeAction'
  *     private val repo: UserRepository,         // reported: end it with 'Repository', as in 'userRepository'
  * ) {
  *     private val pending = Channel<Request>()  // reported: end it with 'Channel', as in 'pendingChannel'
@@ -256,6 +257,11 @@ internal object TypeWords {
      * a name may be as a whole (`jmdns: JmDNS`). [ownHead]: the singular of the type's own head noun
      * (`lib` for `Libs`), which the name's last word may spell out (`libraries`); `null` for a
      * container, whose head noun (`list`, `set`) begins too many unrelated words.
+     * [elementsInPlural]: whether the container holds many elements at once (an `Iterable`, an
+     * `Array`, a `Sequence`), so that the example names them in the plural (`currentSessions` for a
+     * `List<DebugSession>`) rather than the container (`currentList`). [mapKey]: for a map from a
+     * class that asks something to a value type (`Map<ThemeColorTokens, Int>`), the words of the
+     * key's name, which the example puts after `By` (`colorsByToken`); `null` otherwise.
      */
     class Expected(
         val rendered: String,
@@ -264,6 +270,8 @@ internal object TypeWords {
         val element: List<String>?,
         val ownNames: Set<String>,
         val ownHead: String?,
+        val elementsInPlural: Boolean,
+        val mapKey: List<String>?,
     )
 
     /** A container's element: its class, aliases expanded, the words the message shows, and the head nouns it accepts. */
@@ -450,6 +458,25 @@ internal object TypeWords {
         }
     }
 
+    /**
+     * The singular of a word as written: `Token` for `Tokens`, `Entry` for `Entries`, `Class` for
+     * `Classes`. A word that does not read as a plural, or is not counted, is left as it is.
+     */
+    private fun singularOf(word: String): String {
+        val lower = word.lowercase()
+        val irregular = IRREGULAR_PLURALS.entries.firstOrNull { it.value == lower }?.key
+        return when {
+            irregular != null -> "${word.first()}${irregular.drop(1)}"
+            !looksPlural(lower) || lower in MASS_NOUNS -> word
+            lower.endsWith("ies") && lower.length > 3 -> word.dropLast(3) + "y"
+            listOf("sses", "xes", "zes", "ches", "shes").any { lower.endsWith(it) } -> word.dropLast(2)
+            else -> word.dropLast(1)
+        }
+    }
+
+    /** A word with its first letter in upper case: `Style`, and `URL` as it is. */
+    private fun capitalizedFirst(word: String): String = word.replaceFirstChar(Char::uppercaseChar)
+
     /** Hard keywords an example can turn into (`class`, `object`), which cannot be a name. */
     private val KEYWORDS = setOf(
         "as", "break", "class", "continue", "do", "else", "false", "for", "fun", "if", "in", "interface", "is", "null",
@@ -471,6 +498,29 @@ internal object TypeWords {
         return tokens
     }
 
+    /**
+     * The words of [name] as [tokens] gives them, with a digit group joined to the word right before
+     * it (`h264`, `state1`, `SHA256`): the digits are part of what that word names.
+     */
+    private fun adviceTokens(name: String): List<Token> {
+        val merged = mutableListOf<Token>()
+        for (token in tokens(name)) {
+            val previous = merged.lastOrNull()
+            if (previous != null && previous.end == token.start && token.text.none(Char::isLetter)) {
+                merged[merged.lastIndex] = Token(previous.text + token.text, previous.start, token.end)
+            } else {
+                merged += token
+            }
+        }
+        return merged
+    }
+
+    /** A word without the digits it ends with: `h` for `h264`, `state` for `state1`. */
+    private fun lettersOf(word: String): String = word.trimEnd(Char::isDigit)
+
+    /** The digits a word ends with: `264` for `h264`, empty for `state`. */
+    private fun digitsOf(word: String): String = word.takeLastWhile(Char::isDigit)
+
     /** How a name is written, which an example follows. */
     private enum class Style { SCREAMING, SNAKE, CAMEL, PASCAL }
 
@@ -488,65 +538,127 @@ internal object TypeWords {
     private class Example(val keptFrom: Int, val keptTo: Int, val added: List<String>)
 
     /**
+     * Words that carry no role of their own: `request: ReadFile` says no more than the type does,
+     * so the example is the type's name (`readFile`) rather than `requestFile`.
+     */
+    private val GENERIC_ROLE_WORDS = setOf(
+        "request", "value", "item", "data", "text", "input", "result", "message", "event", "command", "action", "payload",
+        "entry", "element",
+    )
+
+    /**
+     * Units a name may end with (`delayMs`, `widthPx`), which say how the value is measured and are
+     * never an abbreviation of a word of the type: `delayMs: McpParameter<Long>` is a
+     * `delayMsParameter`, not a `delayMcpParameter`.
+     */
+    private val UNIT_WORDS = setOf(
+        "ms", "millis", "ns", "nanos", "micros", "sec", "secs", "seconds", "px", "dp", "sp", "bytes", "kb", "mb", "gb", "pct", "percent",
+    )
+
+    /**
      * The message's advice for [name]: the head noun to end it with and an example, as in
-     * `'Action', as in 'requestAction'`. A plural name of a container is asked for the element's
-     * plural alone (`'Nodes'`): the singular of its role is not the rule's to guess.
+     * `'Style', as in 'titleStyle'`. A plural name of a container is asked for the element's plural
+     * alone (`'Nodes'`): the singular of its role is not the rule's to guess.
      *
-     * The example is built from the role words, those before a trailing qualifier (`OrNull`), a
-     * trailing phrase (`ById`) and a trailing number (`1`); the role words it keeps are copied as
-     * written (`SHA256_HEX`), and what followed them comes back after the type's words
-     * (`cacheMapById`, `stateModel1`).
+     * The example is built from the role words, those before a trailing qualifier (`OrNull`) and a
+     * trailing phrase (`ById`); a digit group stays with the word before it (`h264`, `state1`). The
+     * role words it keeps are copied as written (`SHA256_HEX`), and what followed them comes back
+     * after the type's words (`cacheMapById`). Besides [example]'s cases:
+     * - a SCREAMING name that starts with the head noun has it moved to the end, after the whole
+     *   name: `KEY_CHECK_FOR_UPDATES_ON_STARTUP` gives `CHECK_FOR_UPDATES_ON_STARTUP_KEY`;
+     * - a map from a class to a value type names its key after `By`: `colors` gives
+     *   `colorsByToken` for a `Map<ThemeColorTokens, Int>`.
      */
     fun advice(name: String, expected: Expected, settings: KotrailNameSaysType): String {
-        val head = expected.shown.last().replaceFirstChar(Char::uppercaseChar)
+        val prefix = name.takeWhile { it == '_' }
         val original = name.trimStart('_')
-        val tokens = tokens(original)
+        val tokens = adviceTokens(original)
         val words = tokens.map { it.text }
+        val style = styleOf(original)
+        val typeShown = exampleTypeWords(expected)
+        val head = capitalizedFirst(typeShown.last())
+        if (style == Style.SCREAMING && tokens.size > 1 && sameWord(lettersOf(words.first()).lowercase(), typeShown.last().lowercase())) {
+            return asIn(head, prefix, original.substring(tokens[1].start) + spelledAdded(listOf(typeShown.last()), style, keptBefore = true))
+        }
         val core = withoutPhrase(withoutSuffixes(words, settings.nameSuffixes), NAME_PHRASE_OPENERS)
         val roleSize = core.indexOfLast { word -> word.any(Char::isLetter) } + 1
         if (roleSize == 0) return "'$head'"
         val role = core.subList(0, roleSize)
-        val element = expected.element
-        if (element != null && looksPlural(role.last().lowercase())) {
-            return "'${pluralOf(element.last()).replaceFirstChar(Char::uppercaseChar)}'"
-        }
-        val style = styleOf(original)
-        val example = example(role, expected, style)
-        val kept = if (example.keptTo > example.keptFrom) original.substring(tokens[example.keptFrom].start, tokens[example.keptTo - 1].end) else ""
         val rest = original.substring(tokens[roleSize - 1].end)
-        val spelled = kept + spelledAdded(example.added, style, keptBefore = kept.isNotEmpty()) + rest
-        val safe = if (spelled in KEYWORDS) (if (spelled.first() in "aeiou") "an" else "a") + spelled.replaceFirstChar(Char::uppercaseChar) else spelled
-        return "'$head', as in '${name.takeWhile { it == '_' }}$safe'"
+        val mapKey = expected.mapKey
+        if (mapKey != null) {
+            val keyHead = singularOf(mapKey.last())
+            val roleText = original.substring(0, tokens[roleSize - 1].end)
+            return asIn(capitalizedFirst(keyHead), prefix, roleText + spelledAdded(listOf("By", keyHead), style, keptBefore = true) + rest)
+        }
+        val element = expected.element
+        if (element != null && looksPlural(lettersOf(role.last()).lowercase())) {
+            return "'${capitalizedFirst(pluralOf(element.last()))}'"
+        }
+        val example = example(role, expected, typeShown)
+        val kept = if (example.keptTo > example.keptFrom) original.substring(tokens[example.keptFrom].start, tokens[example.keptTo - 1].end) else ""
+        // The last role word, replaced by the type's words, keeps its digits after them (`reply1` for `r1`).
+        val replacedDigits = if (example.keptTo < roleSize) digitsOf(role.last()) else ""
+        return asIn(head, prefix, kept + spelledAdded(example.added, style, keptBefore = kept.isNotEmpty()) + replacedDigits + rest)
+    }
+
+    /** `'<head>', as in '<prefix><example>'`, an example that is a hard keyword (`object`) given an article (`anObject`). */
+    private fun asIn(head: String, prefix: String, example: String): String {
+        val safe = if (example in KEYWORDS) (if (example.first() in "aeiou") "an" else "a") + capitalizedFirst(example) else example
+        return "'$head', as in '$prefix$safe'"
     }
 
     /**
+     * The type's words an example ends with: those of the name the message shows, or for a container
+     * that holds many elements at once, the element's with its head noun in the plural
+     * (`Debug`, `Sessions` for a `List<DebugSession>`).
+     */
+    private fun exampleTypeWords(expected: Expected): List<String> {
+        val element = expected.element
+        if (element == null || !expected.elementsInPlural) return expected.shown
+        return element.dropLast(1) + pluralOf(element.last())
+    }
+
+    /**
+     * The whole type name an example spells out when nothing of the role is kept: the [typeShown]
+     * words, preceded for a container that names its container noun by the element's
+     * (`requestChannel` for a `Channel<Request>`).
+     */
+    private fun wholeTypeName(expected: Expected, typeShown: List<String>): List<String> =
+        if (expected.elementsInPlural) typeShown else expected.element.orEmpty() + typeShown
+
+    private fun isGeneric(word: String): Boolean = GENERIC_ROLE_WORDS.any { sameWord(it, word) }
+
+    /**
      * The example for the role words [role]:
-     * - a SCREAMING name that starts with the head noun (`KEY_SERVER_PORT` for a `Key`): the rest
-     *   of the name, then the head noun (`SERVER_PORT_KEY`);
      * - ending with a word of the type before its head noun, the type's words from there on
      *   (`processes` for a `ProcessTable`: `processTable`);
      * - ending with an abbreviation of the type's name from one of its words on (`repo`, `vm`,
      *   `cfg`, `tx`; see [abbreviates]): the type's words from there on, or the whole type name for
      *   a one-word name (`userRepository`, `transaction`, and `requestChannel` for a container);
-     * - otherwise the role words followed by the head noun (`requestAction`).
+     * - made only of words that carry no role ([GENERIC_ROLE_WORDS]): the whole type name
+     *   (`readFile` for `request: ReadFile`, `debugSessions` for `data: List<DebugSession>`);
+     * - otherwise the role words followed by the head noun (`titleStyle`, `currentSessions`).
+     *
+     * A unit (`Ms`, `Px`; see [UNIT_WORDS]) is neither a word nor an abbreviation of the type.
      */
-    private fun example(role: List<String>, expected: Expected, style: Style): Example {
-        val last = role.last().lowercase()
-        val typeWords = expected.shown.map { it.lowercase() }
-        if (style == Style.SCREAMING && role.size > 1 && sameWord(role.first().lowercase(), typeWords.last())) {
-            return Example(1, role.size, listOf(expected.shown.last()))
-        }
-        val sameAt = typeWords.dropLast(1).indexOfFirst { sameWord(it, last) }
-        if (sameAt >= 0) return Example(0, role.size - 1, expected.shown.drop(sameAt))
-        val abbreviatedFrom = typeWords.indices.firstOrNull { from -> abbreviates(last, typeWords.drop(from)) }
-        if (abbreviatedFrom != null) {
-            return if (role.size > 1) {
-                Example(0, role.size - 1, expected.shown.drop(abbreviatedFrom))
-            } else {
-                Example(0, 0, expected.element.orEmpty() + expected.shown)
+    private fun example(role: List<String>, expected: Expected, typeShown: List<String>): Example {
+        val last = lettersOf(role.last()).lowercase()
+        if (last !in UNIT_WORDS) {
+            val typeWords = typeShown.map { it.lowercase() }
+            val sameAt = typeWords.dropLast(1).indexOfFirst { sameWord(it, last) }
+            if (sameAt >= 0) return Example(0, role.size - 1, typeShown.drop(sameAt))
+            val abbreviatedFrom = typeWords.indices.firstOrNull { from -> abbreviates(last, typeWords.drop(from)) }
+            if (abbreviatedFrom != null) {
+                return if (role.size > 1) {
+                    Example(0, role.size - 1, typeShown.drop(abbreviatedFrom))
+                } else {
+                    Example(0, 0, wholeTypeName(expected, typeShown))
+                }
             }
         }
-        return Example(0, role.size, listOf(expected.shown.last()))
+        if (role.all { word -> isGeneric(lettersOf(word).lowercase()) }) return Example(0, 0, wholeTypeName(expected, typeShown))
+        return Example(0, role.size, listOf(typeShown.last()))
     }
 
     private const val CONSONANTS = "bcdfghjklmnpqrstvwxz"
@@ -643,16 +755,71 @@ internal object TypeWords {
             collectElements(target, settings, session, containerNouns, elements)
             val element = elements.lastOrNull() ?: return null
             val accepted = containerNouns + elements.flatMap { it.nouns } + aliasNouns
-            if (aliasShown != null) return Expected(rendered, accepted, aliasShown, element = null, ownNames, ownHead = null)
+            if (aliasShown != null) {
+                return Expected(rendered, accepted, aliasShown, element = null, ownNames, ownHead = null, elementsInPlural = false, mapKey = null)
+            }
             val shown = shownWords(targetId.shortClassName.asString(), settings).takeIf { it.isNotEmpty() } ?: return null
-            return Expected(rendered, accepted, shown, element.shown, ownNames, ownHead = null)
+            return Expected(
+                rendered,
+                accepted,
+                shown,
+                element.shown,
+                ownNames,
+                ownHead = null,
+                elementsInPlural = holdsManyAtOnce(target, session),
+                mapKey = mapKeyOf(target, settings, session),
+            )
         }
 
         val shown = aliasShown ?: shownWords(targetId.shortClassName.asString(), settings).takeIf { it.isNotEmpty() } ?: return null
         // `Runnable`, `AutoCloseable`: what a value can do is not a word a name can end with.
         if (isAdjective(shown.last())) return null
         val ownHead = spelledOutHead(shown.last().lowercase())
-        return Expected(rendered, segmentNouns(targetId, settings) + aliasNouns, shown, element = null, ownNames, ownHead)
+        return Expected(
+            rendered,
+            segmentNouns(targetId, settings) + aliasNouns,
+            shown,
+            element = null,
+            ownNames,
+            ownHead,
+            elementsInPlural = false,
+            mapKey = null,
+        )
+    }
+
+    /** Containers that hold many elements at once, whose elements a name says in the plural. */
+    private val MANY_AT_ONCE = setOf(StandardClassIds.Iterable, StandardClassIds.Array, ClassId(FqName("kotlin.sequences"), Name.identifier("Sequence")))
+
+    /** Whether [container] is an `Iterable`, an `Array` or a `Sequence`, or a subtype of one. */
+    private fun holdsManyAtOnce(container: ConeClassLikeType, session: FirSession): Boolean {
+        val classId = container.lookupTag.classId
+        if (classId in MANY_AT_ONCE) return true
+        val symbol = container.lookupTag.toRegularClassSymbol(session) ?: return false
+        return lookupSuperTypes(symbol, lookupInterfaces = true, deep = true, useSiteSession = session).any { it.lookupTag.classId in MANY_AT_ONCE }
+    }
+
+    /**
+     * For a `Map` (or a subtype of one) from a class that asks something of a name to a value that
+     * asks nothing (a value type, a type parameter, a container of them): the words of the key's
+     * name (`Theme`, `Color`, `Tokens` for a `Map<ThemeColorTokens, Int>`); `null` for any other type.
+     */
+    private fun mapKeyOf(container: ConeClassLikeType, settings: KotrailNameSaysType, session: FirSession): List<String>? {
+        val classId = container.lookupTag.classId
+        val isMap = classId == StandardClassIds.Map || classId == StandardClassIds.MutableMap ||
+            container.lookupTag.toRegularClassSymbol(session)?.let { symbol ->
+                lookupSuperTypes(symbol, lookupInterfaces = true, deep = true, useSiteSession = session).any { it.lookupTag.classId == StandardClassIds.Map }
+            } == true
+        if (!isMap || container.typeArguments.size != 2) return null
+        val key = container.typeArguments[0].type?.lowerBoundIfFlexible()?.let { classOf(it, session) } ?: return null
+        if (asksNothing(key, settings, session) || isContainer(key, settings, session)) return null
+        val keyShown = shownWords(key.lookupTag.classId.shortClassName.asString(), settings)
+        if (keyShown.isEmpty() || isAdjective(keyShown.last())) return null
+        val value = container.typeArguments[1].type?.lowerBoundIfFlexible()?.let { classOf(it, session) } ?: return keyShown
+        if (asksNothing(value, settings, session)) return keyShown
+        if (!isContainer(value, settings, session)) return null
+        val valueElements = mutableListOf<Element>()
+        collectElements(value, settings, session, mutableSetOf(), valueElements)
+        return keyShown.takeIf { valueElements.isEmpty() }
     }
 
     /**

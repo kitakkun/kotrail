@@ -130,8 +130,8 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     val ELVIS_CHAIN_TOO_LONG = tunable1<KtElement, String>("ELVIS_CHAIN_TOO_LONG", KotrailRule.NULL_CHAIN_LENGTH, WHOLE)
 
     /**
-     * Arguments: the name, the type in short (`PerformNodeAction`), and the head noun to end the
-     * name with, quoted, with an example (`'Action', as in 'requestAction'`), or for a plural name
+     * Arguments: the name, the type in short (`TextStyle`), and the head noun to end the
+     * name with, quoted, with an example (`'Style', as in 'titleStyle'`), or for a plural name
      * of a container the element's plural alone (`'Nodes'`); reported on the name of a property or
      * parameter whose name does not end with what it holds.
      */

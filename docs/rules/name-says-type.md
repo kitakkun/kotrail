@@ -67,11 +67,12 @@ nouns of its type:
 - **The type's head noun:** the last word of the class's simple name. `requestedAction` passes
   for a `PerformNodeAction`; `request`, and `node`, which is a word of the type but not its last,
   do not.
-- **Meaningless type suffixes are dropped** first (`typeSuffixes`: `Values`, `Impl`, `Object`):
-  `contentPadding` passes for a `PaddingValues`, `repository` for a `UserRepositoryImpl`, and
-  `saveMutation` for a `MutationObject<User>`. A name may still end with the dropped word
-  (`paddingValues`). `Data`, `Info` or `Manager` are not
-  on the list: they are part of what the type is (`userData: UserData`).
+- **Meaningless type suffixes are dropped** first (`typeSuffixes`: `Values`, `Impl`, `Object`,
+  and the qualifiers `Plus`, `Ex`, `Compat`): `contentPadding` passes for a `PaddingValues`,
+  `repository` for a `UserRepositoryImpl`, `saveMutation` for a `MutationObject<User>`, and
+  `swrClient` for a `SwrClientPlus`, which is a client. A name may still end with the dropped
+  word (`paddingValues`). `Data`, `Info`, `Manager` or `Wrapper` are not on the list: they are
+  part of what the type is (`userData: UserData`).
 - **Outer classes:** the head noun of a nested class's outer classes: `negotiationResult`
   passes for a `NegotiationResult.Success`.
 - **Type aliases:** the alias's head noun and that of the type it stands for: for
@@ -133,29 +134,51 @@ the companion of its own class (below).
 The message names the head noun and gives an example:
 
 ```
-[Kotrail] 'request' does not end with what it holds (PerformNodeAction): end the name with 'Action', as in 'requestAction'.
+[Kotrail] 'title' does not end with what it holds (TextStyle): end the name with 'Style', as in 'titleStyle'.
 [Kotrail] 'repo' does not end with what it holds (UserRepository): end the name with 'Repository', as in 'userRepository'.
+[Kotrail] 'request' does not end with what it holds (ReadFile): end the name with 'File', as in 'readFile'.
 [Kotrail] 'children' does not end with what it holds (List<UiNode>): end the name with 'Nodes'.
 ```
 
-The example is the name followed by the head noun (`requestAction`, `titleStyle`). When the name
+The example is the name followed by the head noun (`titleStyle`, `sourceStream`). When the name
 ends with an abbreviation of the type's name, the example spells the type's name out
 (`userRepository`, `loginViewModel`, `appConfig`, `transaction` for `tx`). An abbreviation starts
 with the first letter of one of the type's words and is read as pieces, each the first letter of
 the next word followed by some of that word's later letters in order (`repo`, `cert`, `cfg`,
 `vm`), or as that first letter followed by consonants alone (`tx`, `ctx`); a word whose letters
 merely appear somewhere in the type name is not one (`None: NetworkRedactionRules` gives
-`NoneRules`). When the name ends with a word of the type before the head noun, the example
-continues with the type's words from there (`processes` gives `processTable`). A container's
-example ends with the container's head noun (`pendingChannel`).
+`NoneRules`), and neither is a unit (`ms`, `millis`, `ns`, `nanos`, `micros`, `sec`, `secs`,
+`seconds`, `px`, `dp`, `sp`, `bytes`, `kb`, `mb`, `gb`, `pct`, `percent`): `delayMs:
+McpParameter<Long>` gives `delayMsParameter`. When the name ends with a word of the type before
+the head noun, the example continues with the type's words from there (`processes` gives
+`processTable`).
+
+A role that is only words that carry none of their own (`request`, `value`, `item`, `data`,
+`text`, `input`, `result`, `message`, `event`, `command`, `action`, `payload`, `entry`,
+`element`) says no more than the type, so the example is the type's name: `request: ReadFile`
+gives `readFile`, `request: PerformNodeAction` gives `performNodeAction`.
+
+A container that holds many elements at once (an `Iterable`, an `Array`, a `Sequence`) is named
+for its elements in the plural: `current: List<DebugSession>` gives `currentSessions`, not
+`currentList`. Any other container's example ends with the container's head noun
+(`pendingChannel` for a `Channel<Request>`, `cacheMap` for a `Map<String, User>`). A map from a
+class to a value type names its key after `By`: `colors: Map<ThemeColorTokens, Int>` gives
+`colorsByToken`, which passes as the plural of the key's head noun.
 
 The name's own words are kept as written (`SHA256_HEX` gives `SHA256_HEX_REGEX`), and what
 follows its role words comes back after the type's words: a trailing phrase (`cacheById` gives
-`cacheMapById`), a qualifier (`OrNull`) and a trailing number (`state1: DataModel<T1>` gives
-`stateModel1`, `r1: Reply` gives `reply1`). A digit group inside a type name stays with its word
-(`cert: X509Certificate` gives `x509Certificate`), an acronym of three letters or more is written
-as a word in camelCase (`path: URL` gives `pathUrl`), and a SCREAMING name that starts with the
-head noun has it moved to the end (`KEY_SERVER_PORT` gives `SERVER_PORT_KEY`).
+`cacheMapById`) and a qualifier (`OrNull`). A digit group stays with the word before it, in the
+name (`h264: InputStream` gives `h264Stream`, `state1: DataModel<T1>` gives `state1Model`) and in
+a type name (`cert: X509Certificate` gives `x509Certificate`); a word the example spells out
+keeps its digits after the type's words (`r1: Reply` gives `reply1`). An acronym of three letters
+or more is written as a word in camelCase (`path: URL` gives `pathUrl`), and a SCREAMING name
+that starts with the head noun has it moved to the end, after the whole name (`KEY_SERVER_PORT`
+gives `SERVER_PORT_KEY`, `KEY_CHECK_FOR_UPDATES_ON_STARTUP` gives
+`CHECK_FOR_UPDATES_ON_STARTUP_KEY`).
+
+A name in which the head noun comes earlier (`pluginInstance: HostPlugin`) gets the head noun
+appended like any other (`pluginInstancePlugin`): moving it to the end (`instancePlugin`) would
+say a plugin of instances, and dropping the word after it is the author's call.
 
 A plural name of a container is only asked for the element's plural (`'Nodes'`): the singular of
 its role is not the rule's to guess. An element that reads as a plural already (`Coordinates`,
@@ -241,7 +264,7 @@ rules:
     valueTypes: [kotlin.Int, kotlin.String, "kotlin.Function*", java.io.File]
     valueSupertypes: [kotlin.Throwable, kotlin.CharSequence]
     containers: ["kotlin.collections.*", "kotlinx.coroutines.flow.*"]
-    typeSuffixes: [Values, Impl, Object]
+    typeSuffixes: [Values, Impl, Object, Plus, Ex, Compat]
     nameSuffixes: [OrNull, OrDefault, OrEmpty, OrThrow]
 ```
 
@@ -285,7 +308,7 @@ Each list replaces its default; keep the entries you still want.
   class: `limit: McpParameter<Int>` asks for `Parameter`.
 - `typeSuffixes`, words (camelCase runs, matched case-insensitively) dropped from the end of a
   type's simple name before its head noun is taken, as long as a word is left: `Values`, `Impl`,
-  `Object`.
+  `Object`, `Plus`, `Ex`, `Compat`.
 - `nameSuffixes`, words dropped from the end of a name before its last word is compared, as long
   as a word is left: `OrNull`, `OrDefault`, `OrEmpty`.
 - `publicParameters`, `true` or `false` (default `true`): whether the parameters of public API

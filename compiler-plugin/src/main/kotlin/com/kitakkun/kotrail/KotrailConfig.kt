@@ -925,8 +925,12 @@ data class KotrailConfig(
          */
         val DEFAULT_VALUE_SUPERTYPES: List<String> = listOf("kotlin.Throwable", "kotlin.CharSequence", "kotlin.time.TimeMark")
 
-        /** Type name endings that carry no meaning: `UserRepositoryImpl` is a repository, `PaddingValues` a padding, `MutationObject` a mutation. */
-        val DEFAULT_TYPE_SUFFIXES: List<String> = listOf("Values", "Impl", "Object")
+        /**
+         * Type name endings that carry no meaning: `UserRepositoryImpl` is a repository, `PaddingValues` a padding,
+         * `MutationObject` a mutation. A qualifier after the head noun is one too: `SwrClientPlus` is a client,
+         * `ListViewEx` a view, `NotificationManagerCompat` a manager.
+         */
+        val DEFAULT_TYPE_SUFFIXES: List<String> = listOf("Values", "Impl", "Object", "Plus", "Ex", "Compat")
 
         /** Name endings that qualify how a value is obtained rather than what it is: `selectedItemOrNull`. */
         val DEFAULT_NAME_SUFFIXES: List<String> = listOf("OrNull", "OrDefault", "OrEmpty")

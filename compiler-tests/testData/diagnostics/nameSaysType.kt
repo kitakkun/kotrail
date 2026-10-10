@@ -468,9 +468,10 @@ class Examples<T1>(
     val <!KOTRAIL_NAME_HIDES_TYPE!>positions<!>: List<LayoutCoordinates>,
     val <!KOTRAIL_NAME_HIDES_TYPE!>themes<!>: List<DesignTokens>,
     val <!KOTRAIL_NAME_HIDES_TYPE!>records<!>: List<UserData>,
-    // A trailing digit group stays at the end.
+    // A digit group stays with the word before it, and a word spelled out keeps its digits after the type's words.
     val <!KOTRAIL_NAME_HIDES_TYPE!>state1<!>: DataModel<T1>,
     val <!KOTRAIL_NAME_HIDES_TYPE!>r1<!>: Reply,
+    val <!KOTRAIL_NAME_HIDES_TYPE!>h264<!>: InputStream,
     // A word with digits in the type name stays one word, and an abbreviation is spelled out.
     val <!KOTRAIL_NAME_HIDES_TYPE!>cert<!>: java.security.cert.X509Certificate,
     val <!KOTRAIL_NAME_HIDES_TYPE!>tx<!>: Transaction,
@@ -487,6 +488,55 @@ object PreferenceKeys {
     // A SCREAMING name that starts with the head noun moves it to the end.
     val <!KOTRAIL_NAME_HIDES_TYPE!>KEY_SERVER_PORT<!>: Preferences.Key<Int> = Preferences.Key("port")
 }
+
+object UpdatePreferenceKeys {
+    // The head noun goes after the whole name, its phrase included.
+    val <!KOTRAIL_NAME_HIDES_TYPE!>KEY_CHECK_FOR_UPDATES_ON_STARTUP<!>: Preferences.Key<Boolean> = Preferences.Key("check")
+}
+
+class SwrClientPlus
+class ReadFile
+class ListDirectory
+class DebugSession
+class ThemeColorTokens
+class HostPlugin
+
+class Qualified(
+    val label: String,
+    // Not reported: Plus qualifies the head noun, which is Client.
+    val swrClient: SwrClientPlus,
+    // Reported: the head noun before the qualifier is asked for.
+    val <!KOTRAIL_NAME_HIDES_TYPE!>swr<!>: SwrClientPlus,
+)
+
+class Measured(
+    // Reported: a unit is not an abbreviation of a word of the type.
+    val <!KOTRAIL_NAME_HIDES_TYPE!>delayMs<!>: McpParameter<Long>,
+    val <!KOTRAIL_NAME_HIDES_TYPE!>sinceTimestampMs<!>: McpParameter<Long>,
+    // Not reported: the examples pass.
+    val delayMsParameter: McpParameter<Long>,
+    val h264Stream: InputStream,
+)
+
+// Reported: a role word that carries no role gives the type's name.
+fun readFile(<!KOTRAIL_NAME_HIDES_TYPE!>request<!>: ReadFile) {}
+
+fun listDirectory(<!KOTRAIL_NAME_HIDES_TYPE!>request<!>: ListDirectory) {}
+
+// Not reported: the example passes.
+fun readFileAgain(readFile: ReadFile) {}
+
+class Sessions(
+    // Reported: a list's elements are named in the plural rather than the list.
+    val <!KOTRAIL_NAME_HIDES_TYPE!>current<!>: List<DebugSession>,
+    // Reported: a map from a class to a value type names its key after By.
+    val <!KOTRAIL_NAME_HIDES_TYPE!>colors<!>: Map<ThemeColorTokens, Int>,
+    // Reported: the head noun earlier in the name is appended like any other.
+    val <!KOTRAIL_NAME_HIDES_TYPE!>pluginInstance<!>: HostPlugin,
+    // Not reported: the examples pass.
+    val currentSessions: List<DebugSession>,
+    val colorsByToken: Map<ThemeColorTokens, Int>,
+)
 
 object RedactionPresets {
     // A word whose letters merely appear in the type name is not an abbreviation of it.
