@@ -11,7 +11,7 @@ import org.jetbrains.skia.Bitmap
 
 class Frame(val bytes: ByteArray)
 
-// Recorded as @InferredNativeAllocation(["Bitmap"]) for callers.
+// Recorded as nativeAllocation (types ["Bitmap", ...]) in the library's facts file, for callers.
 fun decode(frame: Frame): Bitmap = Bitmap().apply { allocPixels() }
 
 // Closes what it creates: nothing recorded.

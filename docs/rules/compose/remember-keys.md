@@ -98,9 +98,10 @@ fun Screen(actions: Flow<Action>, onNavigate: (Route) -> Unit) {
 
 The rule summarizes each composable: the parameters its body keeps for the life of an effect
 without keeping them current, following calls into other composables, so that a helper that only
-hands its `block` on to a helper that keeps it counts too. The summary is written into the class
-file as `@InferredEffectCapture(captured = ["block"])` metadata (the `kotrail-annotations`
-artifact declares the annotation; the plugin writes it, nobody writes it by hand), and a call
+hands its `block` on to a helper that keeps it counts too. The summary is recorded for other
+modules as an `effectCapture` fact (`captured = ["block"]`): in the module's facts file on the
+JVM and Android, as `@InferredEffectCapture` in a klib (the `kotrail-annotations` artifact
+declares the annotation; the plugin writes it, nobody writes it by hand), and a call
 from another module that hands a lambda reading a callback, or a callback parameter itself, for
 a captured parameter is reported at the argument as `KOTRAIL_EFFECT_CAPTURED_BY_CALLEE`, naming
 the callbacks the lambda reads. The fix is the caller's: keep them current, or hand a lambda
@@ -175,7 +176,7 @@ between a library and its caller.
 keyed call from the analysis in `fir/compose/effects/EffectCaptureAnalysis.kt` (flagged values,
 coverage by symbol and property path, long-lived bodies, seeds, the one-shot prefix), and a call
 into a composable whose captured parameters, from `EffectCaptureService` (a session component:
-source bodies, or `@InferredEffectCapture` on the classpath, memoized, transitive), receive a
+source bodies, or the `effectCapture` fact of a classpath declaration, memoized, transitive), receive a
 lambda or a callback. `EffectCaptureService` is an inferred fact on the shared base described in
-[Inferred metadata](../../inferred-metadata.md); the shared writer puts `@InferredEffectCapture`
-onto non-private composables after Fir2Ir, from the cache the shared warm-up filled.
+[Inferred metadata](../../inferred-metadata.md); the shared writer records the fact of
+non-private composables after Fir2Ir, from the cache the shared warm-up filled.

@@ -1,8 +1,8 @@
 // DUMP_IR
 // KOTRAIL_CONFIG: rules.preconditions=on
 
-// Exercises the IR metadata writer end to end: `lib` is compiled to class files, and the dump
-// shows the @InferredPreconditions annotations the plugin wrote onto its declarations. `main`
+// Exercises the fact writer end to end: `lib` is compiled to class files, and the .facts.txt
+// dump shows the preconditions facts the plugin wrote into its facts file. `main`
 // calls them with values that satisfy every contract, so the checker stays quiet and the box
 // runs.
 

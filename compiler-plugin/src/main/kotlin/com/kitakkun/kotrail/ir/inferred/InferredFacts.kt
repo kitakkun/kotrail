@@ -14,6 +14,7 @@ import com.kitakkun.kotrail.fir.noop.NoOpNames
 import com.kitakkun.kotrail.fir.noop.noOpService
 import com.kitakkun.kotrail.fir.preconditions.PreconditionNames
 import com.kitakkun.kotrail.fir.preconditions.preconditionService
+import com.kitakkun.kotrail.inferred.InferredFactNames
 import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
 import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.FirRegularClass
@@ -26,8 +27,8 @@ import org.jetbrains.kotlin.name.Name
 
 /**
  * The inferred facts the plugin writes as metadata, each the IR side of a FIR
- * [InferredFactService]: which annotation, which declarations, and the arrays the service
- * encodes. The FIR side computed and cached the fact while bodies were available; here it is
+ * [InferredFactService]: its facts-file name, its annotation, which declarations, and the arrays
+ * the service encodes. The FIR side computed and cached the fact while bodies were available; here it is
  * only read back through the FIR declaration attached to the IR one.
  */
 object InferredFacts {
@@ -42,6 +43,7 @@ object InferredFacts {
 
     /** `@InferredWindowInsetsHandling` on a composable without a declared `@HandlesWindowInsets` contract. */
     object WindowInsets : InferredFunctionFact {
+        override val name: String = InferredFactNames.WINDOW_INSETS
         override val rule = KotrailRule.COMPOSE_WINDOW_INSETS
         override val annotation: ClassId = WindowInsetsNames.INFERRED_WINDOW_INSETS_HANDLING
         override val parameters = listOf("handled")
@@ -53,6 +55,7 @@ object InferredFacts {
 
     /** `@InferredCompositionLocals` on a composable that reads or provides a local. */
     object CompositionLocals : InferredFunctionFact {
+        override val name: String = InferredFactNames.COMPOSITION_LOCALS
         override val rule = KotrailRule.COMPOSE_COMPOSITION_LOCALS
         override val annotation: ClassId = CompositionLocalNames.INFERRED_COMPOSITION_LOCALS
         override val parameters = listOf("reads", "provides")
@@ -63,6 +66,7 @@ object InferredFacts {
 
     /** The same annotation on a property whose getter is composable: a reader too. */
     object CompositionLocalGetter : InferredPropertyFact {
+        override val name: String = InferredFactNames.COMPOSITION_LOCAL_GETTER
         override val rule = KotrailRule.COMPOSE_COMPOSITION_LOCALS
         override val annotation: ClassId = CompositionLocalNames.INFERRED_COMPOSITION_LOCALS
         override val parameters = listOf("reads", "provides")
@@ -73,6 +77,7 @@ object InferredFacts {
 
     /** `@InferredRequiredCompositionLocal`, a marker, on a local whose default throws. */
     object RequiredCompositionLocal : InferredPropertyFact {
+        override val name: String = InferredFactNames.REQUIRED_COMPOSITION_LOCAL
         override val rule = KotrailRule.COMPOSE_COMPOSITION_LOCALS
         override val annotation: ClassId = CompositionLocalNames.INFERRED_REQUIRED_COMPOSITION_LOCAL
         override val parameters: List<String> = emptyList()
@@ -82,6 +87,7 @@ object InferredFacts {
 
     /** `@InferredPreconditions` on a function whose leading `require` / `check` calls fit the precondition language. */
     object Preconditions : InferredFunctionFact {
+        override val name: String = InferredFactNames.PRECONDITIONS
         override val rule = KotrailRule.PRECONDITIONS
         override val annotation: ClassId = PreconditionNames.INFERRED_PRECONDITIONS
         override val parameters = listOf("conditions")
@@ -91,6 +97,7 @@ object InferredFacts {
 
     /** The same on a class, for the `init` blocks that check its primary constructor's parameters. */
     object ClassPreconditions : InferredClassFact {
+        override val name: String = InferredFactNames.CLASS_PRECONDITIONS
         override val rule = KotrailRule.PRECONDITIONS
         override val annotation: ClassId = PreconditionNames.INFERRED_PRECONDITIONS
         override val parameters = listOf("conditions")
@@ -100,6 +107,7 @@ object InferredFacts {
 
     /** `@InferredNoOpWhen` on a function whose opening `if (condition) return` guards fit the precondition language. */
     object NoOpWhen : InferredFunctionFact {
+        override val name: String = InferredFactNames.NO_OP_WHEN
         override val rule = KotrailRule.NO_OP_CALL
         override val annotation: ClassId = NoOpNames.INFERRED_NO_OP_WHEN
         override val parameters = listOf("conditions")
@@ -109,6 +117,7 @@ object InferredFacts {
 
     /** `@InferredEffectCapture` on a composable that keeps some parameters for the life of an effect. */
     object EffectCapture : InferredFunctionFact {
+        override val name: String = InferredFactNames.EFFECT_CAPTURE
         override val rule = KotrailRule.COMPOSE_REMEMBER_KEYS
         override val annotation: ClassId = ComposeNames.INFERRED_EFFECT_CAPTURE
         override val parameters = listOf("captured")
@@ -119,6 +128,7 @@ object InferredFacts {
 
     /** `@InferredStartsAsyncWork`, a marker, on a non-suspending function that starts work its caller cannot wait for. */
     object StartsAsyncWork : InferredFunctionFact {
+        override val name: String = InferredFactNames.STARTS_ASYNC_WORK
         override val rule = KotrailRule.DELAY_FOR_COMPLETION
         override val annotation: ClassId = com.kitakkun.kotrail.fir.concurrency.AsyncWorkService.INFERRED_STARTS_ASYNC_WORK
         override val parameters: List<String> = emptyList()
@@ -129,6 +139,7 @@ object InferredFacts {
 
     /** `@InferredNativeAllocation` on a function that creates a native-backed object and lets it out unclosed. */
     object NativeAllocation : InferredFunctionFact {
+        override val name: String = InferredFactNames.NATIVE_ALLOCATION
         override val rule = KotrailRule.NATIVE_ALLOCATION_IN_LOOP
         override val annotation: ClassId = com.kitakkun.kotrail.fir.memory.NativeAllocationService.INFERRED_NATIVE_ALLOCATION
         override val parameters = listOf("types", "path")

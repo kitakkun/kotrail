@@ -14,7 +14,7 @@ import androidx.compose.runtime.collect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberUpdatedState
 
-// Reported here (as a warning, so that the library still compiles), and recorded as @InferredEffectCapture(["block"]) for callers.
+// Reported here (as a warning, so that the library still compiles), and recorded as effectCapture (["block"]) in the library's facts file, for callers.
 @Composable
 fun ActionEffect(events: Observable<String>, block: (String) -> Unit) {
     <!KOTRAIL_EFFECT_KEY_MISSING_WARNING!>LaunchedEffect(Unit) { events.collect { block(it) } }<!>

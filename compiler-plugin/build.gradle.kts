@@ -11,12 +11,32 @@ plugins {
 val kotlinCompilerVersion: String by rootProject.extra
 val kotlinCompatFamily: String by rootProject.extra
 
+// The Kotrail version is baked in for the header of the inferred-fact facts files the plugin writes.
+val generateVersionSource by tasks.registering {
+    val outputDir = layout.buildDirectory.dir("generated/kotrail-version/kotlin")
+    val kotrailVersion = project.version.toString()
+    inputs.property("version", kotrailVersion)
+    outputs.dir(outputDir)
+    doLast {
+        val file = outputDir.get().file("com/kitakkun/kotrail/KotrailVersion.kt").asFile
+        file.parentFile.mkdirs()
+        file.writeText(
+            "package com.kitakkun.kotrail\n\n" +
+                "/** The Kotrail version this compiler plugin was built from. */\n" +
+                "object KotrailVersion {\n" +
+                "    const val VERSION: String = \"" + kotrailVersion + "\"\n" +
+                "}\n",
+        )
+    }
+}
+
 kotlin {
     jvmToolchain(21)
     // Version-specific shims live under plugin/src/<family>/kotlin. Exactly one family is
     // compiled into the JAR; shared code only ever references com.kitakkun.kotrail.compat.
     sourceSets.main {
         kotlin.srcDir("src/$kotlinCompatFamily/kotlin")
+        kotlin.srcDir(generateVersionSource)
     }
 }
 

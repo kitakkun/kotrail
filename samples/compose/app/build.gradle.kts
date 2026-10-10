@@ -1,3 +1,4 @@
+import org.gradle.api.tasks.PathSensitivity
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
@@ -23,4 +24,15 @@ dependencies {
 
 tasks.withType<KotlinCompile>().configureEach {
     compilerOptions.freeCompilerArgs.add("-Xrender-internal-diagnostic-names")
+}
+
+// The facts file of :samples:compose:lib (see its build script), which tells the checks here what
+// the library's composables handle. It is an input of the compile task, so a changed fact
+// compiles the app again even when the library's ABI stays the same.
+tasks.named<KotlinCompile>("compileKotlin") {
+    val libFacts = project(":samples:compose:lib").layout.buildDirectory.file("kotrail/facts/jvm-main/lib.facts")
+    inputs.files(libFacts).withPropertyName("kotrailFacts").withPathSensitivity(PathSensitivity.NONE)
+    compilerOptions.freeCompilerArgs.addAll(
+        libFacts.map { listOf("-P", "plugin:com.kitakkun.kotrail:facts=${it.asFile}") },
+    )
 }

@@ -7,7 +7,6 @@ FILE fqName:lib fileName:/Lib.kt
     VALUE_PARAMETER kind:Regular name:content index:1 type:@[Composable] kotlin.Function0<kotlin.Unit>
     annotations:
       Composable
-      InferredWindowInsetsHandling(handled = ["navigationBars:b", "ime:tblrLR"] type=kotlin.Array<kotlin.String> varargElementType=kotlin.String)
     BLOCK_BODY
       CALL 'public final fun Column (modifier: androidx.compose.ui.Modifier, content: @[Composable] kotlin.Function0<kotlin.Unit>): kotlin.Unit declared in androidx.compose.foundation.layout' type=kotlin.Unit origin=null
         ARG modifier: CALL 'public final fun imePadding (<this>: androidx.compose.ui.Modifier): androidx.compose.ui.Modifier declared in androidx.compose.foundation.layout' type=androidx.compose.ui.Modifier origin=null
@@ -34,7 +33,6 @@ FILE fqName:lib fileName:/Lib.kt
     VALUE_PARAMETER kind:Regular name:content index:1 type:@[Composable] kotlin.Function0<kotlin.Unit>
     annotations:
       Composable
-      InferredWindowInsetsHandling(handled = ["statusBars:t"] type=kotlin.Array<kotlin.String> varargElementType=kotlin.String)
     BLOCK_BODY
       CALL 'public final fun Box (modifier: androidx.compose.ui.Modifier, content: @[Composable] kotlin.Function0<kotlin.Unit>): kotlin.Unit declared in androidx.compose.foundation.layout' type=kotlin.Unit origin=null
         ARG modifier: CALL 'public final fun windowInsetsPadding (<this>: androidx.compose.ui.Modifier, insets: androidx.compose.foundation.layout.WindowInsets): androidx.compose.ui.Modifier declared in androidx.compose.foundation.layout' type=androidx.compose.ui.Modifier origin=null

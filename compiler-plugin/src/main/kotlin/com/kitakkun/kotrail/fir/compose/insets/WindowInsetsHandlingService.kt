@@ -2,13 +2,14 @@
 
 package com.kitakkun.kotrail.fir.compose.insets
 
+import com.kitakkun.kotrail.fir.inferred.FactArguments
+import com.kitakkun.kotrail.inferred.InferredFactNames
 import com.kitakkun.kotrail.compose.insets.InsetsAnalysis
 import com.kitakkun.kotrail.compose.insets.InsetsSet
 import com.kitakkun.kotrail.compose.insets.Sides
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.inferred.InferredFactService
 import com.kitakkun.kotrail.fir.inferred.InferredMetadata.arrayElements
-import com.kitakkun.kotrail.fir.inferred.InferredMetadata.strings
 import com.kitakkun.kotrail.fir.kotrailConfig
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
@@ -41,6 +42,7 @@ import org.jetbrains.kotlin.name.CallableId
 class WindowInsetsHandlingService(session: FirSession) : InferredFactService<FirNamedFunctionSymbol, InsetsAnalysis>(session) {
     override val rule: KotrailRule get() = KotrailRule.COMPOSE_WINDOW_INSETS
     override val annotation: ClassId get() = WindowInsetsNames.INFERRED_WINDOW_INSETS_HANDLING
+    override val factName: String get() = InferredFactNames.WINDOW_INSETS
     override val parameters: List<Name> get() = listOf(WindowInsetsNames.HANDLED_PARAM)
     override val empty: InsetsAnalysis get() = InsetsAnalysis.EMPTY
 
@@ -87,8 +89,8 @@ class WindowInsetsHandlingService(session: FirSession) : InferredFactService<Fir
     override fun knowledge(symbol: FirNamedFunctionSymbol): InsetsAnalysis? =
         known(symbol.callableId)?.let { InsetsAnalysis(it, unverifiable = false) }
 
-    override fun decode(annotation: FirAnnotation): InsetsAnalysis =
-        InsetsAnalysis(InsetsSet.decode(annotation.strings(WindowInsetsNames.HANDLED_PARAM)) ?: InsetsSet.EMPTY, unverifiable = false)
+    override fun decode(arguments: FactArguments): InsetsAnalysis =
+        InsetsAnalysis(InsetsSet.decode(arguments.strings(WindowInsetsNames.HANDLED_PARAM)) ?: InsetsSet.EMPTY, unverifiable = false)
 
     override fun encode(value: InsetsAnalysis): List<List<String>>? =
         value.handled.takeUnless { it.isEmpty }?.let { listOf(it.encode()) }

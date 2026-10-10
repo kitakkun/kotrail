@@ -1,0 +1,5 @@
+Module: lib (lib.facts)
+{"file": "lib/Lib.kt", "id": "lib/ChatComponents.Companion.Header", "signature": "", "facts": {"windowInsets": {"handled": ["statusBars:tblrLR"]}}}
+{"file": "lib/Lib.kt", "id": "lib/ChatComponents.Composer", "signature": "", "facts": {"windowInsets": {"handled": ["ime:tblrLR"]}}}
+{"file": "lib/Lib.kt", "id": "lib/CutoutArea.StartEdge", "signature": "", "facts": {"windowInsets": {"handled": ["displayCutout:lR"]}}}
+Module: main (main.facts)

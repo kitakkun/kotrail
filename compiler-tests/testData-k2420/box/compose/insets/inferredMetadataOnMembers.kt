@@ -1,6 +1,6 @@
 // DUMP_IR
 // KOTRAIL_CONFIG: rules.compose.windowInsets=on
-// Members of classes and objects also get @InferredWindowInsetsHandling, so contracts in a
+// Members of classes and objects also get a windowInsets fact in the facts file, so contracts in a
 // dependent module can be satisfied through them.
 
 // MODULE: lib

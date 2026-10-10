@@ -2,13 +2,13 @@
 
 package com.kitakkun.kotrail.fir.memory
 
+import com.kitakkun.kotrail.fir.inferred.FactArguments
+import com.kitakkun.kotrail.inferred.InferredFactNames
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.inferred.InferredFactService
-import com.kitakkun.kotrail.fir.inferred.InferredMetadata.strings
 import com.kitakkun.kotrail.fir.kotrailConfig
 import org.jetbrains.kotlin.descriptors.Visibilities
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
-import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirAnonymousFunction
@@ -67,6 +67,7 @@ import org.jetbrains.kotlin.types.AbstractTypeChecker
 class NativeAllocationService(session: FirSession) : InferredFactService<FirNamedFunctionSymbol, NativeAllocationService.Allocation?>(session) {
     override val rule: KotrailRule get() = KotrailRule.NATIVE_ALLOCATION_IN_LOOP
     override val annotation: ClassId get() = INFERRED_NATIVE_ALLOCATION
+    override val factName: String get() = InferredFactNames.NATIVE_ALLOCATION
     override val parameters: List<Name> get() = listOf(TYPES, PATH)
     override val empty: Allocation? get() = null
 
@@ -116,10 +117,10 @@ class NativeAllocationService(session: FirSession) : InferredFactService<FirName
     }
 
     /** `types` is the type and, second, what the function does with it; `path` the functions it went through. */
-    override fun decode(annotation: FirAnnotation): Allocation? {
-        val types = annotation.strings(TYPES)
+    override fun decode(arguments: FactArguments): Allocation? {
+        val types = arguments.strings(TYPES)
         val type = types.firstOrNull() ?: return null
-        return Allocation(type, annotation.strings(PATH), types.getOrNull(1) ?: "lets go of")
+        return Allocation(type, arguments.strings(PATH), types.getOrNull(1) ?: "lets go of")
     }
 
     override fun encode(value: Allocation?): List<List<String>>? = value?.let { listOf(listOf(it.type, it.fate), it.path) }

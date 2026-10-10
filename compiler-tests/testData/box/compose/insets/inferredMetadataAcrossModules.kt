@@ -1,9 +1,9 @@
 // DUMP_IR
 // KOTRAIL_CONFIG: rules.compose.windowInsets=on
 
-// Exercises the IR metadata writer end to end: `lib` is compiled to class files, so `main`
-// can only satisfy its contracts through the @InferredWindowInsetsHandling annotation that
-// the plugin wrote onto lib's composables. A missing annotation surfaces as
+// Exercises the fact writer end to end: `lib` is compiled to class files, so `main` can only
+// satisfy its contracts through the windowInsets facts the plugin wrote into lib's facts file
+// (the .facts.txt dump) for lib's composables. A missing fact surfaces as
 // KOTRAIL_WINDOW_INSETS_NOT_HANDLED in `main`, which fails the test.
 
 // MODULE: lib

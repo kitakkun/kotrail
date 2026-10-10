@@ -69,8 +69,6 @@ FILE fqName:lib fileName:/Lib.kt
               ARG <this>: GET_VAR '<this>: lib.Counter declared in lib.Counter.add' type=lib.Counter origin=IMPLICIT_ARGUMENT
             ARG other: GET_VAR 'delta: kotlin.Int declared in lib.Counter.add' type=kotlin.Int origin=null
   CLASS CLASS name:Percent modality:FINAL visibility:public superTypes:[kotlin.Any]
-    annotations:
-      InferredPreconditions(conditions = ["value in 0..100"] type=kotlin.Array<out kotlin.String> varargElementType=kotlin.String)
     thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:lib.Percent
     PROPERTY name:value visibility:public modality:FINAL [val]
       FIELD PROPERTY_BACKING_FIELD name:value type:kotlin.Int visibility:private [final]
@@ -134,8 +132,6 @@ FILE fqName:lib fileName:/Lib.kt
   FUN name:retry visibility:public modality:FINAL returnType:kotlin.Unit
     VALUE_PARAMETER kind:Regular name:times index:0 type:kotlin.Int
     VALUE_PARAMETER kind:Regular name:label index:1 type:kotlin.String
-    annotations:
-      InferredPreconditions(conditions = ["times >= 0", "label.isNotBlank()"] type=kotlin.Array<out kotlin.String> varargElementType=kotlin.String)
     BLOCK_BODY
       CALL 'public final fun require (value: kotlin.Boolean, lazyMessage: kotlin.Function0<kotlin.Any>): kotlin.Unit declared in kotlin' type=kotlin.Unit origin=null
         ARG value: CALL 'public final fun greaterOrEqual (arg0: kotlin.Int, arg1: kotlin.Int): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=GTEQ
@@ -166,8 +162,6 @@ FILE fqName:lib fileName:/Lib.kt
   FUN name:window visibility:public modality:FINAL returnType:kotlin.Unit
     VALUE_PARAMETER kind:Regular name:start index:0 type:kotlin.Int
     VALUE_PARAMETER kind:Regular name:end index:1 type:kotlin.Int
-    annotations:
-      InferredPreconditions(conditions = ["start < end"] type=kotlin.Array<out kotlin.String> varargElementType=kotlin.String)
     BLOCK_BODY
       CALL 'public final fun require (value: kotlin.Boolean): kotlin.Unit declared in kotlin' type=kotlin.Unit origin=null
         ARG value: CALL 'public final fun less (arg0: kotlin.Int, arg1: kotlin.Int): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=LT

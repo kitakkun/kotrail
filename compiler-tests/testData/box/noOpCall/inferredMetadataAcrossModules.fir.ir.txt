@@ -35,8 +35,6 @@ FILE fqName:lib fileName:/Lib.kt
     FUN name:write visibility:public modality:FINAL returnType:kotlin.Unit
       VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:lib.Channel
       VALUE_PARAMETER kind:Regular name:text index:1 type:kotlin.String
-      annotations:
-        InferredNoOpWhen(conditions = ["text.isBlank()"] type=kotlin.Array<out kotlin.String> varargElementType=kotlin.String)
       BLOCK_BODY
         WHEN type=kotlin.Unit origin=IF
           BRANCH
@@ -61,8 +59,6 @@ FILE fqName:lib fileName:/Lib.kt
   FUN name:resize visibility:public modality:FINAL returnType:kotlin.Unit
     VALUE_PARAMETER kind:Regular name:width index:0 type:kotlin.Int
     VALUE_PARAMETER kind:Regular name:height index:1 type:kotlin.Int
-    annotations:
-      InferredNoOpWhen(conditions = ["width <= 0", "height <= 0", "height > 10000"] type=kotlin.Array<out kotlin.String> varargElementType=kotlin.String)
     BLOCK_BODY
       WHEN type=kotlin.Unit origin=IF
         BRANCH
@@ -90,8 +86,6 @@ FILE fqName:lib fileName:/Lib.kt
           ARG other: GET_VAR 'height: kotlin.Int declared in lib.resize' type=kotlin.Int origin=null
   FUN name:send visibility:public modality:FINAL returnType:kotlin.Unit
     VALUE_PARAMETER kind:Regular name:bytes index:0 type:kotlin.ByteArray
-    annotations:
-      InferredNoOpWhen(conditions = ["bytes.isEmpty()"] type=kotlin.Array<out kotlin.String> varargElementType=kotlin.String)
     BLOCK_BODY
       WHEN type=kotlin.Unit origin=IF
         BRANCH

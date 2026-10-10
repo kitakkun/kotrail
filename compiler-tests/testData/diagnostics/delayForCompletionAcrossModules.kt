@@ -11,7 +11,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 class Manager(private val scope: CoroutineScope) {
-    // Recorded as @InferredStartsAsyncWork for callers.
+    // Recorded as startsAsyncWork in the library's facts file, for callers.
     fun reconnect() {
         scope.launch { }
     }

@@ -4,9 +4,10 @@ package com.kitakkun.kotrail.fir.noop
 
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.compat.qualifierClassId
+import com.kitakkun.kotrail.fir.inferred.FactArguments
 import com.kitakkun.kotrail.fir.inferred.InferredFactService
-import com.kitakkun.kotrail.fir.inferred.InferredMetadata.strings
 import com.kitakkun.kotrail.fir.preconditions.CondConverter
+import com.kitakkun.kotrail.inferred.InferredFactNames
 import com.kitakkun.kotrail.preconditions.Cond
 import com.kitakkun.kotrail.preconditions.CondParser
 import org.jetbrains.kotlin.descriptors.ClassKind
@@ -14,7 +15,6 @@ import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.containingClassLookupTag
 import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
 import org.jetbrains.kotlin.fir.declarations.utils.isFinal
-import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.expressions.FirBlock
 import org.jetbrains.kotlin.fir.expressions.FirResolvedQualifier
 import org.jetbrains.kotlin.fir.expressions.FirReturnExpression
@@ -55,6 +55,7 @@ data class NoOpConditions(val conditions: List<Cond>, val hint: String)
 class NoOpService(session: FirSession) : InferredFactService<FirNamedFunctionSymbol, NoOpConditions>(session) {
     override val rule: KotrailRule get() = KotrailRule.NO_OP_CALL
     override val annotation: ClassId get() = NoOpNames.INFERRED_NO_OP_WHEN
+    override val factName: String get() = InferredFactNames.NO_OP_WHEN
     override val parameters: List<Name> get() = listOf(NoOpNames.CONDITIONS_PARAM)
     override val empty: NoOpConditions get() = NoOpConditions(emptyList(), "")
     override val metadataForSource: Boolean get() = true
@@ -67,8 +68,8 @@ class NoOpService(session: FirSession) : InferredFactService<FirNamedFunctionSym
         return NoOpConditions(entry.conditions.mapNotNull { CondParser.parse(it) }, entry.hint)
     }
 
-    override fun decode(annotation: FirAnnotation): NoOpConditions =
-        NoOpConditions(annotation.strings(NoOpNames.CONDITIONS_PARAM).mapNotNull { CondParser.parse(it) }, "")
+    override fun decode(arguments: FactArguments): NoOpConditions =
+        NoOpConditions(arguments.strings(NoOpNames.CONDITIONS_PARAM).mapNotNull { CondParser.parse(it) }, "")
 
     override fun encode(value: NoOpConditions): List<List<String>>? =
         value.conditions.mapNotNull { it.render() }.takeIf { it.isNotEmpty() }?.let { listOf(it) }

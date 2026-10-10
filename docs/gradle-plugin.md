@@ -40,8 +40,9 @@ kotrail {
 
     // enabled = false           // do not run the plugin here at all
     // annotations = false       // do not add the annotations artifact
-    // inferredMetadata = false  // write no inferred-fact annotations for other modules
+    // inferredMetadata = false  // write no inferred facts for other modules
     // consumerRules = false     // ship no shrinker rules to consumers
+    // packagingExcludes = false // keep older libraries' facts files in an Android app's APK
 }
 ```
 
@@ -50,8 +51,9 @@ kotrail {
 | `configFile` | none | The `kotrail.yaml` with rule settings; layered per compilation (below). |
 | `enabled` | `true` | Whether the compiler plugin is applied at all. Per compilation. |
 | `annotations` | `true` | Whether `kotrail-annotations` is added as `compileOnly` (Kotlin/JVM and Kotlin/Android). |
-| `inferredMetadata` | `true` | Whether the inferred-fact annotations (`@InferredStartsAsyncWork` and the rest) are written into the output for the modules that compile against this one. `false` leaves the class files and klibs free of Kotrail references, for a published library whose consumers do not use Kotrail; callers in other modules then see the module as if it had been compiled without Kotrail, while analysis within it is unchanged. Per compilation. See [Publishing a library](inferred-metadata.md#publishing-a-library). |
-| `consumerRules` | `true` | Whether the module ships `-dontwarn com.kitakkun.kotrail.**` to its consumers, so that R8 or ProGuard in an app without Kotrail does not fail on the missing annotation classes. See [Consumer rules](#consumer-rules). |
+| `inferredMetadata` | `true` | Whether the inferred facts are written for the modules that compile against this one: the facts file `build/kotrail/facts/<target>-<compilation>/<project>.facts` on the JVM and Android (published as the `kotrail-facts` artifact), annotations (`@InferredStartsAsyncWork` and the rest) in a klib. `false` writes and publishes neither, for a library whose consumers do not use Kotrail; callers in other modules then see the module as if it had been compiled without Kotrail, while analysis within it is unchanged. Per compilation. See [Inferred metadata](inferred-metadata.md). |
+| `consumerRules` | `true` | Whether the module ships `-dontwarn com.kitakkun.kotrail.**` to its consumers. The JVM and Android outputs of this version reference no Kotrail class (the facts are in a separate artifact), so the rule is only needed by consumers that also shrink JVM libraries built by earlier versions, whose class files carry the annotations. See [Consumer rules](#consumer-rules). |
+| `packagingExcludes` | `true` | Whether an Android application (`com.android.application`) leaves `META-INF/kotrail/**` out of its APK and bundle, through `android.packaging.resources.excludes`. Only libraries built by earlier versions of Kotrail carry facts files there; this version publishes them as a separate artifact, so the exclude matters only for those older libraries. See [Publishing a library](inferred-metadata.md#publishing-a-library). |
 | `bundledConfigurations` | empty | Configurations whose projects this compilation's artifact bundles, for unloadable code. Per compilation. |
 
 Rule switches, severities, rule settings, and the project's own notes on why a rule exists are
@@ -156,15 +158,46 @@ Kotlin Gradle plugin does not support `compileOnly` on the other targets; a mult
 that writes `@HandlesWindowInsets` or `@Unretained` adds `com.kitakkun.kotrail:kotrail-annotations`
 to the source sets that need it, as `api` or `implementation`.
 
-The metadata the compiler plugin writes for callers in other modules (`@InferredEffectCapture`,
-`@InferredStartsAsyncWork` and the rest) never needs the artifact: without it the plugin writes
-the annotation against a stub class, on every target. A consumer with Kotrail reads it by name.
-A consumer without Kotrail does not have the class: the JVM skips annotations it cannot load and
-a klib consumer's partial linkage removes them silently, but R8 and ProGuard report the missing
-class, which is why every module ships the `-dontwarn` [consumer rule](#consumer-rules)
-(`consumerRules`). A published library therefore carries the metadata with no Kotrail
-dependency, `annotations = false` included; one whose consumers do not use Kotrail can leave it
-out with `inferredMetadata = false`. See [Publishing a library](inferred-metadata.md#publishing-a-library).
+The facts the compiler plugin writes for callers in other modules never need the artifact. On
+the JVM and Android they go to a facts file under `build/kotrail/facts`, outside the class
+files, which name nothing of Kotrail; the JAR and the AAR carry nothing of it. In a klib they
+are annotations (`@InferredStartsAsyncWork` and the rest), written against a stub class when
+the artifact is absent, which a klib consumer without Kotrail drops silently. A published
+library therefore carries the facts with no Kotrail dependency, `annotations = false` included
+(every module still ships the `-dontwarn` [consumer rule](#consumer-rules), for the libraries of
+earlier versions whose class files carry the annotations); one whose consumers do not use
+Kotrail can leave them out with `inferredMetadata = false`. See
+[Publishing a library](inferred-metadata.md#publishing-a-library).
+
+## The `kotrail-facts` artifact
+
+There is no DSL for the facts file; the plugin wires it for every JVM and Android compilation:
+
+- The compilation writes `build/kotrail/facts/<target>-<compilation>/<project>.facts`, an output
+  of its compile task.
+- With `maven-publish`, the file of a main compilation is published next to the JAR or AAR as
+  `<artifact>-<version>-kotrail-facts.facts`, a classifier artifact (classifier
+  `kotrail-facts`, extension `facts`) of the Maven publication: for Kotlin/JVM on every Maven
+  publication but the plugin markers of `java-gradle-plugin`; for each JVM target of a
+  multiplatform project and the Android target of `com.android.kotlin.multiplatform.library`,
+  through the target's publication; for each variant publication of `androidTarget()`, that
+  variant's file; and for a Kotlin/Android library (`com.android.library`), on every Maven
+  publication, the file of the variant its component
+  (`android.publishing { singleVariant("release") }`) is named after, else of the variant the
+  publication is named after, else of `release`. No software component publishes it as a
+  variant, so the Gradle module metadata and the POM carry nothing of Kotrail. See
+  [How it is published](inferred-metadata.md#how-it-is-published).
+- A compilation reads the facts files of its dependencies: inside the build, a project
+  dependency's through the consumable configuration `kotrailFactsElements`
+  (`jvmKotrailFactsElements` for a multiplatform target), which no publication includes; a
+  published library's by asking the repositories for the `kotrail-facts` classifier, leniently.
+- The facts files are inputs of the compile task, and the compiler gets a digest of their
+  contents (`factsHash`), so a changed fact in a library compiles the module that depends on it
+  again even when the library's ABI stayed the same.
+
+`--info` prints the facts files each compilation read (`Kotrail: facts files read: ...`). See
+[Inferred metadata](inferred-metadata.md#the-facts-file-jvm-and-android) for the format and
+the details.
 
 ## Consumer rules
 
@@ -202,7 +235,11 @@ tasks.withType<KotlinCompile>().configureEach {
 
 `configFile` may be given more than once; the files are read in that order.
 
-`inferredMetadata=false` (`-P plugin:com.kitakkun.kotrail:inferredMetadata=false`) keeps the
-inferred-fact annotations out of the output. A hand-wired build ships no consumer rules; a
-library built that way with the metadata on adds `-dontwarn com.kitakkun.kotrail.**` to its
-consumer rules itself.
+A JVM compilation writes its facts file only where `factsOut` says
+(`-P plugin:com.kitakkun.kotrail:factsOut=<file>`), and reads the facts files named by `facts`
+(`-P plugin:com.kitakkun.kotrail:facts=<file1>,<file2>`, or the option repeated). A hand-wired
+build passes both itself and makes the files inputs of the dependent compile task, as
+`samples/compose/lib` and `samples/compose/app` do. `inferredMetadata=false`
+(`-P plugin:com.kitakkun.kotrail:inferredMetadata=false`) keeps the inferred facts out: no facts
+file on the JVM, no annotation in a klib. A hand-wired build ships no consumer rules; its JVM
+output needs none, since the facts file keeps Kotrail out of the class files.

@@ -2,10 +2,11 @@
 
 package com.kitakkun.kotrail.fir.concurrency
 
+import com.kitakkun.kotrail.fir.inferred.FactArguments
+import com.kitakkun.kotrail.inferred.InferredFactNames
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.inferred.InferredFactService
 import com.kitakkun.kotrail.fir.kotrailConfig
-import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirAnonymousFunction
@@ -41,6 +42,7 @@ import org.jetbrains.kotlin.name.Name
 class AsyncWorkService(session: FirSession) : InferredFactService<FirNamedFunctionSymbol, Boolean>(session) {
     override val rule: KotrailRule get() = KotrailRule.DELAY_FOR_COMPLETION
     override val annotation: ClassId get() = INFERRED_STARTS_ASYNC_WORK
+    override val factName: String get() = InferredFactNames.STARTS_ASYNC_WORK
     override val parameters: List<Name> get() = emptyList()
     override val empty: Boolean get() = false
 
@@ -53,7 +55,7 @@ class AsyncWorkService(session: FirSession) : InferredFactService<FirNamedFuncti
     override fun shouldWarm(symbol: FirNamedFunctionSymbol): Boolean = !symbol.isSuspend
 
     /** A marker: its presence is the fact. */
-    override fun decode(annotation: FirAnnotation): Boolean = true
+    override fun decode(arguments: FactArguments): Boolean = true
 
     override fun encode(value: Boolean): List<List<String>>? = if (value) emptyList() else null
 

@@ -1,0 +1,6 @@
+Module: lib (lib.facts)
+{"file": "lib/Lib.kt", "id": "lib/AppTheme", "signature": "kotlin/Function0", "facts": {"compositionLocals": {"reads": [], "provides": ["content:lib.LocalNav"]}}}
+{"file": "lib/Lib.kt", "id": "lib/LocalNav", "signature": "", "facts": {"requiredCompositionLocal": {}}}
+{"file": "lib/Lib.kt", "id": "lib/NavReader", "signature": "", "facts": {"compositionLocals": {"reads": ["lib.LocalNav!", "lib.LocalTitle"], "provides": []}}}
+Module: main (main.facts)
+{"file": "main/Main.kt", "id": "/Root", "signature": "", "facts": {"compositionLocals": {"reads": ["lib.LocalTitle"], "provides": []}}}

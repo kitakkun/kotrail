@@ -58,9 +58,10 @@ that gets bumped when the bug shows up again. The fix is always the same: make t
 
 A function starts work its caller cannot wait for when it is not `suspend` and its body calls a
 starter as a statement, dropping the result, or calls another such function. For a function in
-the same module the body is analyzed; for one in another module the compiler plugin writes
-`@InferredStartsAsyncWork` into its metadata (`com.kitakkun.kotrail.concurrency`), and the
-calling module reads it. A library compiled without Kotrail carries no metadata and is taken as
+the same module the body is analyzed; for one in another module the compiler plugin records a
+`startsAsyncWork` fact (in the module's facts file on the JVM and Android, as
+`@InferredStartsAsyncWork` from `com.kitakkun.kotrail.concurrency` in a klib), and the calling
+module reads it. A library compiled without Kotrail carries no metadata and is taken as
 not starting work.
 
 ## Fixtures
@@ -72,5 +73,5 @@ not starting work.
 
 `fir/checkers/DelayForCompletionChecker.kt`, a `FirFunctionCallChecker`; the "starts work"
 question is answered by `fir/concurrency/AsyncWorkService.kt`, an inferred fact on the shared
-base described in [Inferred metadata](../inferred-metadata.md), written to metadata as the
-`@InferredStartsAsyncWork` marker by the shared writer.
+base described in [Inferred metadata](../inferred-metadata.md), written by the shared writer
+as a marker: `startsAsyncWork` in the facts file, `@InferredStartsAsyncWork` in a klib.

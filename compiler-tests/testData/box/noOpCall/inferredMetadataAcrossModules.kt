@@ -1,9 +1,9 @@
 // DUMP_IR
 // KOTRAIL_CONFIG: rules.noOpCall=on
 
-// Exercises the IR metadata writer end to end: `lib` is compiled to class files, and the dump
-// shows the @InferredNoOpWhen annotations the plugin wrote onto its declarations. `main` calls
-// them with arguments that make no guard true, so the checker stays quiet and the box runs.
+// Exercises the fact writer end to end: `lib` is compiled to class files, and the .facts.txt
+// dump shows the noOpWhen facts the plugin wrote into its facts file. `main` calls them with
+// arguments that make no guard true, so the checker stays quiet and the box runs.
 
 // MODULE: lib
 // FILE: Lib.kt

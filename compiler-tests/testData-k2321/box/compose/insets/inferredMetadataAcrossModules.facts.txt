@@ -1,0 +1,4 @@
+Module: lib (lib.facts)
+{"file": "lib/Lib.kt", "id": "lib/BottomBarArea", "signature": "androidx/compose/ui/Modifier,kotlin/Function0", "facts": {"windowInsets": {"handled": ["navigationBars:b", "ime:tblrLR"]}}}
+{"file": "lib/Lib.kt", "id": "lib/TopBarArea", "signature": "androidx/compose/ui/Modifier,kotlin/Function0", "facts": {"windowInsets": {"handled": ["statusBars:t"]}}}
+Module: main (main.facts)

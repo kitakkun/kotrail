@@ -25,7 +25,6 @@ FILE fqName:lib fileName:/Lib.kt
         VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:lib.ChatComponents.Companion
         annotations:
           Composable
-          InferredWindowInsetsHandling(handled = ["statusBars:tblrLR"] type=kotlin.Array<kotlin.String> varargElementType=kotlin.String)
         BLOCK_BODY
           CALL 'public final fun Column (modifier: androidx.compose.ui.Modifier, content: @[Composable] kotlin.Function0<kotlin.Unit>): kotlin.Unit declared in androidx.compose.foundation.layout' type=kotlin.Unit origin=null
             ARG modifier: CALL 'public final fun statusBarsPadding (<this>: androidx.compose.ui.Modifier): androidx.compose.ui.Modifier declared in androidx.compose.foundation.layout' type=androidx.compose.ui.Modifier origin=null
@@ -56,7 +55,6 @@ FILE fqName:lib fileName:/Lib.kt
       VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:lib.ChatComponents
       annotations:
         Composable
-        InferredWindowInsetsHandling(handled = ["ime:tblrLR"] type=kotlin.Array<kotlin.String> varargElementType=kotlin.String)
       BLOCK_BODY
         CALL 'public final fun Column (modifier: androidx.compose.ui.Modifier, content: @[Composable] kotlin.Function0<kotlin.Unit>): kotlin.Unit declared in androidx.compose.foundation.layout' type=kotlin.Unit origin=null
           ARG modifier: CALL 'public final fun imePadding (<this>: androidx.compose.ui.Modifier): androidx.compose.ui.Modifier declared in androidx.compose.foundation.layout' type=androidx.compose.ui.Modifier origin=null
@@ -89,7 +87,6 @@ FILE fqName:lib fileName:/Lib.kt
       VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:lib.CutoutArea
       annotations:
         Composable
-        InferredWindowInsetsHandling(handled = ["displayCutout:lR"] type=kotlin.Array<kotlin.String> varargElementType=kotlin.String)
       BLOCK_BODY
         CALL 'public final fun Column (modifier: androidx.compose.ui.Modifier, content: @[Composable] kotlin.Function0<kotlin.Unit>): kotlin.Unit declared in androidx.compose.foundation.layout' type=kotlin.Unit origin=null
           ARG modifier: CALL 'public final fun windowInsetsPadding (<this>: androidx.compose.ui.Modifier, insets: androidx.compose.foundation.layout.WindowInsets): androidx.compose.ui.Modifier declared in androidx.compose.foundation.layout' type=androidx.compose.ui.Modifier origin=null

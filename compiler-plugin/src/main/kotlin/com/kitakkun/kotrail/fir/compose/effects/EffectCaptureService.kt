@@ -2,13 +2,13 @@
 
 package com.kitakkun.kotrail.fir.compose.effects
 
+import com.kitakkun.kotrail.fir.inferred.FactArguments
+import com.kitakkun.kotrail.inferred.InferredFactNames
 import com.kitakkun.kotrail.fir.compose.ComposeNames
 import com.kitakkun.kotrail.fir.compose.isComposable
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.inferred.InferredFactService
-import com.kitakkun.kotrail.fir.inferred.InferredMetadata.strings
 import com.kitakkun.kotrail.fir.kotrailConfig
-import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.expressions.arguments
@@ -28,6 +28,7 @@ import org.jetbrains.kotlin.name.Name
 class EffectCaptureService(session: FirSession) : InferredFactService<FirNamedFunctionSymbol, Set<String>>(session) {
     override val rule: KotrailRule get() = KotrailRule.COMPOSE_REMEMBER_KEYS
     override val annotation: ClassId get() = ComposeNames.INFERRED_EFFECT_CAPTURE
+    override val factName: String get() = InferredFactNames.EFFECT_CAPTURE
     override val parameters: List<Name> get() = listOf(CAPTURED_PARAM)
     override val empty: Set<String> get() = emptySet()
 
@@ -36,7 +37,7 @@ class EffectCaptureService(session: FirSession) : InferredFactService<FirNamedFu
 
     override fun shouldWarm(symbol: FirNamedFunctionSymbol): Boolean = symbol.isComposable(session)
 
-    override fun decode(annotation: FirAnnotation): Set<String> = annotation.strings(CAPTURED_PARAM).toCollection(LinkedHashSet())
+    override fun decode(arguments: FactArguments): Set<String> = arguments.strings(CAPTURED_PARAM).toCollection(LinkedHashSet())
 
     override fun encode(value: Set<String>): List<List<String>>? = value.takeIf { it.isNotEmpty() }?.let { listOf(it.toList()) }
 

@@ -40,7 +40,7 @@ internal object ConsumerRules {
     const val RESOURCE_PATH: String = "META-INF/proguard/kotrail.pro"
 
     const val TEXT: String =
-        "# Kotrail writes inferred-fact annotations (BINARY retention) into class files; consumers\n" +
-            "# without Kotrail do not have the annotation classes. Nothing keeps them alive.\n" +
+        "# JVM libraries built by earlier Kotrail versions carry inferred-fact annotations (BINARY\n" +
+            "# retention) whose classes consumers without Kotrail do not have. Nothing keeps them alive.\n" +
             "-dontwarn com.kitakkun.kotrail.**\n"
 }

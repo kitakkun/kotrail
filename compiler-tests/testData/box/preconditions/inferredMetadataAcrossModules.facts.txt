@@ -1,0 +1,5 @@
+Module: lib (lib.facts)
+{"file": "lib/Lib.kt", "id": "lib/Percent", "signature": "", "facts": {"classPreconditions": {"conditions": ["value in 0..100"]}}}
+{"file": "lib/Lib.kt", "id": "lib/retry", "signature": "kotlin/Int,kotlin/String", "facts": {"preconditions": {"conditions": ["times >= 0", "label.isNotBlank()"]}}}
+{"file": "lib/Lib.kt", "id": "lib/window", "signature": "kotlin/Int,kotlin/Int", "facts": {"preconditions": {"conditions": ["start < end"]}}}
+Module: main (main.facts)

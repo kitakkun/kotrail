@@ -2,16 +2,17 @@
 
 package com.kitakkun.kotrail.fir.compose.locals
 
+import com.kitakkun.kotrail.fir.inferred.FactArguments
+import com.kitakkun.kotrail.inferred.InferredFactNames
+import com.kitakkun.kotrail.fir.inferred.factsFiles
 import com.kitakkun.kotrail.KotrailCompositionLocalKnowledge
 import com.kitakkun.kotrail.fir.compose.isComposable
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.inferred.InferredFactService
-import com.kitakkun.kotrail.fir.inferred.InferredMetadata.strings
 import com.kitakkun.kotrail.fir.kotrailConfig
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.FirSession
 import org.jetbrains.kotlin.fir.declarations.FirAnonymousFunction
-import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.fir.declarations.processAllDeclarations
 import org.jetbrains.kotlin.fir.declarations.FirResolvePhase
 import org.jetbrains.kotlin.fir.declarations.hasAnnotation
@@ -88,6 +89,7 @@ class CompositionLocalService(session: FirSession) : InferredFactService<FirName
 
     override val rule: KotrailRule get() = KotrailRule.COMPOSE_COMPOSITION_LOCALS
     override val annotation: ClassId get() = CompositionLocalNames.INFERRED_COMPOSITION_LOCALS
+    override val factName: String get() = InferredFactNames.COMPOSITION_LOCALS
     override val parameters: List<Name> get() = listOf(CompositionLocalNames.READS_PARAM, CompositionLocalNames.PROVIDES_PARAM)
     override val empty: LocalsAnalysis get() = LocalsAnalysis.EMPTY
     override val metadataForSource: Boolean get() = true
@@ -98,7 +100,7 @@ class CompositionLocalService(session: FirSession) : InferredFactService<FirName
 
     override fun shouldWarm(symbol: FirNamedFunctionSymbol): Boolean = symbol.isComposable(session)
 
-    override fun decode(annotation: FirAnnotation): LocalsAnalysis = declaredMetadata(annotation)
+    override fun decode(arguments: FactArguments): LocalsAnalysis = declaredMetadata(arguments)
 
     override fun encode(value: LocalsAnalysis): List<List<String>>? = encodeAnalysis(value)
 
@@ -116,11 +118,12 @@ class CompositionLocalService(session: FirSession) : InferredFactService<FirName
     val getters: InferredFactService<FirPropertySymbol, LocalsAnalysis> = object : InferredFactService<FirPropertySymbol, LocalsAnalysis>(session) {
         override val rule: KotrailRule get() = this@CompositionLocalService.rule
         override val annotation: ClassId get() = this@CompositionLocalService.annotation
+        override val factName: String get() = InferredFactNames.COMPOSITION_LOCAL_GETTER
         override val parameters: List<Name> get() = this@CompositionLocalService.parameters
         override val empty: LocalsAnalysis get() = LocalsAnalysis.EMPTY
         override val metadataForSource: Boolean get() = true
         override fun shouldWarm(symbol: FirPropertySymbol): Boolean = symbol.getterSymbol?.isComposable(session) == true
-        override fun decode(annotation: FirAnnotation): LocalsAnalysis = declaredMetadata(annotation)
+        override fun decode(arguments: FactArguments): LocalsAnalysis = declaredMetadata(arguments)
         override fun encode(value: LocalsAnalysis): List<List<String>>? = encodeAnalysis(value)
         override fun analyze(symbol: FirPropertySymbol): LocalsAnalysis {
             val body = symbol.getterSymbol?.fir?.body ?: return LocalsAnalysis.EMPTY
@@ -203,6 +206,7 @@ class CompositionLocalService(session: FirSession) : InferredFactService<FirName
         val fqName = local.localFqName() ?: return false
         if (fqName in settings.required) return true
         if (local.hasAnnotation(CompositionLocalNames.REQUIRED_COMPOSITION_LOCAL, session)) return true
+        if (!local.origin.fromSource && session.factsFiles.arguments(local, InferredFactNames.REQUIRED_COMPOSITION_LOCAL) != null) return true
         if (local.hasAnnotation(CompositionLocalNames.INFERRED_REQUIRED_COMPOSITION_LOCAL, session)) return true
         return isRequiredBySource(local)
     }
@@ -222,9 +226,9 @@ class CompositionLocalService(session: FirSession) : InferredFactService<FirName
         LocalsAnalysis(reads.associateWith { emptyList() }, provides)
 
     /** The metadata the IR writer put on a function or a property: a read ending in `!` is one the reader found required. */
-    private fun declaredMetadata(annotation: FirAnnotation): LocalsAnalysis {
-        val reads = annotation.strings(CompositionLocalNames.READS_PARAM)
-        val provides = annotation.strings(CompositionLocalNames.PROVIDES_PARAM)
+    private fun declaredMetadata(arguments: FactArguments): LocalsAnalysis {
+        val reads = arguments.strings(CompositionLocalNames.READS_PARAM)
+        val provides = arguments.strings(CompositionLocalNames.PROVIDES_PARAM)
         return LocalsAnalysis(
             reads = reads.associate { it.removeSuffix(REQUIRED_MARK) to emptyList() },
             provides = provides.mapNotNull { entry ->

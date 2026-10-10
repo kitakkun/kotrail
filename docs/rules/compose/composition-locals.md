@@ -104,8 +104,8 @@ reported either.
 
 ## Knowledge base
 
-Library composables are understood through their `@InferredCompositionLocals` metadata when the
-library was compiled with Kotrail, and through the project's own entries otherwise:
+Library composables are understood through their `compositionLocals` facts (the facts file on the
+JVM, `@InferredCompositionLocals` in a klib) when the library was compiled with Kotrail, and through the project's own entries otherwise:
 
 ```yaml
 rules:
@@ -140,11 +140,13 @@ not throw. Every one of them is a comma-separated list of fully qualified names.
 ## Cross-module metadata
 
 For every non-private composable, and every non-private property with a composable getter,
-that reads or provides a local, the IR extension writes
-`@InferredCompositionLocals(reads = [...], provides = [...])`, and for every non-private local
-whose default throws it writes `@InferredRequiredCompositionLocal`. Both go through
-`metadataDeclarationRegistrar.addMetadataVisibleAnnotationsToElement`, so consumers read them
-with no extra wiring. Every read is recorded, required or not: whether a read is an error is
+that reads or provides a local, the IR extension records `reads = [...], provides = [...]`,
+and for every non-private local whose default throws it records that the local is required. On
+the JVM and Android these are the `compositionLocals`, `compositionLocalGetter` and
+`requiredCompositionLocal` entries of the module's facts file; in a klib they are
+`@InferredCompositionLocals` and `@InferredRequiredCompositionLocal`, written through
+`metadataDeclarationRegistrar.addMetadataVisibleAnnotationsToElement`. Consumers read either
+with no extra wiring (see [Inferred metadata](../../inferred-metadata.md)). Every read is recorded, required or not: whether a read is an error is
 decided at the root, where the consuming project's settings apply. A read whose local the reader
 could see is required is recorded with a trailing `!` (`lib.theme.LocalColors!`), so that a
 `private` local behind a public getter is still required at a root in another module, which
@@ -165,5 +167,6 @@ sibling fact per composable getter, on the shared base described in
 [Inferred metadata](../../inferred-metadata.md), plus the required-local caches and the
 scope-tracking walker), `CompositionLocalNames`, and the checkers: the root checker and the
 entry-point checker. The shared warm-up computes every fact and which locals throw while
-initializers are still available; the shared writer puts `@InferredCompositionLocals` on
-functions and getters and `@InferredRequiredCompositionLocal` on properties.
+initializers are still available; the shared writer records the facts of functions, getters
+and properties (the facts file on the JVM, `@InferredCompositionLocals` and
+`@InferredRequiredCompositionLocal` in a klib).

@@ -136,11 +136,12 @@ source body, so they also override what the analysis would find in the same modu
 
 ## Cross-module metadata
 
-For every non-private composable without a contract, the IR extension writes
-`@InferredWindowInsetsHandling(handled = [...])` through
-`metadataDeclarationRegistrar.addMetadataVisibleAnnotationsToElement`. On JVM the annotation
-lands in the class file, which is what the FIR deserializer reads, so consumers see it with no
-extra wiring.
+For every non-private composable without a contract, the IR extension records what it handles
+(`handled = [...]`). On the JVM and Android that is a `windowInsets` entry in the module's facts
+file, a separate artifact that a consumer with Kotrail resolves for its dependencies; in a
+klib it is `@InferredWindowInsetsHandling`, written through
+`metadataDeclarationRegistrar.addMetadataVisibleAnnotationsToElement`, which the FIR
+deserializer reads with no extra wiring. See [Inferred metadata](../../inferred-metadata.md).
 
 FIR bodies are released after Fir2Ir (verified on Kotlin 2.4.0), so the analysis runs during the
 FIR checker phase: the contract checker calls the analysis for every composable, contract or not,

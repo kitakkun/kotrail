@@ -2,10 +2,10 @@
 
 package com.kitakkun.kotrail.fir.preconditions
 
+import com.kitakkun.kotrail.fir.inferred.FactArguments
+import com.kitakkun.kotrail.inferred.InferredFactNames
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.inferred.InferredFactService
-import com.kitakkun.kotrail.fir.inferred.InferredMetadata.strings
-import org.jetbrains.kotlin.fir.expressions.FirAnnotation
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.Name
 
@@ -49,7 +49,7 @@ import org.jetbrains.kotlin.fir.types.coneType
  */
 class PreconditionService(session: FirSession) : FirExtensionSessionComponent(session) {
     /** The fact about a function: the conditions its leading `require` / `check` calls impose. */
-    val functions: InferredFactService<FirNamedFunctionSymbol, List<Cond>> = Fact { symbol ->
+    val functions: InferredFactService<FirNamedFunctionSymbol, List<Cond>> = Fact(InferredFactNames.PRECONDITIONS) { symbol ->
         val function = symbol.fir as? FirNamedFunction ?: return@Fact emptyList()
         val params = function.valueParameters.associate { it.symbol as FirBasedSymbol<*> to it.name.asString() }
         val body = function.body ?: return@Fact emptyList()
@@ -57,7 +57,7 @@ class PreconditionService(session: FirSession) : FirExtensionSessionComponent(se
     }
 
     /** The fact about a class: the conditions its `init` blocks impose on the primary constructor's parameters. */
-    val classes: InferredFactService<FirRegularClassSymbol, List<Cond>> = Fact { symbol -> computeForClass(symbol) }
+    val classes: InferredFactService<FirRegularClassSymbol, List<Cond>> = Fact(InferredFactNames.CLASS_PRECONDITIONS) { symbol -> computeForClass(symbol) }
 
     /** The conditions a call to [callee] must satisfy. Constructors other than the primary one have none. */
     fun preconditionsOf(callee: FirFunctionSymbol<*>): List<Cond> = when (callee) {
@@ -72,13 +72,13 @@ class PreconditionService(session: FirSession) : FirExtensionSessionComponent(se
     fun preconditionsOfClass(classSymbol: FirRegularClassSymbol): List<Cond> = classes.of(classSymbol)
 
     /** One fact shape for functions and classes: a hand-written or inferred annotation always wins over the body. */
-    private inner class Fact<S : FirBasedSymbol<*>>(private val analysis: (S) -> List<Cond>) : InferredFactService<S, List<Cond>>(session) {
+    private inner class Fact<S : FirBasedSymbol<*>>(override val factName: String, private val analysis: (S) -> List<Cond>) : InferredFactService<S, List<Cond>>(session) {
         override val rule: KotrailRule get() = KotrailRule.PRECONDITIONS
         override val annotation: ClassId get() = PreconditionNames.INFERRED_PRECONDITIONS
         override val parameters: List<Name> get() = listOf(PreconditionNames.CONDITIONS_PARAM)
         override val empty: List<Cond> get() = emptyList()
         override val metadataForSource: Boolean get() = true
-        override fun decode(annotation: FirAnnotation): List<Cond> = annotation.strings(PreconditionNames.CONDITIONS_PARAM).mapNotNull { CondParser.parse(it) }
+        override fun decode(arguments: FactArguments): List<Cond> = arguments.strings(PreconditionNames.CONDITIONS_PARAM).mapNotNull { CondParser.parse(it) }
         override fun encode(value: List<Cond>): List<List<String>>? = value.mapNotNull { it.render() }.takeIf { it.isNotEmpty() }?.let { listOf(it) }
         override fun analyze(symbol: S): List<Cond> = analysis(symbol)
     }

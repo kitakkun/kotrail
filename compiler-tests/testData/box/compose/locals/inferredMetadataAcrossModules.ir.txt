@@ -1,8 +1,6 @@
 Module: lib
 FILE fqName:lib fileName:/Lib.kt
   PROPERTY name:LocalNav visibility:public modality:FINAL [val]
-    annotations:
-      InferredRequiredCompositionLocal
     FIELD PROPERTY_BACKING_FIELD name:LocalNav type:androidx.compose.runtime.ProvidableCompositionLocal<kotlin.String> visibility:private [final,static]
       EXPRESSION_BODY
         CALL 'public final fun compositionLocalOf <T> (defaultFactory: kotlin.Function0<T of androidx.compose.runtime.compositionLocalOf>): androidx.compose.runtime.ProvidableCompositionLocal<T of androidx.compose.runtime.compositionLocalOf> declared in androidx.compose.runtime' type=androidx.compose.runtime.ProvidableCompositionLocal<kotlin.String> origin=null
@@ -36,7 +34,6 @@ FILE fqName:lib fileName:/Lib.kt
     VALUE_PARAMETER kind:Regular name:content index:0 type:@[Composable] kotlin.Function0<kotlin.Unit>
     annotations:
       Composable
-      InferredCompositionLocals(reads = [] type=kotlin.Array<kotlin.String> varargElementType=kotlin.String, provides = ["content:lib.LocalNav"] type=kotlin.Array<kotlin.String> varargElementType=kotlin.String)
     BLOCK_BODY
       CALL 'public final fun CompositionLocalProvider (value: androidx.compose.runtime.ProvidedValue<*>, content: @[Composable] kotlin.Function0<kotlin.Unit>): kotlin.Unit declared in androidx.compose.runtime' type=kotlin.Unit origin=null
         ARG value: CALL 'public final fun provides (value: T of androidx.compose.runtime.ProvidableCompositionLocal): androidx.compose.runtime.ProvidedValue<T of androidx.compose.runtime.ProvidableCompositionLocal> declared in androidx.compose.runtime.ProvidableCompositionLocal' type=androidx.compose.runtime.ProvidedValue<kotlin.String> origin=null
@@ -50,7 +47,6 @@ FILE fqName:lib fileName:/Lib.kt
   FUN name:NavReader visibility:public modality:FINAL returnType:kotlin.Unit
     annotations:
       Composable
-      InferredCompositionLocals(reads = ["lib.LocalNav!", "lib.LocalTitle"] type=kotlin.Array<kotlin.String> varargElementType=kotlin.String, provides = [] type=kotlin.Array<kotlin.String> varargElementType=kotlin.String)
     BLOCK_BODY
       CALL 'public final fun Text (text: kotlin.String, modifier: androidx.compose.ui.Modifier): kotlin.Unit declared in androidx.compose.material3' type=kotlin.Unit origin=null
         ARG text: CALL 'public final fun <get-current> (): T of androidx.compose.runtime.ProvidableCompositionLocal declared in androidx.compose.runtime.ProvidableCompositionLocal' type=kotlin.String origin=GET_PROPERTY
@@ -68,7 +64,6 @@ FILE fqName:<root> fileName:/Main.kt
     annotations:
       CompositionLocalRoot
       Composable
-      InferredCompositionLocals(reads = ["lib.LocalTitle"] type=kotlin.Array<kotlin.String> varargElementType=kotlin.String, provides = [] type=kotlin.Array<kotlin.String> varargElementType=kotlin.String)
     BLOCK_BODY
       CALL 'public final fun AppTheme (content: @[Composable] kotlin.Function0<kotlin.Unit>): kotlin.Unit declared in lib' type=kotlin.Unit origin=null
         ARG content: FUN_EXPR type=kotlin.Function0<kotlin.Unit> origin=LAMBDA

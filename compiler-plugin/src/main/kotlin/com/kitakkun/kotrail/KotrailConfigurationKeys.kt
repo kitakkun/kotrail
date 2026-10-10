@@ -34,10 +34,17 @@ object KotrailConfigurationKeys {
     val ROOT_DIR = CompilerConfigurationKey<String>("rootDir")
 
     /**
-     * Whether the inferred-fact annotations are written into this compilation's output for other
-     * modules to read; unset means they are. Reading the facts of dependencies does not depend on it.
+     * Whether the inferred facts are written for other modules to read (the facts file on the
+     * JVM, annotations in a klib); unset means they are. Reading the facts of dependencies does
+     * not depend on it.
      */
     val INFERRED_METADATA = CompilerConfigurationKey<Boolean>("inferredMetadata")
+
+    /** Where a JVM compilation writes its facts file; unset means it writes none. */
+    val FACTS_OUT = CompilerConfigurationKey<String>("factsOut")
+
+    /** The facts files of this compilation's dependencies, in the order given; the first to describe a declaration wins. */
+    val FACTS = CompilerConfigurationKey<List<String>>("facts")
 
     /** Main-compilation record directories of the modules on this compilation's runtime class path. */
     val BUNDLED_UNLOADABLE_DIRS = CompilerConfigurationKey<List<String>>("bundledUnloadableDir")

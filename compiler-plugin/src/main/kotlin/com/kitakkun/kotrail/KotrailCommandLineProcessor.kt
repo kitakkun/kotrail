@@ -86,9 +86,34 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
     private val inferredMetadataOption = CliOption(
         optionName = "inferredMetadata",
         valueDescription = "<true|false>",
-        description = "Whether the inferred-fact annotations (@InferredStartsAsyncWork and the rest) are written into this " +
-            "compilation's output for the modules that compile against it. Default true; false leaves the output free of " +
-            "Kotrail references, as for a published library whose consumers do not use Kotrail",
+        description = "Whether the inferred facts are written for the modules that compile against this one: the facts file " +
+            "at factsOut on the JVM, annotations (@InferredStartsAsyncWork and the rest) in a klib. Default true; false writes " +
+            "neither, as for a published library whose consumers do not use Kotrail",
+        required = false,
+    )
+
+    private val factsOutOption = CliOption(
+        optionName = "factsOut",
+        valueDescription = "<path>",
+        description = "Where a JVM compilation writes its facts file (<module>.facts), outside its output directory. " +
+            "Without it a JVM compilation writes no facts",
+        required = false,
+    )
+
+    private val factsOption = CliOption(
+        optionName = "facts",
+        valueDescription = "<path1>,<path2>,...",
+        description = "Facts files of this compilation's dependencies to read, comma separated. May be given more than once; " +
+            "where two files describe the same declaration, the one named first wins",
+        required = false,
+        allowMultipleOccurrences = true,
+    )
+
+    private val factsHashOption = CliOption(
+        optionName = "factsHash",
+        valueDescription = "<hex>",
+        description = "A digest of the contents of the facts files, computed by the build tool. The compiler ignores it; it is " +
+            "there so that a changed fact changes the compiler arguments and the compilation is not skipped",
         required = false,
     )
 
@@ -114,7 +139,7 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
     }
 
     override val pluginId: String = KotrailNames.PLUGIN_ID
-    override val pluginOptions: Collection<CliOption> = listOf(configFileOption, fixesDirOption, composablesDirOption, complexityDirOption, associatedComposablesDirOption, unloadableDirOption, bundledUnloadableDirOption, rootDirOption, inferredMetadataOption) + treeOptions
+    override val pluginOptions: Collection<CliOption> = listOf(configFileOption, fixesDirOption, composablesDirOption, complexityDirOption, associatedComposablesDirOption, unloadableDirOption, bundledUnloadableDirOption, rootDirOption, inferredMetadataOption, factsOutOption, factsOption, factsHashOption) + treeOptions
 
     override fun processOption(option: AbstractCliOption, value: String, configuration: CompilerConfiguration) {
         val name = option.optionName
@@ -131,6 +156,11 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
                 KotrailConfigurationKeys.INFERRED_METADATA,
                 value.toBooleanStrictOrNull() ?: throw CliOptionProcessingException("inferredMetadata must be true or false, got '$value'"),
             )
+            name == factsOutOption.optionName -> configuration.put(KotrailConfigurationKeys.FACTS_OUT, value)
+            name == factsOption.optionName -> value.split(',').map { it.trim() }.filter { it.isNotEmpty() }
+                .forEach { configuration.add(KotrailConfigurationKeys.FACTS, it) }
+            // Only there to change the compiler arguments when a dependency's facts change.
+            name == factsHashOption.optionName -> Unit
             KotrailConfig.optionPath(name) != null -> configuration.add(KotrailConfigurationKeys.OPTIONS, "$name=$value")
             else -> throw CliOptionProcessingException("Unknown option: $name")
         }

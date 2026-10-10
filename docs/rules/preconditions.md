@@ -85,9 +85,11 @@ never reported.
 ## Across modules
 
 When a module is compiled, every non-private function and class with recordable preconditions
-receives an `@InferredPreconditions("times >= 0", ...)` annotation in its metadata. Dependent
-modules read it and check their calls the same way. The annotation can also be written by hand
-on a declaration whose body is not visible, and then takes precedence over analysis.
+gets its conditions recorded for other modules (`"times >= 0", ...`): in the module's facts
+file on the JVM and Android, as an `@InferredPreconditions` annotation in a klib (see
+[Inferred metadata](../inferred-metadata.md)). Dependent modules read them and check their calls
+the same way. The annotation can also be written by hand on a declaration whose body is not
+visible, and then takes precedence over analysis.
 
 ## When it stays quiet
 
@@ -110,7 +112,7 @@ serves extraction (with the callee's parameters mapped to `Param` nodes) and arg
 (with no parameters, so every reference must fold). `PreconditionService.kt` holds two inferred
 facts, one per function and one per class, on the shared base described in
 [Inferred metadata](../inferred-metadata.md): the annotation, hand-written or inferred, wins over
-the body; the shared warm-up fills the cache while bodies exist, and the shared writer puts
-`@InferredPreconditions` into the metadata.
+the body; the shared warm-up fills the cache while bodies exist, and the shared writer records
+the conditions (the facts file on the JVM, `@InferredPreconditions` in a klib).
 `KnownArguments.kt` folds a call's arguments and defaults into the values the conditions are
 evaluated with; [No-op call](no-op-call.md) shares it, the converter and the language.

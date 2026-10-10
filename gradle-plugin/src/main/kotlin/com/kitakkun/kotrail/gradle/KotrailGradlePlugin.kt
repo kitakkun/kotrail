@@ -36,6 +36,7 @@ import java.io.File
 class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
     private lateinit var project: Project
     private lateinit var extension: KotrailExtension
+    private lateinit var factsFiles: FactsFiles
 
     override fun apply(target: Project) {
         project = target
@@ -44,9 +45,15 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
             annotations.convention(true)
             consumerRules.convention(true)
             inferredMetadata.convention(true)
+            packagingExcludes.convention(true)
         }
+        factsFiles = FactsFiles(target) { compilationName ->
+            specsFor(compilationName).lastOrNull { it.inferredMetadata.isPresent }?.inferredMetadata?.get() ?: true
+        }
+        factsFiles.registerAttributeSchema()
         addAnnotationsDependency(target)
         addConsumerRules(target)
+        addPackagingExcludes(target)
         target.tasks.register(FIX_TASK, KotrailFixTask::class.java) { task ->
             task.group = "verification"
             task.description = "Applies the fixes Kotrail recorded during the last compilation of each source file"
@@ -69,7 +76,9 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
         wireComposableRecords(kotlinCompilation)
         wireComplexityRecords(kotlinCompilation)
         wireUnloadableRecords(kotlinCompilation)
-        return project.provider {
+        // The facts file this compilation writes and those of its dependencies (JVM and Android only).
+        val factsOptions = factsFiles.wire(kotlinCompilation)
+        val options = project.provider {
             val options = optionsFor(compilationName) +
                 SubpluginOption("fixesDir", fixesDirectoryFor(kotlinCompilation).get().asFile.path) +
                 SubpluginOption("composablesDir", composablesDirectoryFor(kotlinCompilation).get().asFile.path) +
@@ -84,6 +93,7 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
             project.logger.info("Kotrail: options for ${kotlinCompilation.compileKotlinTaskName}: ${options.joinToString { "${it.key}=${it.value}" }}")
             options
         }
+        return if (factsOptions == null) options else options.zip(factsOptions, FactsFiles.ConcatOptions())
     }
 
     /**
@@ -320,10 +330,13 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
     }
 
     /**
-     * The inferred-fact annotations reference classes a consumer without Kotrail does not have.
-     * The JVM ignores them at runtime, but R8 and ProGuard report every missing class a program
-     * class references, and R8 fails the build on it. So every module ships a `-dontwarn` rule
-     * for its consumers (see [ConsumerRules]), written by one task:
+     * The inferred-fact annotations that earlier versions wrote into JVM class files reference
+     * classes a consumer without Kotrail does not have. The JVM ignores them at runtime, but R8 and
+     * ProGuard report every missing class a program class references, and R8 fails the build on
+     * it. The JVM output of this version keeps the facts in a facts file outside the JAR and references
+     * nothing of Kotrail; every module still ships a `-dontwarn` rule for its consumers (see
+     * [ConsumerRules]), for the libraries of earlier versions an app may also shrink, written by
+     * one task:
      *
      * - A Kotlin/JVM module, and every JVM target of a multiplatform one, gets the task's output
      *   as a resource directory of its main compilation, so the JAR carries
@@ -374,17 +387,17 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
         // dependencies of `dependOnConsumerRules` make the task write the file before AGP reads it.
         val rulesFile = outputDirectory.map { it.file(ConsumerRules.RESOURCE_PATH).asFile }
         target.pluginManager.withPlugin("com.android.library") {
-            finalizeAndroidDsl(target) { android ->
+            finalizeAndroidDsl(target, extension.consumerRules, CONSUMER_RULES_SKIPPED) { android ->
                 val defaultConfig = android.javaClass.getMethod("getDefaultConfig").invoke(android)
                 defaultConfig.javaClass.getMethod("consumerProguardFile", Any::class.java).invoke(defaultConfig, rulesFile.get())
             }
             dependOnConsumerRules(target, task)
         }
         target.pluginManager.withPlugin("com.android.kotlin.multiplatform.library") {
-            finalizeAndroidDsl(target) { android ->
+            finalizeAndroidDsl(target, extension.consumerRules, CONSUMER_RULES_SKIPPED) { android ->
                 val missing = addConsumerKeepRules(android, rulesFile.get())
                 if (missing != null) {
-                    target.logger.warn("Kotrail: found no $missing on the Android DSL of ${target.path}; consumer shrinker rules are not added.")
+                    target.logger.warn("Kotrail: found no $missing on the Android DSL of ${target.path}; $CONSUMER_RULES_SKIPPED.")
                 }
             }
             dependOnConsumerRules(target, task)
@@ -399,20 +412,43 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
         }
     }
 
-    /** `androidComponents.finalizeDsl { if (consumerRules) configure(it) }`, through reflection. */
-    private fun finalizeAndroidDsl(target: Project, configure: (android: Any) -> Unit) {
+    /**
+     * `androidComponents.finalizeDsl { if (enabled) configure(it) }`, through reflection. [skipped]
+     * names what is left out when the Android plugin has no such extension, for the warning.
+     */
+    private fun finalizeAndroidDsl(target: Project, enabled: Provider<Boolean>, skipped: String, configure: (android: Any) -> Unit) {
         val components = target.extensions.findByName("androidComponents")
         val finalizeDsl = components?.javaClass?.methods?.firstOrNull {
             it.name == "finalizeDsl" && it.parameterTypes.singleOrNull() == Action::class.java
         }
         if (components == null || finalizeDsl == null) {
-            target.logger.warn("Kotrail: found no androidComponents.finalizeDsl in ${target.path}; consumer shrinker rules are not added.")
+            target.logger.warn("Kotrail: found no androidComponents.finalizeDsl in ${target.path}; $skipped.")
             return
         }
         val callback = Action<Any> { android ->
-            if (extension.consumerRules.get()) configure(android)
+            if (enabled.get()) configure(android)
         }
         finalizeDsl.invoke(components, callback)
+    }
+
+    /**
+     * Libraries built by earlier versions of Kotrail carry their facts file in the JAR or AAR, as
+     * `META-INF/kotrail/<module>.facts`, and an Android application would copy it into its APK as
+     * a Java resource, where nothing reads it. `androidComponents.finalizeDsl {
+     * it.packaging.resources.excludes += FactsFilePackaging.PATTERN }`, through
+     * [finalizeAndroidDsl] like [addConsumerRules], unless `packagingExcludes` is off. Libraries
+     * built by this version publish the facts file as an artifact of its own (see [FactsFiles]),
+     * so this only matters for the older ones.
+     */
+    private fun addPackagingExcludes(target: Project) {
+        target.pluginManager.withPlugin("com.android.application") {
+            finalizeAndroidDsl(target, extension.packagingExcludes, PACKAGING_EXCLUDES_SKIPPED) { android ->
+                val missing = FactsFilePackaging.exclude(android)
+                if (missing != null) {
+                    target.logger.warn("Kotrail: found no $missing in the Android DSL of ${target.path}; $PACKAGING_EXCLUDES_SKIPPED.")
+                }
+            }
+        }
     }
 
     private companion object {
@@ -420,6 +456,8 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
         const val FIX_TASK = "kotrailFix"
         const val CONSUMER_RULES_TASK = "kotrailConsumerRules"
         const val CONSUMER_RULES_DIRECTORY = "kotrail/consumer-rules"
+        const val CONSUMER_RULES_SKIPPED = "consumer shrinker rules are not added"
+        const val PACKAGING_EXCLUDES_SKIPPED = "the facts files of older libraries are not excluded from packaging"
 
         /** Must match `KotrailNames.PLUGIN_ID` in the compiler plugin. */
         const val COMPILER_PLUGIN_ID = "com.kitakkun.kotrail"
@@ -429,6 +467,28 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
         const val ANNOTATIONS_ARTIFACT = "kotrail-annotations"
         const val COMPILER_PLUGIN_VERSION_PROPERTY = "kotrail.compilerPluginVersion"
     }
+}
+
+/** Leaves the facts files that libraries built by earlier versions carry out of an Android application's packaging. */
+internal object FactsFilePackaging {
+    /** What an application excludes: every facts file in a dependency's JAR, whichever module wrote it. */
+    const val PATTERN: String = "META-INF/kotrail/**"
+
+    /**
+     * Adds [PATTERN] to `packaging.resources.excludes` of [android], an Android DSL extension
+     * reached by reflection. Returns null when it did, or the member it could not find.
+     */
+    fun exclude(android: Any): String? {
+        val packaging = call(android, "getPackaging") ?: return "packaging"
+        val resources = call(packaging, "getResources") ?: return "packaging.resources"
+        @Suppress("UNCHECKED_CAST")
+        val excludes = call(resources, "getExcludes") as? MutableSet<String> ?: return "packaging.resources.excludes"
+        excludes.add(PATTERN)
+        return null
+    }
+
+    private fun call(receiver: Any, getter: String): Any? =
+        receiver.javaClass.methods.firstOrNull { it.name == getter && it.parameterCount == 0 }?.invoke(receiver)
 }
 
 /**

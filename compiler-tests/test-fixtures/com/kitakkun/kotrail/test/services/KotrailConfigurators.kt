@@ -6,6 +6,7 @@ import com.kitakkun.kotrail.KotrailCommandLineProcessor
 import com.kitakkun.kotrail.KotrailComponentRegistrar
 import com.kitakkun.kotrail.KotrailConfigurationKeys
 import com.kitakkun.kotrail.KotrailRule
+import com.kitakkun.kotrail.inferred.FactsFile
 import org.jetbrains.kotlin.cli.jvm.config.addJvmClasspathRoot
 import org.jetbrains.kotlin.compiler.plugin.CompilerPluginRegistrar
 import org.jetbrains.kotlin.compiler.plugin.ExperimentalCompilerApi
@@ -17,6 +18,7 @@ import org.jetbrains.kotlin.test.model.TestModule
 import org.jetbrains.kotlin.test.services.EnvironmentConfigurator
 import org.jetbrains.kotlin.test.services.RuntimeClasspathProvider
 import org.jetbrains.kotlin.test.services.TestServices
+import org.jetbrains.kotlin.test.services.getOrCreateTempDirectory
 import java.io.File
 
 fun TestConfigurationBuilder.configureKotrail() {
@@ -52,6 +54,14 @@ internal class KotrailExtensionRegistrarConfigurator(testServices: TestServices)
     override val directiveContainers: List<DirectivesContainer> = listOf(KotrailTestDirectives)
 
     override fun configureCompilerConfiguration(configuration: CompilerConfiguration, module: TestModule) {
+        // What the Gradle plugin does for a build: every module writes its facts file into a directory of its own,
+        // outside its class files, and reads the facts files of the modules it depends on. The dependencies are
+        // compiled first, so their files exist by the time the dependent's first lookup reads them.
+        configuration.put(KotrailConfigurationKeys.FACTS_OUT, testServices.factsFileFor(module).path)
+        for (dependency in module.allDependencies) {
+            configuration.add(KotrailConfigurationKeys.FACTS, testServices.factsFileFor(dependency.dependencyModule).path)
+        }
+
         // Every rule starts off and a fixture opts in to the ones it exercises. Fixtures then say
         // in their own directive what they are about, and a newly added rule cannot start
         // reporting across fixtures that were written for something else.
@@ -94,6 +104,10 @@ internal class TestDataClasspathConfigurator(testServices: TestServices) : Envir
 internal class TestDataRuntimeClasspathProvider(testServices: TestServices) : RuntimeClasspathProvider(testServices) {
     override fun runtimeClassPaths(module: TestModule): List<File> = testDataClasspath()
 }
+
+/** Where the facts file of [module] goes: `<module>.facts` in a temporary directory of the module's own. */
+internal fun TestServices.factsFileFor(module: TestModule): File =
+    File(getOrCreateTempDirectory("module_${module.name}_facts"), FactsFile.fileName(module.name))
 
 private fun testDataClasspath(): List<File> {
     val classpath = System.getProperty("kotrail.test.classpath")

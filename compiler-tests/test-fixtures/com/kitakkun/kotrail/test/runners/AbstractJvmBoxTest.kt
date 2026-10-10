@@ -1,6 +1,7 @@
 package com.kitakkun.kotrail.test.runners
 
 import com.kitakkun.kotrail.test.compat.BoxTestBase
+import com.kitakkun.kotrail.test.services.FactsFileDumpChecker
 import com.kitakkun.kotrail.test.services.TestDataOverlay
 import com.kitakkun.kotrail.test.services.configureKotrail
 import org.jetbrains.kotlin.test.FirParser
@@ -15,7 +16,8 @@ import org.jetbrains.kotlin.test.services.TestPhase
 /**
  * Box tests: `fun box(): String` must return `"OK"` in `testData/box`. These run the full
  * pipeline, so multi-module fixtures exercise the IR metadata writer on the dependency module
- * and the metadata reader on the dependent module.
+ * and the metadata reader on the dependent module; the facts files the modules wrote are
+ * compared with `<test>.facts.txt`.
  */
 open class AbstractJvmBoxTest : BoxTestBase(FirParser.LightTree) {
     override fun createKotlinStandardLibrariesPathProvider(): KotlinStandardLibrariesPathProvider =
@@ -29,6 +31,7 @@ open class AbstractJvmBoxTest : BoxTestBase(FirParser.LightTree) {
             +JvmEnvironmentConfigurationDirectives.FULL_JDK
         }
         configureKotrail()
+        useAfterAnalysisCheckers(::FactsFileDumpChecker)
     }
 
     /** Redirects to the active Kotlin version's override of this fixture, when there is one. */

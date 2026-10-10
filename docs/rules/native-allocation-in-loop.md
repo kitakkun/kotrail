@@ -79,9 +79,10 @@ of the listed types or calls a factory, or calls a function that allocates, and 
 neither the receiver of `use { }` nor a local the body closes with `close()`. A call in a loop to
 such a function is reported at the call, with the path to the allocation (`decode > newBitmap`),
 unless the result is itself the receiver of `use { }`. In this module the summary comes from
-the body; for callers in other modules it is written into the class file as
-`@InferredNativeAllocation(types = ["Bitmap"], path = ["newBitmap"])` metadata, on every
-target and with no artifact needed, so the path shown crosses the module boundary. A library
+the body; for callers in other modules it is written as a `nativeAllocation` fact
+(`types = ["Bitmap"], path = ["newBitmap"]`): into the module's facts file on the JVM and
+Android, as `@InferredNativeAllocation` in a klib, with no artifact needed (see
+[Inferred metadata](../inferred-metadata.md)), so the path shown crosses the module boundary. A library
 compiled without Kotrail carries no metadata and is taken as not allocating. Inside the helper,
 the lambdas of inline functions (`synchronized`, `withLock`, `run`, `apply`) run in place and
 are followed; any other lambda is not. A function that returns an instance it keeps

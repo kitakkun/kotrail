@@ -2,10 +2,10 @@
 // DUMP_IR
 // KOTRAIL_CONFIG: rules.compose.compositionLocals=on
 
-// Exercises the IR metadata writer end to end: `lib` is compiled to class files, so `main`
-// can only understand lib's composables through the @InferredCompositionLocals annotations
-// the plugin wrote onto them, and can only know that LocalNav is required through the
-// @InferredRequiredCompositionLocal on its property. The IR dump shows both annotations.
+// Exercises the fact writer end to end: `lib` is compiled to class files, so `main` can only
+// understand lib's composables through the compositionLocals facts the plugin wrote into lib's
+// facts file, and can only know that LocalNav is required through its requiredCompositionLocal
+// fact. The class files carry no annotation; the .facts.txt dump shows both facts.
 // A root in `main` that provided nothing would be reported, which fails the test.
 
 // MODULE: lib
