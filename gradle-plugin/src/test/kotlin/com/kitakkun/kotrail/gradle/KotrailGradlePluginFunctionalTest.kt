@@ -915,6 +915,11 @@ class KotrailGradlePluginFunctionalTest {
                 return times
             }
 
+            fun send(bytes: ByteArray) {
+                if (bytes.isEmpty()) return
+                println(bytes.size)
+            }
+
             class Settings {
                 var name: String = ""
 
@@ -957,6 +962,10 @@ class KotrailGradlePluginFunctionalTest {
             fun Screen() {
                 Tracker()
             }
+
+            fun sendNothing() {
+                send(byteArrayOf())
+            }
         """.trimIndent()
         writeFile("src/main/kotlin/androidx/compose/runtime/Composable.kt", COMPOSABLE_STUB)
         writeFile("src/main/kotlin/androidx/compose/runtime/Effects.kt", SIDE_EFFECT_STUB)
@@ -971,6 +980,7 @@ class KotrailGradlePluginFunctionalTest {
         // comes from the classes directory, through its drawsUi fact.
         fun previewFindings(result: BuildResult) = result.output.lines().filter { "KOTRAIL_COMPOSABLE_WITHOUT_PREVIEW" in it }
         fun preconditionFindings(result: BuildResult) = result.output.lines().filter { "Caller.kt" in it && "KOTRAIL_PRECONDITION_VIOLATED" in it }
+        fun noOpFindings(result: BuildResult) = result.output.lines().filter { "Caller.kt" in it && "KOTRAIL_CALL_DOES_NOTHING" in it }
         // Settings is a class of this module, which a plain var write from another class is reported against; Point is a
         // data class with no function of its own, a bag of values, which is not.
         fun stateWriteFindings(result: BuildResult) = result.output.lines().filter { "Caller.kt" in it && "KOTRAIL_MUTATED_OUTSIDE_OWNER" in it }
@@ -986,6 +996,7 @@ class KotrailGradlePluginFunctionalTest {
         }
         val reconnect = entry("Callee.kt", "/Manager.reconnect", "\"startsAsyncWork\": {}")
         val retry = entry("Callee.kt", "/retry", "\"preconditions\": {\"conditions\": [\"times >= 0\"]}")
+        val send = entry("Callee.kt", "/send", "\"noOpWhen\": {\"conditions\": [\"bytes.isEmpty()\"]}")
         val tracker = entry("Callee.kt", "/Tracker", "\"drawsUi\": {\"value\": [\"false\"]}")
         // Facts of the caller that come from its callee: reconnectNow starts work because Manager.reconnect does, and
         // Screen draws nothing because Tracker draws nothing.
@@ -999,7 +1010,8 @@ class KotrailGradlePluginFunctionalTest {
         assertEquals(1, preconditionFindings(first).size, first.output)
         assertEquals(1, stateWriteFindings(first).size, first.output)
         assertTrue(previewFindings(first).isEmpty(), first.output)
-        assertFacts(reconnect to true, retry to true, tracker to true, reconnectNow to true, screen to true)
+        assertEquals(1, noOpFindings(first).size, first.output)
+        assertFacts(reconnect to true, retry to true, send to true, tracker to true, reconnectNow to true, screen to true)
         val calleeStamps = calleeClasses.map { it.lastModified() }
 
         // Only the caller changes (a comment at the end keeps the line numbers). The incremental build compiles
@@ -1019,7 +1031,9 @@ class KotrailGradlePluginFunctionalTest {
         assertEquals(1, stateWriteFindings(second).size, second.output)
         // Tracker, loaded from the classes directory, still draws nothing, so Screen still needs no preview.
         assertTrue(previewFindings(second).isEmpty(), second.output)
-        assertFacts(reconnect to true, retry to true, tracker to true, reconnectNow to true, screen to true)
+        // send, loaded from the classes directory, still returns at once for an empty array.
+        assertEquals(1, noOpFindings(second).size, second.output)
+        assertFacts(reconnect to true, retry to true, send to true, tracker to true, reconnectNow to true, screen to true)
 
         // Only the callee's body changes, and none of its facts: the incremental build compiles Callee.kt alone. The
         // plugin metadata of its declarations is what it was, so Kotlin sees nothing of Caller.kt's to compile again.
@@ -1030,33 +1044,37 @@ class KotrailGradlePluginFunctionalTest {
         assertEquals(TaskOutcome.SUCCESS, third.task(":compileKotlin")?.outcome, third.output)
         assertEquals(callerStampBeforeThird, callerClass.lastModified(), "Caller.kt was compiled again\n" + third.output)
         assertTrue(callerFindings(third).isEmpty(), third.output)
-        assertFacts(reconnect to true, retry to true, tracker to true, reconnectNow to true, screen to true)
+        assertFacts(reconnect to true, retry to true, send to true, tracker to true, reconnectNow to true, screen to true)
 
-        // The callee's body changes and its require goes. Its ABI is the same, but the precondition was in the plugin
-        // metadata of retry, which is gone now: Kotlin counts retry as changed and compiles Caller.kt, which calls it,
-        // again in the same build. The caller is checked against the callee as it is now, from the class file: the
-        // precondition finding goes, the findings that do not depend on it are reported again.
-        val calleeWithoutRequire = calleeReturningOther.replace("    require(times >= 0)\n", "")
+        // The callee's body changes: its require goes, and so does the guard of send. Its ABI is the same, but the
+        // precondition and the no-op condition were in the plugin metadata of retry and send, which is gone now: Kotlin
+        // counts them as changed and compiles Caller.kt, which calls them, again in the same build. The caller is checked
+        // against the callee as it is now, from the class file: the precondition and no-op findings go, the findings that
+        // do not depend on them are reported again.
+        val calleeWithoutRequire = calleeReturningOther.replace("    require(times >= 0)\n", "").replace("    if (bytes.isEmpty()) return\n", "")
         writeFile("src/main/kotlin/Callee.kt", calleeWithoutRequire)
         val callerStampBeforeFourth = callerClass.lastModified()
         val fourth = runBuild("compileKotlin")
         assertEquals(TaskOutcome.SUCCESS, fourth.task(":compileKotlin")?.outcome, fourth.output)
         assertTrue(callerClass.lastModified() != callerStampBeforeFourth, "Caller.kt was not compiled again\n" + fourth.output)
         assertTrue(preconditionFindings(fourth).isEmpty(), fourth.output)
+        assertTrue(noOpFindings(fourth).isEmpty(), fourth.output)
         assertEquals(1, delayFindings(fourth).size, fourth.output)
         assertEquals(1, stateWriteFindings(fourth).size, fourth.output)
         assertTrue(previewFindings(fourth).isEmpty(), fourth.output)
-        assertFacts(reconnect to true, retry to false, tracker to true, reconnectNow to true, screen to true)
+        assertFacts(reconnect to true, retry to false, send to false, tracker to true, reconnectNow to true, screen to true)
 
-        // The require comes back, in the callee's file alone: the caller is compiled again and the finding returns.
+        // The require and the guard come back, in the callee's file alone: the caller is compiled again and the findings
+        // return.
         writeFile("src/main/kotlin/Callee.kt", calleeReturningOther)
         val callerStampBeforeFifth = callerClass.lastModified()
         val fifth = runBuild("compileKotlin")
         assertEquals(TaskOutcome.SUCCESS, fifth.task(":compileKotlin")?.outcome, fifth.output)
         assertTrue(callerClass.lastModified() != callerStampBeforeFifth, "Caller.kt was not compiled again\n" + fifth.output)
         assertEquals(1, preconditionFindings(fifth).size, fifth.output)
+        assertEquals(1, noOpFindings(fifth).size, fifth.output)
         assertEquals(1, delayFindings(fifth).size, fifth.output)
-        assertFacts(reconnect to true, retry to true, tracker to true, reconnectNow to true, screen to true)
+        assertFacts(reconnect to true, retry to true, send to true, tracker to true, reconnectNow to true, screen to true)
 
         // Compiling every file again gives the same findings: the incremental builds did not drift from a full one.
         val rerun = runBuild("compileKotlin", "--rerun-tasks")
@@ -1065,7 +1083,8 @@ class KotrailGradlePluginFunctionalTest {
         assertEquals(1, preconditionFindings(rerun).size, rerun.output)
         assertEquals(1, stateWriteFindings(rerun).size, rerun.output)
         assertTrue(previewFindings(rerun).isEmpty(), rerun.output)
-        assertFacts(reconnect to true, retry to true, tracker to true, reconnectNow to true, screen to true)
+        assertEquals(1, noOpFindings(rerun).size, rerun.output)
+        assertFacts(reconnect to true, retry to true, send to true, tracker to true, reconnectNow to true, screen to true)
     }
 
     @Test
