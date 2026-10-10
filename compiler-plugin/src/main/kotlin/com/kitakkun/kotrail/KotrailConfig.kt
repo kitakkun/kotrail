@@ -405,6 +405,40 @@ data class KotrailMustClose(
     val streamOwners: List<String>,
 )
 
+/** Tunables for the no-ambiguous-string-name rule. From `rules.noAmbiguousStringName`. */
+data class KotrailNoAmbiguousStringName(
+    /**
+     * The kinds of text a name may say it holds, by kind name: the words that say so, matched case-insensitively on camelCase
+     * and `_` boundaries, the first of them the suffix the message suggests.
+     */
+    val kinds: Map<String, List<String>>,
+    /** The callables that take a kind of text, each with the argument that takes it; every kind they name is in [kinds]. */
+    val apis: List<KotrailStringApi>,
+)
+
+/** An `apis` entry of noAmbiguousStringName, `<kind>:<fqName>` or `<kind>:<fqName>#<argument>`. */
+data class KotrailStringApi(
+    val kind: String,
+    /** A constructor by its class (`java.net.URI`), a member as `Class.member`, a top-level or extension function by its package. */
+    val fqName: String,
+    val argument: KotrailStringArgument,
+)
+
+/** Which argument of a call to a [KotrailStringApi] takes the text. */
+sealed interface KotrailStringArgument {
+    /** No `#`: the extension receiver when it is a `String` or `CharSequence`, else the first argument. */
+    data object Head : KotrailStringArgument
+
+    /** `#receiver`: the extension receiver. */
+    data object Receiver : KotrailStringArgument
+
+    /** `#<index>`: the argument of the callable's value parameter at [index], counted from 0. */
+    data class Index(val index: Int) : KotrailStringArgument
+
+    /** `#<name>`: the argument of the value parameter named [name]; Java classes rarely keep their parameter names. */
+    data class Named(val name: String) : KotrailStringArgument
+}
+
 /** Tunables for the no-external-mutation rule. From `rules.noExternalMutation`. */
 data class KotrailNoExternalMutation(
     /** Fully qualified types (subtypes included) whose instances hold mutable state written through `value`, `update` or `emit`. */
@@ -642,6 +676,7 @@ data class KotrailConfig(
     val generated: KotrailGenerated,
     val nativeAllocation: KotrailNativeAllocation,
     val mustClose: KotrailMustClose,
+    val noAmbiguousStringName: KotrailNoAmbiguousStringName,
     val noExternalMutation: KotrailNoExternalMutation,
     val suppressReason: KotrailSuppressReason,
     val nameSaysType: KotrailNameSaysType,
@@ -790,6 +825,56 @@ data class KotrailConfig(
         /** Sources that close the streams they hand out: a socket, a connection, a process, an archive. */
         val DEFAULT_STREAM_OWNERS: List<String> = listOf(
             "java.net.Socket", "java.net.HttpURLConnection", "java.lang.Process", "java.util.zip.ZipFile", "java.util.jar.JarFile",
+        )
+        /** Words that say a value is a path, an executable or a command. */
+        private val PATH_WORDS: List<String> = listOf(
+            "path", "file", "dir", "directory", "executable", "exe", "command", "cmd", "binary", "bin", "location", "folder",
+        )
+        /**
+         * The kinds of text a `String` holds, by kind name, each with the words a name says it with, the first of them the
+         * suggested suffix. The four path kinds share their words; a directory's suggestion is `Dir`.
+         */
+        val DEFAULT_STRING_KINDS: Map<String, List<String>> = linkedMapOf(
+            "path" to PATH_WORDS,
+            "file" to PATH_WORDS,
+            "directory" to listOf("dir") + PATH_WORDS.filter { it != "dir" },
+            "executable" to PATH_WORDS,
+            "url" to listOf("url", "uri", "endpoint", "link", "href"),
+            "regex" to listOf("regex", "pattern", "expression"),
+            "json" to listOf("json", "body", "payload", "response", "request"),
+            "id" to listOf("id", "uuid", "identifier", "key"),
+            "date" to listOf("date", "time", "timestamp", "instant", "iso"),
+            "format" to listOf("pattern", "format", "formatter"),
+            "host" to listOf("host", "hostname", "address", "addr", "server", "domain"),
+            "keyName" to listOf("name", "key", "variable", "property", "env"),
+            "className" to listOf("className", "class"),
+            "sql" to listOf("sql", "query", "statement", "stmt"),
+        )
+        /** The APIs a `String` flows into, as `<kind>:<fqName>` or `<kind>:<fqName>#<argument>`. */
+        val DEFAULT_STRING_APIS: List<String> = listOf(
+            "file:java.io.File", "file:java.io.FileInputStream", "file:java.io.FileOutputStream", "file:java.io.FileReader",
+            "file:java.io.FileWriter", "file:java.nio.file.Path.of", "file:java.nio.file.Paths.get", "file:kotlin.io.path.Path",
+            "file:okio.Path.Companion.toPath",
+            "executable:java.lang.ProcessBuilder", "executable:java.lang.ProcessBuilder.command", "executable:java.lang.Runtime.exec",
+            "url:java.net.URL", "url:java.net.URI", "url:java.net.URI.create", "url:android.net.Uri.parse",
+            "url:io.ktor.client.request.get#urlString", "url:io.ktor.client.request.post#urlString",
+            "url:io.ktor.client.request.put#urlString", "url:io.ktor.client.request.delete#urlString",
+            "url:io.ktor.client.request.request#urlString", "url:io.ktor.client.request.url#urlString", "url:io.ktor.http.Url",
+            "regex:kotlin.text.Regex", "regex:kotlin.text.toRegex#receiver", "regex:java.util.regex.Pattern.compile",
+            "json:kotlinx.serialization.json.Json.decodeFromString#string", "json:kotlinx.serialization.StringFormat.decodeFromString#string",
+            "json:kotlinx.serialization.decodeFromString#string", "json:kotlinx.serialization.json.Json.parseToJsonElement",
+            "json:org.json.JSONObject", "json:org.json.JSONArray",
+            "id:java.util.UUID.fromString",
+            "date:java.time.LocalDate.parse", "date:java.time.LocalDateTime.parse", "date:java.time.Instant.parse",
+            "date:kotlinx.datetime.LocalDate.Companion.parse", "date:kotlinx.datetime.LocalDateTime.Companion.parse",
+            "date:kotlin.time.Instant.Companion.parse",
+            "format:java.time.format.DateTimeFormatter.ofPattern", "format:java.text.SimpleDateFormat",
+            "host:java.net.InetAddress.getByName", "host:java.net.Socket", "host:java.net.InetSocketAddress",
+            "keyName:java.lang.System.getenv", "keyName:java.lang.System.getProperty", "keyName:java.lang.System.setProperty",
+            "className:java.lang.Class.forName",
+            "sql:android.database.sqlite.SQLiteDatabase.execSQL", "sql:android.database.sqlite.SQLiteDatabase.rawQuery",
+            "sql:java.sql.Statement.executeQuery", "sql:java.sql.Statement.execute", "sql:java.sql.Statement.executeUpdate",
+            "sql:java.sql.Connection.prepareStatement",
         )
         val DEFAULT_SUPPRESSION_ANNOTATIONS: List<String> = listOf("kotlin.Suppress", "android.annotation.SuppressLint")
         /** Every suppression owes a reason by default, apart from [DEFAULT_SUPPRESSION_EXEMPT_IDS]. */
@@ -975,6 +1060,9 @@ data class KotrailConfig(
 
         /** What a user-chosen entry name may look like: letters, digits, dots, `_` and `-`, starting with a letter. */
         val ENTRY_NAME = Regex("[A-Za-z][A-Za-z0-9_.-]*")
+
+        /** A word of a noAmbiguousStringName kind, and a parameter name after `#` in its `apis`. */
+        val KIND_WORD = Regex("[A-Za-z][A-Za-z0-9]*")
 
         /** A named predicate is read by the grammar as a bare identifier, which is letters only. */
         private val PREDICATE_NAME = Regex("[A-Za-z]+")
@@ -1375,6 +1463,7 @@ data class KotrailConfig(
                     ignoredTypes = list(KotrailRule.MUST_CLOSE, "ignoredTypes") ?: DEFAULT_IN_MEMORY_RESOURCES,
                     streamOwners = list(KotrailRule.MUST_CLOSE, "streamOwners") ?: DEFAULT_STREAM_OWNERS,
                 ),
+                noAmbiguousStringName = noAmbiguousStringName(),
                 noExternalMutation = KotrailNoExternalMutation(
                     types = list(KotrailRule.NO_EXTERNAL_MUTATION, "types") ?: DEFAULT_STATE_HOLDER_TYPES,
                     plainVars = boolean(ruleNode(KotrailRule.NO_EXTERNAL_MUTATION), "plainVars") ?: false,
@@ -1513,6 +1602,53 @@ data class KotrailConfig(
         }
 
         private fun list(rule: KotrailRule, key: String): List<String>? = ruleNode(rule)?.get(key)?.let { list(it, key) }
+
+        /**
+         * The kinds table and the API list of noAmbiguousStringName. `kinds` and `apis` replace the defaults when set;
+         * `extraKinds` and `extraApis` add to whichever applies. A default API whose kind is no longer defined is dropped,
+         * while an entry the project wrote must name a defined kind.
+         */
+        private fun noAmbiguousStringName(): KotrailNoAmbiguousStringName {
+            val rule = KotrailRule.NO_AMBIGUOUS_STRING_NAME
+            val kinds = LinkedHashMap(stringKinds(rule, "kinds") ?: DEFAULT_STRING_KINDS)
+            for ((name, words) in stringKinds(rule, "extraKinds").orEmpty()) kinds[name] = (kinds[name].orEmpty() + words).distinct()
+            val written = list(rule, "apis")
+            val apis = written?.map { stringApi(rule, "apis", it, kinds) }
+                ?: DEFAULT_STRING_APIS.map { stringApi(rule, "apis", it, DEFAULT_STRING_KINDS) }.filter { it.kind in kinds }
+            val extra = list(rule, "extraApis").orEmpty().map { stringApi(rule, "extraApis", it, kinds) }
+            return KotrailNoAmbiguousStringName(kinds, apis + extra)
+        }
+
+        /** A kinds setting, `null` when unset: each entry a kind name with its words. */
+        private fun stringKinds(rule: KotrailRule, key: String): Map<String, List<String>>? {
+            if (ruleNode(rule)?.get(key) == null) return null
+            return entries(rule, key) { node ->
+                val words = list(node, key)
+                if (words.isEmpty()) fail(node, "a kind lists the words that say it, the first of them the suggested suffix")
+                for (word in words) if (!KIND_WORD.matches(word)) fail(node, "'$word' is not a word: a letter, then letters and digits (className)")
+                words
+            }
+        }
+
+        /** One `<kind>:<fqName>[#<argument>]` entry of [key]. */
+        private fun stringApi(rule: KotrailRule, key: String, entry: String, kinds: Map<String, List<String>>): KotrailStringApi {
+            val colon = entry.indexOf(':')
+            if (colon <= 0) fail(rule, key, "entry '$entry' must be <kind>:<fully qualified name>, optionally followed by #receiver, #<index> or #<parameter name>")
+            val kind = entry.substring(0, colon).trim()
+            if (kind !in kinds) fail(rule, key, "entry '$entry' names the kind '$kind', which is not one of ${kinds.keys.joinToString()}")
+            val target = entry.substring(colon + 1)
+            val fqName = target.substringBefore('#').trim()
+            if (fqName.isEmpty() || fqName.any { it.isWhitespace() }) fail(rule, key, "entry '$entry' must name one fully qualified callable")
+            val argument = target.substringAfter('#', missingDelimiterValue = "").trim()
+            val position = when {
+                '#' !in target -> KotrailStringArgument.Head
+                argument == "receiver" -> KotrailStringArgument.Receiver
+                argument.isNotEmpty() && argument.all { it.isDigit() } -> KotrailStringArgument.Index(argument.toInt())
+                KIND_WORD.matches(argument) -> KotrailStringArgument.Named(argument)
+                else -> fail(rule, key, "entry '$entry' must end in #receiver, #<index> or #<parameter name>")
+            }
+            return KotrailStringApi(kind, fqName, position)
+        }
 
         private fun predicate(mapping: ConfigNode.Mapping?, key: String): ExcludePredicate? = scalar(mapping, key)?.let {
             if (it.value.isBlank()) return null

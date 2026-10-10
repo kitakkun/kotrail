@@ -65,6 +65,7 @@ enum class KotrailRule(
     MUST_CLOSE("mustClose", Severity.ERROR),
     NO_EXTERNAL_MUTATION("noExternalMutation", Severity.ERROR),
     PREFER_DURATION("preferDuration", Severity.ERROR),
+    NO_AMBIGUOUS_STRING_NAME("noAmbiguousStringName", Severity.ERROR),
     UNRETAINED("unretained", Severity.ERROR),
     REQUIRED_SUPERTYPE("requiredSupertype", Severity.ERROR),
     DEPENDENCY_RULES("dependencyRules", Severity.ERROR),

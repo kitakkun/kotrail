@@ -1,0 +1,9 @@
+/noAmbiguousStringNameApis.kt:13:13: error: [Kotrail] 'adb' holds the path of an executable (it reaches 'runCommand' at noAmbiguousStringNameApis.kt:13), but its name does not say so: name it 'adbPath', or any name that carries one of path, file, dir, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringNameApis.kt:15:11: error: [Kotrail] 'xcrun' holds the path of an executable (it reaches 'runCommand' at noAmbiguousStringNameApis.kt:18), but its name does not say so: name it 'xcrunPath', or any name that carries one of path, file, dir, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringNameApis.kt:22:13: error: [Kotrail] 'cache' holds a directory path (it reaches 'ensureDir' at noAmbiguousStringNameApis.kt:22), but its name does not say so: name it 'cacheDir', or any name that carries one of dir, path, file, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringNameApis.kt:25:10: error: [Kotrail] 'settings' holds a file path (it reaches 'readConfig' at noAmbiguousStringNameApis.kt:25), but its name does not say so: name it 'settingsPath', or any name that carries one of path, file, dir, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringNameApis.kt:28:10: error: [Kotrail] 'report' holds a path (it reaches 'open' at noAmbiguousStringNameApis.kt:28), but its name does not say so: name it 'reportPath', or any name that carries one of path, file, dir, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)

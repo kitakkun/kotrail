@@ -32,7 +32,7 @@ How a body reads: its length, how much is in play at once, the order of what it 
 | Suppress reason | on | `KOTRAIL_SUPPRESS_WITHOUT_REASON` | [suppress-reason.md](suppress-reason.md) |
 | No swap through also | on | `KOTRAIL_SWAP_THROUGH_ALSO` | [no-swap-through-also.md](no-swap-through-also.md) |
 
-## Naming and style (10)
+## Naming and style (11)
 
 Spelling that the reviewer would otherwise correct by hand.
 
@@ -47,6 +47,7 @@ Spelling that the reviewer would otherwise correct by hand.
 | No pass-through function | on | `KOTRAIL_PASS_THROUGH_FUNCTION` | [no-pass-through-function.md](no-pass-through-function.md) |
 | No pass-through return | on | `KOTRAIL_PASS_THROUGH_RETURN` | [no-pass-through-return.md](no-pass-through-return.md) |
 | Prefer duration | on | `KOTRAIL_PREFER_DURATION` | [prefer-duration.md](prefer-duration.md) |
+| No ambiguous string name | on | `KOTRAIL_STRING_NAME_HIDES_KIND` | [no-ambiguous-string-name.md](no-ambiguous-string-name.md) |
 | Name says type | on | `KOTRAIL_NAME_HIDES_TYPE` | [name-says-type.md](name-says-type.md) |
 
 ## API design (8)

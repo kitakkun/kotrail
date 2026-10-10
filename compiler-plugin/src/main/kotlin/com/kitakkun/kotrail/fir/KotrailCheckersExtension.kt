@@ -45,6 +45,7 @@ import com.kitakkun.kotrail.fir.checkers.NoSwapThroughAlsoChecker
 import com.kitakkun.kotrail.fir.checkers.NoNullStateFromParameterChecker
 import com.kitakkun.kotrail.fir.checkers.SuppressReasonChecker
 import com.kitakkun.kotrail.fir.checkers.NameSaysTypeChecker
+import com.kitakkun.kotrail.fir.checkers.NoAmbiguousStringNameChecker
 import com.kitakkun.kotrail.fir.checkers.NativeAllocationInLoopChecker
 import com.kitakkun.kotrail.fir.inferred.InferredFactWarmup
 import com.kitakkun.kotrail.fir.checkers.NamedConditionChecker
@@ -170,6 +171,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
         PreferExplicitBackingFieldChecker,
         PreferStateDelegationChecker,
         ComposableUnwrittenStateChecker,
+        NoAmbiguousStringNameChecker.Properties,
         NoAsyncWorkInInitializerChecker,
         NameSaysTypeChecker.Properties,
         NoNullStateFromParameterChecker,
@@ -201,6 +203,7 @@ object KotrailDeclarationCheckers : CompatDeclarationCheckers() {
         ComposableUnstableParameterChecker,
     )
     override val valueParameterCheckers: Set<FirValueParameterChecker> = setOf(
+        NoAmbiguousStringNameChecker.Parameters,
         NameSaysTypeChecker.Parameters,
     )
     override val callableDeclarationCheckers: Set<FirCallableDeclarationChecker> = setOf(

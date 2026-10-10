@@ -187,6 +187,13 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Arguments: the property as written, the class that owns it; reported on a mutation of its state from outside that class. */
     val MUTATED_OUTSIDE_OWNER = tunable2<KtElement, String, String>("MUTATED_OUTSIDE_OWNER", KotrailRule.NO_EXTERNAL_MUTATION, WHOLE)
 
+    /**
+     * Arguments: the name, what it holds and where it reaches the API (`a URL (it reaches 'HttpClient.get' at Api.kt:12)`),
+     * the suggested name with the words any name may carry instead (`'baseUrl', or any name that carries one of url, uri,
+     * endpoint, link, href`); reported on the name of a property, parameter or local.
+     */
+    val STRING_NAME_HIDES_KIND = tunable3<KtNamedDeclaration, String, String, String>("STRING_NAME_HIDES_KIND", KotrailRule.NO_AMBIGUOUS_STRING_NAME, NAME)
+
     /** Arguments: what creates what (`'decode > newBitmap' creates a 'Bitmap'`), what becomes of it (`returns`, `keeps`, `lets go of`); reported on a call in a loop to a function that allocates. */
     val NATIVE_ALLOCATION_THROUGH_CALL_IN_LOOP = tunable2<KtElement, String, String>("NATIVE_ALLOCATION_THROUGH_CALL_IN_LOOP", KotrailRule.NATIVE_ALLOCATION_IN_LOOP, WHOLE)
 
@@ -824,6 +831,10 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         map.put1(
             KotrailDiagnostics.SUPPRESS_WITHOUT_REASON,
             "[Kotrail] ''{0}'' silences a check without saying why: put the reason in a comment on this line or the line above.",
+        )
+        map.put3(
+            KotrailDiagnostics.STRING_NAME_HIDES_KIND,
+            "[Kotrail] ''{0}'' holds {1}, but its name does not say so: name it {2}.",
         )
         map.put2(
             KotrailDiagnostics.NULL_STORED_FROM_PARAMETER,

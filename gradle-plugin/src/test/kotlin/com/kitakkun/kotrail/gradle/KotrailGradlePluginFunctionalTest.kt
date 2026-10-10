@@ -173,6 +173,7 @@ class KotrailGradlePluginFunctionalTest {
         assertEquals(TaskOutcome.SUCCESS, compiled.task(":compileKotlin")?.outcome, compiled.output)
         assertTrue(compiled.output.contains("KOTRAIL_PREFER_FUNCTION_REFERENCE"), compiled.output)
         assertTrue(compiled.output.contains("KOTRAIL_REDUNDANT_KEY"), compiled.output)
+        assertTrue(compiled.output.contains("KOTRAIL_STRING_NAME_HIDES_KIND"), compiled.output)
         assertEquals(1, Regex("KOTRAIL_HELPER_FAR_FROM_CALLER").findAll(compiled.output).count(), compiled.output)
 
         val fixed = runBuild("kotrailFix")
@@ -203,6 +204,19 @@ class KotrailGradlePluginFunctionalTest {
         assertTrue(text.contains("is Action.Cancel -> println(\"cancel\")"), text)
         assertFalse(text.contains("else -> println(\"never\")"), text)
         assertTrue(text.contains("move(x = 1, y = 2, z = 3)"), text)
+        // A local that holds an executable's path is renamed with every use, a string template included.
+        assertTrue(
+            text.contains("val adbPath = resolveAdb()\n    println(\"running \$adbPath\")\n    return ProcessBuilder(adbPath, \"devices\").start()"),
+            text,
+        )
+        // The new name in a comment and a string literal is no collision; both stay as they were.
+        assertTrue(
+            text.contains(
+                "// The settings call this appDataDir.\n    val appDataDir: String = System.getProperty(\"user.home\")\n" +
+                    "    println(\"appDataDir\")\n    return java.io.File(appDataDir, \"x\")",
+            ),
+            text,
+        )
         // Two declarations moved into one branch keep their order, so the second may still read the first.
         assertTrue(text.contains("} else {\n        val base = count\n        val next = count + 1\n        println(base + next)"), text)
         // A key that never changes goes with its comma; the only key becomes Unit.
@@ -238,6 +252,7 @@ class KotrailGradlePluginFunctionalTest {
         val recompiled = runBuild("compileKotlin")
         assertEquals(TaskOutcome.SUCCESS, recompiled.task(":compileKotlin")?.outcome, recompiled.output)
         assertFalse(recompiled.output.contains("KOTRAIL_PREFER_FUNCTION_REFERENCE"), recompiled.output)
+        assertFalse(recompiled.output.contains("KOTRAIL_STRING_NAME_HIDES_KIND"), recompiled.output)
         assertFalse(recompiled.output.contains("KOTRAIL_REDUNDANT_KEY"), recompiled.output)
         assertFalse(recompiled.output.contains("KOTRAIL_HELPER_FAR_FROM_CALLER"), recompiled.output)
     }
@@ -2211,6 +2226,21 @@ class KotrailGradlePluginFunctionalTest {
             }
 
             fun referenceProducer(): () -> Int = run { { compute() } }
+
+            fun resolveAdb(): String = "/usr/bin/adb"
+
+            fun devices(): Process {
+                val adb = resolveAdb()
+                println("running ${'$'}adb")
+                return ProcessBuilder(adb, "devices").start()
+            }
+
+            fun captures(): java.io.File {
+                // The settings call this appDataDir.
+                val appData: String = System.getProperty("user.home")
+                println("appDataDir")
+                return java.io.File(appData, "x")
+            }
 
             class Swaps {
                 private val lock = Any()

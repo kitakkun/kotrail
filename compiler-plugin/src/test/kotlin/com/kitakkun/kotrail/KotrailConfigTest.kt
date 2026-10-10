@@ -214,6 +214,48 @@ class KotrailConfigTest {
     }
 
     @Test
+    fun `string kinds and APIs are replaced by kinds and apis and extended by their extra settings`() {
+        val defaults = load("rules:\n  noAmbiguousStringName: on").noAmbiguousStringName
+        assertEquals(KotrailConfig.DEFAULT_STRING_KINDS, defaults.kinds)
+        assertEquals(KotrailStringApi("regex", "kotlin.text.toRegex", KotrailStringArgument.Receiver), defaults.apis.single { it.fqName == "kotlin.text.toRegex" })
+        assertEquals(KotrailStringArgument.Named("urlString"), defaults.apis.single { it.fqName == "io.ktor.client.request.get" }.argument)
+
+        val extended = load(
+            """
+            rules:
+              noAmbiguousStringName:
+                extraKinds:
+                  url: [route, url]
+                  channel: [channel, topic]
+                extraApis:
+                  - channel:com.acme.bus.subscribe
+                  - sql:com.acme.db.Dao.query#1
+                  - url:com.acme.net.fetch#target
+            """,
+        ).noAmbiguousStringName
+        assertEquals(listOf("url", "uri", "endpoint", "link", "href", "route"), extended.kinds["url"])
+        assertEquals(listOf("channel", "topic"), extended.kinds["channel"])
+        assertEquals(
+            listOf(
+                KotrailStringApi("channel", "com.acme.bus.subscribe", KotrailStringArgument.Head),
+                KotrailStringApi("sql", "com.acme.db.Dao.query", KotrailStringArgument.Index(1)),
+                KotrailStringApi("url", "com.acme.net.fetch", KotrailStringArgument.Named("target")),
+            ),
+            extended.apis.takeLast(3),
+        )
+
+        // A replaced table takes the default APIs of the kinds it leaves out with it.
+        val urlsOnly = load("rules:\n  noAmbiguousStringName:\n    kinds:\n      url: [url, endpoint]").noAmbiguousStringName
+        assertEquals(setOf("url"), urlsOnly.apis.map { it.kind }.toSet())
+        assertTrue(urlsOnly.apis.isNotEmpty())
+
+        assertFails("rules:\n  noAmbiguousStringName:\n    extraApis: [dao:com.acme.Dao.find]", "kotrail-0.yaml:3:", "names the kind 'dao'")
+        assertFails("rules:\n  noAmbiguousStringName:\n    apis: [com.acme.open]", "kotrail-0.yaml:3:", "must be <kind>:<fully qualified name>")
+        assertFails("rules:\n  noAmbiguousStringName:\n    extraApis: [url:com.acme.open#-1]", "kotrail-0.yaml:3:", "must end in #receiver")
+        assertFails("rules:\n  noAmbiguousStringName:\n    extraKinds:\n      url: [web-link]", "kotrail-0.yaml:4:", "is not a word")
+    }
+
+    @Test
     fun `every option name maps to a schema path`() {
         for ((name, _) in KotrailConfig.OPTION_NAMES) {
             assertTrue(KotrailConfig.optionPath(name) != null, name)

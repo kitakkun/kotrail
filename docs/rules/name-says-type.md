@@ -325,7 +325,9 @@ message's example is a starting point.
 ## Related rules
 
 [Named arguments for repeated types](named-arguments-for-repeated-types.md) names arguments at the
-call site; this rule names the values themselves.
+call site; this rule names the values themselves. [No ambiguous string name](no-ambiguous-string-name.md)
+covers the `String` and `CharSequence` this rule leaves alone: their type says nothing, so it reads
+the kind of text from the API the value reaches and asks the name to say it.
 
 ## Fixtures
 

@@ -1,0 +1,29 @@
+/noAmbiguousStringNameKinds.kt:(549,553): error: [Kotrail] 'base' holds a URL (it reaches 'URI' at noAmbiguousStringNameKinds.kt:18), but its name does not say so: name it 'baseUrl', or any name that carries one of url, uri, endpoint, link, href. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringNameKinds.kt:(1102,1106): error: [Kotrail] 'rule' holds a regular expression (it reaches 'Regex' at noAmbiguousStringNameKinds.kt:31), but its name does not say so: name it 'ruleRegex', or any name that carries one of regex, pattern, expression. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringNameKinds.kt:(1207,1216): error: [Kotrail] 'separator' holds a regular expression (it reaches 'String.toRegex' at noAmbiguousStringNameKinds.kt:34), but its name does not say so: name it 'separatorRegex', or any name that carries one of regex, pattern, expression. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringNameKinds.kt:(1416,1419): error: [Kotrail] 'raw' holds JSON (it reaches 'StringFormat.decodeFromString' at noAmbiguousStringNameKinds.kt:37), but its name does not say so: name it 'rawJson', or any name that carries one of json, body, payload, response, request. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringNameKinds.kt:(1577,1583): error: [Kotrail] 'cached' holds JSON (it reaches 'StringFormat.decodeFromString' at noAmbiguousStringNameKinds.kt:40), but its name does not say so: name it 'cachedJson', or any name that carries one of json, body, payload, response, request. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringNameKinds.kt:(1858,1863): error: [Kotrail] 'token' holds an identifier (it reaches 'UUID.fromString' at noAmbiguousStringNameKinds.kt:46), but its name does not say so: name it 'tokenId', or any name that carries one of id, uuid, identifier, key. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringNameKinds.kt:(2041,2046): error: [Kotrail] 'input' holds a date or time (it reaches 'LocalDate.parse' at noAmbiguousStringNameKinds.kt:52), but its name does not say so: name it 'inputDate', or any name that carries one of date, time, timestamp, instant, iso. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringNameKinds.kt:(2240,2243): error: [Kotrail] 'fmt' holds a format pattern (it reaches 'DateTimeFormatter.ofPattern' at noAmbiguousStringNameKinds.kt:58), but its name does not say so: name it 'fmtPattern', or any name that carries one of pattern, format, formatter. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringNameKinds.kt:(2609,2615): error: [Kotrail] 'target' holds a host name (it reaches 'InetAddress.getByName' at noAmbiguousStringNameKinds.kt:67), but its name does not say so: name it 'targetHost', or any name that carries one of host, hostname, address, addr, server, domain. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringNameKinds.kt:(2670,2676): error: [Kotrail] 'remote' holds a host name (it reaches 'Socket' at noAmbiguousStringNameKinds.kt:69), but its name does not say so: name it 'remoteHost', or any name that carries one of host, hostname, address, addr, server, domain. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringNameKinds.kt:(2883,2886): error: [Kotrail] 'api' holds the name of a variable or property (it reaches 'System.getenv' at noAmbiguousStringNameKinds.kt:75), but its name does not say so: name it 'apiName', or any name that carries one of name, key, variable, property, env. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringNameKinds.kt:(3020,3024): error: [Kotrail] 'impl' holds a class name (it reaches 'Class.forName' at noAmbiguousStringNameKinds.kt:78), but its name does not say so: name it 'implClassName', or any name that carries one of className, class. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringNameKinds.kt:(3075,3079): error: [Kotrail] 'IMPL' holds a class name (it reaches 'Class.forName' at noAmbiguousStringNameKinds.kt:82), but its name does not say so: name it 'IMPL_CLASS_NAME', or any name that carries one of className, class. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringNameKinds.kt:(3332,3333): error: [Kotrail] 'q' holds SQL (it reaches 'Statement.executeQuery' at noAmbiguousStringNameKinds.kt:88), but its name does not say so: name it 'qSql', or any name that carries one of sql, query, statement, stmt. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringNameKinds.kt:(3759,3765): error: [Kotrail] 'source' holds a URL (it reaches 'URI' at noAmbiguousStringNameKinds.kt:101) and a file path (it reaches 'File' at noAmbiguousStringNameKinds.kt:102), but its name does not say so: name it 'sourceUrl', or any name that carries one of url, uri, endpoint, link, href, path, file, dir, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)

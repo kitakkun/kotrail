@@ -1,0 +1,57 @@
+/noAmbiguousStringName.kt:7:17: error: [Kotrail] 'ffmpeg' holds the path of an executable (it reaches 'ProcessBuilder' at noAmbiguousStringName.kt:8), but its name does not say so: name it 'ffmpegPath', or any name that carries one of path, file, dir, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringName.kt:22:9: error: [Kotrail] 'adb' holds a file path (it reaches 'File' at noAmbiguousStringName.kt:23), but its name does not say so: name it 'adbPath', or any name that carries one of path, file, dir, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringName.kt:27:9: error: [Kotrail] 'tool' holds a file path (it reaches 'File' at noAmbiguousStringName.kt:28), but its name does not say so: name it 'toolPath', or any name that carries one of path, file, dir, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringName.kt:44:12: error: [Kotrail] 'idb' holds the path of an executable (it reaches 'ProcessBuilder' at noAmbiguousStringName.kt:45), but its name does not say so: name it 'idbPath', or any name that carries one of path, file, dir, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringName.kt:49:13: error: [Kotrail] 'cache' holds a directory path (it reaches 'File' at noAmbiguousStringName.kt:50), but its name does not say so: name it 'cacheDir', or any name that carries one of dir, path, file, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringName.kt:54:18: error: [Kotrail] 'source' holds a file path (it reaches 'Paths.get' at noAmbiguousStringName.kt:54), but its name does not say so: name it 'sourcePath', or any name that carries one of path, file, dir, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringName.kt:60:9: error: [Kotrail] 'emulator' holds the path of an executable (it reaches 'ProcessBuilder' at noAmbiguousStringName.kt:56), but its name does not say so: name it 'emulatorPath', or any name that carries one of path, file, dir, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringName.kt:64:9: error: [Kotrail] 'home' holds a file path (it reaches 'File' at noAmbiguousStringName.kt:66), but its name does not say so: name it 'homePath', or any name that carries one of path, file, dir, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringName.kt:70:13: error: [Kotrail] 'simulator' holds the path of an executable (it reaches 'Runtime.exec' at noAmbiguousStringName.kt:72), but its name does not say so: name it 'simulatorPath', or any name that carries one of path, file, dir, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringName.kt:75:45: error: [Kotrail] 'tool' holds a file path (it reaches 'File' at noAmbiguousStringName.kt:75), but its name does not say so: name it 'toolPath', or any name that carries one of path, file, dir, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringName.kt:78:14: error: [Kotrail] 'appData' holds a directory path (it reaches 'File' at noAmbiguousStringName.kt:78), but its name does not say so: name it 'appDataDir', or any name that carries one of dir, path, file, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringName.kt:81:10: error: [Kotrail] 'root' holds a directory path (it reaches 'Paths.get' at noAmbiguousStringName.kt:81), but its name does not say so: name it 'rootDir', or any name that carries one of dir, path, file, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringName.kt:88:9: error: [Kotrail] 'ffmpeg' holds the path of an executable (it reaches 'ProcessBuilder' at noAmbiguousStringName.kt:90), but its name does not say so: name it 'ffmpegPath', or any name that carries one of path, file, dir, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringName.kt:99:11: error: [Kotrail] 'adb' holds the path of an executable (it reaches 'ProcessBuilder' at noAmbiguousStringName.kt:104), but its name does not say so: name it 'adbPath', or any name that carries one of path, file, dir, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringName.kt:108:26: error: [Kotrail] 'idevice' holds the path of an executable (it reaches 'ProcessBuilder' at noAmbiguousStringName.kt:114), but its name does not say so: name it 'idevicePath', or any name that carries one of path, file, dir, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringName.kt:117:15: error: [Kotrail] 'userHome' holds a directory path (it reaches 'File' at noAmbiguousStringName.kt:120), but its name does not say so: name it 'userHomeDir', or any name that carries one of dir, path, file, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringName.kt:119:9: error: [Kotrail] 'sdk' holds a file path (it reaches 'File' at noAmbiguousStringName.kt:120), but its name does not say so: name it 'sdkPath', or any name that carries one of path, file, dir, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringName.kt:124:14: error: [Kotrail] 'base' holds a directory path (it reaches 'File' at noAmbiguousStringName.kt:124), but its name does not say so: name it 'baseDir', or any name that carries one of dir, path, file, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringName.kt:127:10: error: [Kotrail] 'top' holds a directory path (it reaches 'File' at noAmbiguousStringName.kt:127), but its name does not say so: name it 'topDir', or any name that carries one of dir, path, file, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringName.kt:132:15: error: [Kotrail] 'ffmpeg' holds the path of an executable (it reaches 'ProcessBuilder' at noAmbiguousStringName.kt:139), but its name does not say so: name it 'ffmpegPath', or any name that carries one of path, file, dir, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringName.kt:138:25: error: [Kotrail] 'tool' holds the path of an executable (it reaches 'ProcessBuilder' at noAmbiguousStringName.kt:139), but its name does not say so: name it 'toolPath', or any name that carries one of path, file, dir, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringName.kt:142:12: error: [Kotrail] 'adb' holds a file path (it reaches 'File' at noAmbiguousStringName.kt:144), but its name does not say so: name it 'adbPath', or any name that carries one of path, file, dir, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringName.kt:142:25: error: [Kotrail] 'emulator' holds the path of an executable (it reaches 'ProcessBuilder' at noAmbiguousStringName.kt:145), but its name does not say so: name it 'emulatorPath', or any name that carries one of path, file, dir, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringName.kt:142:43: error: [Kotrail] 'avd' holds a file path (it reaches 'File' at noAmbiguousStringName.kt:146), but its name does not say so: name it 'avdPath', or any name that carries one of path, file, dir, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringName.kt:142:56: error: [Kotrail] 'sdk' holds a file path (it reaches 'File' at noAmbiguousStringName.kt:147), but its name does not say so: name it 'sdkPath', or any name that carries one of path, file, dir, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringName.kt:142:69: error: [Kotrail] 'ndk' holds a file path (it reaches 'File' at noAmbiguousStringName.kt:150), but its name does not say so: name it 'ndkPath', or any name that carries one of path, file, dir, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringName.kt:150:15: error: [Kotrail] 'program' holds a file path (it reaches 'File' at noAmbiguousStringName.kt:150), but its name does not say so: name it 'programPath', or any name that carries one of path, file, dir, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringName.kt:153:25: error: [Kotrail] 'runner' holds the path of an executable (it reaches 'ProcessBuilder' at noAmbiguousStringName.kt:56), but its name does not say so: name it 'runnerPath', or any name that carries one of path, file, dir, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
+
+/noAmbiguousStringName.kt:156:15: error: [Kotrail] 'appData' holds a directory path (it reaches 'File' at noAmbiguousStringName.kt:159), but its name does not say so: name it 'appDataDir', or any name that carries one of dir, path, file, directory, executable, exe, command, cmd, binary, bin, location, folder. (KOTRAIL_STRING_NAME_HIDES_KIND)
