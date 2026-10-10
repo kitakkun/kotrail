@@ -21,7 +21,9 @@ class KotrailComponentRegistrar : CompilerPluginRegistrar() {
         if (!config.enabled) return
 
         FirExtensionRegistrarAdapter.registerExtension(KotrailFirExtensionRegistrar(config))
-        // Every inferred fact whose rule is on is written as metadata for the modules that compile against this one.
+        // Every inferred fact whose rule is on is written as metadata for the modules that compile against this one,
+        // unless the module opted out (a published library whose consumers do not use Kotrail).
+        if (!config.inferredMetadata) return
         IrGenerationExtension.registerExtension(
             InferredMetadataWriter(
                 functionFacts = InferredFacts.functionFacts.filter { config.isEnabled(it.rule) },

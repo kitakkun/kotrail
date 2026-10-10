@@ -33,10 +33,12 @@ import org.jetbrains.kotlin.name.StandardClassIds
  * annotations, so that nothing is emitted for the stub itself.
  *
  * The metadata therefore never needs the artifact: on the JVM the annotation is written by name
- * and a reader without the class ignores it, and a klib consumer's partial linkage removes an
- * annotation whose class it cannot find, silently by default. A consumer that runs Kotrail matches
- * the annotation by its class id, on either kind of output, and needs no class either. That keeps
- * a published library free of any Kotrail dependency while its callers in other modules are still
+ * and the runtime ignores a class it cannot load, and a klib consumer's partial linkage removes an
+ * annotation whose class it cannot find, silently by default. R8 and ProGuard do report the missing
+ * class, so the Gradle plugin ships a `-dontwarn` rule for consumers, and a module can opt out of
+ * the metadata altogether (`inferredMetadata=false`). A consumer that runs Kotrail matches the
+ * annotation by its class id, on either kind of output, and needs no class either. That keeps a
+ * published library free of any Kotrail dependency while its callers in other modules are still
  * checked against what its bodies do.
  *
  * [arrayParameters] names the constructor's parameters, each an `Array<String>`, in order.

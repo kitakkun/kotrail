@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
+import java.util.zip.ZipFile
 
 /**
  * Drives a real consumer build against the artifacts published into the local test repository by
@@ -518,6 +519,50 @@ class KotrailGradlePluginFunctionalTest {
         assertFalse(manifest.readText().contains("kotrail"), manifest.readText())
         assertFalse(result.output.contains("Unsupported `compileOnly`"), result.output)
     }
+
+    @Test
+    fun `a JVM library ships consumer shrinker rules, and inferredMetadata false keeps Kotrail out of its classes`() {
+        writeSettings()
+        writeFile("kotrail.yaml", "severity: warning\n")
+        writeFile(
+            "src/main/kotlin/Manager.kt",
+            """
+            import kotlinx.coroutines.CoroutineScope
+            import kotlinx.coroutines.launch
+
+            class Manager(private val scope: CoroutineScope) {
+                fun reconnect() {
+                    scope.launch { }
+                }
+            }
+            """.trimIndent(),
+        )
+        val dependencies = """
+            dependencies {
+                implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:$COROUTINES_VERSION")
+            }
+        """.trimIndent()
+        val jar = File(projectDir, "build/libs/consumer.jar")
+        val managerClass = File(projectDir, "build/classes/kotlin/main/Manager.class")
+
+        // By default the facts are written, and the JAR carries the rule that lets R8 ignore their missing classes.
+        writeBuild(dependencies + "\n\nkotrail {\n    configFile = file(\"kotrail.yaml\")\n}")
+        runBuild("jar")
+        assertTrue("com/kitakkun/kotrail" in classFileText(managerClass))
+        val rules = ZipFile(jar).use { zip ->
+            zip.getEntry("META-INF/proguard/kotrail.pro")?.let { entry -> zip.getInputStream(entry).bufferedReader().readText() }
+        }
+        assertTrue(rules != null && rules.lines().contains("-dontwarn com.kitakkun.kotrail.**"), rules)
+
+        // With both switches off, neither the classes nor the JAR mention Kotrail.
+        writeBuild(dependencies + "\n\nkotrail {\n    configFile = file(\"kotrail.yaml\")\n    inferredMetadata = false\n    consumerRules = false\n}")
+        runBuild("jar")
+        assertFalse("com/kitakkun/kotrail" in classFileText(managerClass))
+        ZipFile(jar).use { zip -> assertNull(zip.getEntry("META-INF/proguard/kotrail.pro")) }
+    }
+
+    /** A class file's bytes as text, for looking for the names in its constant pool. */
+    private fun classFileText(file: File): String = String(file.readBytes(), Charsets.ISO_8859_1)
 
     private fun writeSettings(include: List<String> = emptyList()) {
         writeFile(

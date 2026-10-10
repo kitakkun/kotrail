@@ -20,9 +20,51 @@ where the callee is used.
 | A native-backed object created and let out | `@InferredNativeAllocation(types, path)` | `nativeAllocationInLoop` |
 
 The annotation classes live in `kotrail-annotations`, but the metadata never needs that
-artifact: without it the plugin writes against a stub class, on every target, and a consumer
-without Kotrail ignores the annotation (the JVM skips annotations it cannot load; a klib
-consumer's partial linkage removes them silently). See [the Gradle plugin](gradle-plugin.md#multiplatform).
+artifact: without it the plugin writes against a stub class, on every target. A consumer without
+Kotrail does not have the class, and what that means depends on who reads the output:
+
+- The JVM, at runtime, skips an annotation whose class it cannot load. Nothing happens.
+- A klib consumer's partial linkage removes the annotation silently.
+- R8 and ProGuard, shrinking an app that depends on the module, report every class a program
+  class references and cannot find, and R8 fails the build on it (`Missing class
+  com.kitakkun.kotrail.concurrency.InferredStartsAsyncWork`). The Gradle plugin therefore ships a
+  consumer rule with every module it is applied to, on by default (`consumerRules`):
+
+  ```
+  -dontwarn com.kitakkun.kotrail.**
+  ```
+
+  An Android library (`com.android.library`) adds it to `consumerProguardFiles`, so the AAR
+  carries it; a Kotlin/JVM module and the JVM targets of a multiplatform one put it in the JAR as
+  `META-INF/proguard/kotrail.pro`, which R8 reads from every dependency JAR. Nothing needs to keep
+  the annotations: they have binary retention and nothing reads them at runtime, so the shrinker
+  may drop them.
+
+A module that should not carry the metadata at all sets `inferredMetadata = false` (see
+[Publishing a library](#publishing-a-library)). See also [the Gradle plugin](gradle-plugin.md#multiplatform).
+
+## Publishing a library
+
+A library published for consumers that do not use Kotrail has two choices:
+
+- **Leave the metadata on** (the default), with the consumer rules the Gradle plugin ships. The
+  annotations are inert for such a consumer: the JVM ignores them, and the `-dontwarn` rule keeps
+  R8 and ProGuard quiet. A consumer that does use Kotrail gets the library's facts, so a
+  `delay(500)` after a call into the library that starts work is still reported. A consumer that
+  shrinks with rules of its own and ignores those of its dependencies adds the rule above itself.
+- **Turn it off**: `inferredMetadata = false` in the `kotrail { }` block of the published module
+  (or `-P plugin:com.kitakkun.kotrail:inferredMetadata=false` without the Gradle plugin). The
+  compiler plugin then registers no metadata writer and warms no fact for it, and the class files
+  and klibs carry no reference to Kotrail. This is the recommended setting for a published module
+  whose consumers do not use Kotrail.
+
+With the metadata off, callers of the module in other modules see it as a dependency compiled
+without Kotrail: none of the cross-module checks (async work before a `delay`, insets handled
+twice, preconditions, calls that do nothing, captured effect parameters, native allocations in a
+loop) has anything to read about it and reports nothing on its account. Analysis within the
+module is unchanged, and so is reading the facts of the module's own dependencies. The switch can
+be set per compilation (`compilation("main") { inferredMetadata = false }`), and the consumer rules
+have their own switch, `consumerRules = false`, for a module that ships no rules of any kind.
 
 ## One shape for every fact
 

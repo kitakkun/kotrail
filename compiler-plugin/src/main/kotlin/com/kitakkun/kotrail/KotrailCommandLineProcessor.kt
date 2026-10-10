@@ -83,6 +83,15 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
         required = false,
     )
 
+    private val inferredMetadataOption = CliOption(
+        optionName = "inferredMetadata",
+        valueDescription = "<true|false>",
+        description = "Whether the inferred-fact annotations (@InferredStartsAsyncWork and the rest) are written into this " +
+            "compilation's output for the modules that compile against it. Default true; false leaves the output free of " +
+            "Kotrail references, as for a published library whose consumers do not use Kotrail",
+        required = false,
+    )
+
     private val treeOptions: List<CliOption> = KotrailConfig.OPTION_NAMES.map { (name, kind) ->
         val isRuleShorthand = name.startsWith("rules.") && ConfigSchema.ruleByKey(name.removePrefix("rules.")) != null
         val value = when {
@@ -105,7 +114,7 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
     }
 
     override val pluginId: String = KotrailNames.PLUGIN_ID
-    override val pluginOptions: Collection<CliOption> = listOf(configFileOption, fixesDirOption, composablesDirOption, complexityDirOption, associatedComposablesDirOption, unloadableDirOption, bundledUnloadableDirOption, rootDirOption) + treeOptions
+    override val pluginOptions: Collection<CliOption> = listOf(configFileOption, fixesDirOption, composablesDirOption, complexityDirOption, associatedComposablesDirOption, unloadableDirOption, bundledUnloadableDirOption, rootDirOption, inferredMetadataOption) + treeOptions
 
     override fun processOption(option: AbstractCliOption, value: String, configuration: CompilerConfiguration) {
         val name = option.optionName
@@ -118,6 +127,10 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
             name == unloadableDirOption.optionName -> configuration.put(KotrailConfigurationKeys.UNLOADABLE_DIR, value)
             name == bundledUnloadableDirOption.optionName -> configuration.add(KotrailConfigurationKeys.BUNDLED_UNLOADABLE_DIRS, value)
             name == rootDirOption.optionName -> configuration.put(KotrailConfigurationKeys.ROOT_DIR, value)
+            name == inferredMetadataOption.optionName -> configuration.put(
+                KotrailConfigurationKeys.INFERRED_METADATA,
+                value.toBooleanStrictOrNull() ?: throw CliOptionProcessingException("inferredMetadata must be true or false, got '$value'"),
+            )
             KotrailConfig.optionPath(name) != null -> configuration.add(KotrailConfigurationKeys.OPTIONS, "$name=$value")
             else -> throw CliOptionProcessingException("Unknown option: $name")
         }

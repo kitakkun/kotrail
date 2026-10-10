@@ -32,6 +32,15 @@ abstract class KotrailExtension @Inject constructor(private val objects: ObjectF
      */
     abstract val annotations: Property<Boolean>
 
+    /**
+     * Whether the module ships shrinker rules for its consumers: `-dontwarn com.kitakkun.kotrail.**`,
+     * so that R8 or ProGuard in an app that consumes this module without Kotrail does not fail on
+     * the inferred-fact annotation classes it cannot find. Default `true`. An Android library
+     * (`com.android.library`) gets them through `consumerProguardFiles`; a Kotlin/JVM module and
+     * the JVM targets of a multiplatform one ship them in the JAR as `META-INF/proguard/kotrail.pro`.
+     */
+    abstract val consumerRules: Property<Boolean>
+
     internal val overrides: MutableList<CompilationOverride> = mutableListOf()
 
     /**

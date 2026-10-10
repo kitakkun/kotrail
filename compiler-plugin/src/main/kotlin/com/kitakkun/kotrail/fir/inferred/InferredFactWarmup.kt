@@ -24,7 +24,9 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 /**
  * Not a rule: computes every inferred fact for every source declaration while FIR bodies are
  * available, so that the IR metadata writer, which runs after Fir2Ir has released them, only
- * reads cached results. Each fact is warmed only when its rule is on.
+ * reads cached results. Each fact is warmed only when its rule is on, and nothing is warmed when
+ * the module writes no metadata (`inferredMetadata=false`): the rules then compute what they ask
+ * for on demand, while the bodies are still there.
  */
 object InferredFactWarmup {
     /** The facts about functions, in the order their metadata is written. */
@@ -43,6 +45,7 @@ object InferredFactWarmup {
         override fun check(declaration: FirNamedFunction) {
             if (declaration.source?.kind is KtFakeSourceElementKind) return
             val config = context.session.kotrailConfig
+            if (!config.inferredMetadata) return
             for (fact in functionFacts(context.session)) {
                 if (config.isEnabled(fact.rule)) fact.warm(declaration.symbol)
             }
@@ -52,6 +55,7 @@ object InferredFactWarmup {
     object ClassChecker : FirRegularClassChecker(MppCheckerKind.Common) {
         context(context: CheckerContext, reporter: DiagnosticReporter)
         override fun check(declaration: FirRegularClass) {
+            if (!context.session.kotrailConfig.inferredMetadata) return
             val classes = context.session.preconditionService.classes
             if (context.session.kotrailConfig.isEnabled(classes.rule)) classes.warm(declaration.symbol)
         }
@@ -60,6 +64,7 @@ object InferredFactWarmup {
     object PropertyChecker : FirPropertyChecker(MppCheckerKind.Common) {
         context(context: CheckerContext, reporter: DiagnosticReporter)
         override fun check(declaration: FirProperty) {
+            if (!context.session.kotrailConfig.inferredMetadata) return
             val locals = context.session.compositionLocalService
             if (!context.session.kotrailConfig.isEnabled(locals.rule)) return
             locals.isRequiredBySource(declaration.symbol)

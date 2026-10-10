@@ -19,6 +19,16 @@ abstract class KotrailOptions {
     abstract val enabled: Property<Boolean>
 
     /**
+     * Whether the compiler plugin writes the inferred-fact annotations (`@InferredStartsAsyncWork`
+     * and the rest) into this compilation's output, for the checks of the modules that compile
+     * against it. Default `true`. With `false` nothing Kotrail-specific reaches the class files or
+     * the klib, which suits a published library whose consumers do not use Kotrail; callers in
+     * other modules then see the module as if it had been compiled without Kotrail. Analysis
+     * within the module, and reading the facts of its dependencies, are unchanged.
+     */
+    abstract val inferredMetadata: Property<Boolean>
+
+    /**
      * A `kotrail.yaml` with rule settings.
      *
      * Files are layered rather than replaced: a compilation is given the project's file first and

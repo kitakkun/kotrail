@@ -1,11 +1,15 @@
 package com.kitakkun.kotrail.gradle
 
+import org.gradle.api.Action
 import org.gradle.api.Project
 import org.gradle.api.artifacts.Configuration
 import org.gradle.api.artifacts.component.ProjectComponentIdentifier
 import org.gradle.api.file.Directory
 import org.gradle.api.provider.Provider
+import org.gradle.api.tasks.TaskProvider
 import org.gradle.api.tasks.PathSensitivity
+import org.gradle.api.tasks.SourceSet
+import org.gradle.api.tasks.SourceSetContainer
 import org.jetbrains.kotlin.gradle.plugin.FilesOptionKind
 import org.jetbrains.kotlin.gradle.plugin.FilesSubpluginOption
 import org.jetbrains.kotlin.gradle.plugin.KotlinBasePlugin
@@ -38,8 +42,11 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
         extension = target.extensions.create(EXTENSION_NAME, KotrailExtension::class.java).apply {
             enabled.convention(true)
             annotations.convention(true)
+            consumerRules.convention(true)
+            inferredMetadata.convention(true)
         }
         addAnnotationsDependency(target)
+        addConsumerRules(target)
         target.tasks.register(FIX_TASK, KotrailFixTask::class.java) { task ->
             task.group = "verification"
             task.description = "Applies the fixes Kotrail recorded during the last compilation of each source file"
@@ -254,6 +261,9 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
         specs.lastOrNull { it.enabled.isPresent }?.let {
             options += SubpluginOption("enabled", it.enabled.get().toString())
         }
+        specs.lastOrNull { it.inferredMetadata.isPresent }?.let {
+            options += SubpluginOption("inferredMetadata", it.inferredMetadata.get().toString())
+        }
         // Config files are layered, not replaced: the compiler plugin reads them in the order they
         // are passed and a later file overrides the entries of an earlier one, so an override's
         // file only lists what it changes. They travel as FilesSubpluginOption so that the
@@ -309,9 +319,107 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
         }
     }
 
+    /**
+     * The inferred-fact annotations reference classes a consumer without Kotrail does not have.
+     * The JVM ignores them at runtime, but R8 and ProGuard report every missing class a program
+     * class references, and R8 fails the build on it. So every module ships a `-dontwarn` rule
+     * for its consumers (see [ConsumerRules]), written by one task:
+     *
+     * - A Kotlin/JVM module, and every JVM target of a multiplatform one, gets the task's output
+     *   as a resource directory of its main compilation, so the JAR carries
+     *   `META-INF/proguard/kotrail.pro`, which R8 reads from every dependency JAR. Not the
+     *   `androidJvm` target of a multiplatform module: its resources end up in the AAR's
+     *   `classes.jar`, where they are not consumer rules.
+     * - An Android library (`com.android.library`) gets the file in
+     *   `defaultConfig.consumerProguardFiles`, which the AAR ships as its `proguard.txt`.
+     * - A multiplatform Android library (`com.android.kotlin.multiplatform.library`) gets it in
+     *   `optimization.consumerKeepRules` of its `android { }` DSL, with `publish` on, which the
+     *   AAR ships the same way.
+     *
+     * The plugin does not compile against the Android Gradle plugin, so both Android routes go
+     * through `androidComponents.finalizeDsl`, by reflection. Both Android plugins register that
+     * extension, and it runs the callback after the build script, when `consumerRules` is known,
+     * and before the DSL is locked. The tasks that read the consumer files
+     * (`export<Variant>ConsumerProguardFiles`, `merge<Variant>ConsumerProguardFiles`, which skip a
+     * file that does not exist) depend on the task that writes it.
+     */
+    private fun addConsumerRules(target: Project) {
+        // A fixed location, not derived from the task: the Android DSL needs the file during
+        // configuration, and a task-output provider must not be read before the task has run.
+        val outputDirectory = target.layout.buildDirectory.dir(CONSUMER_RULES_DIRECTORY)
+        val task = target.tasks.register(CONSUMER_RULES_TASK, KotrailConsumerRulesTask::class.java) { task ->
+            task.description = "Writes the shrinker rules this module's consumers need for the inferred-fact annotations"
+            task.writeRules.set(extension.consumerRules)
+            task.outputDirectory.set(outputDirectory)
+        }
+        // The JVM resource directories take the task output: Gradle resolves it lazily and infers the dependency.
+        val directory = task.flatMap { it.outputDirectory }
+        target.pluginManager.withPlugin("org.jetbrains.kotlin.jvm") {
+            target.pluginManager.withPlugin("java") {
+                target.extensions.getByType(SourceSetContainer::class.java)
+                    .named(SourceSet.MAIN_SOURCE_SET_NAME) { it.resources.srcDir(directory) }
+            }
+        }
+        target.pluginManager.withPlugin("org.jetbrains.kotlin.multiplatform") {
+            val kotlin = target.extensions.getByName("kotlin") as KotlinTargetsContainer
+            kotlin.targets.configureEach { kotlinTarget ->
+                // Only `jvm`: an `androidJvm` target's resources are not consumer rules (see above).
+                if (kotlinTarget.platformType != KotlinPlatformType.jvm) return@configureEach
+                kotlinTarget.compilations.configureEach { compilation ->
+                    if (compilation.name == KotlinCompilation.MAIN_COMPILATION_NAME) compilation.defaultSourceSet.resources.srcDir(directory)
+                }
+            }
+        }
+        // A layout provider without a task behind it, safe to read in `finalizeDsl`; the explicit
+        // dependencies of `dependOnConsumerRules` make the task write the file before AGP reads it.
+        val rulesFile = outputDirectory.map { it.file(ConsumerRules.RESOURCE_PATH).asFile }
+        target.pluginManager.withPlugin("com.android.library") {
+            finalizeAndroidDsl(target) { android ->
+                val defaultConfig = android.javaClass.getMethod("getDefaultConfig").invoke(android)
+                defaultConfig.javaClass.getMethod("consumerProguardFile", Any::class.java).invoke(defaultConfig, rulesFile.get())
+            }
+            dependOnConsumerRules(target, task)
+        }
+        target.pluginManager.withPlugin("com.android.kotlin.multiplatform.library") {
+            finalizeAndroidDsl(target) { android ->
+                val missing = addConsumerKeepRules(android, rulesFile.get())
+                if (missing != null) {
+                    target.logger.warn("Kotrail: found no $missing on the Android DSL of ${target.path}; consumer shrinker rules are not added.")
+                }
+            }
+            dependOnConsumerRules(target, task)
+        }
+    }
+
+    private fun dependOnConsumerRules(target: Project, task: TaskProvider<KotrailConsumerRulesTask>) {
+        target.tasks.configureEach {
+            if (it.name.startsWith("export") || it.name.startsWith("merge")) {
+                if (it.name.endsWith("ConsumerProguardFiles")) it.dependsOn(task)
+            }
+        }
+    }
+
+    /** `androidComponents.finalizeDsl { if (consumerRules) configure(it) }`, through reflection. */
+    private fun finalizeAndroidDsl(target: Project, configure: (android: Any) -> Unit) {
+        val components = target.extensions.findByName("androidComponents")
+        val finalizeDsl = components?.javaClass?.methods?.firstOrNull {
+            it.name == "finalizeDsl" && it.parameterTypes.singleOrNull() == Action::class.java
+        }
+        if (components == null || finalizeDsl == null) {
+            target.logger.warn("Kotrail: found no androidComponents.finalizeDsl in ${target.path}; consumer shrinker rules are not added.")
+            return
+        }
+        val callback = Action<Any> { android ->
+            if (extension.consumerRules.get()) configure(android)
+        }
+        finalizeDsl.invoke(components, callback)
+    }
+
     private companion object {
         const val EXTENSION_NAME = "kotrail"
         const val FIX_TASK = "kotrailFix"
+        const val CONSUMER_RULES_TASK = "kotrailConsumerRules"
+        const val CONSUMER_RULES_DIRECTORY = "kotrail/consumer-rules"
 
         /** Must match `KotrailNames.PLUGIN_ID` in the compiler plugin. */
         const val COMPILER_PLUGIN_ID = "com.kitakkun.kotrail"
@@ -321,4 +429,25 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
         const val ANNOTATIONS_ARTIFACT = "kotrail-annotations"
         const val COMPILER_PLUGIN_VERSION_PROPERTY = "kotrail.compilerPluginVersion"
     }
+}
+
+/**
+ * `android.optimization.consumerKeepRules.run { publish = true; file(rulesFile) }` on the
+ * `KotlinMultiplatformAndroidLibraryExtension` [android], through reflection. Returns the member
+ * that was not found, or null when the rules were added.
+ */
+internal fun addConsumerKeepRules(android: Any, rulesFile: File): String? {
+    val optimization = android.javaClass.methods.firstOrNull { it.name == "getOptimization" && it.parameterCount == 0 }
+        ?.invoke(android) ?: return "optimization"
+    val consumerKeepRules = optimization.javaClass.methods.firstOrNull { it.name == "getConsumerKeepRules" && it.parameterCount == 0 }
+        ?.invoke(optimization) ?: return "optimization.consumerKeepRules"
+    val setPublish = consumerKeepRules.javaClass.methods.firstOrNull {
+        it.name == "setPublish" && it.parameterTypes.singleOrNull() == Boolean::class.javaPrimitiveType
+    } ?: return "optimization.consumerKeepRules.publish"
+    val file = consumerKeepRules.javaClass.methods.firstOrNull {
+        it.name == "file" && it.parameterTypes.singleOrNull() == Any::class.java
+    } ?: return "optimization.consumerKeepRules.file(Any)"
+    setPublish.invoke(consumerKeepRules, true)
+    file.invoke(consumerKeepRules, rulesFile)
+    return null
 }

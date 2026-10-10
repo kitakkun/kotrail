@@ -532,6 +532,8 @@ data class KotrailConfig(
     val bundledUnloadableDirs: List<String>,
     /** The build's root directory, for paths in messages that name a file of another module (the `rootDir` plugin option). */
     val rootDir: String?,
+    /** Whether the inferred-fact annotations are written for other modules (the `inferredMetadata` plugin option). */
+    val inferredMetadata: Boolean,
     private val switches: Map<KotrailRule, Boolean>,
     private val severities: Map<KotrailRule, Severity>,
     private val notes: Map<KotrailRule, String>,
@@ -804,6 +806,7 @@ data class KotrailConfig(
                 complexityDir = configuration.get(KotrailConfigurationKeys.COMPLEXITY_DIR),
                 bundledUnloadableDirs = configuration.get(KotrailConfigurationKeys.BUNDLED_UNLOADABLE_DIRS).orEmpty(),
                 rootDir = configuration.get(KotrailConfigurationKeys.ROOT_DIR),
+                inferredMetadata = configuration.get(KotrailConfigurationKeys.INFERRED_METADATA) ?: true,
             )
         } catch (e: ConfigException) {
             throw CliOptionProcessingException("Kotrail configuration: ${e.message}")
@@ -1062,6 +1065,7 @@ data class KotrailConfig(
                 unloadableDir = null,
                 bundledUnloadableDirs = emptyList(),
                 rootDir = null,
+                inferredMetadata = true,
                 switches = switches,
                 severities = severities,
                 notes = notes,

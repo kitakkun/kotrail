@@ -38,10 +38,21 @@ kotrail {
         bundledConfigurations.add("hostRuntime")
     }
 
-    // enabled = false      // do not run the plugin here at all
-    // annotations = false  // do not add the annotations artifact
+    // enabled = false           // do not run the plugin here at all
+    // annotations = false       // do not add the annotations artifact
+    // inferredMetadata = false  // write no inferred-fact annotations for other modules
+    // consumerRules = false     // ship no shrinker rules to consumers
 }
 ```
+
+| Property | Default | What it does |
+| --- | --- | --- |
+| `configFile` | none | The `kotrail.yaml` with rule settings; layered per compilation (below). |
+| `enabled` | `true` | Whether the compiler plugin is applied at all. Per compilation. |
+| `annotations` | `true` | Whether `kotrail-annotations` is added as `compileOnly` (Kotlin/JVM and Kotlin/Android). |
+| `inferredMetadata` | `true` | Whether the inferred-fact annotations (`@InferredStartsAsyncWork` and the rest) are written into the output for the modules that compile against this one. `false` leaves the class files and klibs free of Kotrail references, for a published library whose consumers do not use Kotrail; callers in other modules then see the module as if it had been compiled without Kotrail, while analysis within it is unchanged. Per compilation. See [Publishing a library](inferred-metadata.md#publishing-a-library). |
+| `consumerRules` | `true` | Whether the module ships `-dontwarn com.kitakkun.kotrail.**` to its consumers, so that R8 or ProGuard in an app without Kotrail does not fail on the missing annotation classes. See [Consumer rules](#consumer-rules). |
+| `bundledConfigurations` | empty | Configurations whose projects this compilation's artifact bundles, for unloadable code. Per compilation. |
 
 Rule switches, severities, rule settings, and the project's own notes on why a rule exists are
 **not** part of this DSL. They live in `kotrail.yaml`, whose keys are listed in
@@ -147,10 +158,30 @@ to the source sets that need it, as `api` or `implementation`.
 
 The metadata the compiler plugin writes for callers in other modules (`@InferredEffectCapture`,
 `@InferredStartsAsyncWork` and the rest) never needs the artifact: without it the plugin writes
-the annotation against a stub class, on every target. A consumer without Kotrail ignores it
-(the JVM skips annotations it cannot load; a klib consumer's partial linkage removes them
-silently), and a consumer with Kotrail reads it by name. A published library therefore carries
-the metadata with no Kotrail dependency, `annotations = false` included.
+the annotation against a stub class, on every target. A consumer with Kotrail reads it by name.
+A consumer without Kotrail does not have the class: the JVM skips annotations it cannot load and
+a klib consumer's partial linkage removes them silently, but R8 and ProGuard report the missing
+class, which is why every module ships the `-dontwarn` [consumer rule](#consumer-rules)
+(`consumerRules`). A published library therefore carries the metadata with no Kotrail
+dependency, `annotations = false` included; one whose consumers do not use Kotrail can leave it
+out with `inferredMetadata = false`. See [Publishing a library](inferred-metadata.md#publishing-a-library).
+
+## Consumer rules
+
+With `consumerRules` on (the default), the task `kotrailConsumerRules` writes
+`-dontwarn com.kitakkun.kotrail.**` to `build/kotrail/consumer-rules/META-INF/proguard/kotrail.pro`,
+and the plugin ships it to the module's consumers in three layouts:
+
+| Layout | How the rule ships |
+|---|---|
+| `org.jetbrains.kotlin.jvm`, and every `jvm` target of `org.jetbrains.kotlin.multiplatform` | As a resource of the main compilation, so the JAR carries `META-INF/proguard/kotrail.pro`, which R8 reads from every dependency JAR. |
+| `com.android.library` | In `defaultConfig.consumerProguardFiles`, which the AAR ships as its `proguard.txt`. |
+| `com.android.kotlin.multiplatform.library` | In `optimization.consumerKeepRules` of the `android { }` DSL (with `publish = true`), which the AAR ships as its `proguard.txt`. |
+
+The Android routes are set in `androidComponents.finalizeDsl`, after the build script has run. The
+`androidJvm` target of a multiplatform module does not get the resource: resources end up in the
+AAR's `classes.jar`, where they are not consumer rules. A build wired another way (a hand-wired
+compiler plugin, see below) adds the rule to its consumer rules itself.
 
 ## Without the Gradle plugin
 
@@ -170,3 +201,8 @@ tasks.withType<KotlinCompile>().configureEach {
 ```
 
 `configFile` may be given more than once; the files are read in that order.
+
+`inferredMetadata=false` (`-P plugin:com.kitakkun.kotrail:inferredMetadata=false`) keeps the
+inferred-fact annotations out of the output. A hand-wired build ships no consumer rules; a
+library built that way with the metadata on adds `-dontwarn com.kitakkun.kotrail.**` to its
+consumer rules itself.
