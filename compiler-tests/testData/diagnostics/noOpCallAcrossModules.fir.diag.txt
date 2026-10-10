@@ -1,5 +1,13 @@
-/Client.kt:(269,298): error: [Kotrail] This call does nothing: 'send' returns at once when bytes.isEmpty(). (KOTRAIL_CALL_DOES_NOTHING)
+/Client.kt:(446,475): error: [Kotrail] This call does nothing: 'send' returns at once when bytes.isEmpty(). (KOTRAIL_CALL_DOES_NOTHING)
 
-/Client.kt:(303,313): error: [Kotrail] This call does nothing: 'log' returns at once when text.isBlank(). (KOTRAIL_CALL_DOES_NOTHING)
+/Client.kt:(480,490): error: [Kotrail] This call does nothing: 'log' returns at once when text.isBlank(). (KOTRAIL_CALL_DOES_NOTHING)
 
-/Client.kt:(318,334): error: [Kotrail] This call does nothing: 'log' returns at once when level < 0. (KOTRAIL_CALL_DOES_NOTHING)
+/Client.kt:(495,511): error: [Kotrail] This call does nothing: 'log' returns at once when level < 0. (KOTRAIL_CALL_DOES_NOTHING)
+
+/Client.kt:(516,544): error: [Kotrail] This call does nothing: 'send' returns at once when bytes.isEmpty(). (KOTRAIL_CALL_DOES_NOTHING)
+
+/Client.kt:(549,569): error: [Kotrail] This call does nothing: 'pause' returns at once when timeout <= Duration.ZERO. (KOTRAIL_CALL_DOES_NOTHING)
+
+/Client.kt:(574,593): error: [Kotrail] This call does nothing: 'pause' returns at once when timeout <= Duration.ZERO. (KOTRAIL_CALL_DOES_NOTHING)
+
+/Client.kt:(598,620): error: [Kotrail] This call does nothing: 'poll' returns at once when interval < 500.milliseconds. (KOTRAIL_CALL_DOES_NOTHING)

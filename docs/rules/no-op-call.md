@@ -99,10 +99,12 @@ when the knowledge base gives one.
 
 ## Across modules
 
-When a module is compiled, every non-private function with recorded conditions receives an
-`@InferredNoOpWhen("bytes.isEmpty()", ...)` annotation in its metadata, and dependent modules
-check their calls against it. Written by hand on a declaration, the annotation takes precedence
-over its body. See [Inferred metadata](../inferred-metadata.md).
+When a module is compiled, every non-private function with recorded conditions gets them
+recorded for other modules (`"bytes.isEmpty()", ...`, durations as `Duration.ZERO` or
+`500.milliseconds`): as a `noOpWhen` entry in the module's facts file on the JVM and Android, as
+an `@InferredNoOpWhen` annotation in a klib (see [Inferred metadata](../inferred-metadata.md)).
+Dependent modules read them and check their calls the same way. Written by hand on a
+declaration, the annotation takes precedence over its body.
 
 ## When it stays quiet
 
@@ -129,14 +131,16 @@ positive wait is written and leaves `delay(0)` to this rule.
 `compiler-tests/testData/diagnostics/noOpCall.kt` and
 `compiler-tests/testData/diagnostics/noOpCallAcrossModules.kt`, their messages in `*.diag.txt`
 (`*.fir.diag.txt` for the test framework before Kotlin 2.4.20);
-`compiler-tests/testData/box/noOpCall/inferredMetadataAcrossModules.kt` for the metadata written.
+`compiler-tests/testData/box/noOpCall/inferredMetadataAcrossModules.kt` for the facts written.
 
 ## Implementation notes
 
 `fir/noop/NoOpService.kt` is the `noOpWhen` fact on the shared base described in
-[Inferred metadata](../inferred-metadata.md): the annotation, hand-written or inferred, wins over
-the body, then `NoOpNames.KNOWN_FUNCTIONS`, then the guards read with the preconditions'
-`CondConverter`. `fir/noop/checkers/NoOpCallChecker.kt` folds the arguments with the same
+[Inferred metadata](../inferred-metadata.md): for a declaration of another module, the facts
+file's entry, then the annotation, hand-written or inferred, which also wins over the body of a
+source declaration, then `NoOpNames.KNOWN_FUNCTIONS`, then the guards read with the
+preconditions' `CondConverter`. The shared writer records the conditions (the facts file on the
+JVM, `@InferredNoOpWhen` in a klib). `fir/noop/checkers/NoOpCallChecker.kt` folds the arguments with the same
 `knownArgumentValues` the precondition checker uses and evaluates the conditions with the shared
 `Cond` evaluator, which holds `Duration` values as `kotlin.time.Duration` so that conversions and
 comparisons are Kotlin's own.

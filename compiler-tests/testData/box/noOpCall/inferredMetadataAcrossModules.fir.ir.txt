@@ -56,6 +56,21 @@ FILE fqName:lib fileName:/Lib.kt
             GET_OBJECT 'CLASS IR_EXTERNAL_DECLARATION_STUB OBJECT name:Unit modality:FINAL visibility:public superTypes:[kotlin.Any]' type=kotlin.Unit
       CALL 'public final fun println (message: kotlin.Int): kotlin.Unit declared in kotlin.io' type=kotlin.Unit origin=null
         ARG message: GET_VAR 'n: kotlin.Int declared in lib.hidden' type=kotlin.Int origin=null
+  FUN name:pause visibility:public modality:FINAL returnType:kotlin.Unit
+    VALUE_PARAMETER kind:Regular name:timeout index:0 type:kotlin.time.Duration
+    BLOCK_BODY
+      WHEN type=kotlin.Unit origin=IF
+        BRANCH
+          if: CALL 'public final fun lessOrEqual (arg0: kotlin.Int, arg1: kotlin.Int): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=LTEQ
+            ARG arg0: CALL 'public open fun compareTo (other: kotlin.time.Duration): kotlin.Int declared in kotlin.time.Duration' type=kotlin.Int origin=LTEQ
+              ARG <this>: GET_VAR 'timeout: kotlin.time.Duration declared in lib.pause' type=kotlin.time.Duration origin=null
+              ARG other: CALL 'public final fun <get-ZERO> (): kotlin.time.Duration declared in kotlin.time.Duration.Companion' type=kotlin.time.Duration origin=GET_PROPERTY
+                ARG <this>: GET_OBJECT 'CLASS IR_EXTERNAL_DECLARATION_STUB OBJECT name:Companion modality:FINAL visibility:public [companion] superTypes:[kotlin.Any]' type=kotlin.time.Duration.Companion
+            ARG arg1: CONST Int type=kotlin.Int value=0
+          then: RETURN type=kotlin.Nothing from='public final fun pause (timeout: kotlin.time.Duration): kotlin.Unit declared in lib'
+            GET_OBJECT 'CLASS IR_EXTERNAL_DECLARATION_STUB OBJECT name:Unit modality:FINAL visibility:public superTypes:[kotlin.Any]' type=kotlin.Unit
+      CALL 'public final fun println (message: kotlin.Any?): kotlin.Unit declared in kotlin.io' type=kotlin.Unit origin=null
+        ARG message: GET_VAR 'timeout: kotlin.time.Duration declared in lib.pause' type=kotlin.time.Duration origin=null
   FUN name:resize visibility:public modality:FINAL returnType:kotlin.Unit
     VALUE_PARAMETER kind:Regular name:width index:0 type:kotlin.Int
     VALUE_PARAMETER kind:Regular name:height index:1 type:kotlin.Int
@@ -138,6 +153,10 @@ FILE fqName:<root> fileName:/Main.kt
         ARG bytes: CALL 'public final fun byteArrayOf (vararg elements: kotlin.Byte): kotlin.ByteArray declared in kotlin' type=kotlin.ByteArray origin=null
           ARG elements: VARARG type=kotlin.ByteArray varargElementType=kotlin.Byte
             CONST Byte type=kotlin.Byte value=1
+      CALL 'public final fun pause (timeout: kotlin.time.Duration): kotlin.Unit declared in lib' type=kotlin.Unit origin=null
+        ARG timeout: CALL 'public final fun <get-seconds> (<this>: kotlin.Int): kotlin.time.Duration declared in kotlin.time.Duration.Companion' type=kotlin.time.Duration origin=GET_PROPERTY
+          ARG <this>(index:0): GET_OBJECT 'CLASS IR_EXTERNAL_DECLARATION_STUB OBJECT name:Companion modality:FINAL visibility:public [companion] superTypes:[kotlin.Any]' type=kotlin.time.Duration.Companion
+          ARG <this>(index:1): CONST Int type=kotlin.Int value=1
       CALL 'public final fun touch (): kotlin.Unit declared in lib' type=kotlin.Unit origin=null
       RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in <root>'
         CONST String type=kotlin.String value="OK"

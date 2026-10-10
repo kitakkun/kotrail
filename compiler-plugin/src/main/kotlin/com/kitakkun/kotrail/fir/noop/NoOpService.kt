@@ -48,9 +48,11 @@ data class NoOpConditions(val conditions: List<Cond>, val hint: String)
  * statement that is not one ends the run. Only a function no override can replace is read, since
  * the fact belongs to the declaration called.
  *
- * `@InferredNoOpWhen`, which the IR writer puts on a function for other modules and which may be
- * written by hand on a source one, wins over the body; a library function without it falls back
- * on [NoOpNames.KNOWN_FUNCTIONS].
+ * For a declaration of another module the conditions are what its module recorded: the
+ * `noOpWhen` entry of its facts file on the JVM, `@InferredNoOpWhen` in a klib, both written by
+ * the IR writer in the same language. The annotation, which may also be written by hand on a
+ * source declaration, wins over the body; a library function without either falls back on
+ * [NoOpNames.KNOWN_FUNCTIONS].
  */
 class NoOpService(session: FirSession) : InferredFactService<FirNamedFunctionSymbol, NoOpConditions>(session) {
     override val rule: KotrailRule get() = KotrailRule.NO_OP_CALL

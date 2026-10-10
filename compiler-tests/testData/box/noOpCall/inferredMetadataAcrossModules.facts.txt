@@ -1,5 +1,6 @@
 Module: lib (lib.facts)
 {"file": "lib/Lib.kt", "id": "lib/Channel.write", "signature": "kotlin/String", "facts": {"noOpWhen": {"conditions": ["text.isBlank()"]}}}
+{"file": "lib/Lib.kt", "id": "lib/pause", "signature": "kotlin/time/Duration", "facts": {"noOpWhen": {"conditions": ["timeout <= Duration.ZERO"]}}}
 {"file": "lib/Lib.kt", "id": "lib/resize", "signature": "kotlin/Int,kotlin/Int", "facts": {"noOpWhen": {"conditions": ["width <= 0", "height <= 0", "height > 10000"]}}}
 {"file": "lib/Lib.kt", "id": "lib/send", "signature": "kotlin/ByteArray", "facts": {"noOpWhen": {"conditions": ["bytes.isEmpty()"]}}}
 Module: main (main.facts)

@@ -9,6 +9,8 @@
 // FILE: Lib.kt
 package lib
 
+import kotlin.time.Duration
+
 fun send(bytes: ByteArray) {
     if (bytes.isEmpty()) return
     println(bytes.size)
@@ -37,6 +39,12 @@ open class Channel {
     }
 }
 
+// A duration guard is recorded in the same language as the others.
+fun pause(timeout: Duration) {
+    if (timeout <= Duration.ZERO) return
+    println(timeout)
+}
+
 // A guard that does work before returning is not recorded.
 fun upload(bytes: ByteArray) {
     if (bytes.isEmpty()) {
@@ -58,7 +66,9 @@ fun touch() {
 
 // MODULE: main(lib)
 // FILE: Main.kt
+import kotlin.time.Duration.Companion.seconds
 import lib.Channel
+import lib.pause
 import lib.resize
 import lib.send
 import lib.touch
@@ -70,6 +80,7 @@ fun box(): String {
     Channel().write("ok")
     Channel().push(byteArrayOf(1))
     upload(byteArrayOf(1))
+    pause(1.seconds)
     touch()
     return "OK"
 }
