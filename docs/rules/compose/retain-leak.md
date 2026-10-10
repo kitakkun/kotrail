@@ -159,9 +159,9 @@ rules:
 
 ## Related rules
 
-[Remember keys](remember-keys.md) and [Redundant key](redundant-key.md) cover what a key list
-says; this rule covers what the keys and the value keep alive. [No callback in model](no-callback-in-model.md)
-walks the same type graph for a different finding.
+[Remember keys](remember-keys.md) covers what a key list says; this rule covers what the keys
+and the value keep alive. [No callback in model](no-callback-in-model.md) walks the same type
+graph for a different finding.
 
 ## Fixtures
 
