@@ -1,0 +1,37 @@
+/noOpCall.kt:106:5: error: [Kotrail] This call does nothing: 'send' returns at once when bytes.isEmpty(). (KOTRAIL_CALL_DOES_NOTHING)
+
+/noOpCall.kt:107:5: error: [Kotrail] This call does nothing: 'send' returns at once when bytes.isEmpty(). (KOTRAIL_CALL_DOES_NOTHING)
+
+/noOpCall.kt:108:5: error: [Kotrail] This call does nothing: 'send' returns at once when bytes.isEmpty(). (KOTRAIL_CALL_DOES_NOTHING)
+
+/noOpCall.kt:109:5: error: [Kotrail] This call does nothing: 'log' returns at once when text.isBlank(). (KOTRAIL_CALL_DOES_NOTHING)
+
+/noOpCall.kt:110:5: error: [Kotrail] This call does nothing: 'log' returns at once when text.isBlank(). (KOTRAIL_CALL_DOES_NOTHING)
+
+/noOpCall.kt:111:5: error: [Kotrail] This call does nothing: 'resize' returns at once when width <= 0. (KOTRAIL_CALL_DOES_NOTHING)
+
+/noOpCall.kt:112:5: error: [Kotrail] This call does nothing: 'resize' returns at once when height <= 0. (KOTRAIL_CALL_DOES_NOTHING)
+
+/noOpCall.kt:113:5: error: [Kotrail] This call does nothing: 'resize' returns at once when height > 10000. (KOTRAIL_CALL_DOES_NOTHING)
+
+/noOpCall.kt:114:5: error: [Kotrail] This call does nothing: 'ping' returns at once when times == 0. (KOTRAIL_CALL_DOES_NOTHING)
+
+/noOpCall.kt:115:5: error: [Kotrail] This call does nothing: 'notify' returns at once when message.isEmpty(). (KOTRAIL_CALL_DOES_NOTHING)
+
+/noOpCall.kt:116:5: error: [Kotrail] This call does nothing: 'send' returns at once when bytes.isEmpty(). (KOTRAIL_CALL_DOES_NOTHING)
+
+/noOpCall.kt:117:5: error: [Kotrail] This call does nothing: 'fromLibrary' returns at once when count <= 0. (KOTRAIL_CALL_DOES_NOTHING)
+
+/noOpCall.kt:118:5: error: [Kotrail] This call does nothing: 'delay' returns at once when timeMillis <= 0. To let other coroutines run, call yield(). (KOTRAIL_CALL_DOES_NOTHING)
+
+/noOpCall.kt:119:5: error: [Kotrail] This call does nothing: 'delay' returns at once when timeMillis <= 0. To let other coroutines run, call yield(). (KOTRAIL_CALL_DOES_NOTHING)
+
+/noOpCall.kt:120:5: error: [Kotrail] This call does nothing: 'delay' returns at once when timeMillis <= 0. To let other coroutines run, call yield(). (KOTRAIL_CALL_DOES_NOTHING)
+
+/noOpCall.kt:121:5: error: [Kotrail] This call does nothing: 'delay' returns at once when duration <= Duration.ZERO. To let other coroutines run, call yield(). (KOTRAIL_CALL_DOES_NOTHING)
+
+/noOpCall.kt:122:5: error: [Kotrail] This call does nothing: 'delay' returns at once when duration <= Duration.ZERO. To let other coroutines run, call yield(). (KOTRAIL_CALL_DOES_NOTHING)
+
+/noOpCall.kt:123:5: error: [Kotrail] This call does nothing: 'delay' returns at once when duration <= Duration.ZERO. To let other coroutines run, call yield(). (KOTRAIL_CALL_DOES_NOTHING)
+
+/noOpCall.kt:124:5: error: [Kotrail] This call does nothing: 'delay' returns at once when duration <= Duration.ZERO. To let other coroutines run, call yield(). (KOTRAIL_CALL_DOES_NOTHING)

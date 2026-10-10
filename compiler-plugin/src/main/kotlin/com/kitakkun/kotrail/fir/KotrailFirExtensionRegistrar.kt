@@ -8,6 +8,7 @@ import com.kitakkun.kotrail.fir.compose.insets.WindowInsetsHandlingService
 import com.kitakkun.kotrail.fir.compose.locals.CompositionLocalService
 import com.kitakkun.kotrail.fir.memory.NativeAllocationService
 import com.kitakkun.kotrail.fir.native.ThrowsService
+import com.kitakkun.kotrail.fir.noop.NoOpService
 import com.kitakkun.kotrail.fir.preconditions.PreconditionService
 import org.jetbrains.kotlin.fir.extensions.FirExtensionRegistrar
 
@@ -19,6 +20,7 @@ class KotrailFirExtensionRegistrar(private val config: KotrailConfig) : FirExten
         +::AsyncWorkService
         +::CompositionLocalService
         +::PreconditionService
+        +::NoOpService
         +::ThrowsService
         +::NativeAllocationService
         +::NamedConditionIndex

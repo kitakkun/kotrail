@@ -6,6 +6,7 @@ import com.kitakkun.kotrail.fir.checkers.ForbiddenCallChecker
 import com.kitakkun.kotrail.fir.checkers.FileLengthChecker
 import com.kitakkun.kotrail.fir.checkers.FunctionLengthChecker
 import com.kitakkun.kotrail.fir.preconditions.checkers.PreconditionChecker
+import com.kitakkun.kotrail.fir.noop.checkers.NoOpCallChecker
 import com.kitakkun.kotrail.fir.checkers.UnimplementedCodeChecker
 import com.kitakkun.kotrail.fir.checkers.RequiredAnnotationChecker
 import com.kitakkun.kotrail.fir.checkers.VisibilityPolicyChecker
@@ -224,6 +225,7 @@ object KotrailExpressionCheckers : ExpressionCheckers() {
         WeakOnlyReferenceChecker,
         ComposableRememberKeysChecker,
         PreconditionChecker,
+        NoOpCallChecker,
         UnimplementedCodeChecker,
         NamedArgumentsChecker,
         ComposableNamedCallbackArgumentsChecker,

@@ -54,6 +54,7 @@ That covers `kotlinx.coroutines.delay`, `withTimeout`, `withTimeoutOrNull`, `Flo
 - The argument is anything but a literal: a constant, `PollInterval.inWholeMilliseconds`, a
   parameter passed through (`delay(interval)`). It already has a name.
 - The literal is `0` or negative: nothing waits, and there is no unit to state.
+  [No-op call](no-op-call.md) reports `delay(0)` as a call that does nothing.
 - The callee has no `Duration` overload: `Thread.sleep(1500)`, `TimeUnit.SECONDS.sleep(5)`,
   `process.waitFor(15)`, `future.get(10)`, or a project function that takes only a number
   (`poll(interval = 250)`). Writing `Thread.sleep(200.milliseconds.inWholeMilliseconds)` would
@@ -74,7 +75,7 @@ That covers `kotlinx.coroutines.delay`, `withTimeout`, `withTimeoutOrNull`, `Flo
 [Delay for completion](delay-for-completion.md) reports a `delay` that stands in for waiting on
 work that was started; this rule reports how any wait's length is written.
 [No sleep in tests](test/no-sleep.md) reports real-time waits in tests, which this rule leaves
-alone.
+alone. [No-op call](no-op-call.md) reports a wait of zero or less, which does not wait at all.
 
 ## Fixtures
 

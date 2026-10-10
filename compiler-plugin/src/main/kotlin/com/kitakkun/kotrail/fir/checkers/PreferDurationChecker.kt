@@ -57,7 +57,7 @@ import org.jetbrains.kotlin.types.ConstantValueKind
  * Thread.sleep(1500)                          // fine: no Duration overload to call instead
  * poll(interval = 250)                        // fine unless poll(interval: Duration) exists
  * process.waitFor(15, TimeUnit.SECONDS)       // fine: the TimeUnit beside it states the unit
- * delay(0)                                    // fine: nothing waits
+ * delay(0)                                    // fine here: noOpCall reports a wait that does nothing
  * ```
  *
  * The overload is a function of the same name in the callee's package or class, visible from
@@ -66,7 +66,7 @@ import org.jetbrains.kotlin.types.ConstantValueKind
  * A call that also passes a `TimeUnit` or a `ChronoUnit` already carries its unit and is skipped
  * whole. Only literals are reported, through a unary minus or plus written on one: any other
  * expression, a constant or a pass-through parameter, already has a name. Zero and negative
- * values wait nothing and are not reported. The suggestion is in
+ * values wait nothing and are left to [KotrailRule.NO_OP_CALL]. The suggestion is in
  * milliseconds unless the parameter's name ends in another unit (`timeoutSeconds`). Test
  * functions and test source sets are not looked at.
  */

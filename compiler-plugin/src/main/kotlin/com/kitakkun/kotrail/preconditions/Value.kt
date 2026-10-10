@@ -1,5 +1,8 @@
 package com.kitakkun.kotrail.preconditions
 
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.nanoseconds
+
 /**
  * A compile-time constant as the precondition evaluator sees it. Numeric kinds are kept apart so
  * that arithmetic follows Kotlin's own promotion and overflow rules.
@@ -13,6 +16,15 @@ sealed class Value {
     data class StrV(val value: String) : Value()
     data class CharV(val value: Char) : Value()
     data class ListV(val elements: List<Value>) : Value()
+
+    /** A `kotlin.time.Duration`, held as one so that conversions and comparisons are Kotlin's own. */
+    data class DurationV(val value: Duration) : Value()
+
+    /**
+     * An array, known only by its size: `==` on arrays compares identity, which no constant can
+     * decide. Fold-only: a condition that holds one is never exported.
+     */
+    data class ArrayV(val size: Int) : Value()
     data object NullV : Value()
 
     val isNumeric: Boolean get() = this is IntV || this is LongV || this is FloatV || this is DoubleV
@@ -45,6 +57,8 @@ sealed class Value {
         is StrV -> value
         is CharV -> value.toString()
         is ListV -> elements.joinToString(", ", "[", "]") { it.toDisplayString() }
+        is DurationV -> value.toString()
+        is ArrayV -> "an array of $size"
         NullV -> "null"
     }
 
@@ -79,7 +93,23 @@ sealed class Value {
             else -> "'$value'"
         }
         is ListV -> elements.joinToString(", ", "listOf(", ")") { it.render() }
+        is DurationV -> renderDuration(value)
+        // No literal reads back to an array; Cond.render refuses a condition that holds one.
+        is ArrayV -> "an array of $size"
         NullV -> "null"
+    }
+
+    private fun renderDuration(duration: Duration): String {
+        if (duration == Duration.ZERO) return "Duration.ZERO"
+        if (duration == Duration.INFINITE) return "Duration.INFINITE"
+        if (duration == -Duration.INFINITE) return "-Duration.INFINITE"
+        // Past about 146 years a duration is held in milliseconds, which nanoseconds would overflow.
+        val nanoseconds = duration.inWholeNanoseconds
+        return if (nanoseconds.nanoseconds == duration) {
+            LongV(nanoseconds).render() + ".nanoseconds"
+        } else {
+            LongV(duration.inWholeMilliseconds).render() + ".milliseconds"
+        }
     }
 
     private fun renderFloating(text: String, suffix: String): String {

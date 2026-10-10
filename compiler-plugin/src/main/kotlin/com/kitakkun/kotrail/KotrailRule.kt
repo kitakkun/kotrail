@@ -40,6 +40,7 @@ enum class KotrailRule(
     MUST_BE_SERIALIZABLE("mustBeSerializable", Severity.ERROR),
     NO_UNIMPLEMENTED("noUnimplemented", Severity.ERROR),
     PRECONDITIONS("preconditions", Severity.ERROR),
+    NO_OP_CALL("noOpCall", Severity.ERROR),
     FUNCTION_LENGTH("functionLength", Severity.ERROR),
     FILE_LENGTH("fileLength", Severity.ERROR),
     NO_LITERAL_LOOP("noLiteralLoop", Severity.ERROR),

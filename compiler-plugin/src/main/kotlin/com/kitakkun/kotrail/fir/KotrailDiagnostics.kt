@@ -236,6 +236,13 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Arguments: the callee name, then the condition with the argument values that make it false. Reported on the call. */
     val PRECONDITION_VIOLATED = tunable2<KtElement, String, String>("PRECONDITION_VIOLATED", KotrailRule.PRECONDITIONS, WHOLE)
 
+    /**
+     * Arguments: the callee name, then the condition under which it returns at once, rendered with
+     * its parameter names and ended with a period, followed by the callee's hint when it has one.
+     * Reported on the call.
+     */
+    val CALL_DOES_NOTHING = tunable2<KtElement, String, String>("CALL_DOES_NOTHING", KotrailRule.NO_OP_CALL, WHOLE)
+
     /** No arguments; reported on the `!!` expression. */
     val NOT_NULL_ASSERTION = tunable0<KtElement>("NOT_NULL_ASSERTION", KotrailRule.NO_NOT_NULL_ASSERTION, WHOLE)
 
@@ -466,6 +473,10 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         map.put2(
             KotrailDiagnostics.PRECONDITION_VIOLATED,
             "[Kotrail] {0} requires {1}. This call would fail at runtime.",
+        )
+        map.put2(
+            KotrailDiagnostics.CALL_DOES_NOTHING,
+            "[Kotrail] This call does nothing: ''{0}'' returns at once when {1}",
         )
         map.put0(
             KotrailDiagnostics.NOT_NULL_ASSERTION,

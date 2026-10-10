@@ -3,15 +3,18 @@ package com.kitakkun.kotrail.preconditions
 import com.kitakkun.kotrail.preconditions.Cond.ArithOp
 import com.kitakkun.kotrail.preconditions.Cond.CompareOp
 import com.kitakkun.kotrail.preconditions.Cond.MemberKind
+import com.kitakkun.kotrail.preconditions.Cond.TimeUnitKind
 import com.kitakkun.kotrail.preconditions.Value.BoolV
 import com.kitakkun.kotrail.preconditions.Value.CharV
 import com.kitakkun.kotrail.preconditions.Value.DoubleV
+import com.kitakkun.kotrail.preconditions.Value.DurationV
 import com.kitakkun.kotrail.preconditions.Value.FloatV
 import com.kitakkun.kotrail.preconditions.Value.IntV
 import com.kitakkun.kotrail.preconditions.Value.ListV
 import com.kitakkun.kotrail.preconditions.Value.LongV
 import com.kitakkun.kotrail.preconditions.Value.NullV
 import com.kitakkun.kotrail.preconditions.Value.StrV
+import kotlin.time.Duration
 
 /**
  * Reads the text produced by [Cond.render] back into a tree. The grammar is the subset of Kotlin
@@ -26,8 +29,8 @@ import com.kitakkun.kotrail.preconditions.Value.StrV
  * additive  := multiplicative (('+' | '-') multiplicative)*
  * multiplicative := unary (('*' | '/' | '%') unary)*
  * unary     := ('!' | '-') unary | postfix
- * postfix   := primary ('.' member '()'?)*
- * primary   := literal | identifier | 'listOf' '(' (or (',' or)*)? ')' | '(' or ')'
+ * postfix   := primary ('.' (member '()'? | unit))*
+ * primary   := literal | identifier | 'Duration' '.' ('ZERO' | 'INFINITE') | 'listOf' '(' (or (',' or)*)? ')' | '(' or ')'
  * ```
  *
  * [parse] returns `null` for anything it does not understand, so a metadata string written by a
@@ -282,6 +285,11 @@ object CondParser {
             while (peekOp(".")) {
                 index++
                 val name = (tokens.getOrNull(index++) as? Token.Ident)?.name ?: throw ParseException()
+                val unit = TimeUnitKind.byText(name)
+                if (unit != null) {
+                    result = Cond.DurationOf(result, unit)
+                    continue
+                }
                 val member = MemberKind.byText(name) ?: throw ParseException()
                 if (member.isCall) {
                     expectOp("(")
@@ -306,6 +314,7 @@ object CondParser {
                     "Infinity" -> Cond.Const(DoubleV(Double.POSITIVE_INFINITY))
                     "Infinityf" -> Cond.Const(FloatV(Float.POSITIVE_INFINITY))
                     "listOf" -> parseListOf()
+                    "Duration" -> parseDurationConstant() ?: Cond.Param(token.name)
                     "in" -> throw ParseException()
                     else -> Cond.Param(token.name)
                 }
@@ -316,6 +325,18 @@ object CondParser {
                     inner
                 }
             }
+        }
+
+        /** `Duration.ZERO` or `Duration.INFINITE`, after the `Duration` already read; null, reading nothing more, for anything else. */
+        private fun parseDurationConstant(): Cond? {
+            if (!peekOp(".")) return null
+            val value = when ((tokens.getOrNull(index + 1) as? Token.Ident)?.name) {
+                "ZERO" -> Duration.ZERO
+                "INFINITE" -> Duration.INFINITE
+                else -> return null
+            }
+            index += 2
+            return Cond.Const(DurationV(value))
         }
 
         private fun parseListOf(): Cond {

@@ -61,7 +61,7 @@ What a declaration exposes, and how.
 | No data class in public API | on | `KOTRAIL_DATA_CLASS_IN_PUBLIC_API` | [no-data-class-in-public-api.md](no-data-class-in-public-api.md) |
 | JvmSynthetic for internal | off: only a JVM library with Java consumers needs it | `KOTRAIL_INTERNAL_VISIBLE_TO_JAVA`, `KOTRAIL_INTERNAL_CLASS_VISIBLE_TO_JAVA` | [jvm-synthetic-for-internal.md](jvm-synthetic-for-internal.md) |
 
-## Errors and concurrency (9)
+## Errors and concurrency (10)
 
 Failures that get hidden, and waits that guess.
 
@@ -75,6 +75,7 @@ Failures that get hidden, and waits that guess.
 | No external mutation | on | `KOTRAIL_MUTATED_OUTSIDE_OWNER` | [no-external-mutation.md](no-external-mutation.md) |
 | Delay for completion | on | `KOTRAIL_DELAY_WAITS_FOR_ASYNC_WORK` | [delay-for-completion.md](delay-for-completion.md) |
 | Preconditions | on | `KOTRAIL_PRECONDITION_VIOLATED` | [preconditions.md](preconditions.md) |
+| No-op call | on | `KOTRAIL_CALL_DOES_NOTHING` | [no-op-call.md](no-op-call.md) |
 | No unimplemented code | on | `KOTRAIL_UNIMPLEMENTED_CODE` | [no-unimplemented.md](no-unimplemented.md) |
 
 ## Memory and lifetime (4)

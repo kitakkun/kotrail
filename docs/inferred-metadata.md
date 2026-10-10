@@ -2,10 +2,11 @@
 
 Several rules need to know something about a function that only its body can tell: which insets
 a composable handles, which locals it reads and provides, which parameters an effect captures,
-what a function requires of its arguments, whether it starts work its caller cannot wait for,
-whether it creates a native-backed object and lets it out. Within one module the body is at
-hand. For a caller in another module the plugin writes what it found into the class file or
-klib, as an annotation of string arrays, and reads it back where the callee is used.
+what a function requires of its arguments, which arguments make it do nothing, whether it
+starts work its caller cannot wait for, whether it creates a native-backed object and lets it
+out. Within one module the body is at hand. For a caller in another module the plugin writes
+what it found into the class file or klib, as an annotation of string arrays, and reads it back
+where the callee is used.
 
 | Fact | Annotation | Rule |
 |---|---|---|
@@ -13,6 +14,7 @@ klib, as an annotation of string arrays, and reads it back where the callee is u
 | Locals a composable (or a composable getter) reads and provides | `@InferredCompositionLocals(reads, provides)` | `compose.compositionLocals` |
 | A local whose default throws | `@InferredRequiredCompositionLocal` | `compose.compositionLocals` |
 | Conditions a function or class requires of its arguments | `@InferredPreconditions(conditions)` | `preconditions` |
+| Conditions under which a function returns at once, doing nothing | `@InferredNoOpWhen(conditions)` | `noOpCall` |
 | Parameters an effect keeps | `@InferredEffectCapture(captured)` | `compose.rememberKeys` |
 | Work started that the caller cannot wait for | `@InferredStartsAsyncWork` | `delayForCompletion` |
 | A native-backed object created and let out | `@InferredNativeAllocation(types, path)` | `nativeAllocationInLoop` |
@@ -31,8 +33,10 @@ source or classpath, it answers in this order:
 1. `override`: what wins over everything (a hand-written `@HandlesWindowInsets`, a knowledge
    base entry);
 2. the declaration's own annotation, always for a classpath symbol and also for a source one
-   when the fact says so (a contract the writer also produces: insets, preconditions, locals);
-3. `knowledge`: what fills in for a declaration without metadata (the Material 3 table);
+   when the fact says so (a contract the writer also produces: insets, preconditions, no-op
+   conditions, locals);
+3. `knowledge`: what fills in for a declaration without metadata (the Material 3 table, the
+   `kotlinx.coroutines.delay` entries);
 4. for a source symbol only, `analyze` on the body resolved to `BODY_RESOLVE`.
 
 The fact also knows how to `decode` itself from the annotation's arrays and `encode` itself

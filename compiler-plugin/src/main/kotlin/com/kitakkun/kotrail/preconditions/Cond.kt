@@ -1,20 +1,25 @@
 package com.kitakkun.kotrail.preconditions
 
+import com.kitakkun.kotrail.preconditions.Value.ArrayV
 import com.kitakkun.kotrail.preconditions.Value.BoolV
 import com.kitakkun.kotrail.preconditions.Value.CharV
 import com.kitakkun.kotrail.preconditions.Value.DoubleV
+import com.kitakkun.kotrail.preconditions.Value.DurationV
 import com.kitakkun.kotrail.preconditions.Value.FloatV
 import com.kitakkun.kotrail.preconditions.Value.IntV
 import com.kitakkun.kotrail.preconditions.Value.ListV
 import com.kitakkun.kotrail.preconditions.Value.LongV
 import com.kitakkun.kotrail.preconditions.Value.NullV
 import com.kitakkun.kotrail.preconditions.Value.StrV
+import kotlin.time.DurationUnit
+import kotlin.time.toDuration
 
 /**
  * The expression language preconditions are written in. It is deliberately small: comparisons,
- * equality, logic, arithmetic, ranges, and a handful of members of `String` and `List`. Every
- * node can be rendered to Kotlin-looking text and read back by [CondParser]; nodes that only
- * exist for constant folding (`if`, `?:`, conversions) render to `null` and are never exported.
+ * equality, logic, arithmetic, ranges, a handful of members of `String` and `List`, and durations
+ * written as `Duration.ZERO` or `<number>.<unit>`. Every node can be rendered to Kotlin-looking
+ * text and read back by [CondParser]; nodes and values that only exist for constant folding
+ * (`if`, `?:`, conversions, arrays) render to `null` and are never exported.
  *
  * Evaluation is three-valued: [evaluate] returns `null` whenever any input is unknown, and
  * `&&` / `||` short-circuit on a known operand, so a condition is reported only when it is
@@ -32,6 +37,9 @@ sealed class Cond {
     data class Negate(val operand: Cond) : Cond()
     data class InRange(val negated: Boolean, val subject: Cond, val low: Cond, val high: Cond, val inclusive: Boolean) : Cond()
     data class Member(val receiver: Cond, val member: MemberKind) : Cond()
+
+    /** `500.milliseconds`: a number of [unit] as a `kotlin.time.Duration`. */
+    data class DurationOf(val operand: Cond, val unit: TimeUnitKind) : Cond()
 
     /** Fold-only nodes: understood by the evaluator, never exported. */
     data class If(val condition: Cond, val thenBranch: Cond, val elseBranch: Cond) : Cond()
@@ -55,6 +63,21 @@ sealed class Cond {
         }
     }
 
+    /** The extension properties of `kotlin.time.Duration.Companion` that turn a number into a duration. */
+    enum class TimeUnitKind(val text: String, val unit: DurationUnit) {
+        NANOSECONDS("nanoseconds", DurationUnit.NANOSECONDS),
+        MICROSECONDS("microseconds", DurationUnit.MICROSECONDS),
+        MILLISECONDS("milliseconds", DurationUnit.MILLISECONDS),
+        SECONDS("seconds", DurationUnit.SECONDS),
+        MINUTES("minutes", DurationUnit.MINUTES),
+        HOURS("hours", DurationUnit.HOURS),
+        DAYS("days", DurationUnit.DAYS);
+
+        companion object {
+            fun byText(text: String): TimeUnitKind? = entries.firstOrNull { it.text == text }
+        }
+    }
+
     /** Every parameter this condition depends on. */
     fun parameters(): Set<String> {
         val result = LinkedHashSet<String>()
@@ -71,6 +94,7 @@ sealed class Cond {
                 is Negate -> walk(cond.operand)
                 is InRange -> { walk(cond.subject); walk(cond.low); walk(cond.high) }
                 is Member -> walk(cond.receiver)
+                is DurationOf -> walk(cond.operand)
                 is If -> { walk(cond.condition); walk(cond.thenBranch); walk(cond.elseBranch) }
                 is Elvis -> { walk(cond.left); walk(cond.right) }
                 is Convert -> walk(cond.operand)
@@ -134,6 +158,7 @@ sealed class Cond {
             is LongV -> LongV(-v.value)
             is FloatV -> FloatV(-v.value)
             is DoubleV -> DoubleV(-v.value)
+            is DurationV -> DurationV(-v.value)
             else -> null
         }
         is InRange -> {
@@ -163,6 +188,18 @@ sealed class Cond {
                 MemberKind.IS_NOT_EMPTY -> BoolV(v.elements.isNotEmpty())
                 else -> null
             }
+            is ArrayV -> when (member) {
+                MemberKind.SIZE -> IntV(v.size)
+                MemberKind.IS_EMPTY -> BoolV(v.size == 0)
+                MemberKind.IS_NOT_EMPTY -> BoolV(v.size != 0)
+                else -> null
+            }
+            else -> null
+        }
+        is DurationOf -> when (val v = operand.evaluate(env)) {
+            is IntV, is LongV -> DurationV(v.toLong().toDuration(unit.unit))
+            // A NaN amount throws instead of making a duration.
+            is FloatV, is DoubleV -> v.toDouble().takeUnless { it.isNaN() }?.let { DurationV(it.toDuration(unit.unit)) }
             else -> null
         }
         is If -> when (val c = condition.evaluate(env) as? BoolV) {
@@ -199,7 +236,7 @@ sealed class Cond {
     private class UnrenderableException : RuntimeException()
 
     private fun renderWithPrecedence(): String = when (this) {
-        is Const -> value.render()
+        is Const -> if (value is ArrayV) throw UnrenderableException() else value.render()
         is Param -> name
         is Not -> "!" + operand.renderChild(PREC_UNARY)
         is And -> left.renderChild(PREC_AND) + " && " + right.renderChild(PREC_AND + 1)
@@ -214,6 +251,7 @@ sealed class Cond {
         is InRange -> subject.renderChild(PREC_RANGE_CHECK + 1) + (if (negated) " !in " else " in ") +
             low.renderChild(PREC_RANGE + 1) + (if (inclusive) ".." else "..<") + high.renderChild(PREC_RANGE + 1)
         is Member -> receiver.renderChild(PREC_POSTFIX) + "." + member.text + (if (member.isCall) "()" else "")
+        is DurationOf -> operand.renderChild(PREC_POSTFIX) + "." + unit.text
         is If, is Elvis, is Convert -> throw UnrenderableException()
     }
 
@@ -223,7 +261,7 @@ sealed class Cond {
     }
 
     private fun precedence(): Int = when (this) {
-        is Const, is Param, is Member -> PREC_POSTFIX
+        is Const, is Param, is Member, is DurationOf -> PREC_POSTFIX
         is Not, is Negate -> PREC_UNARY
         is Arith -> if (op == ArithOp.PLUS || op == ArithOp.MINUS) PREC_ADDITIVE else PREC_MULTIPLICATIVE
         is InRange -> PREC_RANGE_CHECK
@@ -251,6 +289,7 @@ sealed class Cond {
             (l.isNumeric || l is CharV) && (r.isNumeric || r is CharV) ->
                 if (l.isFloating || r.isFloating) l.toDouble().compareTo(r.toDouble()) else l.toLong().compareTo(r.toLong())
             l is StrV && r is StrV -> l.value.compareTo(r.value)
+            l is DurationV && r is DurationV -> l.value.compareTo(r.value)
             else -> null
         }
 
@@ -262,11 +301,13 @@ sealed class Cond {
             l is BoolV && r is BoolV -> l.value == r.value
             l is CharV && r is CharV -> l.value == r.value
             l is ListV && r is ListV -> l == r
+            l is DurationV && r is DurationV -> l.value == r.value
             else -> null
         }
 
         private fun arithmetic(op: ArithOp, l: Value, r: Value): Value? {
-            if (op == ArithOp.PLUS && l is StrV) return StrV(l.value + r.toDisplayString())
+            // An array's string form carries its identity hash, which no constant knows.
+            if (op == ArithOp.PLUS && l is StrV) return if (r is ArrayV) null else StrV(l.value + r.toDisplayString())
             if (!l.isNumeric || !r.isNumeric) return null
             if (!l.isFloating && !r.isFloating && (op == ArithOp.DIV || op == ArithOp.REM) && r.toLong() == 0L) return null
             return when {

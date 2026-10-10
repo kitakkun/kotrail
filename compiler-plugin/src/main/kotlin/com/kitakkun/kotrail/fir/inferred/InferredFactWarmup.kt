@@ -7,6 +7,7 @@ import com.kitakkun.kotrail.fir.compose.locals.compositionLocalService
 import com.kitakkun.kotrail.fir.concurrency.asyncWorkService
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.memory.nativeAllocationService
+import com.kitakkun.kotrail.fir.noop.noOpService
 import com.kitakkun.kotrail.fir.preconditions.preconditionService
 import org.jetbrains.kotlin.KtFakeSourceElementKind
 import org.jetbrains.kotlin.diagnostics.DiagnosticReporter
@@ -31,6 +32,7 @@ object InferredFactWarmup {
         session.windowInsetsHandlingService,
         session.compositionLocalService,
         session.preconditionService.functions,
+        session.noOpService,
         session.effectCaptureService,
         session.asyncWorkService,
         session.nativeAllocationService,

@@ -10,6 +10,8 @@ import com.kitakkun.kotrail.fir.compose.locals.compositionLocalService
 import com.kitakkun.kotrail.fir.concurrency.asyncWorkService
 import com.kitakkun.kotrail.fir.inferred.InferredFactService
 import com.kitakkun.kotrail.fir.memory.nativeAllocationService
+import com.kitakkun.kotrail.fir.noop.NoOpNames
+import com.kitakkun.kotrail.fir.noop.noOpService
 import com.kitakkun.kotrail.fir.preconditions.PreconditionNames
 import com.kitakkun.kotrail.fir.preconditions.preconditionService
 import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
@@ -30,7 +32,7 @@ import org.jetbrains.kotlin.name.Name
  */
 object InferredFacts {
     /** The facts, with the rule that switches each on; the writer takes the ones whose rule is enabled. */
-    val functionFacts: List<InferredFunctionFact> = listOf(WindowInsets, CompositionLocals, Preconditions, EffectCapture, StartsAsyncWork, NativeAllocation)
+    val functionFacts: List<InferredFunctionFact> = listOf(WindowInsets, CompositionLocals, Preconditions, NoOpWhen, EffectCapture, StartsAsyncWork, NativeAllocation)
     val propertyFacts: List<InferredPropertyFact> = listOf(RequiredCompositionLocal, CompositionLocalGetter)
     val classFacts: List<InferredClassFact> = listOf(ClassPreconditions)
 
@@ -94,6 +96,15 @@ object InferredFacts {
         override val parameters = listOf("conditions")
         override fun arrays(declaration: IrClass, fir: FirRegularClass): List<List<String>>? =
             fir.moduleData.session.preconditionService.classes.arraysFor(fir.symbol)
+    }
+
+    /** `@InferredNoOpWhen` on a function whose opening `if (condition) return` guards fit the precondition language. */
+    object NoOpWhen : InferredFunctionFact {
+        override val rule = KotrailRule.NO_OP_CALL
+        override val annotation: ClassId = NoOpNames.INFERRED_NO_OP_WHEN
+        override val parameters = listOf("conditions")
+        override fun arrays(declaration: IrSimpleFunction, fir: FirNamedFunction): List<List<String>>? =
+            fir.moduleData.session.noOpService.arraysFor(fir.symbol)
     }
 
     /** `@InferredEffectCapture` on a composable that keeps some parameters for the life of an effect. */

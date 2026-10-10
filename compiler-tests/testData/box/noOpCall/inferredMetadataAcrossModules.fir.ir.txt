@@ -1,0 +1,149 @@
+Module: lib
+FILE fqName:lib fileName:/Lib.kt
+  CLASS CLASS name:Channel modality:OPEN visibility:public superTypes:[kotlin.Any]
+    thisReceiver: VALUE_PARAMETER INSTANCE_RECEIVER kind:DispatchReceiver name:<this> type:lib.Channel
+    CONSTRUCTOR visibility:public returnType:lib.Channel [primary]
+      BLOCK_BODY
+        DELEGATING_CONSTRUCTOR_CALL 'public constructor <init> () declared in kotlin.Any'
+        INSTANCE_INITIALIZER_CALL classDescriptor='CLASS CLASS name:Channel modality:OPEN visibility:public superTypes:[kotlin.Any]' type=kotlin.Unit
+    FUN FAKE_OVERRIDE name:equals visibility:public modality:OPEN returnType:kotlin.Boolean [fake_override,operator]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      VALUE_PARAMETER kind:Regular name:other index:1 type:kotlin.Any?
+      overridden:
+        public open fun equals (other: kotlin.Any?): kotlin.Boolean declared in kotlin.Any
+    FUN FAKE_OVERRIDE name:hashCode visibility:public modality:OPEN returnType:kotlin.Int [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      overridden:
+        public open fun hashCode (): kotlin.Int declared in kotlin.Any
+    FUN FAKE_OVERRIDE name:toString visibility:public modality:OPEN returnType:kotlin.String [fake_override]
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:kotlin.Any
+      overridden:
+        public open fun toString (): kotlin.String declared in kotlin.Any
+    FUN name:push visibility:public modality:OPEN returnType:kotlin.Unit
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:lib.Channel
+      VALUE_PARAMETER kind:Regular name:bytes index:1 type:kotlin.ByteArray
+      BLOCK_BODY
+        WHEN type=kotlin.Unit origin=IF
+          BRANCH
+            if: CALL 'public final fun isEmpty (<this>: kotlin.ByteArray): kotlin.Boolean declared in kotlin.collections' type=kotlin.Boolean origin=null
+              ARG <this>: GET_VAR 'bytes: kotlin.ByteArray declared in lib.Channel.push' type=kotlin.ByteArray origin=null
+            then: RETURN type=kotlin.Nothing from='public open fun push (bytes: kotlin.ByteArray): kotlin.Unit declared in lib.Channel'
+              GET_OBJECT 'CLASS IR_EXTERNAL_DECLARATION_STUB OBJECT name:Unit modality:FINAL visibility:public superTypes:[kotlin.Any]' type=kotlin.Unit
+        CALL 'public final fun println (message: kotlin.Int): kotlin.Unit declared in kotlin.io' type=kotlin.Unit origin=null
+          ARG message: CALL 'public final fun <get-size> (): kotlin.Int declared in kotlin.ByteArray' type=kotlin.Int origin=GET_PROPERTY
+            ARG <this>: GET_VAR 'bytes: kotlin.ByteArray declared in lib.Channel.push' type=kotlin.ByteArray origin=null
+    FUN name:write visibility:public modality:FINAL returnType:kotlin.Unit
+      VALUE_PARAMETER kind:DispatchReceiver name:<this> index:0 type:lib.Channel
+      VALUE_PARAMETER kind:Regular name:text index:1 type:kotlin.String
+      annotations:
+        InferredNoOpWhen(conditions = ["text.isBlank()"] type=kotlin.Array<out kotlin.String> varargElementType=kotlin.String)
+      BLOCK_BODY
+        WHEN type=kotlin.Unit origin=IF
+          BRANCH
+            if: CALL 'public final fun isBlank (<this>: kotlin.CharSequence): kotlin.Boolean declared in kotlin.text' type=kotlin.Boolean origin=null
+              ARG <this>: GET_VAR 'text: kotlin.String declared in lib.Channel.write' type=kotlin.String origin=null
+            then: RETURN type=kotlin.Nothing from='public final fun write (text: kotlin.String): kotlin.Unit declared in lib.Channel'
+              GET_OBJECT 'CLASS IR_EXTERNAL_DECLARATION_STUB OBJECT name:Unit modality:FINAL visibility:public superTypes:[kotlin.Any]' type=kotlin.Unit
+        CALL 'public final fun println (message: kotlin.Any?): kotlin.Unit declared in kotlin.io' type=kotlin.Unit origin=null
+          ARG message: GET_VAR 'text: kotlin.String declared in lib.Channel.write' type=kotlin.String origin=null
+  FUN name:hidden visibility:private modality:FINAL returnType:kotlin.Unit
+    VALUE_PARAMETER kind:Regular name:n index:0 type:kotlin.Int
+    BLOCK_BODY
+      WHEN type=kotlin.Unit origin=IF
+        BRANCH
+          if: CALL 'public final fun EQEQ (arg0: kotlin.Any?, arg1: kotlin.Any?): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=EQEQ
+            ARG arg0: GET_VAR 'n: kotlin.Int declared in lib.hidden' type=kotlin.Int origin=null
+            ARG arg1: CONST Int type=kotlin.Int value=0
+          then: RETURN type=kotlin.Nothing from='private final fun hidden (n: kotlin.Int): kotlin.Unit declared in lib'
+            GET_OBJECT 'CLASS IR_EXTERNAL_DECLARATION_STUB OBJECT name:Unit modality:FINAL visibility:public superTypes:[kotlin.Any]' type=kotlin.Unit
+      CALL 'public final fun println (message: kotlin.Int): kotlin.Unit declared in kotlin.io' type=kotlin.Unit origin=null
+        ARG message: GET_VAR 'n: kotlin.Int declared in lib.hidden' type=kotlin.Int origin=null
+  FUN name:resize visibility:public modality:FINAL returnType:kotlin.Unit
+    VALUE_PARAMETER kind:Regular name:width index:0 type:kotlin.Int
+    VALUE_PARAMETER kind:Regular name:height index:1 type:kotlin.Int
+    annotations:
+      InferredNoOpWhen(conditions = ["width <= 0", "height <= 0", "height > 10000"] type=kotlin.Array<out kotlin.String> varargElementType=kotlin.String)
+    BLOCK_BODY
+      WHEN type=kotlin.Unit origin=IF
+        BRANCH
+          if: CALL 'public final fun lessOrEqual (arg0: kotlin.Int, arg1: kotlin.Int): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=LTEQ
+            ARG arg0: GET_VAR 'width: kotlin.Int declared in lib.resize' type=kotlin.Int origin=null
+            ARG arg1: CONST Int type=kotlin.Int value=0
+          then: RETURN type=kotlin.Nothing from='public final fun resize (width: kotlin.Int, height: kotlin.Int): kotlin.Unit declared in lib'
+            GET_OBJECT 'CLASS IR_EXTERNAL_DECLARATION_STUB OBJECT name:Unit modality:FINAL visibility:public superTypes:[kotlin.Any]' type=kotlin.Unit
+      WHEN type=kotlin.Unit origin=WHEN
+        BRANCH
+          if: CALL 'public final fun lessOrEqual (arg0: kotlin.Int, arg1: kotlin.Int): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=LTEQ
+            ARG arg0: GET_VAR 'height: kotlin.Int declared in lib.resize' type=kotlin.Int origin=null
+            ARG arg1: CONST Int type=kotlin.Int value=0
+          then: RETURN type=kotlin.Nothing from='public final fun resize (width: kotlin.Int, height: kotlin.Int): kotlin.Unit declared in lib'
+            GET_OBJECT 'CLASS IR_EXTERNAL_DECLARATION_STUB OBJECT name:Unit modality:FINAL visibility:public superTypes:[kotlin.Any]' type=kotlin.Unit
+        BRANCH
+          if: CALL 'public final fun greater (arg0: kotlin.Int, arg1: kotlin.Int): kotlin.Boolean declared in kotlin.internal.ir' type=kotlin.Boolean origin=GT
+            ARG arg0: GET_VAR 'height: kotlin.Int declared in lib.resize' type=kotlin.Int origin=null
+            ARG arg1: CONST Int type=kotlin.Int value=10000
+          then: RETURN type=kotlin.Nothing from='public final fun resize (width: kotlin.Int, height: kotlin.Int): kotlin.Unit declared in lib'
+            GET_OBJECT 'CLASS IR_EXTERNAL_DECLARATION_STUB OBJECT name:Unit modality:FINAL visibility:public superTypes:[kotlin.Any]' type=kotlin.Unit
+      CALL 'public final fun println (message: kotlin.Int): kotlin.Unit declared in kotlin.io' type=kotlin.Unit origin=null
+        ARG message: CALL 'public final fun times (other: kotlin.Int): kotlin.Int declared in kotlin.Int' type=kotlin.Int origin=MUL
+          ARG <this>: GET_VAR 'width: kotlin.Int declared in lib.resize' type=kotlin.Int origin=null
+          ARG other: GET_VAR 'height: kotlin.Int declared in lib.resize' type=kotlin.Int origin=null
+  FUN name:send visibility:public modality:FINAL returnType:kotlin.Unit
+    VALUE_PARAMETER kind:Regular name:bytes index:0 type:kotlin.ByteArray
+    annotations:
+      InferredNoOpWhen(conditions = ["bytes.isEmpty()"] type=kotlin.Array<out kotlin.String> varargElementType=kotlin.String)
+    BLOCK_BODY
+      WHEN type=kotlin.Unit origin=IF
+        BRANCH
+          if: CALL 'public final fun isEmpty (<this>: kotlin.ByteArray): kotlin.Boolean declared in kotlin.collections' type=kotlin.Boolean origin=null
+            ARG <this>: GET_VAR 'bytes: kotlin.ByteArray declared in lib.send' type=kotlin.ByteArray origin=null
+          then: RETURN type=kotlin.Nothing from='public final fun send (bytes: kotlin.ByteArray): kotlin.Unit declared in lib'
+            GET_OBJECT 'CLASS IR_EXTERNAL_DECLARATION_STUB OBJECT name:Unit modality:FINAL visibility:public superTypes:[kotlin.Any]' type=kotlin.Unit
+      CALL 'public final fun println (message: kotlin.Int): kotlin.Unit declared in kotlin.io' type=kotlin.Unit origin=null
+        ARG message: CALL 'public final fun <get-size> (): kotlin.Int declared in kotlin.ByteArray' type=kotlin.Int origin=GET_PROPERTY
+          ARG <this>: GET_VAR 'bytes: kotlin.ByteArray declared in lib.send' type=kotlin.ByteArray origin=null
+  FUN name:touch visibility:public modality:FINAL returnType:kotlin.Unit
+    BLOCK_BODY
+      CALL 'private final fun hidden (n: kotlin.Int): kotlin.Unit declared in lib' type=kotlin.Unit origin=null
+        ARG n: CONST Int type=kotlin.Int value=1
+  FUN name:upload visibility:public modality:FINAL returnType:kotlin.Unit
+    VALUE_PARAMETER kind:Regular name:bytes index:0 type:kotlin.ByteArray
+    BLOCK_BODY
+      WHEN type=kotlin.Unit origin=IF
+        BRANCH
+          if: CALL 'public final fun isEmpty (<this>: kotlin.ByteArray): kotlin.Boolean declared in kotlin.collections' type=kotlin.Boolean origin=null
+            ARG <this>: GET_VAR 'bytes: kotlin.ByteArray declared in lib.upload' type=kotlin.ByteArray origin=null
+          then: BLOCK type=kotlin.Unit origin=null
+            CALL 'public final fun println (message: kotlin.Any?): kotlin.Unit declared in kotlin.io' type=kotlin.Unit origin=null
+              ARG message: CONST String type=kotlin.String value="nothing to upload"
+            RETURN type=kotlin.Nothing from='public final fun upload (bytes: kotlin.ByteArray): kotlin.Unit declared in lib'
+              GET_OBJECT 'CLASS IR_EXTERNAL_DECLARATION_STUB OBJECT name:Unit modality:FINAL visibility:public superTypes:[kotlin.Any]' type=kotlin.Unit
+      CALL 'public final fun println (message: kotlin.Int): kotlin.Unit declared in kotlin.io' type=kotlin.Unit origin=null
+        ARG message: CALL 'public final fun <get-size> (): kotlin.Int declared in kotlin.ByteArray' type=kotlin.Int origin=GET_PROPERTY
+          ARG <this>: GET_VAR 'bytes: kotlin.ByteArray declared in lib.upload' type=kotlin.ByteArray origin=null
+Module: main
+FILE fqName:<root> fileName:/Main.kt
+  FUN name:box visibility:public modality:FINAL returnType:kotlin.String
+    BLOCK_BODY
+      CALL 'public final fun send (bytes: kotlin.ByteArray): kotlin.Unit declared in lib' type=kotlin.Unit origin=null
+        ARG bytes: CALL 'public final fun byteArrayOf (vararg elements: kotlin.Byte): kotlin.ByteArray declared in kotlin' type=kotlin.ByteArray origin=null
+          ARG elements: VARARG type=kotlin.ByteArray varargElementType=kotlin.Byte
+            CONST Byte type=kotlin.Byte value=1
+      CALL 'public final fun resize (width: kotlin.Int, height: kotlin.Int): kotlin.Unit declared in lib' type=kotlin.Unit origin=null
+        ARG width: CONST Int type=kotlin.Int value=2
+        ARG height: CONST Int type=kotlin.Int value=3
+      CALL 'public final fun write (text: kotlin.String): kotlin.Unit declared in lib.Channel' type=kotlin.Unit origin=null
+        ARG <this>: CONSTRUCTOR_CALL 'public constructor <init> () declared in lib.Channel' type=lib.Channel origin=null
+        ARG text: CONST String type=kotlin.String value="ok"
+      CALL 'public open fun push (bytes: kotlin.ByteArray): kotlin.Unit declared in lib.Channel' type=kotlin.Unit origin=null
+        ARG <this>: CONSTRUCTOR_CALL 'public constructor <init> () declared in lib.Channel' type=lib.Channel origin=null
+        ARG bytes: CALL 'public final fun byteArrayOf (vararg elements: kotlin.Byte): kotlin.ByteArray declared in kotlin' type=kotlin.ByteArray origin=null
+          ARG elements: VARARG type=kotlin.ByteArray varargElementType=kotlin.Byte
+            CONST Byte type=kotlin.Byte value=1
+      CALL 'public final fun upload (bytes: kotlin.ByteArray): kotlin.Unit declared in lib' type=kotlin.Unit origin=null
+        ARG bytes: CALL 'public final fun byteArrayOf (vararg elements: kotlin.Byte): kotlin.ByteArray declared in kotlin' type=kotlin.ByteArray origin=null
+          ARG elements: VARARG type=kotlin.ByteArray varargElementType=kotlin.Byte
+            CONST Byte type=kotlin.Byte value=1
+      CALL 'public final fun touch (): kotlin.Unit declared in lib' type=kotlin.Unit origin=null
+      RETURN type=kotlin.Nothing from='public final fun box (): kotlin.String declared in <root>'
+        CONST String type=kotlin.String value="OK"

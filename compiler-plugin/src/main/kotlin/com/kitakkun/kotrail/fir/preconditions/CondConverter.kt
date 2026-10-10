@@ -26,6 +26,7 @@ import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
 import org.jetbrains.kotlin.fir.expressions.FirOperation
 import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirSmartCastExpression
+import org.jetbrains.kotlin.fir.expressions.FirSpreadArgumentExpression
 import org.jetbrains.kotlin.fir.expressions.FirStringConcatenationCall
 import org.jetbrains.kotlin.fir.expressions.FirThisReceiverExpression
 import org.jetbrains.kotlin.fir.expressions.FirVarargArgumentsExpression
@@ -34,16 +35,21 @@ import org.jetbrains.kotlin.fir.expressions.FirWrappedArgumentExpression
 import org.jetbrains.kotlin.contracts.description.LogicOperationKind
 import org.jetbrains.kotlin.fir.expressions.arguments
 import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
+import org.jetbrains.kotlin.fir.references.toResolvedConstructorSymbol
 import org.jetbrains.kotlin.fir.references.toResolvedNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
+import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
 import org.jetbrains.kotlin.fir.symbols.lazyResolveToPhase
+import org.jetbrains.kotlin.fir.types.classId
+import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.name.CallableId
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.types.ConstantValueKind
+import kotlin.time.Duration
 
 /**
  * Turns a resolved FIR expression into a [Cond], following variables to their initializers.
@@ -155,6 +161,7 @@ class CondConverter(
     private fun singleExpression(block: FirBlock): FirExpression? = block.statements.singleOrNull() as? FirExpression
 
     private fun call(expression: FirFunctionCall): Cond? {
+        expression.calleeReference.toResolvedConstructorSymbol()?.let { return arrayConstructor(it, expression) }
         val callee = expression.calleeReference.toResolvedNamedFunctionSymbol() ?: return null
         val callableId = callee.callableId
         val name = callableId.callableName.asString()
@@ -167,7 +174,17 @@ class CondConverter(
                 if (argument is FirVarargArgumentsExpression) argument.arguments else listOf(argument)
             }
             val values = elements.map { convert(it)?.evaluate(emptyMap()) ?: return null }
+            // Lists compare their elements with equals, which for an array is identity.
+            if (values.any { it is Value.ArrayV }) return null
             return Cond.Const(Value.ListV(values))
+        }
+        // arrayOf(1, 2) / byteArrayOf() / emptyArray(): an array of as many elements as are written.
+        if (callableId in ARRAY_FACTORIES) {
+            val elements = expression.arguments.flatMap { argument ->
+                if (argument is FirVarargArgumentsExpression) argument.arguments else listOf(argument)
+            }
+            if (elements.any { it is FirSpreadArgumentExpression }) return null
+            return Cond.Const(Value.ArrayV(elements.size))
         }
 
         val arithmetic = ARITHMETIC[name]
@@ -176,7 +193,7 @@ class CondConverter(
             val right = expression.arguments.singleOrNull()?.let { convert(it) } ?: return null
             return Cond.Arith(arithmetic, left, right)
         }
-        if (name == "unaryMinus" && classId != null && classId.asSingleFqName() in NUMERIC_RECEIVERS) {
+        if (name == "unaryMinus" && classId != null && (classId.asSingleFqName() in NUMERIC_RECEIVERS || classId == DURATION)) {
             return receiver?.let { convert(it) }?.let { Cond.Negate(it) }
         }
         if (callableId == BOOLEAN_NOT) {
@@ -195,6 +212,16 @@ class CondConverter(
             return Cond.Member(subject, member)
         }
         return null
+    }
+
+    /** `ByteArray(n)` and the other primitive arrays of a known size, zero-filled; any other constructor is not folded. */
+    private fun arrayConstructor(constructor: FirConstructorSymbol, expression: FirFunctionCall): Cond? {
+        if (constructor.resolvedReturnTypeRef.coneType.classId !in PRIMITIVE_ARRAYS) return null
+        val sizeArgument = expression.arguments.singleOrNull() ?: return null
+        val size = convert(sizeArgument)?.evaluate(emptyMap()) as? Value.IntV ?: return null
+        // A negative size throws instead of making an array.
+        if (size.value < 0) return null
+        return Cond.Const(Value.ArrayV(size.value))
     }
 
     /** `a in b..c`, `a in b..<c`, `a in b until c`: FIR spells these as `(b..c).contains(a)`. */
@@ -224,10 +251,23 @@ class CondConverter(
         if (callableId == STRING_LENGTH) {
             return receiver?.let { convert(it) }?.let { Cond.Member(it, Cond.MemberKind.LENGTH) }
         }
-        if (callableId != null && callableId.callableName == SIZE && callableId.packageName == COLLECTIONS) {
+        if (callableId != null && callableId.callableName == SIZE && (callableId.packageName == COLLECTIONS || callableId.classId in ARRAYS)) {
             return receiver?.let { convert(it) }?.let { Cond.Member(it, Cond.MemberKind.SIZE) }
         }
+        if (callableId != null && callableId.classId == DURATION_COMPANION) {
+            return durationProperty(callableId.callableName.asString(), receiver)
+        }
         return foldProperty(symbol)
+    }
+
+    /** `Duration.ZERO`, `Duration.INFINITE`, and `500.milliseconds` through the companion's extension properties. */
+    private fun durationProperty(name: String, receiver: FirExpression?): Cond? {
+        when (name) {
+            "ZERO" -> return Cond.Const(Value.DurationV(Duration.ZERO))
+            "INFINITE" -> return Cond.Const(Value.DurationV(Duration.INFINITE))
+        }
+        val unit = Cond.TimeUnitKind.byText(name) ?: return null
+        return receiver?.let { convert(it) }?.let { Cond.DurationOf(it, unit) }
     }
 
     /** The value of a `val` that can only ever hold its initializer. */
@@ -260,6 +300,17 @@ class CondConverter(
         private val EMPTY_LIST = CallableId(COLLECTIONS, Name.identifier("emptyList"))
         private val BOOLEAN_NOT = CallableId(ClassId(KOTLIN, Name.identifier("Boolean")), Name.identifier("not"))
         private val STRING_LENGTH = CallableId(ClassId(KOTLIN, Name.identifier("String")), Name.identifier("length"))
+        private val TIME = FqName("kotlin.time")
+        private val DURATION = ClassId(TIME, Name.identifier("Duration"))
+        private val DURATION_COMPANION = ClassId(TIME, FqName("Duration.Companion"), isLocal = false)
+
+        private val PRIMITIVE_ARRAYS: Set<ClassId> = listOf("ByteArray", "ShortArray", "IntArray", "LongArray", "FloatArray", "DoubleArray", "CharArray", "BooleanArray")
+            .map { ClassId(KOTLIN, Name.identifier(it)) }.toSet()
+        private val ARRAYS: Set<ClassId> = PRIMITIVE_ARRAYS + ClassId(KOTLIN, Name.identifier("Array"))
+        private val ARRAY_FACTORIES: Set<CallableId> = listOf(
+            "arrayOf", "emptyArray", "byteArrayOf", "shortArrayOf", "intArrayOf", "longArrayOf",
+            "floatArrayOf", "doubleArrayOf", "charArrayOf", "booleanArrayOf",
+        ).map { CallableId(KOTLIN, Name.identifier(it)) }.toSet()
 
         private val NUMERIC_RECEIVERS: Set<FqName> = listOf("Int", "Long", "Float", "Double", "Byte", "Short").map { KOTLIN.child(Name.identifier(it)) }.toSet()
         private val ARITHMETIC_RECEIVERS: Set<FqName> = NUMERIC_RECEIVERS + KOTLIN.child(Name.identifier("String"))

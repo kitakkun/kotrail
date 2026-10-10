@@ -1,11 +1,10 @@
-@file:OptIn(SymbolInternals::class)
-
 package com.kitakkun.kotrail.fir.preconditions.checkers
 
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.preconditions.CondConverter
+import com.kitakkun.kotrail.fir.preconditions.knownArgumentValues
 import com.kitakkun.kotrail.fir.preconditions.preconditionService
 import com.kitakkun.kotrail.fir.reportKotrail
 import com.kitakkun.kotrail.preconditions.Value
@@ -15,10 +14,7 @@ import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirFunctionCallChecker
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
-import org.jetbrains.kotlin.fir.expressions.resolvedArgumentMapping
 import org.jetbrains.kotlin.fir.references.toResolvedFunctionSymbol
-import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
-import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
@@ -54,27 +50,7 @@ object PreconditionChecker : FirFunctionCallChecker(MppCheckerKind.Common) {
         val conditions = session.preconditionService.preconditionsOf(callee)
         if (conditions.isEmpty()) return
 
-        val mapping = expression.resolvedArgumentMapping ?: return
-        val env = HashMap<String, Value>()
-        val argumentConverter = CondConverter(session, emptyMap())
-        val passed = HashSet<String>()
-        for ((argument, parameter) in mapping) {
-            val name = parameter.name.asString()
-            passed += name
-            if (parameter.isVararg) continue
-            argumentConverter.convert(argument)?.evaluate(emptyMap())?.let { env[name] = it }
-        }
-        // Defaulted parameters: the default expression may refer to earlier parameters.
-        if (callee.origin.fromSource) {
-            val calleeParams = callee.valueParameterSymbols.associate { it as FirBasedSymbol<*> to it.name.asString() }
-            val defaultConverter = CondConverter(session, calleeParams)
-            for (parameter in callee.valueParameterSymbols) {
-                val name = parameter.name.asString()
-                if (name in passed) continue
-                val default = parameter.fir.defaultValue ?: continue
-                defaultConverter.convert(default)?.evaluate(env)?.let { env[name] = it }
-            }
-        }
+        val env = expression.knownArgumentValues(session, callee)
         if (env.isEmpty()) return
 
         for (condition in conditions) {

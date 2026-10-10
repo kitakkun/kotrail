@@ -48,7 +48,10 @@ but parameters and constants, in this language:
 - `&&`, `||`, `!`
 - `+`, `-`, `*`, `/`, `%`, unary minus, on numbers (and `+` on strings)
 - `in` / `!in` with `..`, `..<`, `until`
-- `String.length`, `isEmpty()`, `isNotEmpty()`, `isBlank()`, `isNotBlank()`; `Collection.size`, `isEmpty()`, `isNotEmpty()`
+- `String.length`, `isEmpty()`, `isNotEmpty()`, `isBlank()`, `isNotBlank()`; `Collection.size`, `isEmpty()`, `isNotEmpty()`;
+  an array's `size`, `isEmpty()`, `isNotEmpty()`
+- `kotlin.time.Duration` values: `Duration.ZERO`, `Duration.INFINITE`, `<number>.<unit>` (`500.milliseconds`), compared
+  with each other
 - a `const val` or a final `val` with a constant initializer, folded into the condition
 
 Anything else (a property of `this`, a call to another function, a `var`) makes the condition
@@ -66,6 +69,10 @@ An argument counts as known when it can be reduced to a constant without executi
 - arithmetic on known values, `toInt()` / `toLong()` / `toFloat()` / `toDouble()`
 - `if (c) a else b` and `a ?: b` when their inputs are known
 - `listOf(...)` / `emptyList()` of known elements
+- an array by its size: `arrayOf(...)`, `byteArrayOf(...)` and the other primitive factories,
+  `emptyArray()`, `ByteArray(n)` and the other primitive constructors with a known `n`; arrays
+  compare by identity, so `==` on one is never decided
+- a duration: `Duration.ZERO`, `0.milliseconds`, `-1.seconds`
 
 Parameters left to their defaults use the default expression, which may itself refer to earlier
 parameters, when the callee is compiled in the same module.
@@ -105,3 +112,5 @@ facts, one per function and one per class, on the shared base described in
 [Inferred metadata](../inferred-metadata.md): the annotation, hand-written or inferred, wins over
 the body; the shared warm-up fills the cache while bodies exist, and the shared writer puts
 `@InferredPreconditions` into the metadata.
+`KnownArguments.kt` folds a call's arguments and defaults into the values the conditions are
+evaluated with; [No-op call](no-op-call.md) shares it, the converter and the language.
