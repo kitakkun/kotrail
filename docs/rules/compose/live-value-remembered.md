@@ -182,11 +182,17 @@ without Kotrail carries no fact, and its composables are taken as remembering no
 [Remember keys](remember-keys.md) reports a changing value the calculation reads that is not a
 key, and a key that never changes at all; this rule reports a key that does not change although
 what it stands for does. Together they keep a `remember`'s keys honest about what the
-calculation depends on.
+calculation depends on. A value this rule reports as read live in a `remember` is not reported
+again as a missing key of the same `remember` while this rule is on:
+`remember(query) { items.filter { it.contains(query) } }` over a `SnapshotStateList` `items` is
+one finding, this rule's, and another value the calculation reads without a key is still
+reported by Remember keys.
 
 ## Fixtures
 
-`compiler-tests/testData/diagnostics/compose/liveValueRemembered.kt`, and
+`compiler-tests/testData/diagnostics/compose/liveValueRemembered.kt`,
+`compiler-tests/testData/diagnostics/compose/liveValueRememberedWithRememberKeys.kt` for the two
+rules on together, and
 `compiler-tests/testData/box/compose/liveValueRememberedAcrossModules.kt` with its
 `.facts.txt` dump for the fact between a library and its caller.
 

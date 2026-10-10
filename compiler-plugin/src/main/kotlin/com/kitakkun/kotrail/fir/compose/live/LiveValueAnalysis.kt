@@ -120,9 +120,11 @@ internal object LiveValueAnalysis {
 
     /**
      * A live value a calculation reads: what identifies it against the keys, what to call it, where it
-     * is read, and whether only the size or emptiness of a collection is read there ([sizeOnly]).
+     * is read, whether only the size or emptiness of a collection is read there ([sizeOnly]), and the
+     * declaration read when the read is of one directly (`items`, `this.items`), not through
+     * another value (`model.items`) ([declaration]).
      */
-    class LiveRead(val identity: String, val name: String, val offset: Int, val sizeOnly: Boolean)
+    class LiveRead(val identity: String, val name: String, val offset: Int, val sizeOnly: Boolean, val declaration: FirBasedSymbol<*>?)
 
     /** [call] as a remembered calculation with its keys, or null when it is not one (or its calculation is not a literal lambda). */
     fun rememberCall(call: FirFunctionCall): RememberCall? {
@@ -245,7 +247,10 @@ internal object LiveValueAnalysis {
             val root = rootSymbol(expression) ?: return
             if (root in uses.declaredInside) return
             val name = shortText(expression) ?: return
-            reads += LiveRead(path(expression) ?: name, name, expression.source?.startOffset ?: Int.MAX_VALUE, sizeOnly)
+            val direct = (expression.unwrapped() as? FirPropertyAccessExpression)
+                ?.takeIf { access -> receiverOf(access).let { it == null || it is FirThisReceiverExpression } }
+                ?.calleeReference?.toResolvedCallableSymbol()
+            reads += LiveRead(path(expression) ?: name, name, expression.source?.startOffset ?: Int.MAX_VALUE, sizeOnly, direct)
         }
         for (expression in uses.contents) {
             if (holds(session, expression, depth = 0) { type -> SNAPSHOT_COLLECTIONS.any { isSubtypeOf(session, type, it) } }) {

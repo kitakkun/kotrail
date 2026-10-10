@@ -5,6 +5,7 @@ import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.compose.effects.EffectCaptureAnalysis
 import com.kitakkun.kotrail.fir.compose.effects.effectCaptureService
 import com.kitakkun.kotrail.fir.compose.isComposable
+import com.kitakkun.kotrail.fir.compose.live.LiveValueAnalysis
 import com.kitakkun.kotrail.fir.isOfThisModule
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.reportKotrail
@@ -17,6 +18,7 @@ import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.resolvedArgumentMapping
 import org.jetbrains.kotlin.fir.references.toResolvedNamedFunctionSymbol
+import org.jetbrains.kotlin.fir.symbols.FirBasedSymbol
 
 /**
  * The missing-key half of `compose.rememberKeys`: asks that the lambda of `remember`,
@@ -43,6 +45,10 @@ import org.jetbrains.kotlin.fir.references.toResolvedNamedFunctionSymbol
  * its identity while its contents change, so a key on it never restarts anything, and the message
  * asks for `derivedStateOf` or `snapshotFlow`, or a key on a snapshot of it. What counts as
  * captured, and what does not, is decided by [EffectCaptureAnalysis].
+ *
+ * While `compose.liveValueRemembered` is on, a value it reports as read live in a `remember`
+ * (`remember(query) { items.filter { ... } }` over a snapshot `items`) is its finding alone: the
+ * missing keys of that `remember` leave it out, and the others are reported as before.
  *
  * The same applies through a helper that hides the effect:
  *
@@ -82,7 +88,8 @@ object ComposableRememberKeysChecker : FirFunctionCallChecker(MppCheckerKind.Com
 
         val keyed = EffectCaptureAnalysis.keyedCall(session, keyedFunctions, function, expression)
         if (keyed != null) {
-            val missing = keyed.missing.filter { EffectCaptureAnalysis.counts(keyed, it) }.map { value ->
+            val reportedLive = liveReadsReportedElsewhere(expression)
+            val missing = keyed.missing.filter { EffectCaptureAnalysis.counts(keyed, it) && it.symbol !in reportedLive }.map { value ->
                 // A data value in a long-lived effect body takes either fix; the message lays out both.
                 when {
                     value.isFunctionTyped -> "${value.name} ($ADVICE_UPDATED_STATE)"
@@ -118,5 +125,17 @@ object ComposableRememberKeysChecker : FirFunctionCallChecker(MppCheckerKind.Com
                 values.joinToString(", "),
             )
         }
+    }
+
+    /**
+     * The declarations that `compose.liveValueRemembered` reports as read live in [call], when it is
+     * on and [call] is a `remember` it checks; empty otherwise.
+     */
+    context(context: CheckerContext)
+    private fun liveReadsReportedElsewhere(call: FirFunctionCall): Set<FirBasedSymbol<*>> {
+        val session = context.session
+        if (!session.kotrailConfig.isEnabled(KotrailRule.COMPOSE_LIVE_VALUE_REMEMBERED)) return emptySet()
+        val remember = LiveValueAnalysis.rememberCall(call) ?: return emptySet()
+        return LiveValueAnalysis.staleReads(session, remember).mapNotNullTo(HashSet()) { it.declaration }
     }
 }

@@ -109,6 +109,10 @@ val done by remember { derivedStateOf { tasks.count { it.isDone } } }   // follo
 val names = remember(tasks.toList()) { tasks.map { it.name } }          // a key that changes with them
 ```
 
+While [Live value remembered](live-value-remembered.md) is on, a value it reports as read live in
+a `remember` (a snapshot collection's contents, a delegated `State`) is its finding alone: this
+rule leaves it out of that `remember`'s missing keys and reports the others as before.
+
 A lambda keyed on nothing runs once and keeps the first value of whatever it captured: the
 composable shows the old price, the handler stored in a remembered holder calls the old callback,
 the collector calls the first composition's `onEvent` forever. Nothing at the call site says so,
@@ -326,6 +330,8 @@ as changing.
 - `compiler-tests/testData/diagnostics/compose/rememberKeysAcrossModules.kt`: the metadata
   between a library and its caller.
 - `compiler-tests/testData/diagnostics/compose/rememberKeysConstant.kt`: constant keys.
+- `compiler-tests/testData/diagnostics/compose/liveValueRememberedWithRememberKeys.kt`: a live
+  value left to Live value remembered when both rules are on.
 - The `kotrailFix` functional test of the Gradle plugin: the removal of a constant key.
 
 ## Implementation notes
