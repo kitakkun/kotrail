@@ -37,7 +37,7 @@ The compiler is the one gate every line of code has to pass. Kotrail puts your c
 
 ## Rules
 
-74 rules ship today, grouped by what they protect. Full pages, with every condition and
+75 rules ship today, grouped by what they protect. Full pages, with every condition and
 fixture, live under [`docs/rules/`](docs/rules/README.md); the index there lists each rule with
 its diagnostic and whether it is on by default.
 
@@ -50,9 +50,10 @@ its diagnostic and whether it is on by default.
   [Prefer idiom](docs/rules/prefer-idiom.md) tidy what is left; [Suppress reason](docs/rules/suppress-reason.md) asks every
   `@Suppress` for a comment that says why; [Named condition](docs/rules/named-condition.md)
   asks for one named definition of a compound condition written in several places.
-- **Naming and style** (8): [Prefer function references](docs/rules/prefer-function-references.md) over `{ transform(it) }`,
+- **Naming and style** (9): [Prefer function references](docs/rules/prefer-function-references.md) over `{ transform(it) }`,
   [Named arguments for repeated types](docs/rules/named-arguments-for-repeated-types.md) for `Padding(8, 16, 8, 16)`, no comments longer than five lines
-  and no fully qualified names inline.
+  and no fully qualified names inline; [Prefer duration](docs/rules/prefer-duration.md) wants `500.milliseconds`, not `delay(500)`,
+  wherever the callee also takes a `Duration`.
 - **API design** (7): [Prefer explicit backing fields](docs/rules/prefer-explicit-backing-field.md) instead of `_items`,
   [Prefer value class](docs/rules/prefer-value-class.md) over a one-field data class, no mutable collection or data class in a
   public API.

@@ -1,0 +1,19 @@
+/preferDuration.kt:(1817,1820): error: [Kotrail] '500' is a bare number where a duration is expected: write it with its unit (500.milliseconds) and give it a name when it is a policy (a poll interval, a timeout). (KOTRAIL_PREFER_DURATION)
+
+/preferDuration.kt:(1832,1837): error: [Kotrail] '1500L' is a bare number where a duration is expected: write it with its unit (1500.milliseconds) and give it a name when it is a policy (a poll interval, a timeout). (KOTRAIL_PREFER_DURATION)
+
+/preferDuration.kt:(1855,1860): error: [Kotrail] '5_000' is a bare number where a duration is expected: write it with its unit (5_000.milliseconds) and give it a name when it is a policy (a poll interval, a timeout). (KOTRAIL_PREFER_DURATION)
+
+/preferDuration.kt:(1888,1893): error: [Kotrail] '5_000' is a bare number where a duration is expected: write it with its unit (5_000.milliseconds) and give it a name when it is a policy (a poll interval, a timeout). (KOTRAIL_PREFER_DURATION)
+
+/preferDuration.kt:(1917,1920): error: [Kotrail] '300' is a bare number where a duration is expected: write it with its unit (300.milliseconds) and give it a name when it is a policy (a poll interval, a timeout). (KOTRAIL_PREFER_DURATION)
+
+/preferDuration.kt:(1938,1943): error: [Kotrail] '1_000' is a bare number where a duration is expected: write it with its unit (1_000.milliseconds) and give it a name when it is a policy (a poll interval, a timeout). (KOTRAIL_PREFER_DURATION)
+
+/preferDuration.kt:(1957,1960): error: [Kotrail] '250' is a bare number where a duration is expected: write it with its unit (250.milliseconds) and give it a name when it is a policy (a poll interval, a timeout). (KOTRAIL_PREFER_DURATION)
+
+/preferDuration.kt:(1983,1986): error: [Kotrail] '250' is a bare number where a duration is expected: write it with its unit (250.milliseconds) and give it a name when it is a policy (a poll interval, a timeout). (KOTRAIL_PREFER_DURATION)
+
+/preferDuration.kt:(2005,2007): error: [Kotrail] '16' is a bare number where a duration is expected: write it with its unit (16.milliseconds) and give it a name when it is a policy (a poll interval, a timeout). (KOTRAIL_PREFER_DURATION)
+
+/preferDuration.kt:(2019,2020): error: [Kotrail] '5' is a bare number where a duration is expected: write it with its unit (5.seconds) and give it a name when it is a policy (a poll interval, a timeout). (KOTRAIL_PREFER_DURATION)

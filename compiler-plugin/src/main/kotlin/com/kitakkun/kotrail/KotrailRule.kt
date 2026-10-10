@@ -62,6 +62,7 @@ enum class KotrailRule(
     CATCH_TOO_BROAD("catchTooBroad", Severity.ERROR),
     MUST_CLOSE("mustClose", Severity.ERROR),
     NO_EXTERNAL_MUTATION("noExternalMutation", Severity.ERROR),
+    PREFER_DURATION("preferDuration", Severity.ERROR),
     UNRETAINED("unretained", Severity.ERROR),
     REQUIRED_SUPERTYPE("requiredSupertype", Severity.ERROR),
     DEPENDENCY_RULES("dependencyRules", Severity.ERROR),

@@ -173,6 +173,9 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Arguments: the referenced package, the policy; reported on the import or the reference. */
     val DEPENDENCY_NOT_ALLOWED = tunable2<KtElement, String, String>("DEPENDENCY_NOT_ALLOWED", KotrailRule.DEPENDENCY_RULES, WHOLE)
 
+    /** Arguments: the literal as written, the suggested form; reported on a bare number passed where the callee also takes a `Duration`. */
+    val PREFER_DURATION = tunable2<KtElement, String, String>("PREFER_DURATION", KotrailRule.PREFER_DURATION, WHOLE)
+
     /** Arguments: the call, the names read in its lambda but missing from its keys; reported on the call. */
     val EFFECT_KEY_MISSING = tunable2<KtElement, String, String>("EFFECT_KEY_MISSING", KotrailRule.COMPOSE_REMEMBER_KEYS, WHOLE)
 
@@ -734,6 +737,11 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             KotrailDiagnostics.WEAK_REFERENCE_TO_FRESH_OBJECT,
             "[Kotrail] This weak reference is the only reference to {0}, so it is collected at the next opportunity and " +
                 "the reference goes empty. Hold the object strongly somewhere for as long as it should act.",
+        )
+        map.put2(
+            KotrailDiagnostics.PREFER_DURATION,
+            "[Kotrail] ''{0}'' is a bare number where a duration is expected: write it with its unit ({1}) and give it a name " +
+                "when it is a policy (a poll interval, a timeout).",
         )
         map.put2(
             KotrailDiagnostics.CATCH_TOO_BROAD,

@@ -31,7 +31,7 @@ How a body reads: its length, how much is in play at once, the order of what it 
 | Named condition | on | `KOTRAIL_CONDITION_DUPLICATED`, `KOTRAIL_CONDITION_TOO_COMPOUND` | [named-condition.md](named-condition.md) |
 | Suppress reason | on | `KOTRAIL_SUPPRESS_WITHOUT_REASON` | [suppress-reason.md](suppress-reason.md) |
 
-## Naming and style (8)
+## Naming and style (9)
 
 Spelling that the reviewer would otherwise correct by hand.
 
@@ -45,6 +45,7 @@ Spelling that the reviewer would otherwise correct by hand.
 | Sealed when branch style | on | `KOTRAIL_SEALED_WHEN_BRANCH_STYLE` | [sealed-when-branch-style.md](sealed-when-branch-style.md) |
 | No pass-through function | on | `KOTRAIL_PASS_THROUGH_FUNCTION` | [no-pass-through-function.md](no-pass-through-function.md) |
 | No pass-through return | on | `KOTRAIL_PASS_THROUGH_RETURN` | [no-pass-through-return.md](no-pass-through-return.md) |
+| Prefer duration | on | `KOTRAIL_PREFER_DURATION` | [prefer-duration.md](prefer-duration.md) |
 
 ## API design (7)
 

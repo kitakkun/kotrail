@@ -37,6 +37,7 @@ import com.kitakkun.kotrail.fir.checkers.DelayForCompletionChecker
 import com.kitakkun.kotrail.fir.checkers.DependencyRulesChecker
 import com.kitakkun.kotrail.fir.checkers.MustCloseChecker
 import com.kitakkun.kotrail.fir.checkers.NoExternalMutationChecker
+import com.kitakkun.kotrail.fir.checkers.PreferDurationChecker
 import com.kitakkun.kotrail.fir.checkers.SuppressReasonChecker
 import com.kitakkun.kotrail.fir.checkers.NativeAllocationInLoopChecker
 import com.kitakkun.kotrail.fir.inferred.InferredFactWarmup
@@ -231,6 +232,7 @@ object KotrailExpressionCheckers : ExpressionCheckers() {
         NegationIdiomChecker,
         ConfiguredCallIdiomChecker,
         NoExternalMutationChecker.Calls,
+        PreferDurationChecker,
     )
     override val variableAssignmentCheckers: Set<FirVariableAssignmentChecker> = setOf(
         NoExternalMutationChecker.Assignments,
