@@ -40,8 +40,10 @@ abstract class KotrailExtension @Inject constructor(private val objects: ObjectF
      * rule (the facts are in a facts file published as an artifact of its own, and the class files reference nothing of Kotrail); it
      * stays for consumers that also shrink JVM libraries built by earlier versions, whose class
      * files carry the annotations. An Android library (`com.android.library`) ships the rules
-     * through `consumerProguardFiles`; a Kotlin/JVM module and the JVM targets of a multiplatform
-     * one ship them in the JAR as `META-INF/proguard/kotrail.pro`.
+     * through `consumerProguardFiles`, a multiplatform Android library
+     * (`com.android.kotlin.multiplatform.library`) through `optimization.consumerKeepRules`; a
+     * Kotlin/JVM module and the JVM targets of a multiplatform one ship them in the JAR as
+     * `META-INF/proguard/kotrail.pro`.
      */
     abstract val consumerRules: Property<Boolean>
 
