@@ -198,6 +198,9 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Arguments: the caught type, the rest of the sentence (what the clause swallows, and what to do); reported on the catch parameter. */
     val CATCH_TOO_BROAD = tunable2<KtElement, String, String>("CATCH_TOO_BROAD", KotrailRule.CATCH_TOO_BROAD, WHOLE)
 
+    /** Arguments: the types the clauses name, the rest of the sentence (whose failure ends which root, and what to do); reported on the first catch parameter of a try at a failure boundary. */
+    val BOUNDARY_UNGUARDED = tunable2<KtElement, String, String>("BOUNDARY_UNGUARDED", KotrailRule.UNGUARDED_BOUNDARY, WHOLE)
+
     /** Arguments: the parameter, how it escapes; reported on the expression through which an unretained parameter is retained. */
     val UNRETAINED_PARAMETER_RETAINED = tunable2<KtElement, String, String>("UNRETAINED_PARAMETER_RETAINED", KotrailRule.UNRETAINED, WHOLE)
 
@@ -813,6 +816,10 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         map.put2(
             KotrailDiagnostics.CATCH_TOO_BROAD,
             "[Kotrail] Catching ''{0}'' handles every failure alike, {1}",
+        )
+        map.put2(
+            KotrailDiagnostics.BOUNDARY_UNGUARDED,
+            "[Kotrail] This catch at a boundary handles only ''{0}'': any other failure {1}.",
         )
         map.put2(
             KotrailDiagnostics.UNRETAINED_PARAMETER_RETAINED,

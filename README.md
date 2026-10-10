@@ -37,7 +37,7 @@ The compiler is the one gate every line of code has to pass. Kotrail puts your c
 
 ## Rules
 
-78 rules ship today, grouped by what they protect. Full pages, with every condition and
+79 rules ship today, grouped by what they protect. Full pages, with every condition and
 fixture, live under [`docs/rules/`](docs/rules/README.md); the index there lists each rule with
 its diagnostic and whether it is on by default.
 
@@ -58,10 +58,13 @@ its diagnostic and whether it is on by default.
 - **API design** (7): [Prefer explicit backing fields](docs/rules/prefer-explicit-backing-field.md) instead of `_items`,
   [Prefer value class](docs/rules/prefer-value-class.md) over a one-field data class, no mutable collection or data class in a
   public API.
-- **Errors and concurrency** (11): [Must close](docs/rules/must-close.md) for a reader or stream created and never closed;
+- **Errors and concurrency** (12): [Must close](docs/rules/must-close.md) for a reader or stream created and never closed;
   [No external mutation](docs/rules/no-external-mutation.md) for `scene.capturing.value = true` from outside `Scene`;
   [Catch too broad](docs/rules/catch-too-broad.md) and [No swallowed cancellation](docs/rules/no-swallowed-cancellation.md) for
-  the `catch (e: Exception)` reflex, [Delay for completion](docs/rules/delay-for-completion.md) for `reconnect(); delay(500)`,
+  the `catch (e: Exception)` reflex in the middle of the logic, [Unguarded boundary](docs/rules/unguarded-boundary.md) for a
+  `catch (e: IOException)` alone at the top of a launched coroutine or a listener, where anything else ends it and only
+  the default handler sees it,
+  [Delay for completion](docs/rules/delay-for-completion.md) for `reconnect(); delay(500)`,
   [No async work in initializer](docs/rules/no-async-work-in-initializer.md) for a consumer loop started inside a
   `Channel(...).also { }` while the object is being built,
   [Preconditions](docs/rules/preconditions.md) for arguments that violate the callee's own `require`, checked across modules;

@@ -4,7 +4,6 @@ package com.kitakkun.kotrail.fir.errors
 
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.exclude.Glob
-import com.kitakkun.kotrail.fir.checkers.forwards
 import com.kitakkun.kotrail.fir.inferred.FactArguments
 import com.kitakkun.kotrail.fir.inferred.InferredFactService
 import com.kitakkun.kotrail.fir.kotrailConfig
@@ -15,12 +14,8 @@ import org.jetbrains.kotlin.fir.expressions.FirCatch
 import org.jetbrains.kotlin.fir.expressions.FirReturnExpression
 import org.jetbrains.kotlin.fir.expressions.FirThrowExpression
 import org.jetbrains.kotlin.fir.expressions.FirTryExpression
-import org.jetbrains.kotlin.fir.resolve.fullyExpandedType
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
-import org.jetbrains.kotlin.fir.types.abbreviatedTypeOrSelf
-import org.jetbrains.kotlin.fir.types.classId
-import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
@@ -76,18 +71,12 @@ class RecordsFailureService(session: FirSession) : InferredFactService<FirNamedF
         var recorded = false
         for (catch in tryExpression.catches) {
             when {
-                catch.recordsAndRethrows(loggers) -> if (catch.caughtTypeIn(RECORDED_TYPES)) recorded = true
-                catch.caughtTypeIn(CANCELLATION_TYPES) -> {}
+                catch.recordsAndRethrows(loggers) -> if (catch.caughtTypeNames(session).any { it in RECORDED_TYPES }) recorded = true
+                catch.caughtTypeNames(session).any { it in CANCELLATION_TYPES } -> {}
                 catch.throwsAnything() -> return false
             }
         }
         return recorded
-    }
-
-    private fun FirCatch.caughtTypeIn(types: Set<String>): Boolean {
-        val written = parameter.returnTypeRef.coneType
-        return listOfNotNull(written.classId, written.fullyExpandedType(session).classId, written.abbreviatedTypeOrSelf.classId)
-            .any { it.asSingleFqName().asString() in types }
     }
 
     /** Forwards the exception whole in every statement, records it in at least one, and ends by throwing it. */

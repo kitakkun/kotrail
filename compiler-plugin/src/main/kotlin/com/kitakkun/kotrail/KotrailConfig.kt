@@ -449,6 +449,27 @@ data class KotrailCatchTooBroad(
     val loggers: List<String>,
 )
 
+/**
+ * What counts as a failure boundary: a place where an exception nothing catches ends a unit of
+ * work (a coroutine, a listener, a thread) instead of reaching a caller. From
+ * `rules.unguardedBoundary`, and read by catchTooBroad as well (which accepts a logging broad
+ * catch there) whether or not unguardedBoundary is on.
+ */
+data class KotrailFailureBoundaries(
+    /** Globs over fully qualified functions whose lambda (or, for a flow terminal, whose receiver chain) is a root: `launch`, `launchIn`, `thread`. */
+    val functions: List<String>,
+    /** Globs over fully qualified annotations that make a function, or every member function of a class, a root. */
+    val annotations: List<String>,
+    /** Globs over fully qualified function names (`com.acme.Dispatcher.dispatch`) that are roots. */
+    val names: List<String>,
+    /**
+     * Globs over fully qualified properties and functions (`com.acme.HostPlugin.pluginScope`) whose
+     * value is a `CoroutineScope` that already carries a `CoroutineExceptionHandler`. A launcher in
+     * such a scope is guarded; read by unguardedBoundary alone, since it does not move a boundary.
+     */
+    val guardedScopes: List<String>,
+)
+
 /** Tunables for the unretained rule. From `rules.unretained`. */
 data class KotrailUnretained(
     /** Fully qualified annotations that mark a parameter as not to be retained. */
@@ -585,6 +606,7 @@ data class KotrailConfig(
     val objcThrows: KotrailObjCThrows,
     val weakOnlyReference: KotrailWeakOnlyReference,
     val catchTooBroad: KotrailCatchTooBroad,
+    val failureBoundaries: KotrailFailureBoundaries,
     val unretained: KotrailUnretained,
     val requiredSupertypes: List<KotrailSupertypePolicy>,
     val asyncWork: KotrailAsyncWork,
@@ -769,6 +791,24 @@ data class KotrailConfig(
             "kotlin.io.println", "kotlin.io.print", "kotlin.printStackTrace", "kotlin.Throwable.printStackTrace", "java.lang.Throwable.printStackTrace",
             "android.util.Log.*", "java.util.logging.Logger.*", "org.slf4j.Logger.*",
             "io.github.oshai.kotlinlogging.*", "co.touchlab.kermit.*", "timber.log.Timber.*", "com.intellij.openapi.diagnostic.Logger.*",
+        )
+        /** Functions whose lambda runs as a unit of work of its own, where nothing above it receives a failure. */
+        val DEFAULT_BOUNDARY_FUNCTIONS: List<String> = listOf(
+            "kotlinx.coroutines.launch",
+            "kotlinx.coroutines.flow.launchIn",
+            "kotlinx.coroutines.flow.stateIn",
+            "kotlinx.coroutines.flow.shareIn",
+            "androidx.compose.runtime.LaunchedEffect",
+            "androidx.compose.runtime.DisposableEffect",
+            "kotlin.concurrent.thread",
+            "java.lang.Thread.<init>",
+            "java.util.concurrent.Executor.execute",
+            "java.util.concurrent.ExecutorService.submit",
+            "android.os.Handler.post",
+            "android.os.Handler.postDelayed",
+            "javax.swing.SwingUtilities.invokeLater",
+            "java.awt.EventQueue.invokeLater",
+            "java.util.Timer.schedule",
         )
         val DEFAULT_UNRETAINED_ANNOTATIONS: List<String> = listOf("com.kitakkun.kotrail.lifetime.Unretained")
         val DEFAULT_REMEMBER_KEYS_FUNCTIONS: List<String> = listOf(
@@ -1234,6 +1274,12 @@ data class KotrailConfig(
                     types = list(KotrailRule.CATCH_TOO_BROAD, "types") ?: DEFAULT_BROAD_CATCH_TYPES,
                     report = enumValue(KotrailRule.CATCH_TOO_BROAD, "report", listOf("swallowed", "all")) ?: "swallowed",
                     loggers = list(KotrailRule.CATCH_TOO_BROAD, "loggers") ?: DEFAULT_LOG_FUNCTIONS,
+                ),
+                failureBoundaries = KotrailFailureBoundaries(
+                    functions = list(KotrailRule.UNGUARDED_BOUNDARY, "functions") ?: DEFAULT_BOUNDARY_FUNCTIONS,
+                    annotations = list(KotrailRule.UNGUARDED_BOUNDARY, "annotations").orEmpty(),
+                    names = list(KotrailRule.UNGUARDED_BOUNDARY, "names").orEmpty(),
+                    guardedScopes = list(KotrailRule.UNGUARDED_BOUNDARY, "guardedScopes").orEmpty(),
                 ),
                 unretained = KotrailUnretained(
                     annotations = list(KotrailRule.UNRETAINED, "annotations") ?: DEFAULT_UNRETAINED_ANNOTATIONS,

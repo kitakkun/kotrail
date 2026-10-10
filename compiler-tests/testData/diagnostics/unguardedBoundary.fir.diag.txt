@@ -1,0 +1,33 @@
+/unguardedBoundary.kt:(1699,1713): error: [Kotrail] This catch at a boundary handles only 'IOException': any other failure from 'OutputStream.write' ends 'launch' here, and only the default handler sees it. Catch Exception as well and log or report it, or hand the scope a CoroutineExceptionHandler. (KOTRAIL_BOUNDARY_UNGUARDED)
+
+/unguardedBoundary.kt:(2892,2904): error: [Kotrail] Catching 'Exception' handles every failure alike, bugs and cancellations included, and the failure goes no further than this clause. This is a failure boundary ('launch'): log or report the exception here, or it vanishes. (KOTRAIL_CATCH_TOO_BROAD)
+
+/unguardedBoundary.kt:(3816,3830): error: [Kotrail] This catch at a boundary handles only 'IOException': any other failure from 'OutputStream.write' ends 'thread' here, and only the default handler sees it. Catch Exception as well and log or report it. (KOTRAIL_BOUNDARY_UNGUARDED)
+
+/unguardedBoundary.kt:(5353,5367): error: [Kotrail] This catch at a boundary handles only 'IOException': any other failure from 'OutputStream.write' ends 'stateIn' here, and only the default handler sees it. Catch Exception as well and log or report it, or hand the scope a CoroutineExceptionHandler. (KOTRAIL_BOUNDARY_UNGUARDED)
+
+/unguardedBoundary.kt:(5968,5982): error: [Kotrail] This catch at a boundary handles only 'IOException': any other failure from 'OutputStream.write' ends 'onClick' here, and only the default handler sees it. Catch Exception as well and log or report it. (KOTRAIL_BOUNDARY_UNGUARDED)
+
+/unguardedBoundary.kt:(6210,6234): error: [Kotrail] This catch at a boundary handles only 'IllegalStateException': any other failure from 'View.performClick' ends 'OnClickListener' here, and only the default handler sees it. Catch Exception as well and log or report it. (KOTRAIL_BOUNDARY_UNGUARDED)
+
+/unguardedBoundary.kt:(6480,6494): error: [Kotrail] This catch at a boundary handles only 'IOException': any other failure from 'OutputStream.write' ends 'dispatch' here, and only the default handler sees it. Catch Exception as well and log or report it. (KOTRAIL_BOUNDARY_UNGUARDED)
+
+/unguardedBoundary.kt:(6761,6775): error: [Kotrail] This catch at a boundary handles only 'IOException': any other failure from 'OutputStream.flush' ends 'flush' here, and only the default handler sees it. Catch Exception as well and log or report it. (KOTRAIL_BOUNDARY_UNGUARDED)
+
+/unguardedBoundary.kt:(7134,7148): error: [Kotrail] This catch at a boundary handles only 'IOException': any other failure from 'OutputStream.write' ends 'accept' here, and only the default handler sees it. Catch Exception as well and log or report it. (KOTRAIL_BOUNDARY_UNGUARDED)
+
+/unguardedBoundary.kt:(9614,9641): error: [Kotrail] This catch at a boundary handles only 'IllegalArgumentException': any other failure from 'Image.makeFromEncoded' ends 'launch' here, and only the default handler sees it. Catch Exception as well and log or report it, or hand the scope a CoroutineExceptionHandler. (KOTRAIL_BOUNDARY_UNGUARDED)
+
+/unguardedBoundary.kt:(9909,9933): error: [Kotrail] This catch at a boundary handles only 'IllegalStateException': any other failure from 'capture(...)' ends 'launch' here, and only the default handler sees it. Catch Exception as well and log or report it, or hand the scope a CoroutineExceptionHandler. (KOTRAIL_BOUNDARY_UNGUARDED)
+
+/unguardedBoundary.kt:(10177,10201): error: [Kotrail] This catch at a boundary handles only 'FileNotFoundException': any other failure from 'FileInputStream' ends 'launch' here, and only the default handler sees it. Catch Exception as well and log or report it, or hand the scope a CoroutineExceptionHandler. (KOTRAIL_BOUNDARY_UNGUARDED)
+
+/unguardedBoundary.kt:(10688,10712): error: [Kotrail] This catch at a boundary handles only 'IllegalStateException': any other failure from 'capture(...)' ends 'launch' here, and only the default handler sees it. Catch Exception as well and log or report it, or hand the scope a CoroutineExceptionHandler. (KOTRAIL_BOUNDARY_UNGUARDED)
+
+/unguardedBoundary.kt:(11016,11040): error: [Kotrail] This catch at a boundary handles only 'IllegalStateException': any other failure from 'System.setProperty' ends 'launch' here, and only the default handler sees it. Catch Exception as well and log or report it, or hand the scope a CoroutineExceptionHandler. (KOTRAIL_BOUNDARY_UNGUARDED)
+
+/unguardedBoundary.kt:(11331,11355): error: [Kotrail] This catch at a boundary handles only 'IllegalStateException': any other failure from 'StringBuilder' ends 'launch' here, and only the default handler sees it. Catch Exception as well and log or report it, or hand the scope a CoroutineExceptionHandler. (KOTRAIL_BOUNDARY_UNGUARDED)
+
+/unguardedBoundary.kt:(11793,11817): error: [Kotrail] This catch at a boundary handles only 'IllegalStateException': any other failure from 'sendAndRecord' (which calls 'OutputStream.write') ends 'launch' here, and only the default handler sees it. Catch Exception as well and log or report it, or hand the scope a CoroutineExceptionHandler. (KOTRAIL_BOUNDARY_UNGUARDED)
+
+/unguardedBoundary.kt:(12072,12096): error: [Kotrail] This catch at a boundary handles only 'IllegalStateException': any other failure from 'relay' (which calls 'OutputStream.write') ends 'launch' here, and only the default handler sees it. Catch Exception as well and log or report it, or hand the scope a CoroutineExceptionHandler. (KOTRAIL_BOUNDARY_UNGUARDED)

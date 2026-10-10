@@ -34,6 +34,7 @@ import com.kitakkun.kotrail.fir.checkers.JvmSyntheticForInternalChecker
 import com.kitakkun.kotrail.fir.checkers.LiveVariableBudgetChecker
 import com.kitakkun.kotrail.fir.checkers.NarrativeOrderChecker
 import com.kitakkun.kotrail.fir.checkers.CatchTooBroadChecker
+import com.kitakkun.kotrail.fir.checkers.UnguardedBoundaryChecker
 import com.kitakkun.kotrail.fir.checkers.DelayForCompletionChecker
 import com.kitakkun.kotrail.fir.checkers.DependencyRulesChecker
 import com.kitakkun.kotrail.fir.checkers.MustCloseChecker
@@ -271,6 +272,7 @@ object KotrailExpressionCheckers : ExpressionCheckers() {
     )
     override val tryExpressionCheckers: Set<FirTryExpressionChecker> = setOf(
         CatchTooBroadChecker,
+        UnguardedBoundaryChecker,
         SwallowedCancellationChecker,
         IgnoredExceptionChecker,
     )

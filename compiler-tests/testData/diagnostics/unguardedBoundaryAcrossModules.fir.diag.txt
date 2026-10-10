@@ -1,0 +1,1 @@
+/AttributeStore.kt:(1619,1643): error: [Kotrail] This catch at a boundary handles only 'IllegalStateException': any other failure from 'Connection' ends 'launch' here, and only the default handler sees it. Catch Exception as well and log or report it, or hand the scope a CoroutineExceptionHandler. (KOTRAIL_BOUNDARY_UNGUARDED)

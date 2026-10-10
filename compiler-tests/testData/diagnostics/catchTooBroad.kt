@@ -1,4 +1,5 @@
 // KOTRAIL_CONFIG: rules.catchTooBroad=on
+// RENDER_DIAGNOSTICS_FULL_TEXT
 import java.io.IOException
 
 fun save(item: String) {}
@@ -35,6 +36,15 @@ fun broad(item: String) {
         save(item)
     } catch (<!KOTRAIL_CATCH_TOO_BROAD!>e: Exception<!>) {
         e.printStackTrace()
+    }
+}
+
+suspend fun broadInCoroutine(item: String) {
+    // Reported: in a coroutine the clause takes cancellation as well, which the message says.
+    try {
+        save(item)
+    } catch (<!KOTRAIL_CATCH_TOO_BROAD!>e: Exception<!>) {
+        showError()
     }
 }
 

@@ -312,6 +312,13 @@ read of them there (`incrementalMetadata`, on by default; see
 A body change that changes no fact and no model surface changes nothing in the metadata, and
 the use sites stay as they were compiled.
 
+**What is not.** [Unguarded boundary](rules/unguarded-boundary.md) follows a call to one of the
+module's own functions into its body, up to three functions deep, to find the call out a narrow
+catch does not cover. A callee loaded from the classes directory has no body there and is not
+followed, so a boundary that reaches its call out only through a function in another file goes
+quiet in a build that compiles the boundary's file without that one, and is reported again by a
+build that compiles both, such as a full build.
+
 **The publish-time switch.** A build that publishes to a repository compiles every Kotlin/JVM
 and Android compilation without that metadata (`icMetadata=false`), so that the class files it
 publishes carry nothing of Kotrail. It publishes when its task graph holds a task named

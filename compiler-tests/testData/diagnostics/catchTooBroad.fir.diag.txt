@@ -1,0 +1,7 @@
+/catchTooBroad.kt:(542,554): error: [Kotrail] Catching 'Exception' handles every failure alike, bugs included, and the failure goes no further than this clause. Let it out as a result, an error state or a rethrow, or catch what this code can recover from. (KOTRAIL_CATCH_TOO_BROAD)
+
+/catchTooBroad.kt:(723,742): error: [Kotrail] Catching 'RuntimeException' handles every failure alike, bugs included, and the failure goes no further than this clause. Let it out as a result, an error state or a rethrow, or catch what this code can recover from. (KOTRAIL_CATCH_TOO_BROAD)
+
+/catchTooBroad.kt:(866,878): error: [Kotrail] Catching 'Exception' handles every failure alike, bugs included, and the failure goes no further than this clause. Let it out as a result, an error state or a rethrow, or catch what this code can recover from. (KOTRAIL_CATCH_TOO_BROAD)
+
+/catchTooBroad.kt:(1101,1113): error: [Kotrail] Catching 'Exception' handles every failure alike, bugs and cancellations included, and the failure goes no further than this clause. Let it out as a result, an error state or a rethrow, or catch what this code can recover from. (KOTRAIL_CATCH_TOO_BROAD)
