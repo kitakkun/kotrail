@@ -37,7 +37,7 @@ The compiler is the one gate every line of code has to pass. Kotrail puts your c
 
 ## Rules
 
-83 rules ship today, grouped by what they protect. Full pages, with every condition and
+84 rules ship today, grouped by what they protect. Full pages, with every condition and
 fixture, live under [`docs/rules/`](docs/rules/README.md); the index there lists each rule with
 its diagnostic and whether it is on by default.
 
@@ -80,8 +80,10 @@ its diagnostic and whether it is on by default.
 - **Architecture policies** (6): [Forbidden call](docs/rules/forbidden-call.md), [Dependency rules](docs/rules/dependency-rules.md),
   [Required supertype](docs/rules/required-supertype.md), [Required annotation](docs/rules/required-annotation.md) and [Visibility policy](docs/rules/visibility-policy.md) turn a project's own
   conventions into predicates over receivers, packages, names and annotations.
-- **Compose** (21): [Remember keys](docs/rules/compose/remember-keys.md) for a `remember` or `LaunchedEffect` that freezes a value its keys
+- **Compose** (22): [Remember keys](docs/rules/compose/remember-keys.md) for a `remember` or `LaunchedEffect` that freezes a value its keys
   do not cover, checked through helpers in other modules, or that lists a key that never changes;
+  [Live value remembered](docs/rules/compose/live-value-remembered.md) for a `remember` keyed on a `SnapshotStateList` or a `State`
+  whose copy goes stale when the contents change in place, checked at the callers of a composable that keys on its parameter;
   [Retain leak](docs/rules/compose/retain-leak.md) for a `retain` whose value or key keeps a Context or a View alive past its composable;
   [No global mutable state](docs/rules/compose/no-global-mutable-state.md) for a
   top-level or `object` `var` a composable reads and never recomposes on; [Unwritten state](docs/rules/compose/unwritten-state.md) for a

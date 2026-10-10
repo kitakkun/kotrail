@@ -70,4 +70,5 @@ object InferredFactNames {
     const val NATIVE_ALLOCATION: String = "nativeAllocation"
     const val DRAWS_UI: String = "drawsUi"
     const val RECORDS_FAILURE: String = "recordsFailure"
+    const val IDENTITY_KEYED_PARAMETERS: String = "identityKeyedParameters"
 }

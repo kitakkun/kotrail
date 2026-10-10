@@ -98,7 +98,8 @@ class DetailScreen(private val navigator: Navigator) {
 A snapshot collection is the exception to the first answer. A `SnapshotStateList`,
 `SnapshotStateMap` or `SnapshotStateSet` (a parameter of that type, or a local made by
 `mutableStateListOf`, `mutableStateMapOf`, `toMutableStateList` and their kin) keeps its identity
-while its contents change, so as a key it never restarts anything. When the lambda reads what
+while its contents change, so as a key it never restarts anything, and
+[Live value remembered](live-value-remembered.md) reports such a key. When the lambda reads what
 the collection holds (as the receiver of a call or a property read, or as an argument of a call),
 the value carries "read it inside derivedStateOf or snapshotFlow, or key on a snapshot of it"
 instead of "add it to the keys":
@@ -312,6 +313,8 @@ counts only true constants, and a local, however it is made, is never one.
 
 ## Related rules
 
+[Live value remembered](live-value-remembered.md) reports a key that stays the same object while
+what the lambda reads from it changes in place (a `SnapshotStateList`, a `State`).
 [State delegation](state-delegation.md) keeps state reads in the `by` form this rule recognizes
 as changing.
 

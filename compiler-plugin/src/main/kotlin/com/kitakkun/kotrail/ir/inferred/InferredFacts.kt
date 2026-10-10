@@ -8,6 +8,7 @@ import com.kitakkun.kotrail.fir.compose.drawsUiService
 import com.kitakkun.kotrail.fir.compose.effects.effectCaptureService
 import com.kitakkun.kotrail.fir.compose.insets.WindowInsetsNames
 import com.kitakkun.kotrail.fir.compose.insets.windowInsetsHandlingService
+import com.kitakkun.kotrail.fir.compose.live.identityKeyedParametersService
 import com.kitakkun.kotrail.fir.compose.locals.CompositionLocalNames
 import com.kitakkun.kotrail.fir.compose.locals.compositionLocalService
 import com.kitakkun.kotrail.fir.concurrency.asyncWorkService
@@ -39,7 +40,7 @@ import org.jetbrains.kotlin.name.Name
  */
 object InferredFacts {
     /** The facts, with the rules that switch each on; the writer takes the ones that are on ([InferredFact.isOn]). */
-    val functionFacts: List<InferredFunctionFact> = listOf(WindowInsets, CompositionLocals, Preconditions, NoOpWhen, EffectCapture, StartsAsyncWork, NativeAllocation, DrawsUi, RecordsFailure)
+    val functionFacts: List<InferredFunctionFact> = listOf(WindowInsets, CompositionLocals, Preconditions, NoOpWhen, EffectCapture, StartsAsyncWork, NativeAllocation, DrawsUi, RecordsFailure, IdentityKeyedParameters)
     val propertyFacts: List<InferredPropertyFact> = listOf(RequiredCompositionLocal, CompositionLocalGetter)
     val classFacts: List<InferredClassFact> = listOf(ClassPreconditions)
 
@@ -130,6 +131,17 @@ object InferredFacts {
         override fun applies(declaration: IrSimpleFunction): Boolean = declaration.hasAnnotation(ComposeNames.COMPOSABLE)
         override fun arrays(declaration: IrSimpleFunction, fir: FirNamedFunction): List<List<String>>? =
             fir.moduleData.session.effectCaptureService.arraysFor(fir.symbol)
+    }
+
+    /** `@InferredIdentityKeyedParameters` on a composable that remembers a copy keyed on the identity of some of its parameters. */
+    object IdentityKeyedParameters : InferredFunctionFact {
+        override val name: String = InferredFactNames.IDENTITY_KEYED_PARAMETERS
+        override val rules = listOf(KotrailRule.COMPOSE_LIVE_VALUE_REMEMBERED)
+        override val annotation: ClassId = ComposeNames.INFERRED_IDENTITY_KEYED_PARAMETERS
+        override val parameters = listOf("names")
+        override fun applies(declaration: IrSimpleFunction): Boolean = declaration.hasAnnotation(ComposeNames.COMPOSABLE)
+        override fun arrays(declaration: IrSimpleFunction, fir: FirNamedFunction): List<List<String>>? =
+            fir.moduleData.session.identityKeyedParametersService.arraysFor(fir.symbol)
     }
 
     /** `@InferredStartsAsyncWork`, a marker, on a non-suspending function that starts work its caller cannot wait for. */

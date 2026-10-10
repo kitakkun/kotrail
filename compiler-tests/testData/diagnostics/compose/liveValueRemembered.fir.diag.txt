@@ -1,0 +1,63 @@
+/liveValueRemembered.kt:(1299,1379): error: [Kotrail] This remember reads 'transactions', which changes in place, but its keys do not change with it: the remembered value goes stale. Use derivedStateOf, whose reads are tracked, or key the remember on the value you read. (KOTRAIL_LIVE_VALUE_REMEMBERED)
+
+/liveValueRemembered.kt:(1598,1646): error: [Kotrail] This remember reads 'queryState.value', which changes in place, but its keys do not change with it: the remembered value goes stale. Use derivedStateOf, whose reads are tracked, or key the remember on the value you read. (KOTRAIL_LIVE_VALUE_REMEMBERED)
+
+/liveValueRemembered.kt:(1822,1852): error: [Kotrail] This remember reads 'query', which changes in place, but its keys do not change with it: the remembered value goes stale. Use derivedStateOf, whose reads are tracked, or key the remember on the value you read. (KOTRAIL_LIVE_VALUE_REMEMBERED)
+
+/liveValueRemembered.kt:(2079,2116): error: [Kotrail] This remember reads 'text', which changes in place, but its keys do not change with it: the remembered value goes stale. Use derivedStateOf, whose reads are tracked, or key the remember on the value you read. (KOTRAIL_LIVE_VALUE_REMEMBERED)
+
+/liveValueRemembered.kt:(2311,2383): error: [Kotrail] This remember reads 'model.items', 'model.filter', which changes in place, but its keys do not change with it: the remembered value goes stale. Use derivedStateOf, whose reads are tracked, or key the remember on the value you read. (KOTRAIL_LIVE_VALUE_REMEMBERED)
+
+/liveValueRemembered.kt:(2637,2775): error: [Kotrail] This remember reads 'transactions', which changes in place, but its keys do not change with it: the remembered value goes stale. Use derivedStateOf, whose reads are tracked, or key the remember on the value you read. (KOTRAIL_LIVE_VALUE_REMEMBERED)
+
+/liveValueRemembered.kt:(2792,2834): error: [Kotrail] This remember reads 'transactions', which changes in place, but its keys do not change with it: the remembered value goes stale. Use derivedStateOf, whose reads are tracked, or key the remember on the value you read. (KOTRAIL_LIVE_VALUE_REMEMBERED)
+
+/liveValueRemembered.kt:(2850,2889): error: [Kotrail] This remember reads 'byUrl', which changes in place, but its keys do not change with it: the remembered value goes stale. Use derivedStateOf, whose reads are tracked, or key the remember on the value you read. (KOTRAIL_LIVE_VALUE_REMEMBERED)
+
+/liveValueRemembered.kt:(2907,2936): error: [Kotrail] This remember reads 'Store.items', which changes in place, but its keys do not change with it: the remembered value goes stale. Use derivedStateOf, whose reads are tracked, or key the remember on the value you read. (KOTRAIL_LIVE_VALUE_REMEMBERED)
+
+/liveValueRemembered.kt:(3140,3192): error: [Kotrail] This remember reads 'transactions', which changes in place, but its keys do not change with it: the remembered value goes stale. Use derivedStateOf, whose reads are tracked, or key the remember on the value you read. (KOTRAIL_LIVE_VALUE_REMEMBERED)
+
+/liveValueRemembered.kt:(3932,3996): error: [Kotrail] This remember reads 'transactions', which changes in place, but its keys do not change with it: the remembered value goes stale. Use derivedStateOf, whose reads are tracked, or key the remember on the value you read. (KOTRAIL_LIVE_VALUE_REMEMBERED)
+
+/liveValueRemembered.kt:(6720,6757): error: [Kotrail] 'remember { mutableStateListOf<Tx>() }' changes in place, but 'TrafficTab' remembers a copy keyed on it: the copy goes stale once the contents change. Pass a snapshot of it (toList()), or let 'TrafficTab' derive from it with derivedStateOf. (KOTRAIL_LIVE_VALUE_PASSED_TO_REMEMBERING_COMPOSABLE)
+
+/liveValueRemembered.kt:(7030,7042): error: [Kotrail] 'transactions' changes in place, but 'TrafficTab' remembers a copy keyed on it: the copy goes stale once the contents change. Pass a snapshot of it (toList()), or let 'TrafficTab' derive from it with derivedStateOf. (KOTRAIL_LIVE_VALUE_PASSED_TO_REMEMBERING_COMPOSABLE)
+
+/liveValueRemembered.kt:(7060,7072): error: [Kotrail] 'transactions' changes in place, but 'TrafficPane' hands it to 'TrafficTab', which remembers a copy keyed on it: the copy goes stale once the contents change. Pass a snapshot of it (toList()), or let 'TrafficTab' derive from it with derivedStateOf. (KOTRAIL_LIVE_VALUE_PASSED_TO_REMEMBERING_COMPOSABLE)
+
+/liveValueRemembered.kt:(7089,7101): error: [Kotrail] 'transactions' changes in place, but 'AliasedTab' remembers a copy keyed on it: the copy goes stale once the contents change. Pass a snapshot of it (toList()), or let 'AliasedTab' derive from it with derivedStateOf. (KOTRAIL_LIVE_VALUE_PASSED_TO_REMEMBERING_COMPOSABLE)
+
+/liveValueRemembered.kt:(7303,7315): error: [Kotrail] 'transactions' changes in place, but 'TrafficTab' remembers a copy keyed on it: the copy goes stale once the contents change. Pass a snapshot of it (toList()), or let 'TrafficTab' derive from it with derivedStateOf. (KOTRAIL_LIVE_VALUE_PASSED_TO_REMEMBERING_COMPOSABLE)
+
+/liveValueRemembered.kt:(8235,8291): error: [Kotrail] 'transactions' changes in place, but 'TrafficTab' remembers a copy keyed on it: the copy goes stale once the contents change. Pass a snapshot of it (toList()), or let 'TrafficTab' derive from it with derivedStateOf. (KOTRAIL_LIVE_VALUE_PASSED_TO_REMEMBERING_COMPOSABLE)
+
+/liveValueRemembered.kt:(8308,8360): error: [Kotrail] 'transactions' changes in place, but 'TrafficTab' remembers a copy keyed on it: the copy goes stale once the contents change. Pass a snapshot of it (toList()), or let 'TrafficTab' derive from it with derivedStateOf. (KOTRAIL_LIVE_VALUE_PASSED_TO_REMEMBERING_COMPOSABLE)
+
+/liveValueRemembered.kt:(8377,8397): error: [Kotrail] 'maybe' changes in place, but 'TrafficTab' remembers a copy keyed on it: the copy goes stale once the contents change. Pass a snapshot of it (toList()), or let 'TrafficTab' derive from it with derivedStateOf. (KOTRAIL_LIVE_VALUE_PASSED_TO_REMEMBERING_COMPOSABLE)
+
+/liveValueRemembered.kt:(8414,8471): error: [Kotrail] 'transactions' changes in place, but 'TrafficTab' remembers a copy keyed on it: the copy goes stale once the contents change. Pass a snapshot of it (toList()), or let 'TrafficTab' derive from it with derivedStateOf. (KOTRAIL_LIVE_VALUE_PASSED_TO_REMEMBERING_COMPOSABLE)
+
+/liveValueRemembered.kt:(8546,8551): error: [Kotrail] 'shown' changes in place, but 'TrafficTab' remembers a copy keyed on it: the copy goes stale once the contents change. Pass a snapshot of it (toList()), or let 'TrafficTab' derive from it with derivedStateOf. (KOTRAIL_LIVE_VALUE_PASSED_TO_REMEMBERING_COMPOSABLE)
+
+/liveValueRemembered.kt:(9232,9245): error: [Kotrail] 'store.history' changes in place, but 'RunsTab' remembers a copy keyed on it: the copy goes stale once the contents change. Pass a snapshot of it (toList()), or let 'RunsTab' derive from it with derivedStateOf. (KOTRAIL_LIVE_VALUE_PASSED_TO_REMEMBERING_COMPOSABLE)
+
+/liveValueRemembered.kt:(9722,9778): error: [Kotrail] This remember reads 'items', which changes in place, but its keys do not change with it: the remembered value goes stale. Use derivedStateOf, whose reads are tracked, or key the remember on the value you read. (KOTRAIL_LIVE_VALUE_REMEMBERED)
+
+/liveValueRemembered.kt:(9794,9884): error: [Kotrail] This remember reads 'items', which changes in place, but its keys do not change with it: the remembered value goes stale. Use derivedStateOf, whose reads are tracked, or key the remember on the value you read. (KOTRAIL_LIVE_VALUE_REMEMBERED)
+
+/liveValueRemembered.kt:(9905,9936): error: [Kotrail] This remember reads 'items', which changes in place, but its keys do not change with it: the remembered value goes stale. Use derivedStateOf, whose reads are tracked, or key the remember on the value you read. (KOTRAIL_LIVE_VALUE_REMEMBERED)
+
+/liveValueRemembered.kt:(10830,10861): error: [Kotrail] This remember reads 'state.value', which changes in place, but its keys do not change with it: the remembered value goes stale. Use derivedStateOf, whose reads are tracked, or key the remember on the value you read. (KOTRAIL_LIVE_VALUE_REMEMBERED)
+
+/liveValueRemembered.kt:(10877,10903): error: [Kotrail] This remember reads 'list', which changes in place, but its keys do not change with it: the remembered value goes stale. Use derivedStateOf, whose reads are tracked, or key the remember on the value you read. (KOTRAIL_LIVE_VALUE_REMEMBERED)
+
+/liveValueRemembered.kt:(10922,10970): error: [Kotrail] This remember reads 'list', which changes in place, but its keys do not change with it: the remembered value goes stale. Use derivedStateOf, whose reads are tracked, or key the remember on the value you read. (KOTRAIL_LIVE_VALUE_REMEMBERED)
+
+/liveValueRemembered.kt:(11361,11420): error: [Kotrail] This remember reads 'list', which changes in place, but its keys do not change with it: the remembered value goes stale. Use derivedStateOf, whose reads are tracked, or key the remember on the value you read. (KOTRAIL_LIVE_VALUE_REMEMBERED)
+
+/liveValueRemembered.kt:(11436,11484): error: [Kotrail] This remember reads 'list', which changes in place, but its keys do not change with it: the remembered value goes stale. Use derivedStateOf, whose reads are tracked, or key the remember on the value you read. (KOTRAIL_LIVE_VALUE_REMEMBERED)
+
+/liveValueRemembered.kt:(11503,11542): error: [Kotrail] This remember reads 'list', which changes in place, but its keys do not change with it: the remembered value goes stale. Use derivedStateOf, whose reads are tracked, or key the remember on the value you read. (KOTRAIL_LIVE_VALUE_REMEMBERED)
+
+/liveValueRemembered.kt:(12262,12274): error: [Kotrail] 'transactions' changes in place, but 'TrafficRoot' hands it to 'TrafficTab', which remembers a copy keyed on it: the copy goes stale once the contents change. Pass a snapshot of it (toList()), or let 'TrafficTab' derive from it with derivedStateOf. (KOTRAIL_LIVE_VALUE_PASSED_TO_REMEMBERING_COMPOSABLE)

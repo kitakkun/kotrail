@@ -241,6 +241,20 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Argument: the key as written; reported on a key of `remember`, `LaunchedEffect` and their kin that never changes while the composable lives. */
     val REDUNDANT_KEY = tunable1<KtElement, String>("REDUNDANT_KEY", KotrailRule.COMPOSE_REMEMBER_KEYS, WHOLE)
 
+    /**
+     * Argument: the values that change in place which the calculation reads (`transactions`, or `transactions', 'query`
+     * for more than one); reported on a remember whose keys do not change with them.
+     */
+    val LIVE_VALUE_REMEMBERED = tunable1<KtElement, String>("LIVE_VALUE_REMEMBERED", KotrailRule.COMPOSE_LIVE_VALUE_REMEMBERED, WHOLE)
+
+    /**
+     * Arguments: the argument as written; the composable called, quoted, followed through wrappers by
+     * `hands it to '<holder>', which`; the composable that holds the remember. Reported on a value that
+     * changes in place handed to a composable that remembers a copy keyed on it.
+     */
+    val LIVE_VALUE_PASSED_TO_REMEMBERING_COMPOSABLE =
+        tunable3<KtElement, String, String, String>("LIVE_VALUE_PASSED_TO_REMEMBERING_COMPOSABLE", KotrailRule.COMPOSE_LIVE_VALUE_REMEMBERED, WHOLE)
+
     /** Arguments: the wait as written, what started the work and how to wait for it properly; reported on a fixed delay that follows a call starting asynchronous work. */
     val DELAY_WAITS_FOR_ASYNC_WORK = tunable2<KtElement, String, String>("DELAY_WAITS_FOR_ASYNC_WORK", KotrailRule.DELAY_FOR_COMPLETION, WHOLE)
 
@@ -907,6 +921,16 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
             KotrailDiagnostics.REDUNDANT_KEY,
             "[Kotrail] ''{0}'' never changes while this composable lives, so it says nothing as a key: a key means " +
                 "\"restart when this changes\". Drop it (use Unit for once).",
+        )
+        map.put1(
+            KotrailDiagnostics.LIVE_VALUE_REMEMBERED,
+            "[Kotrail] This remember reads ''{0}'', which changes in place, but its keys do not change with it: the " +
+                "remembered value goes stale. Use derivedStateOf, whose reads are tracked, or key the remember on the value you read.",
+        )
+        map.put3(
+            KotrailDiagnostics.LIVE_VALUE_PASSED_TO_REMEMBERING_COMPOSABLE,
+            "[Kotrail] ''{0}'' changes in place, but {1} remembers a copy keyed on it: the copy goes stale once the " +
+                "contents change. Pass a snapshot of it (toList()), or let ''{2}'' derive from it with derivedStateOf.",
         )
         map.put2(
             KotrailDiagnostics.DELAY_WAITS_FOR_ASYNC_WORK,

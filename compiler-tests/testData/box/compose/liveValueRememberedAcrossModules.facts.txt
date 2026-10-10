@@ -1,0 +1,5 @@
+Module: lib (lib.facts)
+{"file": "lib/Lib.kt", "id": "lib/TrafficPane", "signature": "kotlin/collections/List", "facts": {"identityKeyedParameters": {"names": ["transactions@TrafficTab"]}}}
+{"file": "lib/Lib.kt", "id": "lib/TrafficTab", "signature": "kotlin/collections/List", "facts": {"identityKeyedParameters": {"names": ["transactions"]}}}
+Module: main (main.facts)
+{"file": "main/Main.kt", "id": "/TrafficRoot", "signature": "kotlin/collections/List", "facts": {"identityKeyedParameters": {"names": ["transactions@TrafficTab"]}}}

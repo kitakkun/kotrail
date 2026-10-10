@@ -82,6 +82,14 @@ internal object EffectCaptureAnalysis {
     private val AWAIT_FOREVER = setOf("awaitCancellation")
     private val EFFECT_NAMES = setOf("LaunchedEffect", "DisposableEffect", "produceState")
 
+    /** Whether [type] is a `State` (a `MutableState` included), which is read through `.value` and always current. */
+    fun isState(session: FirSession, type: ConeKotlinType): Boolean {
+        val expanded = type.fullyExpandedType(session)
+        val symbol = session.symbolProvider.getClassLikeSymbolByClassId(STATE) ?: return false
+        val superType = STATE.constructClassLikeType(Array(symbol.typeParameterSymbols.size) { ConeStarProjection }, isMarkedNullable = true)
+        return !expanded.isNullableNothing && AbstractTypeChecker.isSubtypeOf(session.typeContext, expanded, superType)
+    }
+
     /** Whether [type] is a `SnapshotStateList`, `SnapshotStateMap` or `SnapshotStateSet`, which changes in place and keeps its identity. */
     private fun isSnapshotCollection(session: FirSession, type: ConeKotlinType): Boolean {
         val expanded = type.fullyExpandedType(session)
@@ -260,12 +268,7 @@ internal object EffectCaptureAnalysis {
         fun dependenciesOf(symbol: FirBasedSymbol<*>): Set<FirBasedSymbol<*>> = infos[symbol]?.dependsOn.orEmpty()
 
         /** A `State` is always current when read; it cannot go stale. */
-        fun ConeKotlinType.isState(): Boolean {
-            val expanded = fullyExpandedType(session)
-            val symbol = session.symbolProvider.getClassLikeSymbolByClassId(STATE) ?: return false
-            val superType = STATE.constructClassLikeType(Array(symbol.typeParameterSymbols.size) { ConeStarProjection }, isMarkedNullable = true)
-            return !expanded.isNullableNothing && AbstractTypeChecker.isSubtypeOf(session.typeContext, expanded, superType)
-        }
+        fun ConeKotlinType.isState(): Boolean = isState(session, this)
 
         /**
          * Whether a local's initializer makes it stable for the composition rather than a captured
