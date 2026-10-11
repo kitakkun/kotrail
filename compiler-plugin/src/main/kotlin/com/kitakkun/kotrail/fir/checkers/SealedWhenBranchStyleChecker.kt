@@ -20,6 +20,7 @@ import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirWhenExpressionChecker
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
+import org.jetbrains.kotlin.fir.declarations.utils.isData
 import org.jetbrains.kotlin.fir.declarations.utils.modality
 import org.jetbrains.kotlin.fir.expressions.FirBooleanOperatorExpression
 import org.jetbrains.kotlin.fir.expressions.FirEqualityOperatorCall
@@ -115,12 +116,16 @@ object SealedWhenBranchStyleChecker : FirWhenExpressionChecker(MppCheckerKind.Co
 
     /**
      * `Obj ->` compares with `equals`, `is Obj ->` checks the type; for an object that writes its
-     * own `equals` the two can differ, so such an object is left as written. The object's
-     * declarations are read by hand, so the question is recorded for incremental compilation: an
-     * `equals` added to or removed from the object in another file compiles this file again.
+     * own `equals` the two can differ, so such an object is left as written. A data object cannot
+     * write one, and is answered before its declarations are read: read back from class files (a
+     * file an incremental build leaves alone, another module), it lists its generated `equals`
+     * among them. Any other object's declarations are read by hand, so the question is recorded
+     * for incremental compilation: an `equals` added to or removed from the object in another
+     * file compiles this file again.
      */
     context(context: CheckerContext)
     private fun FirRegularClassSymbol.declaresEquals(source: KtSourceElement?): Boolean {
+        if (isData) return false
         recordNameProbe(OperatorNameConventions.EQUALS, classId.asSingleFqName(), source)
         return declarationSymbols.any { it is FirNamedFunctionSymbol && it.name == OperatorNameConventions.EQUALS && it.valueParameterSymbols.size == 1 }
     }

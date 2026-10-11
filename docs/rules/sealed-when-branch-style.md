@@ -61,7 +61,9 @@ rules:
 ## Fixtures
 
 `compiler-tests/testData/diagnostics/sealedWhenBranchStyle.kt`,
-`compiler-tests/testData/diagnostics/config/sealedWhenBranchStyleObject.kt`
+`compiler-tests/testData/diagnostics/sealedWhenBranchStyleAcrossModules.kt`,
+`compiler-tests/testData/diagnostics/config/sealedWhenBranchStyleObject.kt`,
+`compiler-tests/testData/diagnostics/config/sealedWhenBranchStyleObjectAcrossModules.kt`
 
 ## Implementation notes
 
@@ -69,4 +71,6 @@ rules:
 comes from `subjectVariable`; a branch condition is split on `FirBinaryLogicExpression` into its
 alternatives, and each is an object comparison when it is a `FirEqualityOperatorCall` with `EQ`
 whose one `FirResolvedQualifier` resolves to an `object`, or an object check when it is a
-`FirTypeOperatorCall` with `IS` whose type is an `object`.
+`FirTypeOperatorCall` with `IS` whose type is an `object`. An object writes its own `equals` when
+its declarations hold one, except a `data object`, which cannot: read back from class files (another
+module, or a file an incremental build leaves alone), its generated `equals` is listed among them.
