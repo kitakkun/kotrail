@@ -61,7 +61,8 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
         target.tasks.register(FIX_TASK, KotrailFixTask::class.java) { task ->
             task.group = "verification"
             task.description = "Applies the fixes Kotrail recorded during the last compilation of each source file"
-            task.fixesDirectory.set(fixesDirectory())
+            task.latestFixesDirectory.set(latestFixesDirectory())
+            task.taskOutputFixesDirectory.set(taskOutputFixesDirectory())
             task.projectDirectory.set(target.layout.projectDirectory)
             task.rules.convention(target.providers.gradleProperty(FIX_RULES_PROPERTY))
         }
@@ -99,7 +100,8 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
         val factsOptions = factsFiles.wire(kotlinCompilation)?.zip(incrementalMetadataOption(compilationName), FactsFiles.ConcatOptions())
         val options = project.provider {
             val options = optionsFor(compilationName) +
-                SubpluginOption("fixesDir", fixesDirectoryFor(kotlinCompilation).get().asFile.path) +
+                SubpluginOption("fixesDir", latestFixesDirectoryFor(kotlinCompilation).get().asFile.path) +
+                SubpluginOption("fixesTaskOutputDir", taskOutputFixesDirectoryFor(kotlinCompilation).get().asFile.path) +
                 SubpluginOption("composablesDir", composablesDirectoryFor(kotlinCompilation).get().asFile.path) +
                 SubpluginOption("complexityDir", complexityDirectoryFor(kotlinCompilation).get().asFile.path) +
                 kotlinCompilation.allAssociatedCompilations.map {
@@ -152,13 +154,22 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
     }
 
     /**
-     * Every compilation records the fixes of its findings under `build/kotrail/fixes`, one file per
-     * source file with the source's content hash, so that `kotrailFix` can apply them without
-     * compiling again. The directory is an output of the compile task: it is restored from the
-     * build cache with the classes and removed by `clean`.
+     * Every compilation records the fixes of its findings, one file per source file with the
+     * source's content hash, so that `kotrailFix` can apply them without compiling again. It
+     * writes each record twice:
+     *
+     * - under `build/kotrail/fixes/latest`, which is no task's output. An incremental compilation
+     *   that fails restores the compile task's outputs to what they were before it, and the
+     *   records of the findings it failed on, the ones `kotrailFix` is run for, would go with
+     *   them. The directory must stay outside every declared output: Gradle counts whatever lies
+     *   inside one as part of it.
+     * - under `build/kotrail/fixes/task-output`, an output of the compile task, so that a
+     *   compilation restored from the build cache brings its records along.
+     *
+     * Both go with `clean`.
      */
     private fun wireFixRecords(kotlinCompilation: KotlinCompilation<*>) {
-        val directory = fixesDirectoryFor(kotlinCompilation)
+        val directory = taskOutputFixesDirectoryFor(kotlinCompilation)
         kotlinCompilation.compileTaskProvider.configure { task ->
             task.outputs.dir(directory).withPropertyName("kotrailFixes")
         }
@@ -210,10 +221,15 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
     private fun composablesDirectoryFor(kotlinCompilation: KotlinCompilation<*>): Provider<Directory> =
         project.layout.buildDirectory.dir("kotrail/composables/${kotlinCompilation.directoryName()}")
 
-    private fun fixesDirectory(): Provider<Directory> = project.layout.buildDirectory.dir("kotrail/fixes")
+    private fun latestFixesDirectory(): Provider<Directory> = project.layout.buildDirectory.dir("kotrail/fixes/latest")
 
-    private fun fixesDirectoryFor(kotlinCompilation: KotlinCompilation<*>): Provider<Directory> =
-        fixesDirectory().map { it.dir(kotlinCompilation.directoryName()) }
+    private fun latestFixesDirectoryFor(kotlinCompilation: KotlinCompilation<*>): Provider<Directory> =
+        latestFixesDirectory().map { it.dir(kotlinCompilation.directoryName()) }
+
+    private fun taskOutputFixesDirectory(): Provider<Directory> = project.layout.buildDirectory.dir("kotrail/fixes/task-output")
+
+    private fun taskOutputFixesDirectoryFor(kotlinCompilation: KotlinCompilation<*>): Provider<Directory> =
+        taskOutputFixesDirectory().map { it.dir(kotlinCompilation.directoryName()) }
 
     /** `jvm-main`, `iosArm64-test`; the target of a plain Kotlin/JVM project has no name and is called `jvm`. */
     private fun KotlinCompilation<*>.directoryName(): String = "${target.name.ifEmpty { "jvm" }}-$name"

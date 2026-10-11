@@ -311,6 +311,55 @@ class KotrailGradlePluginFunctionalTest {
     }
 
     @Test
+    fun `kotrailFix applies the fixes of an incremental compilation that failed on them`() {
+        writeSettings()
+        writeFile("kotrail.yaml", "severity: warning\nrules:\n  namedArgumentsForRepeatedTypes: error\n")
+        writeBuild("kotrail {\n    configFile = file(\"kotrail.yaml\")\n}")
+        val base = "internal val base: Double = 1.0\n"
+        writeFile("src/main/kotlin/Probe.kt", base)
+
+        val baseline = runBuild("compileKotlin")
+        assertEquals(TaskOutcome.SUCCESS, baseline.task(":compileKotlin")?.outcome, baseline.output)
+
+        writeFile("src/main/kotlin/Probe.kt", base + "\ninternal val probe: Double = maxOf(1.0, 2.0, 3.0)\n")
+        val failed = runBuild("compileKotlin", expectFailure = true)
+        assertEquals(TaskOutcome.FAILED, failed.task(":compileKotlin")?.outcome, failed.output)
+        assertTrue(failed.output.contains("KOTRAIL_NAMED_ARGUMENTS_REQUIRED"), failed.output)
+        // Kotlin's Gradle plugin restores the compile task's outputs when an incremental
+        // compilation fails, so this copy of the record is the passing build's header alone.
+        assertEquals(1, fixRecordOf("task-output", "Probe.kt").readLines().size)
+
+        val fixed = runBuild("kotrailFix")
+        assertEquals(TaskOutcome.SUCCESS, fixed.task(":kotrailFix")?.outcome, fixed.output)
+        val text = File(projectDir, "src/main/kotlin/Probe.kt").readText()
+        assertTrue(text.contains("internal val probe: Double = maxOf(a = 1.0, b = 2.0, c = 3.0)"), text)
+    }
+
+    @Test
+    fun `kotrailFix applies the fixes a compilation restored from the build cache brings along`() {
+        writeSettings()
+        File(projectDir, "settings.gradle.kts").appendText("\nbuildCache {\n    local {\n        directory = File(rootDir, \"build-cache\")\n    }\n}\n")
+        writeFile("kotrail.yaml", "severity: warning\n")
+        writeBuild("kotrail {\n    configFile = file(\"kotrail.yaml\")\n}")
+        writeFile("src/main/kotlin/Probe.kt", "internal val probe: Double = maxOf(1.0, 2.0, 3.0)\n")
+
+        val compiled = runBuild("compileKotlin", "--build-cache")
+        assertEquals(TaskOutcome.SUCCESS, compiled.task(":compileKotlin")?.outcome, compiled.output)
+        assertTrue(compiled.output.contains("KOTRAIL_NAMED_ARGUMENTS_REQUIRED"), compiled.output)
+
+        val restored = runBuild("clean", "compileKotlin", "--build-cache")
+        assertEquals(TaskOutcome.FROM_CACHE, restored.task(":compileKotlin")?.outcome, restored.output)
+        // The build cache restores only the compile task's declared outputs, which the latest
+        // records are not.
+        assertFalse(File(projectDir, "build/kotrail/fixes/latest").exists())
+
+        val fixed = runBuild("kotrailFix")
+        assertEquals(TaskOutcome.SUCCESS, fixed.task(":kotrailFix")?.outcome, fixed.output)
+        val text = File(projectDir, "src/main/kotlin/Probe.kt").readText()
+        assertTrue(text.contains("internal val probe: Double = maxOf(a = 1.0, b = 2.0, c = 3.0)"), text)
+    }
+
+    @Test
     fun `a preview compilation checks the coverage of the main it is associated with`() {
         writeSettings()
         writeFile("kotrail.yaml", "severity: warning\nrules:\n  compose.previewRequired: off\n")
@@ -1923,6 +1972,10 @@ class KotrailGradlePluginFunctionalTest {
         assertEquals(1, files.size, files.joinToString())
         return files.single().readText()
     }
+
+    /** The main compilation's fix record of the source file [fileName], from `build/kotrail/fixes/<copy>`. */
+    private fun fixRecordOf(copy: String, fileName: String): File =
+        File(projectDir, "build/kotrail/fixes/$copy/jvm-main").listFiles().orEmpty().single { it.readLines().first().contains("/$fileName\"") }
 
     /** The plugin id is the key of Kotrail's plugin data in the Kotlin metadata, a string of the class file. */
     private fun carriesPluginMetadata(classFile: ByteArray): Boolean = "com.kitakkun.kotrail" in String(classFile, Charsets.ISO_8859_1)

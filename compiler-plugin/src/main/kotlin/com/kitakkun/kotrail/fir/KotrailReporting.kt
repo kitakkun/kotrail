@@ -59,7 +59,7 @@ internal fun reportKotrail(
 /**
  * The variants with [fix]: the edits that make the diagnostic go away, applied by `kotrailFix`.
  * They are recorded only when the diagnostic is reported, and only when the compilation names a
- * `fixesDir`.
+ * `fixesDir` or a `fixesTaskOutputDir`.
  */
 context(context: CheckerContext, reporter: DiagnosticReporter)
 internal fun reportKotrail(source: KtSourceElement?, diagnostic: TunableDiagnostic0, fix: List<FixEdit>) =
@@ -172,9 +172,10 @@ private fun writeFix(rule: KotrailRule, diagnostic: String, fix: List<FixEdit>) 
     if (fix.isEmpty()) return
     val config = context.session.kotrailConfig
     if (!config.fixEnabled(rule)) return
-    val directory = config.fixesDir ?: return
+    val directories = config.fixesDirs
+    if (directories.isEmpty()) return
     val file = context.containingFileSymbol?.sourceFile?.path ?: return
-    FixRecords.write(directory, file, rule.key, diagnostic, fix)
+    FixRecords.write(directories, file, rule.key, diagnostic, fix)
 }
 
 /**

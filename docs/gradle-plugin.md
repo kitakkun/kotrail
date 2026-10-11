@@ -128,7 +128,7 @@ Some rules know the exact rewrite that makes their finding go away: a lambda int
 reference, `{ return x }` into `= x`, `Cancel ->` into `is Cancel ->`, a redundant `else` gone,
 names on positional arguments. Each rule page says so under **Fix**. Every compilation records
 those fixes under `build/kotrail/fixes`, one file per source file together with the source's
-content hash, and
+content hash, also when it fails on them, and
 
 ```bash
 ./gradlew kotrailFix
@@ -172,9 +172,20 @@ refreshes its record, like any file that changed since it was compiled. Each fix
 the key of the rule that reported it; a record written by an older compiler plugin has none and
 is applied only when no rules are given.
 
-The records are an output of the compile task, so they travel with the build cache and go with
-`clean`. Nothing else reads them, but the format is plain JSON lines (the `fixesDir` option of the
-compiler plugin), so an editor or an assistant can apply them too.
+Every compilation writes each record twice (`<target>-<compilation>` is `jvm-main` in a plain
+Kotlin/JVM project):
+
+- `build/kotrail/fixes/latest/<target>-<compilation>` is no task's output. An incremental
+  compilation that fails restores the compile task's outputs to what they were before it, so the
+  records of the findings it failed on, the ones `kotrailFix` is there for, are kept here.
+- `build/kotrail/fixes/task-output/<target>-<compilation>` is an output of the compile task, so
+  the records travel with the build cache.
+
+For each compilation's record of a file, `kotrailFix` takes the latest one when it was made from
+the file as it is now, and otherwise the task output's when that one was; it never mixes the
+two. Both go with `clean`. Nothing else reads them, but the format is plain JSON lines (the
+compiler plugin's `fixesDir` option, here the `latest` directory; `fixesTaskOutputDir` names the
+copy), so an editor or an assistant can apply them too.
 
 Next to the fixes, every compilation records the UI composables it declares under
 `build/kotrail/composables`, and a compilation reads the records of the compilations it is

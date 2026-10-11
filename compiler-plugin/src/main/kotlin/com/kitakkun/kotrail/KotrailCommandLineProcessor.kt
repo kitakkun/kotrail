@@ -34,6 +34,15 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
         required = false,
     )
 
+    private val fixesTaskOutputDirOption = CliOption(
+        optionName = "fixesTaskOutputDir",
+        valueDescription = "<directory>",
+        description = "A second directory to record the same fixes in, for a build tool to declare as an output of the " +
+            "compile task, so that a compilation restored from the build cache brings its records along. fixesDir then " +
+            "stays out of the task's outputs, which a failed incremental compilation rolls back",
+        required = false,
+    )
+
     private val composablesDirOption = CliOption(
         optionName = "composablesDir",
         valueDescription = "<directory>",
@@ -158,13 +167,14 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
     }
 
     override val pluginId: String = KotrailNames.PLUGIN_ID
-    override val pluginOptions: Collection<CliOption> = listOf(configFileOption, fixesDirOption, composablesDirOption, complexityDirOption, associatedComposablesDirOption, unloadableDirOption, bundledUnloadableDirOption, rootDirOption, inferredMetadataOption, icMetadataOption, factsOutOption, factsOption, ownFactsOption, factsHashOption) + treeOptions
+    override val pluginOptions: Collection<CliOption> = listOf(configFileOption, fixesDirOption, fixesTaskOutputDirOption, composablesDirOption, complexityDirOption, associatedComposablesDirOption, unloadableDirOption, bundledUnloadableDirOption, rootDirOption, inferredMetadataOption, icMetadataOption, factsOutOption, factsOption, ownFactsOption, factsHashOption) + treeOptions
 
     override fun processOption(option: AbstractCliOption, value: String, configuration: CompilerConfiguration) {
         val name = option.optionName
         when {
             name == configFileOption.optionName -> configuration.add(KotrailConfigurationKeys.CONFIG_FILE, value)
             name == fixesDirOption.optionName -> configuration.put(KotrailConfigurationKeys.FIXES_DIR, value)
+            name == fixesTaskOutputDirOption.optionName -> configuration.put(KotrailConfigurationKeys.FIXES_TASK_OUTPUT_DIR, value)
             name == composablesDirOption.optionName -> configuration.put(KotrailConfigurationKeys.COMPOSABLES_DIR, value)
             name == complexityDirOption.optionName -> configuration.put(KotrailConfigurationKeys.COMPLEXITY_DIR, value)
             name == associatedComposablesDirOption.optionName -> configuration.add(KotrailConfigurationKeys.ASSOCIATED_COMPOSABLES_DIRS, value)

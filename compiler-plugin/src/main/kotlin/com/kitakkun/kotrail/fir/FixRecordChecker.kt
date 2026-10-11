@@ -14,8 +14,9 @@ import org.jetbrains.kotlin.fir.declarations.FirFile
 object FixRecordChecker : FirFileChecker(MppCheckerKind.Common) {
     context(context: CheckerContext, reporter: DiagnosticReporter)
     override fun check(declaration: FirFile) {
-        val directory = context.session.kotrailConfig.fixesDir ?: return
+        val directories = context.session.kotrailConfig.fixesDirs
+        if (directories.isEmpty()) return
         val path = declaration.sourceFile?.path ?: return
-        FixRecords.begin(directory, path)
+        FixRecords.begin(directories, path)
     }
 }

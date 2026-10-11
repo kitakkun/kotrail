@@ -17,6 +17,11 @@ class FixEdit(val startOffset: Int, val endOffset: Int, val replacement: String)
 /**
  * Records the fixes of every compilation under the directory the `fixesDir` option names, one
  * record per source file, so that a later `kotrailFix` can apply them without compiling again.
+ * The same records go under the directory of `fixesTaskOutputDir` as well. A build tool can roll
+ * the outputs of a compile task back, as Kotlin's Gradle plugin does when an incremental
+ * compilation fails, and the records of the findings that failed it would go with them: the
+ * Gradle plugin keeps `fixesDir` out of the task's outputs, and declares `fixesTaskOutputDir` as
+ * one, so that the build cache brings the records along with the classes.
  *
  * A record is `<sha1 of the path>.jsonl`. Its first line names the file and the SHA-256 of its
  * content at the time it was compiled; each following line is one fix,
@@ -31,17 +36,19 @@ class FixEdit(val startOffset: Int, val endOffset: Int, val replacement: String)
 object FixRecords {
     private val lock = Any()
 
-    /** Starts the record of [file] afresh, with its current content hash. */
-    fun begin(directory: String, file: String) {
+    /** Starts the record of [file] afresh in each of [directories], with its current content hash. */
+    fun begin(directories: List<String>, file: String) {
         val content = runCatching { File(file).readBytes() }.getOrNull() ?: return
         val header = "{\"file\": ${quote(file)}, \"hash\": \"${sha256(content)}\"}\n"
         synchronized(lock) {
-            recordFor(directory, file).apply { parentFile?.mkdirs() }.writeText(header)
+            for (directory in directories) {
+                recordFor(directory, file).apply { parentFile?.mkdirs() }.writeText(header)
+            }
         }
     }
 
-    /** Appends to the record of [file] the fix of [diagnostic], reported by the rule keyed [rule]. */
-    fun write(directory: String, file: String, rule: String, diagnostic: String, edits: List<FixEdit>) {
+    /** Appends to the record of [file] in each of [directories] the fix of [diagnostic], reported by the rule keyed [rule]. */
+    fun write(directories: List<String>, file: String, rule: String, diagnostic: String, edits: List<FixEdit>) {
         val line = buildString {
             append("{\"rule\": ").append(quote(rule))
             append(", \"diagnostic\": ").append(quote(diagnostic))
@@ -55,9 +62,10 @@ object FixRecords {
             append("]}\n")
         }
         synchronized(lock) {
-            val record = recordFor(directory, file)
-            if (!record.isFile) return
-            record.appendText(line)
+            for (directory in directories) {
+                val record = recordFor(directory, file)
+                if (record.isFile) record.appendText(line)
+            }
         }
     }
 

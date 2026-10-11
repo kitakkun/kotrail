@@ -16,10 +16,16 @@ import java.security.MessageDigest
 /**
  * Applies the fixes the compiler plugin recorded during the last compilation of each source
  * file, without compiling again. Every Kotlin compilation of the project writes one record per
- * source file under [fixesDirectory] (see `FixRecords` in the compiler plugin): the file's
- * content hash at compile time, then the fixes. A record whose hash does not match the file as
- * it was when this task started is stale (the file changed since it was compiled, or an earlier
- * run fixed it) and is left for the next compilation to refresh.
+ * source file (see `FixRecords` in the compiler plugin): the file's content hash at compile time,
+ * then the fixes. It writes each record twice (see `wireFixRecords` in [KotrailGradlePlugin]):
+ * under [latestFixesDirectory], where the records of a compilation that failed stay, and under
+ * [taskOutputFixesDirectory], which a compilation restored from the build cache brings back.
+ *
+ * Of a compilation's two records of a file, the latest one is used when its hash matches the file
+ * as it was when this task started, and otherwise the task output's when that one's does. The
+ * two are never merged: they may come from compilations with different settings. A record whose
+ * hash does not match is stale (the file changed since it was compiled, or an earlier run fixed
+ * it) and is left for the next compilation to refresh.
  *
  * A multiplatform source file has one record per target compilation; records that agree (same
  * hash, same edits) are one set of fixes, applied once. Each fix is applied whole or not at all,
@@ -36,9 +42,13 @@ import java.security.MessageDigest
  */
 @UntrackedTask(because = "It edits the project's sources in place and must run every time it is asked to")
 abstract class KotrailFixTask : DefaultTask() {
-    /** Where the compilations record their fixes; absent in a project that compiled nothing. */
+    /** Where the compilations record their fixes outside every task's outputs; absent in a project that compiled nothing. */
     @get:Internal
-    abstract val fixesDirectory: DirectoryProperty
+    abstract val latestFixesDirectory: DirectoryProperty
+
+    /** Where the compile tasks keep the same records as an output of theirs; absent in a project that compiled nothing. */
+    @get:Internal
+    abstract val taskOutputFixesDirectory: DirectoryProperty
 
     /** The project the file paths in the output are relative to. */
     @get:Internal
@@ -53,48 +63,47 @@ abstract class KotrailFixTask : DefaultTask() {
     @TaskAction
     fun apply() {
         val selectedRules = rules.orNull?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }?.toSet().orEmpty()
-        val directory = fixesDirectory.get().asFile
-        val records = if (directory.isDirectory) directory.walkTopDown().filter { it.isFile && it.extension == "jsonl" }.sortedBy { it.path }.toList() else emptyList()
+        fun isSelected(fix: Fix): Boolean = selectedRules.isEmpty() || fix.isOfRules(selectedRules)
+        val latest = readRecords(latestFixesDirectory.get().asFile)
+        val taskOutput = readRecords(taskOutputFixesDirectory.get().asFile)
+        val keysByFile = (latest.keys + taskOutput.keys).sorted().groupBy { key -> (latest[key] ?: taskOutput.getValue(key)).file }
 
-        // Every record of one file, keyed by the file; the hash each record was taken against comes along.
-        val recordsByFile = linkedMapOf<String, MutableList<Record>>()
+        val fixesByFile = linkedMapOf<String, List<Fix>>()
         var fixes = 0
         val recordedRules = sortedSetOf<String>()
-        for (recordFile in records) {
-            val lines = recordFile.readLines().filter { it.isNotBlank() }
-            if (lines.size < 2) continue
-            val header = JsonSlurper().parseText(lines.first()) as Map<*, *>
-            val allRecorded = lines.drop(1).map { line ->
-                val fix = JsonSlurper().parseText(line) as Map<*, *>
-                Fix(
-                    fix["rule"] as String?,
-                    (fix["edits"] as List<*>).map { edit ->
-                        edit as Map<*, *>
-                        Edit((edit["start"] as Number).toInt(), (edit["end"] as Number).toInt(), edit["replacement"] as String)
-                    },
-                )
+        var stale = 0
+        for ((path, keys) in keysByFile) {
+            val file = File(path)
+            if (!file.isFile) continue
+            val currentHash = sha256(file.readBytes())
+            val currentFixes = mutableListOf<Fix>()
+            var hasStaleFixes = false
+            for (key in keys) {
+                val records = listOfNotNull(latest[key], taskOutput[key])
+                val current = records.firstOrNull { it.hash == currentHash }
+                for (record in if (current == null) records else listOf(current)) {
+                    record.fixes.mapNotNullTo(recordedRules) { it.rule }
+                    fixes += record.fixes.count(::isSelected)
+                }
+                if (current != null) {
+                    currentFixes += current.fixes.filter(::isSelected)
+                } else if (records.any { record -> record.fixes.any(::isSelected) }) {
+                    hasStaleFixes = true
+                }
             }
-            allRecorded.mapNotNullTo(recordedRules) { it.rule }
-            val recorded = allRecorded.filter { fix -> selectedRules.isEmpty() || fix.isOfRules(selectedRules) }
-            if (recorded.isEmpty()) continue
-            fixes += recorded.size
-            recordsByFile.getOrPut(header["file"] as String) { mutableListOf() } += Record(header["hash"] as String, recorded)
+            when {
+                currentFixes.isNotEmpty() -> fixesByFile[path] = currentFixes
+                hasStaleFixes -> stale++
+            }
         }
 
         var applied = 0
         val appliedByRule = linkedMapOf<String, Int>()
         var skipped = 0
-        var stale = 0
         var changedFiles = 0
-        for ((path, fileRecords) in recordsByFile) {
+        for ((path, fileFixes) in fixesByFile) {
             val file = File(path)
-            val currentHash = if (file.isFile) sha256(file.readBytes()) else null
-            val current = fileRecords.filter { it.hash == currentHash }
-            if (current.isEmpty()) {
-                stale++
-                continue
-            }
-            val distinct = current.flatMap { it.fixes }.distinctBy { fix -> fix.edits.map { Triple(it.start, it.end, it.replacement) } }
+            val distinct = fileFixes.distinctBy { fix -> fix.edits.map { Triple(it.start, it.end, it.replacement) } }
             val selection = selectEdits(distinct)
             skipped += selection.skippedFixes
 
@@ -148,7 +157,39 @@ abstract class KotrailFixTask : DefaultTask() {
     private fun sha256(bytes: ByteArray): String =
         MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
 
-    private class Record(val hash: String, val fixes: List<Fix>)
+    /**
+     * The records under [directory], by their path relative to it: `jvm-main/<sha1 of the source
+     * path>.jsonl` is one compilation's record of one source file, at the same path in either
+     * directory.
+     */
+    private fun readRecords(directory: File): Map<String, Record> {
+        if (!directory.isDirectory) return emptyMap()
+        return directory.walkTopDown()
+            .filter { it.isFile && it.extension == "jsonl" }
+            .mapNotNull { recordFile -> readRecord(recordFile)?.let { recordFile.relativeTo(directory).invariantSeparatorsPath to it } }
+            .toMap()
+    }
+
+    /** The record in [recordFile], or null for an empty file. A record with its header alone has no fixes. */
+    private fun readRecord(recordFile: File): Record? {
+        val lines = recordFile.readLines().filter { it.isNotBlank() }
+        if (lines.isEmpty()) return null
+        val header = JsonSlurper().parseText(lines.first()) as Map<*, *>
+        val fixes = lines.drop(1).map { line ->
+            val fix = JsonSlurper().parseText(line) as Map<*, *>
+            Fix(
+                fix["rule"] as String?,
+                (fix["edits"] as List<*>).map { edit ->
+                    edit as Map<*, *>
+                    Edit((edit["start"] as Number).toInt(), (edit["end"] as Number).toInt(), edit["replacement"] as String)
+                },
+            )
+        }
+        return Record(header["file"] as String, header["hash"] as String, fixes)
+    }
+
+    /** One compilation's record of [file]: the hash of the file it was taken against, and every fix it holds. */
+    private class Record(val file: String, val hash: String, val fixes: List<Fix>)
 
     private companion object {
         /** How an edit from a record written without a rule key is counted. */

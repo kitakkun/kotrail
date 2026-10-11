@@ -628,8 +628,10 @@ data class KotrailTest(
  */
 data class KotrailConfig(
     val enabled: Boolean,
-    /** Directory of the per-file fix records, or `null` to record none (the `fixesDir` plugin option). */
+    /** Directory of the per-file fix records, or `null` to record none there (the `fixesDir` plugin option). */
     val fixesDir: String?,
+    /** A second directory of the same fix records, or `null` for none (the `fixesTaskOutputDir` plugin option). */
+    val fixesTaskOutputDir: String?,
     /** Directory of the per-file composable records, or `null` to record none (the `composablesDir` plugin option). */
     val composablesDir: String?,
     /** Composable records of associated compilations, for preview coverage (the `associatedComposablesDir` plugin option). */
@@ -715,6 +717,9 @@ data class KotrailConfig(
 
     /** Whether the rule's fixes are recorded for `kotrailFix`; the diagnostic is reported either way. */
     fun fixEnabled(rule: KotrailRule): Boolean = fixes[rule] ?: true
+
+    /** Every directory a fix record goes to: [fixesDir] and [fixesTaskOutputDir], those that are set. */
+    val fixesDirs: List<String> get() = listOfNotNull(fixesDir, fixesTaskOutputDir)
 
     companion object {
         const val DEFAULT_COMPOSE_MAX_NESTING = 5
@@ -1079,6 +1084,7 @@ data class KotrailConfig(
             )
             Reader(tree).read().copy(
                 fixesDir = configuration.get(KotrailConfigurationKeys.FIXES_DIR),
+                fixesTaskOutputDir = configuration.get(KotrailConfigurationKeys.FIXES_TASK_OUTPUT_DIR),
                 composablesDir = configuration.get(KotrailConfigurationKeys.COMPOSABLES_DIR),
                 associatedComposablesDirs = configuration.get(KotrailConfigurationKeys.ASSOCIATED_COMPOSABLES_DIRS).orEmpty(),
                 unloadableDir = configuration.get(KotrailConfigurationKeys.UNLOADABLE_DIR),
@@ -1342,6 +1348,7 @@ data class KotrailConfig(
             return KotrailConfig(
                 enabled = boolean(tree, "enabled") ?: true,
                 fixesDir = null,
+                fixesTaskOutputDir = null,
                 composablesDir = null,
                 complexityDir = null,
                 associatedComposablesDirs = emptyList(),
