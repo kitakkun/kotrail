@@ -144,7 +144,7 @@ object UnguardedBoundaryChecker : FirTryExpressionChecker(MppCheckerKind.Common)
 
         val types = catches.joinToString(", ") { it.parameter.returnTypeRef.coneType.classId?.shortClassName?.asString() ?: "?" }
         val remedy = if (boundary.isCoroutine()) {
-            "Catch Exception as well and log or report it, or hand the scope a CoroutineExceptionHandler"
+            "Catch Exception here as well and log or report it, or install a CoroutineExceptionHandler where the scope is created"
         } else {
             "Catch Exception as well and log or report it"
         }

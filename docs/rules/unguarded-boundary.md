@@ -31,8 +31,8 @@ Android, it ends the process), and the work stops.
 
 ## What it asks for
 
-A broad clause after the narrow ones that logs or reports what nothing else names, or a
-`CoroutineExceptionHandler` on the scope:
+A broad clause after the narrow ones that logs or reports what nothing else names, or, where the
+code creates the scope, a `CoroutineExceptionHandler` on it:
 
 ```kotlin
 try {
@@ -142,8 +142,10 @@ back by an incremental compilation: a library, or another module of the same bui
   file without the callee's, until a build compiles both again.
 
 The message reads: *This catch at a boundary handles only 'IOException': any other failure from
-'OutputStream.write' ends 'launch' here, and only the default handler sees it. Catch Exception as
-well and log or report it, or hand the scope a CoroutineExceptionHandler.* The last clause is
+'OutputStream.write' ends 'launch' here, and only the default handler sees it. Catch Exception
+here as well and log or report it, or install a CoroutineExceptionHandler where the scope is
+created.* The catch comes first because it is always at hand, while the code that launches often
+does not create the scope (a plugin launching in the scope its host gives it). The last clause is
 there for a coroutine root only; a listener or a thread reads *... ends 'onClick' here, and only
 the default handler sees it. Catch Exception as well and log or report it.*
 
