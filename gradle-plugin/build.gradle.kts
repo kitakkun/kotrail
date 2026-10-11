@@ -99,6 +99,10 @@ tasks.test {
         ":annotations:publishAllPublicationsToTestRepository",
         tasks.named("publishAllPublicationsToTestRepository"),
     )
+    // The consumer builds load the compiler plugin from the test repository, not from this
+    // project's classpath, so its jar is declared as an input: a change to the plugin alone
+    // would otherwise leave this task up to date.
+    inputs.files(project(":compiler-plugin").tasks.named("jar")).withPropertyName("compilerPluginJar").withNormalizer(ClasspathNormalizer::class.java)
     systemProperty("kotrail.test.repo", rootProject.layout.buildDirectory.dir("test-repo").get().asFile.absolutePath)
     systemProperty("kotrail.test.kotlinVersion", kotlinCompilerVersion)
     systemProperty("kotrail.test.version", project.version.toString())
