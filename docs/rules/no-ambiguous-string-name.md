@@ -188,7 +188,7 @@ restating the table.
 
 - `kinds`, `extraKinds`: a mapping of kind names to their words, the first word the suggested
   suffix. An `extraKinds` entry named like an existing kind adds its words to that kind, after
-  its own; a new name adds a kind, which the message calls "text of kind '<name>'". A default
+  its own; a new name adds a kind, which the message calls `text of kind '<name>'`. A default
   API whose kind a replaced `kinds` leaves out is dropped.
 - `apis`, `extraApis`: a list of `<kind>:<fully qualified name>` entries, a constructor named by
   its class (`java.net.URI`), a member by its class (`java.sql.Statement.executeQuery`), a
