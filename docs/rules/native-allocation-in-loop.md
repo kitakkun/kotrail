@@ -50,7 +50,8 @@ frame in a 512 MB heap reached 189 GB of native memory before the machine gave o
   `callbacks`, which runs once per item or frame (`collect`, `onEach`, `withFrameNanos`,
   `repeat`, `forEach`, ...).
 - It is not the receiver of `use { }`, directly or through `apply`, `also`, `let`, `run`,
-  `takeIf`, `takeUnless`.
+  `takeIf`, `takeUnless`, or through `!!`, `checkNotNull` and `requireNotNull`, which hand a
+  nullable factory result on unchanged (`checkNotNull(surface.makeImageSnapshot()).use { }`).
 
 The result being kept in a property declared outside the loop does not quiet the rule: the
 previous instance is dropped unclosed just the same.
@@ -76,9 +77,11 @@ for (frame in frames) {
 
 The rule summarizes what each function lets out: a function allocates when its body creates one
 of the listed types or calls a factory, or calls a function that allocates, and the object is
-neither the receiver of `use { }` nor a local the body closes with `close()`. A call in a loop to
-such a function is reported at the call, with the path to the allocation (`decode > newBitmap`),
-unless the result is itself the receiver of `use { }`. In this module the summary comes from
+neither the receiver of `use { }` nor a local the body closes with `close()` or `use { }`, the
+not-null checks above passed through in both cases (`val image = checkNotNull(snapshot())`
+followed by `image.use { }` closes it). A call in a loop to such a function is reported at the
+call, with the path to the allocation (`decode > newBitmap`), unless the result is itself the
+receiver of `use { }`. In this module the summary comes from
 the body; for callers in other modules it is written as a `nativeAllocation` fact
 (`types = ["Bitmap"], path = ["newBitmap"]`): into the module's facts file on the JVM and
 Android, as `@InferredNativeAllocation` in a klib, with no artifact needed (see
@@ -102,4 +105,5 @@ Not covered: producers that never stop.
 [Inferred metadata](../inferred-metadata.md). The loop test walks
 the checker context's containing elements for a loop or for a lambda whose enclosing call is a
 listed callback; the `use` test walks them in the other direction while each parent is a call
-whose explicit receiver is the previous element.
+whose explicit receiver is the previous element, or a `!!` (`FirCheckNotNullCall`),
+`checkNotNull` or `requireNotNull` whose argument it is.

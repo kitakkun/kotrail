@@ -18,6 +18,8 @@ import org.jetbrains.kotlin.fir.declarations.utils.isInline
 import org.jetbrains.kotlin.fir.expressions.resolvedArgumentMapping
 import org.jetbrains.kotlin.fir.expressions.FirAnonymousFunctionExpression
 import org.jetbrains.kotlin.fir.expressions.FirAnonymousObjectExpression
+import org.jetbrains.kotlin.fir.expressions.FirArgumentList
+import org.jetbrains.kotlin.fir.expressions.FirCheckNotNullCall
 import org.jetbrains.kotlin.fir.expressions.FirElvisExpression
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
@@ -58,11 +60,12 @@ import org.jetbrains.kotlin.types.AbstractTypeChecker
  * A function allocates when its body (the lambdas of inline functions such as `synchronized`
  * and `run` included, since they run in place; every other lambda aside) creates one of `nativeAllocation.types`
  * or calls one of its `factories`, or calls a function that allocates, and the object is
- * neither the receiver of `use { }` (through scope functions), nor a local that the body closes
- * with `close()`, nor the memo of `cached ?: Bitmap().also { cached = it }`, which is created
- * once and kept. For a declaration on the classpath the `@InferredNativeAllocation` metadata
- * the plugin wrote is read; a library without it is taken as not allocating. Results are
- * memoized per symbol; a recorder warms the cache so that the IR writer only reads it.
+ * neither the receiver of `use { }` (through scope functions, `!!`, `checkNotNull` and
+ * `requireNotNull`), nor a local that the body closes with `close()`, nor the memo of
+ * `cached ?: Bitmap().also { cached = it }`, which is created once and kept. For a declaration
+ * on the classpath the `@InferredNativeAllocation` metadata the plugin wrote is read; a library
+ * without it is taken as not allocating. Results are memoized per symbol; a recorder warms the
+ * cache so that the IR writer only reads it.
  */
 class NativeAllocationService(session: FirSession) : InferredFactService<FirNamedFunctionSymbol, NativeAllocationService.Allocation?>(session) {
     override val rules: List<KotrailRule> get() = listOf(KotrailRule.NATIVE_ALLOCATION_IN_LOOP)
@@ -217,6 +220,8 @@ class NativeAllocationService(session: FirSession) : InferredFactService<FirName
             var current: FirElement = allocation
             for (parent in ancestors.asReversed()) {
                 when {
+                    parent.holdsArgument(current) -> continue
+                    parent.checkedValue() === current -> current = parent
                     parent is FirReturnExpression && parent.result.unwrapped() === current -> return "returns"
                     parent is FirVariableAssignment && parent.rValue.unwrapped() === current ->
                         return if ((parent.lValue as? FirPropertyAccessExpression)?.calleeReference?.toResolvedCallableSymbol()?.let { it is FirPropertySymbol && !it.isLocal } == true) "keeps" else "lets go of"
@@ -257,16 +262,19 @@ class NativeAllocationService(session: FirSession) : InferredFactService<FirName
 
         /**
          * `Bitmap().apply { }.also { }` is the `Bitmap()` call; so is `factory()?.let { }`, and
-         * `factory() ?: error("...")`, which only narrows the nullable result.
+         * `factory() ?: error("...")`, `factory()!!` and `checkNotNull(factory())`, which only
+         * narrow the nullable result.
          */
         private fun unwrapScopeChain(expression: FirExpression): FirExpression {
             var current = expression.unwrapped()
             while (true) {
                 current = when (current) {
+                    is FirCheckNotNullCall -> current.checkedValue() ?: return current
                     is FirFunctionCall -> when (current.fqName()) {
                         in SCOPE_FUNCTIONS -> current.explicitReceiver?.unwrapped() ?: return current
                         // `bitmap.use { it.encodeToData() }`: the value is what the lambda ends with.
                         in RESULT_OF_LAMBDA -> current.lambdaResult() ?: return current
+                        in NOT_NULL_CHECKS -> current.checkedValue() ?: return current
                         else -> return current
                     }
                     is FirSafeCallExpression -> if ((current.selector as? FirFunctionCall)?.fqName() in SCOPE_FUNCTIONS) current.receiver.unwrapped() else return current
@@ -288,16 +296,32 @@ class NativeAllocationService(session: FirSession) : InferredFactService<FirName
 
     private fun FirFunctionCall.fqName(): String? = calleeReference.toResolvedCallableSymbol()?.callableId?.asSingleFqName()?.asString()
 
+    /** The value `x!!`, `checkNotNull(x)` or `requireNotNull(x)` hands back unchanged; null for any other element. */
+    private fun FirElement.checkedValue(): FirExpression? = when {
+        this is FirCheckNotNullCall -> argumentList.arguments.firstOrNull()?.unwrapped()
+        this is FirFunctionCall && fqName() in NOT_NULL_CHECKS -> argumentList.arguments.firstOrNull()?.unwrapArgument()?.unwrapped()
+        else -> null
+    }
+
+    /** Whether this is the argument list holding [argument], which stands between a call and its argument among the parents. */
+    private fun FirElement.holdsArgument(argument: FirElement): Boolean =
+        this is FirArgumentList && arguments.any { it.unwrapArgument().unwrapped() === argument }
+
     /**
      * Whether [allocation] is the receiver of `use { }` among [parents] (innermost first): directly,
-     * through scope functions (`Bitmap().apply { }.use { }`), or through a safe call on a nullable
-     * factory result (`encodeToData()?.use(Data::bytes)`). Shared with the loop checker, which
-     * walks the checker context's containing elements the same way.
+     * through scope functions (`Bitmap().apply { }.use { }`), through `!!`, `checkNotNull` or
+     * `requireNotNull` (`checkNotNull(encodeToData()).use { }`), or through a safe call on a
+     * nullable factory result (`encodeToData()?.use(Data::bytes)`). Shared with the loop checker,
+     * which walks the checker context's containing elements the same way.
      */
     fun isClosedByUse(allocation: FirFunctionCall, parents: List<FirElement>): Boolean {
         var current: FirElement = allocation
         for (parent in parents) {
-            if (parent === current) continue
+            if (parent === current || parent.holdsArgument(current)) continue
+            if (parent.checkedValue() === current) {
+                current = parent
+                continue
+            }
             val call = when {
                 parent is FirSafeCallExpression && parent.receiver.unwrapped() === current -> parent.selector as? FirFunctionCall ?: return false
                 parent is FirFunctionCall && parent.explicitReceiver?.unwrapped() === current -> parent
@@ -327,6 +351,9 @@ class NativeAllocationService(session: FirSession) : InferredFactService<FirName
         /** Calls whose value is their lambda's last expression: what a `use`, `let` or `run` hands back. */
         private val RESULT_OF_LAMBDA = USE + setOf("kotlin.let", "kotlin.run", "kotlin.with")
         val SCOPE_FUNCTIONS = setOf("kotlin.apply", "kotlin.also", "kotlin.let", "kotlin.run", "kotlin.takeIf", "kotlin.takeUnless")
+
+        /** Calls that hand back their argument unchanged once it is known not to be null, as `!!` does. */
+        private val NOT_NULL_CHECKS = setOf("kotlin.checkNotNull", "kotlin.requireNotNull")
     }
 }
 

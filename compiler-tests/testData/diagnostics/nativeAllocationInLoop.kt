@@ -103,8 +103,50 @@ class Decoder(private val frames: List<Frame>) {
         val data = Bitmap().use { it.encodeToData() } ?: error("no data")
         return data.use { it.bytes.copyOf() }
     }
+
+    // Not reported: `!!`, `checkNotNull` and `requireNotNull` hand the nullable factory result on to `use` unchanged,
+    // here in the loop and in a helper that keeps it in a local first.
+    fun encodeThroughAssertions(bitmap: Bitmap) {
+        for (frame in frames) {
+            bitmap.encodeToData()!!.use { it.bytes.size }
+            checkNotNull(bitmap.encodeToData()).use { it.bytes.size }
+            checkNotNull(bitmap.encodeToData()) { "no data" }.use { it.bytes.size }
+            requireNotNull(bitmap.encodeToData()).use { it.bytes.size }
+            requireNotNull(bitmap.encodeToData()) { "no data" }.use { it.bytes.size }
+            encodeChecked(bitmap)
+            encodeRequired(bitmap)
+            encodeAsserted(bitmap)
+        }
+    }
+
+    fun encodeChecked(bitmap: Bitmap): Int {
+        val data = checkNotNull(bitmap.encodeToData())
+        return data.use { it.bytes.size }
+    }
+
+    fun encodeRequired(bitmap: Bitmap): Int {
+        val data = requireNotNull(bitmap.encodeToData()) { "no data" }
+        return data.use { it.bytes.size }
+    }
+
+    fun encodeAsserted(bitmap: Bitmap): Int {
+        val data = bitmap.encodeToData()!!
+        return data.use { it.bytes.size }
+    }
+
+    // Reported: passed through `checkNotNull` or `requireNotNull` and never closed, here or in a helper.
+    fun encodeUnclosed(bitmap: Bitmap) {
+        for (frame in frames) {
+            keep(checkNotNull(<!KOTRAIL_NATIVE_ALLOCATION_IN_LOOP!>bitmap.encodeToData()<!>))
+            keep(<!KOTRAIL_NATIVE_ALLOCATION_THROUGH_CALL_IN_LOOP!>encodeKept(bitmap)<!>)
+        }
+    }
+
+    fun encodeKept(bitmap: Bitmap): Data = requireNotNull(bitmap.encodeToData())
+
+    fun keep(data: Data) {}
 }
 
-/* GENERATED_FIR_TAGS: assignment, classDeclaration, comparisonExpression, flexibleType, forLoop, functionDeclaration,
-incrementDecrementExpression, integerLiteral, javaFunction, lambdaLiteral, localProperty, nullableType,
-primaryConstructor, propertyDeclaration, whileLoop */
+/* GENERATED_FIR_TAGS: assignment, callableReference, checkNotNullCall, classDeclaration, comparisonExpression,
+elvisExpression, flexibleType, forLoop, functionDeclaration, incrementDecrementExpression, integerLiteral, javaFunction,
+lambdaLiteral, localProperty, nullableType, primaryConstructor, propertyDeclaration, safeCall, stringLiteral, whileLoop */

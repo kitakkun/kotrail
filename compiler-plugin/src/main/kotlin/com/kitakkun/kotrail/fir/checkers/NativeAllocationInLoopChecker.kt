@@ -36,9 +36,10 @@ import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
  * counts as such an object is `nativeAllocation.types` (subtypes included) and
  * `nativeAllocation.factories`; a loop is a `for`, `while` or `do` body, or the lambda of a
  * function in `nativeAllocation.callbacks`, which runs once per item or frame. An allocation
- * that is the receiver of `use { }` (directly, or through `apply`/`also`/`let`/`run`) is
- * closed on every path and is left alone. An allocation whose result is kept in a property
- * declared outside the loop is still reported: the previous instance is dropped unclosed.
+ * that is the receiver of `use { }` (directly, or through `apply`/`also`/`let`/`run`, `!!`,
+ * `checkNotNull` or `requireNotNull`) is closed on every path and is left alone. An allocation
+ * whose result is kept in a property declared outside the loop is still reported: the previous
+ * instance is dropped unclosed.
  *
  * The allocation may sit inside a function the loop calls: `publish(decode(frame))` where
  * `decode` builds a `Bitmap` and returns it is the same leak one function away, and is reported
@@ -84,7 +85,8 @@ object NativeAllocationInLoopChecker : FirFunctionCallChecker(MppCheckerKind.Com
 
     /**
      * Whether [allocation] is the receiver of a `use` call, directly or through a chain of scope
-     * functions whose receiver it is: `Bitmap().apply { }.use { }`.
+     * functions and not-null checks it passes through: `Bitmap().apply { }.use { }`,
+     * `checkNotNull(image.encodeToData()).use { }`.
      */
     private fun CheckerContext.isClosedByUse(allocation: FirFunctionCall): Boolean =
         session.nativeAllocationService.isClosedByUse(allocation, containingElements.asReversed())
