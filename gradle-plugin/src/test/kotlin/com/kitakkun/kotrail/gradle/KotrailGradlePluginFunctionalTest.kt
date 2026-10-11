@@ -389,6 +389,114 @@ class KotrailGradlePluginFunctionalTest {
     }
 
     @Test
+    fun `kotrailFix imports the library class a type-qualified reference names`() {
+        writeSettings(include = listOf("graphics"))
+        writeFile("kotrail.yaml", "severity: warning\n")
+        writeBuild(
+            """
+            dependencies {
+                implementation(project(":graphics"))
+            }
+
+            kotrail {
+                configFile = file("kotrail.yaml")
+            }
+            """.trimIndent(),
+        )
+        writeFile("graphics/build.gradle.kts", "plugins {\n    kotlin(\"jvm\")\n}\n\nrepositories {\n    mavenCentral()\n}\n\nkotlin {\n    jvmToolchain(21)\n}\n")
+        writeFile(
+            "graphics/src/main/kotlin/androidx/compose/ui/geometry/Rect.kt",
+            "package androidx.compose.ui.geometry\n\nclass Rect(val left: Float, val top: Float, val right: Float, val bottom: Float)\n",
+        )
+        writeFile(
+            "graphics/src/main/kotlin/androidx/compose/ui/graphics/Canvas.kt",
+            """
+            package androidx.compose.ui.graphics
+
+            import androidx.compose.ui.geometry.Rect
+
+            class Brush
+
+            class Color(val value: Long)
+
+            class Paint
+
+            interface Canvas {
+                fun saveLayer(bounds: Rect, paint: Paint)
+                fun restore()
+            }
+            """.trimIndent(),
+        )
+        writeFile(
+            "graphics/src/main/kotlin/androidx/compose/ui/graphics/drawscope/DrawScope.kt",
+            """
+            package androidx.compose.ui.graphics.drawscope
+
+            import androidx.compose.ui.graphics.Canvas
+
+            interface DrawScope {
+                val canvas: Canvas
+            }
+
+            inline fun DrawScope.drawIntoCanvas(block: (Canvas) -> Unit) = block(canvas)
+            """.trimIndent(),
+        )
+        writeFile(
+            "src/main/kotlin/app/gallery/ui/Art.kt",
+            """
+            package app.gallery.ui
+
+            import androidx.compose.ui.graphics.drawscope.DrawScope
+
+            object PrizeArt {
+                fun DrawScope.prize(time: Double): Double = time
+            }
+            """.trimIndent(),
+        )
+        writeFile(
+            "src/main/kotlin/app/gallery/ui/Shelves.kt",
+            """
+            package app.gallery.ui
+
+            import androidx.compose.ui.geometry.Rect
+            import androidx.compose.ui.graphics.Brush
+            import androidx.compose.ui.graphics.Color
+            import androidx.compose.ui.graphics.Paint
+            import androidx.compose.ui.graphics.drawscope.DrawScope
+            import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+            import app.gallery.ui.PrizeArt.prize
+            import kotlin.math.cos
+
+            internal object Shelves {
+                fun DrawScope.prizeLayer(bounds: Rect, time: Double): List<Any> {
+                    drawIntoCanvas { it.saveLayer(bounds, Paint()) }
+                    val shade = prize(cos(time))
+                    drawIntoCanvas { it.restore() }
+                    return listOf(Brush(), Color(0), shade)
+                }
+            }
+            """.trimIndent(),
+        )
+
+        val compiled = runBuild("compileKotlin")
+        assertEquals(TaskOutcome.SUCCESS, compiled.task(":compileKotlin")?.outcome, compiled.output)
+        assertTrue(compiled.output.contains("KOTRAIL_PREFER_FUNCTION_REFERENCE"), compiled.output)
+
+        val fixed = runBuild("kotrailFix")
+        assertEquals(TaskOutcome.SUCCESS, fixed.task(":kotrailFix")?.outcome, fixed.output)
+        val text = File(projectDir, "src/main/kotlin/app/gallery/ui/Shelves.kt").readText()
+        assertTrue(text.contains("        drawIntoCanvas(Canvas::restore)\n"), text)
+        assertTrue(
+            text.contains("import androidx.compose.ui.graphics.Brush\nimport androidx.compose.ui.graphics.Canvas\nimport androidx.compose.ui.graphics.Color\n"),
+            text,
+        )
+
+        val recompiled = runBuild("compileKotlin")
+        assertEquals(TaskOutcome.SUCCESS, recompiled.task(":compileKotlin")?.outcome, recompiled.output)
+        assertFalse(recompiled.output.contains("KOTRAIL_PREFER_FUNCTION_REFERENCE"), recompiled.output)
+    }
+
+    @Test
     fun `a preview compilation checks the coverage of the main it is associated with`() {
         writeSettings()
         writeFile("kotrail.yaml", "severity: warning\nrules:\n  compose.previewRequired: off\n")

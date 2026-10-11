@@ -129,8 +129,9 @@ function, both are inlined.
 ## Fixtures
 
 `compiler-tests/testData/diagnostics/preferFunctionReferences.kt`,
-`compiler-tests/testData/diagnostics/preferFunctionReferencesImports.kt` (with the fixes in
-`preferFunctionReferencesImports.fixes.txt`),
+`compiler-tests/testData/diagnostics/preferFunctionReferencesImports.kt` and
+`compiler-tests/testData/diagnostics/preferFunctionReferencesLibraryImports.kt` (each with its
+`.fixes.txt`),
 `compiler-tests/testData/diagnostics/preferFunctionReferencesOperators.kt` and
 `compiler-tests/testData/diagnostics/preferFunctionReferencesFactories.kt` (each with its
 `.fixes.txt`), `compiler-tests/testData/diagnostics/config/functionReferenceIgnoredFunctions.kt`
