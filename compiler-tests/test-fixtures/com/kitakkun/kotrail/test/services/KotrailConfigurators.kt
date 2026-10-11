@@ -44,6 +44,9 @@ object KotrailTestDirectives : SimpleDirectivesContainer() {
         description = "Kotrail plugin options as key=value pairs, comma separated",
         multiLine = true,
     )
+
+    /** Records the module's fixes and compares them with `<test>.fixes.txt`; see [FixRecordsDumpChecker]. */
+    val DUMP_KOTRAIL_FIXES by directive("Compare the fixes the module records with <test>.fixes.txt")
 }
 
 /** Applies `KOTRAIL_CONFIG` directives and registers the plugin's FIR and IR extensions inside the test compiler. */
@@ -60,6 +63,9 @@ internal class KotrailExtensionRegistrarConfigurator(testServices: TestServices)
         configuration.put(KotrailConfigurationKeys.FACTS_OUT, testServices.factsFileFor(module).path)
         for (dependency in module.allDependencies) {
             configuration.add(KotrailConfigurationKeys.FACTS, testServices.factsFileFor(dependency.dependencyModule).path)
+        }
+        if (KotrailTestDirectives.DUMP_KOTRAIL_FIXES in module.directives) {
+            configuration.put(KotrailConfigurationKeys.FIXES_DIR, testServices.fixesDirFor(module).path)
         }
 
         // Every rule starts off and a fixture opts in to the ones it exercises. Fixtures then say
@@ -108,6 +114,9 @@ internal class TestDataRuntimeClasspathProvider(testServices: TestServices) : Ru
 /** Where the facts file of [module] goes: `<module>.facts` in a temporary directory of the module's own. */
 internal fun TestServices.factsFileFor(module: TestModule): File =
     File(getOrCreateTempDirectory("module_${module.name}_facts"), FactsFile.fileName(module.name))
+
+/** Where [module] records its fixes when the test asks for them: a temporary directory of the module's own. */
+internal fun TestServices.fixesDirFor(module: TestModule): File = getOrCreateTempDirectory("module_${module.name}_fixes")
 
 private fun testDataClasspath(): List<File> {
     val classpath = System.getProperty("kotrail.test.classpath")

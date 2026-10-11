@@ -1,5 +1,6 @@
 package com.kitakkun.kotrail.test.runners
 
+import com.kitakkun.kotrail.test.services.FixRecordsDumpChecker
 import com.kitakkun.kotrail.test.services.TestDataOverlay
 import com.kitakkun.kotrail.test.services.configureKotrail
 import org.jetbrains.kotlin.test.FirParser
@@ -11,7 +12,10 @@ import org.jetbrains.kotlin.test.services.EnvironmentBasedStandardLibrariesPathP
 import org.jetbrains.kotlin.test.services.KotlinStandardLibrariesPathProvider
 import org.jetbrains.kotlin.test.services.TestPhase
 
-/** FIR diagnostic tests: `<!DIAGNOSTIC!>...<!>` markers in `testData/diagnostics`. */
+/**
+ * FIR diagnostic tests: `<!DIAGNOSTIC!>...<!>` markers in `testData/diagnostics`, and the fixes
+ * recorded, compared with `<test>.fixes.txt`, for a test that asks for them.
+ */
 open class AbstractJvmDiagnosticTest : AbstractFirPhasedDiagnosticTest(FirParser.LightTree) {
     override fun createKotlinStandardLibrariesPathProvider(): KotlinStandardLibrariesPathProvider =
         EnvironmentBasedStandardLibrariesPathProvider
@@ -23,6 +27,7 @@ open class AbstractJvmDiagnosticTest : AbstractFirPhasedDiagnosticTest(FirParser
             +JvmEnvironmentConfigurationDirectives.FULL_JDK
         }
         configureKotrail()
+        useAfterAnalysisCheckers(::FixRecordsDumpChecker)
     }
 
     /** Redirects to the active Kotlin version's override of this fixture, when there is one. */
