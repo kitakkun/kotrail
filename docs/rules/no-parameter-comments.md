@@ -56,6 +56,19 @@ function written with `fun`. Each comment is reported once, on its own range.
 
 - Comments above the declaration, in the body, or trailing a statement.
 - KDoc on the declaration itself.
+- KDoc right before a `val` or `var` of a primary constructor, with nothing but whitespace
+  between them (the parameter's own annotations and modifiers belong to it). That is the
+  property's KDoc, which the IDE and Dokka show like any other property's:
+
+  ```kotlin
+  class Monster(
+      /** The card this monster was read from. */
+      val cardKey: String,
+  )
+  ```
+
+  KDoc on a plain parameter, a `//` or `/* */` comment on a property, KDoc with another comment
+  between it and the property, and a comment trailing a property are still reported.
 - Argument lists at call sites (`f(/* retries */ 3)`); a name is the answer there, and
   [named arguments for repeated types](named-arguments-for-repeated-types.md) covers the case
   where it matters most.
@@ -74,6 +87,10 @@ function written with `fun`. Each comment is reported once, on its own range.
 the file text is scanned with the same `CommentScanner` the comment-length rule uses, and each
 comment is matched against the parameter lists of the file's functions, collected with a FIR
 visitor: from the `(` before the first parameter's source to the `)` after the last, stepping
-over whitespace, commas, and comments. The plugin stays clear of the platform's syntax-tree
-classes, whose relocated names differ between the embeddable compiler and the test framework.
-The report lands on the comment through `CommentRangeAnchor`, shared with the comment-length rule.
+over whitespace, commas, and comments. A primary-constructor parameter with a
+`correspondingProperty` is a property; a KDoc comment is its KDoc when whitespace alone separates
+it from where the parameter begins once the comments its source may start with are stepped over
+(the parser binds the KDoc before a declaration into it). The plugin stays clear of the
+platform's syntax-tree classes, whose relocated names differ between the embeddable compiler and
+the test framework. The report lands on the comment through `CommentRangeAnchor`, shared with
+the comment-length rule.

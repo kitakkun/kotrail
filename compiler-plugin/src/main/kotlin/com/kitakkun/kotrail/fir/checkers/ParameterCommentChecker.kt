@@ -2,6 +2,7 @@ package com.kitakkun.kotrail.fir.checkers
 
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.comments.Comment
+import com.kitakkun.kotrail.comments.CommentKind
 import com.kitakkun.kotrail.comments.CommentScanner
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.kotrailConfig
@@ -12,6 +13,7 @@ import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirFileChecker
+import org.jetbrains.kotlin.fir.correspondingProperty
 import org.jetbrains.kotlin.fir.declarations.FirAnonymousFunction
 import org.jetbrains.kotlin.fir.declarations.FirConstructor
 import org.jetbrains.kotlin.fir.declarations.FirFile
@@ -35,6 +37,12 @@ import org.jetbrains.kotlin.text
  * reordering or a removed parameter leaves it describing the wrong one. `@param retries` in
  * the function's KDoc says the same thing where it is read and stays bound to the name.
  *
+ * KDoc right before a `val` or `var` of a primary constructor is the exception: it is the
+ * property's KDoc, which the IDE and the generated documentation show, and it moves with the
+ * property. Right before means that only whitespace lies between the comment and the
+ * parameter, whose annotations and modifiers belong to it. Any other comment on such a
+ * parameter, and KDoc on any other parameter, is reported.
+ *
  * Comments are not part of FIR, so the file text is scanned for them and each is matched
  * against the parameter lists of the file's declared functions, constructors (the primary one
  * included), and anonymous functions written with `fun`. Lambda parameters are left alone, and
@@ -50,11 +58,13 @@ object ParameterCommentChecker : FirFileChecker(MppCheckerKind.Common) {
         val comments = CommentScanner.scan(text)
         if (comments.isEmpty()) return
 
-        val lists = ParameterListCollector(text, comments).also { declaration.accept(it) }.ranges
+        val collector = ParameterListCollector(text, comments).also { declaration.accept(it) }
+        val lists = collector.ranges
         if (lists.isEmpty()) return
         val anchor = CommentRangeAnchor(source, text, comments)
         for (comment in comments) {
             val list = lists.firstOrNull { comment.startOffset >= it.first && comment.endOffset <= it.last } ?: continue
+            if (comment.kind == CommentKind.KDOC && collector.documentsProperty(comment)) continue
             val range = anchor.elementFor(comment.startOffset, comment.endOffset) ?: continue
             reportKotrail(range, KotrailDiagnostics.COMMENT_IN_PARAMETER_LIST, list.name)
         }
@@ -71,6 +81,19 @@ object ParameterCommentChecker : FirFileChecker(MppCheckerKind.Common) {
         val ranges = mutableListOf<ParameterList>()
         private val commentEnds = comments.associateBy { it.endOffset }
         private val commentStarts = comments.associateBy { it.startOffset }
+
+        /**
+         * Where each `val` / `var` of a primary constructor begins: its first annotation, modifier
+         * or keyword. The parameter's source can start earlier, at the KDoc the parser binds to it.
+         */
+        private val propertyStarts = HashSet<Int>()
+
+        /** Whether [kdoc] is followed by nothing but whitespace up to a property declared in a primary constructor. */
+        fun documentsProperty(kdoc: Comment): Boolean {
+            var p = kdoc.endOffset
+            while (p < text.length && text[p].isWhitespace()) p++
+            return p in propertyStarts
+        }
 
         override fun visitElement(element: FirElement) {
             element.acceptChildren(this)
@@ -99,6 +122,23 @@ object ParameterCommentChecker : FirFileChecker(MppCheckerKind.Common) {
             val open = openingParenthesisBefore(parameters.first().startOffset) ?: return
             val close = closingParenthesisAfter(parameters.last().endOffset) ?: return
             ranges += ParameterList(name, open, close + 1)
+            for (parameter in function.valueParameters) {
+                if (parameter.correspondingProperty == null) continue
+                val parameterSource = parameter.source?.takeUnless { it.kind is KtFakeSourceElementKind } ?: continue
+                propertyStarts += startAfterComments(parameterSource.startOffset)
+            }
+        }
+
+        private fun startAfterComments(offset: Int): Int {
+            var p = offset
+            while (p < text.length) {
+                p = when {
+                    text[p].isWhitespace() -> p + 1
+                    commentStarts[p] != null -> commentStarts.getValue(p).endOffset
+                    else -> return p
+                }
+            }
+            return p
         }
 
         private fun openingParenthesisBefore(offset: Int): Int? {

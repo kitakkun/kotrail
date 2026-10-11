@@ -25,6 +25,38 @@ class Client(
     constructor(host: String <!KOTRAIL_COMMENT_IN_PARAMETER_LIST!>/* defaults the timeout */<!>) : this(host, 1_000)
 }
 
+// Not reported: KDoc right before a property declared in the primary constructor is the property's KDoc,
+// with annotations or modifiers between them or not.
+class Monster(
+    /** The card this monster was read from. */
+    val cardKey: String,
+    /** Hit points left. */
+    var health: Int,
+    /** The name shown on the card. */
+    @Suppress("unused")
+    private val title: String,
+)
+
+// Reported: KDoc on a plain constructor parameter, comments other than KDoc on a property, KDoc with a comment
+// between it and the property, and comments trailing a property.
+class Card(
+    <!KOTRAIL_COMMENT_IN_PARAMETER_LIST!>/** The deck this card was drawn from. */<!>
+    deck: String,
+    <!KOTRAIL_COMMENT_IN_PARAMETER_LIST!>// The cost to play it.<!>
+    val cost: Int,
+    <!KOTRAIL_COMMENT_IN_PARAMETER_LIST!>/* The rarity tier. */<!>
+    val rarity: Int,
+    <!KOTRAIL_COMMENT_IN_PARAMETER_LIST!>/** The artist. */<!>
+    <!KOTRAIL_COMMENT_IN_PARAMETER_LIST!>// credited on the back<!>
+    val artist: String,
+    val power: Int, <!KOTRAIL_COMMENT_IN_PARAMETER_LIST!>// before modifiers<!>
+    val toughness: Int <!KOTRAIL_COMMENT_IN_PARAMETER_LIST!>/** Trailing, not before the next one. */<!>,
+    val flavor: String,
+) {
+    // Reported: KDoc on a secondary constructor's parameter.
+    constructor(<!KOTRAIL_COMMENT_IN_PARAMETER_LIST!>/** The deck. */<!> deck: String) : this(deck, 0, 0, "", 0, 0, "")
+}
+
 // Reported: an anonymous function declared with `fun`.
 val handler = fun(<!KOTRAIL_COMMENT_IN_PARAMETER_LIST!>/* the event */<!> code: Int): Int = code
 
