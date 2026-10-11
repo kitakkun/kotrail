@@ -1,7 +1,7 @@
 # Name says type
 
 **Diagnostic:** `KOTRAIL_NAME_HIDES_TYPE` (error, on the name)
-**Key:** `rules.nameSaysType` (on by default)
+**Key:** `rules.nameSaysType` (**off by default**)
 **Settings:** `scope` (default `members`), `publicParameters` (default `true`), `exempt`, `valueTypes`, `valueSupertypes`, `containers`, `typeSuffixes`, `nameSuffixes` (defaults below)
 **Fix:** none
 
@@ -56,6 +56,20 @@ and `source` read as a request, a string and a source of something, and `process
 list of processes when it is a table. A name that ends with the head noun says what the value is
 wherever it appears, and English puts that word last: a `titleStyle` is a style, a
 `requestedAction` is an action.
+
+## Switching it on
+
+Off by default, for two reasons. Turned on in an existing codebase, it asks for renames at scale,
+hundreds of findings in a mid-size app. And which suffixes a team writes is a naming convention,
+one a team adopts on purpose rather than one a linter should impose. Switch it on where the team
+has agreed to it:
+
+```yaml
+rules:
+  nameSaysType: on
+```
+
+The [settings](#settings) then tune what it checks and which names and types it leaves alone.
 
 ## When it fires
 

@@ -72,7 +72,8 @@ enum class KotrailRule(
     DELAY_FOR_COMPLETION("delayForCompletion", Severity.ERROR),
     NO_ASYNC_WORK_IN_INITIALIZER("noAsyncWorkInInitializer", Severity.ERROR),
     SUPPRESS_REASON("suppressReason", Severity.ERROR),
-    NAME_SAYS_TYPE("nameSaysType", Severity.ERROR),
+    /** Off by default: in an existing codebase it asks for renames at scale, and which suffixes a team writes is a naming convention it adopts on purpose. */
+    NAME_SAYS_TYPE("nameSaysType", Severity.ERROR, defaultEnabled = false),
     NO_SWAP_THROUGH_ALSO("noSwapThroughAlso", Severity.ERROR),
     NO_NULL_STATE_FROM_PARAMETER("noNullStateFromParameter", Severity.ERROR),
     /** The class-shaped finding of the same rule, a warning: nothing can hide an internal class from Java. */

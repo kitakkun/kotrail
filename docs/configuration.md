@@ -3,7 +3,8 @@
 Every rule is on, at error severity, with no configuration at all, except the few whose page
 says "off by default" ([no hardcoded string](rules/compose/no-hardcoded-string.md),
 [no unstable parameter](rules/compose/no-unstable-parameter.md),
-[JvmSynthetic for internal](rules/jvm-synthetic-for-internal.md)). Settings live in a
+[JvmSynthetic for internal](rules/jvm-synthetic-for-internal.md),
+[name says type](rules/name-says-type.md)). Settings live in a
 `kotrail.yaml` that the [Gradle plugin](gradle-plugin.md) points at, and come from three sources;
 later ones win:
 
@@ -140,7 +141,7 @@ own; a rule not listed has none.
 | `suppressReason` | `annotations` | `[kotlin.Suppress, android.annotation.SuppressLint]` | Suppression annotations whose use must carry a reason in a comment on the same line or the line above. Replaces the default list. |
 | | `ids` | `[*]` | Globs over the suppressed ids (the annotation's string arguments); an annotation is checked when one of its ids matches and is not exempt. Replaces the default list. |
 | | `exemptIds` | `[unused, UNUSED, UNUSED_*]` | Globs over ids that owe no reason; an annotation whose ids all match one is skipped, while one that mixes in another id is checked. Replaces the default list. |
-| `nameSaysType` | `scope` | `members` | `members`: member properties and the value parameters of constructors and member or top-level functions; `all`: also top-level properties, locals, local functions' and lambdas' parameters. |
+| `nameSaysType` (off by default) | `scope` | `members` | `members`: member properties and the value parameters of constructors and member or top-level functions; `all`: also top-level properties, locals, local functions' and lambdas' parameters. |
 | | `publicParameters` | `true` | Whether the value parameters of public and protected functions and constructors are checked, a public constructor's `val` and `var` parameters included. `false` leaves them alone, for a published library whose callers may pass arguments by name; see [Name says type](rules/name-says-type.md#public-api-parameters). |
 | | `exempt` | `[it, this, self, value, result, item, element, key, index, i, j, k, x, y, z, e, t, other, on*]` | Globs over names that need not say their type. Replaces the default list. |
 | | `valueTypes` | primitives and primitive arrays, `String`, `CharSequence`, `Unit`, `Any`, `Nothing`, function types (Compose's included), `Pair`, `Triple`, `kotlin.ranges.*`, `Duration`, `Instant`, `kotlinx.datetime.*`, `java.time.*`, `File`, `java.nio.file.Path`, `okio.Path`, `java.util.concurrent.atomic.*`, `Job`, `Thread`, `kotlinx.serialization.json.*`, Compose `Dp`, `TextUnit`, `IntOffset`, `IntSize`, `DpSize`, `androidx.compose.ui.geometry.*`, `Color`, `NSObject`, `NSObjectProtocol`, `ObjCObject`, `CPointer`, `COpaquePointer` | Globs over fully qualified types any name may hold; a container of them is exempt too, and so is any function type and any object. Replaces the default list; see [Name says type](rules/name-says-type.md#settings). |

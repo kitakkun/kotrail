@@ -52,7 +52,7 @@ its diagnostic and whether it is on by default.
   asks for one named definition of a compound condition written in several places; [No swap through also](docs/rules/no-swap-through-also.md)
   spells out `ready.also { ready = frame }` as `val previous = ready` and an assignment of its own.
 - **Naming and style** (11): [Name says type](docs/rules/name-says-type.md) for `repo: UserRepository` and
-  `request: PerformNodeAction`, names that do not end with what they hold;
+  `request: PerformNodeAction`, names that do not end with what they hold (off by default);
   [Prefer function references](docs/rules/prefer-function-references.md) over `{ transform(it) }`,
   [Named arguments for repeated types](docs/rules/named-arguments-for-repeated-types.md) for `Padding(8, 16, 8, 16)`, no comments longer than five lines
   and no fully qualified names inline; [Prefer duration](docs/rules/prefer-duration.md) wants `500.milliseconds`, not `delay(500)`,

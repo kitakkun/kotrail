@@ -48,7 +48,7 @@ Spelling that the reviewer would otherwise correct by hand.
 | No pass-through return | on | `KOTRAIL_PASS_THROUGH_RETURN` | [no-pass-through-return.md](no-pass-through-return.md) |
 | Prefer duration | on | `KOTRAIL_PREFER_DURATION` | [prefer-duration.md](prefer-duration.md) |
 | No ambiguous string name | on | `KOTRAIL_STRING_NAME_HIDES_KIND` | [no-ambiguous-string-name.md](no-ambiguous-string-name.md) |
-| Name says type | on | `KOTRAIL_NAME_HIDES_TYPE` | [name-says-type.md](name-says-type.md) |
+| Name says type | off: asks for renames at scale in an existing codebase, and its suffixes are a naming convention a team adopts | `KOTRAIL_NAME_HIDES_TYPE` | [name-says-type.md](name-says-type.md) |
 
 ## API design (8)
 
