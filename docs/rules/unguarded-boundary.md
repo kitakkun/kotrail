@@ -108,7 +108,12 @@ back by an incremental compilation: a library, or another module of the same bui
   unknown at this point. That is the code most likely to throw something unexpected. The
   constructor of a data class or a value class declared outside does not count: it only holds
   the values it is given. The constructor of any other class counts, since its `init` can run
-  anything.
+  anything. Nor do the members the compiler generates for a data class, which only read, compare
+  or copy those values: `copy`, `componentN` (a destructuring declaration's too), and `equals`,
+  `hashCode` and `toString` where the class does not declare its own. A class file does not
+  record which members were generated, so for a data class loaded from one, `copy` and
+  `componentN` are known by their signatures (the compiler rejects a member written by hand with
+  either), while its `equals`, `hashCode` and `toString` still count.
 - A call to one of the module's own functions counts when that function reaches such a call: its
   body is searched the same way, and so are the bodies of the own functions it calls, up to three
   functions deep, each entered once (a recursive call is not followed again). So
@@ -186,8 +191,9 @@ block calls nothing else; `writeAndRecord(StringBuilder(label))` around a projec
   `events.map { try { ... } catch (e: IOException) { ... } }.catch { ... }.stateIn(...)`.
 - The try block calls only the project's own code that reaches no call out within three
   functions, the standard library, or kotlinx.coroutines, and invokes no function-typed value.
-  Constructors of data classes and value classes declared outside count as none of these
-  (`capture(last ?: CaptureOptions())` around the project's own `capture`).
+  Constructors of data classes and value classes declared outside, and the members generated
+  for a data class, count as none of these (`capture(last ?: CaptureOptions())` around the
+  project's own `capture`, `options.copy(depth = 2)`).
 - The `try` is anywhere but at the top of a root: in an ordinary function, a property
   initializer, an `init` block, or the lambda of `async` or `withContext`.
 
@@ -195,8 +201,8 @@ Not considered: what the called code is declared to throw (`@Throws`, Java `thro
 naming exactly the exceptions a Java method declares is still reported, since an unchecked
 exception ends the root the same way. A property read that runs a Java getter is not counted as
 a call. A data class whose `init` validates its values (`require(depth > 0)`) is presumed not to
-throw like any other data class: its declaration is in another module, and only its kind is
-looked at.
+throw like any other data class, through its constructor or through `copy`, which runs it: its
+declaration is in another module, and only its kind is looked at.
 
 ## Related rules
 
@@ -208,7 +214,7 @@ rule asks for in a coroutine: rethrow `CancellationException` first.
 
 `compiler-tests/testData/diagnostics/unguardedBoundary.kt`, with its messages in
 `unguardedBoundary.diag.txt` (own functions followed to a call out in `Inspector`); constructors
-of classes declared in another module in
+of classes declared in another module, and the members generated for a data class, in
 `unguardedBoundaryAcrossModules.kt` and `unguardedBoundaryAcrossModules.diag.txt`; the boundary
 definition from the other side in `compiler-tests/testData/diagnostics/catchTooBroadBoundaries.kt`;
 suspend overrides and lambdas converted to a suspend interface in
@@ -239,7 +245,12 @@ it looks at every `FirFunctionCall`, an implicit `invoke` included, in `visitEle
 visitor does not route `FirImplicitInvokeCall` through `visitFunctionCall`. An `invoke` whose
 receiver has a function type (`isSomeFunctionType`, which covers Compose's function kinds) is a
 function-typed invocation. A constructor whose class (`resolvedReturnType.toRegularClassSymbol`)
-is a data class or a value class is not a candidate. A call to an own function, unwrapped from
+is a data class or a value class is not a candidate, nor is a member of a data class (the class
+of its dispatch receiver, fake overrides unwrapped) that the compiler generated: one whose origin
+is `FirDeclarationOrigin.Synthetic.DataClassMember`, as for a class compiled from source, or,
+for a class loaded from a class file, where every member's origin is `Library`, a `copy` whose
+parameter types are those of the primary constructor (`primaryConstructorIfAny`) and a
+`componentN` without parameters or receiver whose N is at most their number. A call to an own function, unwrapped from
 fake overrides, whose origin is `FirDeclarationOrigin.Source` (so not one loaded back by
 incremental compilation, `isPrecompiled`, nor a Java source) and that is not already being
 searched, is a candidate when the same visitor finds one in its body (`symbol.fir.body`), at

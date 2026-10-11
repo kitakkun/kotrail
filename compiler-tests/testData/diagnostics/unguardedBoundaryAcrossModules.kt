@@ -15,6 +15,10 @@ value class NodeId(val raw: Int)
 
 class Connection(val host: String)
 
+data class Padding(val size: Int) {
+    fun copy(scale: Double): Padding = Padding((size * scale).toInt())
+}
+
 // MODULE: main(protocol)
 // KOTRAIL_CONFIG: rules.unguardedBoundary=on
 // FILE: AttributeStore.kt
@@ -25,6 +29,7 @@ import kotlinx.coroutines.launch
 import protocol.CaptureOptions
 import protocol.Connection
 import protocol.NodeId
+import protocol.Padding
 import protocol.SetViewAttribute
 
 class AttributeStore(private val scope: CoroutineScope, private val last: CaptureOptions?) {
@@ -65,6 +70,44 @@ class AttributeStore(private val scope: CoroutineScope, private val last: Captur
             } catch (<!KOTRAIL_BOUNDARY_UNGUARDED!>e: IllegalStateException<!>) {
             }
         }
+    }
+}
+
+data class Bounds(val width: Int, val height: Int)
+
+class LayoutParser(private val scope: CoroutineScope) {
+    private suspend fun apply(attribute: SetViewAttribute, bounds: Bounds) {}
+
+    fun parse(text: String, bounds: Bounds) {
+        // Not reported: the module's own widen reaches the other module only through the copy and the
+        // componentN functions generated for a data class.
+        scope.launch {
+            try {
+                apply(widen(SetViewAttribute(nodeId = 1, value = text)), bounds)
+            } catch (e: IllegalStateException) {
+            }
+        }
+
+        // Not reported: nor are the members generated for the module's own data class calls out.
+        scope.launch {
+            try {
+                apply(SetViewAttribute(nodeId = bounds.component1(), value = bounds.toString()), bounds.copy(width = 0))
+            } catch (e: IllegalStateException) {
+            }
+        }
+
+        // Reported, naming the member: a copy the data class declares itself is not the generated one.
+        scope.launch {
+            try {
+                apply(SetViewAttribute(nodeId = Padding(1).copy(scale = 2.0).size, value = text), bounds)
+            } catch (<!KOTRAIL_BOUNDARY_UNGUARDED!>e: IllegalStateException<!>) {
+            }
+        }
+    }
+
+    private fun widen(attribute: SetViewAttribute): SetViewAttribute {
+        val (nodeId, value) = attribute
+        return attribute.copy(nodeId = nodeId + 1, value = value.trim())
     }
 }
 

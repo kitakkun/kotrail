@@ -25,6 +25,7 @@ import org.jetbrains.kotlin.fir.declarations.FirDeclarationOrigin
 import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
 import org.jetbrains.kotlin.fir.declarations.FirRegularClass
 import org.jetbrains.kotlin.fir.declarations.InlineStatus
+import org.jetbrains.kotlin.fir.declarations.primaryConstructorIfAny
 import org.jetbrains.kotlin.fir.declarations.utils.isCompanion
 import org.jetbrains.kotlin.fir.declarations.utils.isData
 import org.jetbrains.kotlin.fir.declarations.utils.isInlineOrValue
@@ -62,6 +63,7 @@ import org.jetbrains.kotlin.fir.unwrapFakeOverrides
 import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
 import org.jetbrains.kotlin.name.ClassId
 import org.jetbrains.kotlin.name.FqName
+import org.jetbrains.kotlin.resolve.DataClassResolver
 import org.jetbrains.kotlin.types.AbstractTypeChecker
 import org.jetbrains.kotlin.util.OperatorNameConventions
 
@@ -100,7 +102,8 @@ import org.jetbrains.kotlin.util.OperatorNameConventions
  * has no body here and is not followed. The constructor of a data class or a value class declared
  * outside does not count: it only holds the values it is given
  * (`writeAndRecord(SetViewAttribute(...))` counts for what `writeAndRecord` calls, not for the
- * constructor).
+ * constructor). Nor do the members the compiler generates for a data class, `copy` and
+ * `componentN` among them, which only read or copy those values.
  * Quiet: a try whose every clause rethrows (cleanup, translation), a try nested in the try block
  * of a try with a broad clause at the same root, a launcher whose receiver or arguments carry a
  * `CoroutineExceptionHandler` (`scope.launch(handler)`, `launch(Dispatchers.IO + handler)`) or
@@ -269,7 +272,7 @@ object UnguardedBoundaryChecker : FirTryExpressionChecker(MppCheckerKind.Common)
             return ThrowingCall(offset, "${value ?: OperatorNameConventions.INVOKE}(...)", via = null, preferred = true)
         }
         if (!callee.isCallOut(session)) return callee.reachedCallOut(offset, session, depth, following)
-        if (callee is FirConstructorSymbol && callee.onlyHoldsValues(session)) return null
+        if (callee.onlyHoldsValues(session)) return null
         return ThrowingCall(offset, callee.displayName(session), via = null, preferred = callee !is FirConstructorSymbol && !callee.isGetter())
     }
 
@@ -293,10 +296,33 @@ object UnguardedBoundaryChecker : FirTryExpressionChecker(MppCheckerKind.Common)
         return ThrowingCall(offset, reached.outside, via = name.asString(), reached.preferred)
     }
 
-    /** A constructor of a data class or a value class, which only stores what it is given. */
-    private fun FirConstructorSymbol.onlyHoldsValues(session: FirSession): Boolean {
-        val owner = resolvedReturnType.toRegularClassSymbol(session) ?: return false
-        return owner.isData || owner.isInlineOrValue
+    /**
+     * A constructor of a data class or a value class, which only stores what it is given, or a
+     * member the compiler generates for a data class, which only reads, compares or copies those
+     * values: `copy`, `componentN`, and `equals`, `hashCode` and `toString` when the class does not
+     * declare its own. A data class loaded from a class file does not say which of its members
+     * were generated. Its `copy` counts when it takes the primary constructor's parameter types,
+     * and its `componentN` when it takes nothing and N is at most their number, since the compiler
+     * rejects a member written by hand with either signature; its `equals`, `hashCode` and
+     * `toString` still count as calls out.
+     */
+    private fun FirCallableSymbol<*>.onlyHoldsValues(session: FirSession): Boolean {
+        if (this is FirConstructorSymbol) {
+            val owner = resolvedReturnType.toRegularClassSymbol(session) ?: return false
+            return owner.isData || owner.isInlineOrValue
+        }
+        val member = unwrapFakeOverrides() as? FirNamedFunctionSymbol ?: return false
+        val owner = member.dispatchReceiverType?.toRegularClassSymbol(session)?.takeIf { it.isData } ?: return false
+        if (member.origin == FirDeclarationOrigin.Synthetic.DataClassMember) return true
+        val properties = owner.primaryConstructorIfAny(session)?.valueParameterSymbols ?: return false
+        val parameters = member.valueParameterSymbols
+        return when {
+            DataClassResolver.isCopy(member.name) -> parameters.map { it.resolvedReturnType } == properties.map { it.resolvedReturnType }
+            DataClassResolver.isComponentLike(member.name) ->
+                parameters.isEmpty() && member.receiverParameterSymbol == null &&
+                    DataClassResolver.getComponentIndex(member.name.asString()) in 1..properties.size
+            else -> false
+        }
     }
 
     private fun FirCallableSymbol<*>.isCallOut(session: FirSession): Boolean {
