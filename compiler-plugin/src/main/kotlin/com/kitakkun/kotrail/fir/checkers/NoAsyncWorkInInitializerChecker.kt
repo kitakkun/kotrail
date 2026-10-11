@@ -23,6 +23,8 @@ import org.jetbrains.kotlin.fir.expressions.FirCheckNotNullCall
 import org.jetbrains.kotlin.fir.expressions.FirElvisExpression
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
+import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
+import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirReturnExpression
 import org.jetbrains.kotlin.fir.expressions.FirSafeCallExpression
 import org.jetbrains.kotlin.fir.expressions.FirSmartCastExpression
@@ -30,10 +32,13 @@ import org.jetbrains.kotlin.fir.expressions.FirStatement
 import org.jetbrains.kotlin.fir.expressions.FirTryExpression
 import org.jetbrains.kotlin.fir.expressions.FirWhenExpression
 import org.jetbrains.kotlin.fir.expressions.FirWrappedDelegateExpression
+import org.jetbrains.kotlin.fir.expressions.resolvedArgumentMapping
 import org.jetbrains.kotlin.fir.expressions.unwrapArgument
 import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirEnumEntrySymbol
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
+import org.jetbrains.kotlin.name.Name
 
 /**
  * Keeps asynchronous work out of property initializers, where it starts as a side effect of
@@ -60,9 +65,19 @@ import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
  * runs in place (`also`, `apply`, `let`, `buildList`). A lambda that runs later (a non-inline,
  * `noinline` or `crossinline` one, a local function, an object's members) is not looked into. A
  * call whose result is the property's value is not reported: the type says that work begins.
+ * Neither is a call that creates its work without starting it: a coroutine builder whose `start`
+ * is `CoroutineStart.LAZY`, by position or by name (`scope.async(dispatcher, CoroutineStart.LAZY) { }`),
+ * which starts on `start()`, `join()` or `await()`, and `thread(start = false)`. A start written
+ * any other way, a variable that holds `LAZY` included, counts as a start.
  */
 object NoAsyncWorkInInitializerChecker : FirPropertyChecker(MppCheckerKind.Common) {
     private const val LAZY = "kotlin.lazy"
+
+    private const val COROUTINE_START_LAZY = "kotlinx.coroutines.CoroutineStart.LAZY"
+
+    private const val THREAD = "kotlin.concurrent.thread"
+
+    private val START = Name.identifier("start")
 
     /** Scope functions that return their receiver: a start in the receiver is still the value. */
     private val RETURNS_RECEIVER = setOf("kotlin.also", "kotlin.apply")
@@ -190,7 +205,25 @@ object NoAsyncWorkInInitializerChecker : FirPropertyChecker(MppCheckerKind.Commo
             val callee = calleeReference.toResolvedCallableSymbol() ?: return null
             val name = callee.callableId?.asSingleFqName()?.asString() ?: return null
             if (functions.none { it.matches(name) }) return null
+            if (defersStart(name)) return null
             return callee.name.asString()
+        }
+
+        /**
+         * Whether this call, to the function named [callee], is told to create its work without
+         * starting it: `start` is the constant `CoroutineStart.LAZY`, or the literal `false` for
+         * `thread`.
+         */
+        private fun FirFunctionCall.defersStart(callee: String): Boolean {
+            val start = resolvedArgumentMapping?.entries?.firstOrNull { it.value.name == START }?.key?.unwrapArgument() ?: return false
+            return when (start) {
+                is FirLiteralExpression -> callee == THREAD && start.value == false
+                is FirPropertyAccessExpression -> {
+                    val entry = start.calleeReference.toResolvedCallableSymbol() as? FirEnumEntrySymbol
+                    entry?.callableId?.asSingleFqName()?.asString() == COROUTINE_START_LAZY
+                }
+                else -> false
+            }
         }
     }
 }

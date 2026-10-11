@@ -1,7 +1,10 @@
 // KOTRAIL_CONFIG: rules.noAsyncWorkInInitializer=on
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.async
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.flow.Flow
@@ -60,6 +63,25 @@ class Captures(private val scope: CoroutineScope, private val executor: Executor
     // Reported: a timer task, through the Kotlin extension.
     private val ticker = Timer().also { timer -> <!KOTRAIL_ASYNC_WORK_IN_INITIALIZER!>timer.schedule(1_000L) { log("tick") }<!> }
 
+    // Not reported: a lazy start, given by position, leaves the work to whoever starts or awaits it.
+    private val renders: Map<String, Deferred<Int>> = listOf("intro", "loop").associateWith { track ->
+        scope.async(Dispatchers.IO, CoroutineStart.LAZY) { track.length }
+    }
+
+    // Not reported: the same given by name.
+    private val warmUp = Channel<Int>().also { warmUp -> scope.launch(start = CoroutineStart.LAZY) { warmUp.send(0) } }
+
+    // Reported: any other start begins the work at once.
+    private val eager: Map<String, Deferred<Int>> = listOf("intro").associateWith { track ->
+        <!KOTRAIL_ASYNC_WORK_IN_INITIALIZER!>scope.async(Dispatchers.IO, CoroutineStart.UNDISPATCHED) { track.length }<!>
+    }
+
+    // Reported: a start that is not written as the constant counts as a start, whatever it holds.
+    private val chosen = Channel<Int>().also { chosen -> <!KOTRAIL_ASYNC_WORK_IN_INITIALIZER!>scope.launch(start = lazyStart) { chosen.send(0) }<!> }
+
+    // Not reported: a thread created without being started.
+    private val idle = ArrayDeque<Int>().also { thread(start = false) { log("idle") } }
+
     // Not reported: the Job is the value, and its type says work begins.
     val job = scope.launch { log("refresh") }
 
@@ -108,6 +130,8 @@ class Captures(private val scope: CoroutineScope, private val executor: Executor
 }
 
 val appScope = CoroutineScope(Dispatchers.Default)
+
+val lazyStart = CoroutineStart.LAZY
 
 // Reported: a top-level property starts work when its file is first used.
 val ticks = Channel<Int>().also { ticks -> <!KOTRAIL_ASYNC_WORK_IN_INITIALIZER!>appScope.launch { ticks.send(0) }<!> }

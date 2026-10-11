@@ -82,6 +82,12 @@ happens to read the property does.
   the value). The value is followed through safe calls (`scope?.launch { }`), `!!`, the branches
   of `if`, `when`, `try` and `?:`, the receiver of `also` and `apply`
   (`scope.launch { }.also { log("started") }`), and the lambda result of `let`, `run` and `with`.
+- The call creates its work without starting it: a coroutine builder whose `start` is
+  `CoroutineStart.LAZY`, given by position or by name
+  (`scope.async(dispatcher, CoroutineStart.LAZY) { }`), which starts when something calls
+  `start()`, `join()` or `await()` on it, and `thread(start = false) { }`, which starts on
+  `Thread.start()`. Only that constant, written at the call, counts: any other start, or one the
+  rule cannot read as the constant (a variable or a parameter that holds `LAZY`), is a start.
 - The call sits in a lambda that runs later: one handed to a non-inline function
   (`val onClick = { scope.launch { } }`, `Runnable { scope.launch { } }`), a `noinline` or
   `crossinline` parameter (`flow.map { }` runs its transform when the flow is collected), a local
@@ -114,6 +120,9 @@ outside that set. A lambda is walked only when its inline status is `Inline`, wh
 sets for a lambda bound to a parameter of an inline function that is neither `noinline` nor
 `crossinline`; a crossinline lambda may be invoked from another execution context, which is what
 the deferred APIs written that way (`Flow.map`, Android KTX `doOnLayout`) do. Local functions,
-accessors, anonymous objects and local classes are not walked. The callee is matched by its own
+accessors, anonymous objects and local classes are not walked. The `start` argument is read
+through the call's resolved argument mapping, so a positional and a named one are the same; it
+defers the start only when it is an access to the enum entry `kotlinx.coroutines.CoroutineStart.LAZY`,
+or the literal `false` for `kotlin.concurrent.thread`. The callee is matched by its own
 fully qualified name: an override declared in a subclass (`ThreadPoolExecutor.execute`) has its
 own name, to be added to `functions` or matched with a glob (`java.util.concurrent.*.execute`).
