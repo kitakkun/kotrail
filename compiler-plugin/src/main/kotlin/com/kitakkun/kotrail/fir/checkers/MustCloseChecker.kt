@@ -186,7 +186,8 @@ object MustCloseChecker : NamedFunctionChecker(MppCheckerKind.Common) {
                     val callee = functionCall.calleeReference.toResolvedCallableSymbol()
                     val receiver = functionCall.explicitReceiver
                     if (callee?.name == DISCONNECT && functionCall.argumentList.arguments.isEmpty() && receiver != null) {
-                        // The type as smart cast; the symbol behind the cast.
+                        // A smart-cast receiver's type is the narrowed one; its symbol is the one
+                        // behind the cast.
                         if (receiver.resolvedType.isSubtypeOf(HTTP_URL_CONNECTION)) receiver.referencedSymbol()?.let { disconnected += it }
                     }
                     if (functionCall.settlesReceiver()) receiver?.referencedSymbol()?.let { closed += it }

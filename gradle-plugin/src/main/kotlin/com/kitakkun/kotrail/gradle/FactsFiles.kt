@@ -97,9 +97,9 @@ internal class FactsFiles(
     fun wire(compilation: KotlinCompilation<*>): Provider<List<SubpluginOption>>? {
         if (!compilation.isJvmLike()) return null
         val factsFile = factsFileFor(compilation)
-        // The directory, not the file: the Kotlin plugin cleans and creates every output of a compile task as a
-        // directory before a non-incremental compilation, and keeps it for an incremental one, whose writer merges.
         compilation.compileTaskProvider.configure { task ->
+            // The directory, not the file: before a non-incremental compilation the Kotlin plugin
+            // cleans every output of the compile task and recreates it as a directory.
             task.outputs.dir(factsDirectoryFor(compilation)).withPropertyName("kotrailFactsDirectory")
         }
         if (compilation.isProducing()) {
@@ -113,9 +113,6 @@ internal class FactsFiles(
                 .withPathSensitivity(PathSensitivity.NONE)
                 .optional()
         }
-        // The file this compilation writes, and the same file as the compilation's previous run left it, which an
-        // incremental compilation reads for the files it does not compile again. Neither is an input: the second is the
-        // task's own output, and its entries for the files compiled now are replaced by the writer.
         val out = project.provider<List<SubpluginOption>> {
             val file = factsFile.get().asFile
             listOf(
@@ -123,8 +120,8 @@ internal class FactsFiles(
                 FilesSubpluginOption(OWN_FACTS_OPTION, listOf(file), FilesOptionKind.INTERNAL),
             )
         }
-        // Mapped from the files, not computed now: the hash is of what the dependencies wrote, so it is read when the
-        // compile task runs, after them. The transformers are classes, which the configuration cache can store.
+        // FactsOptions and ConcatOptions are classes rather than lambdas so that the configuration
+        // cache can store them with the provider.
         return out.zip(facts.elements.map(FactsOptions()), ConcatOptions())
     }
 
@@ -172,16 +169,11 @@ internal class FactsFiles(
                 val android = compilation.platformType == KotlinPlatformType.androidJvm
                 val main = compilation.name == KotlinCompilation.MAIN_COMPILATION_NAME
                 when {
-                    // The `main` compilation of a JVM target, or of the Android target of
-                    // `com.android.kotlin.multiplatform.library`. The Kotlin plugin creates every target publication and runs
-                    // these actions on it; the Android target is an external one (DecoratedExternalKotlinTarget), which
-                    // delegates `mavenPublication` to ExternalKotlinTargetImpl, whose `onPublicationCreated` runs them on the
-                    // single publication of the target, as for the built-in targets.
+                    // Also the Android target of `com.android.kotlin.multiplatform.library`, whose
+                    // compilation is `main`: an external target, whose `mavenPublication` actions
+                    // the Kotlin plugin runs on its single publication as for a built-in one.
                     multiplatform && main ->
                         compilation.target.mavenPublication { publication -> publication.attachFactsFile(factsFile, compilation.compileTaskProvider) }
-                    // A variant of `androidTarget()`. The Kotlin plugin creates one publication per published variant
-                    // (`androidRelease`, `androidFreeDebug`), or per flavor when they are grouped by flavor (`androidFree`),
-                    // and runs the target's actions on each; the publication of this variant gets its file.
                     multiplatform && android -> {
                         val target = compilation.target
                         val variants = producingVariants(target)
@@ -234,13 +226,13 @@ internal class FactsFiles(
         androidLibraryPublicationsWired = true
         val publishing = project.extensions.getByType(PublishingExtension::class.java)
         publishing.publications.withType(MavenPublication::class.java).configureEach { publication ->
-            // Every variant compilation exists by now: the Kotlin plugin creates them all before it applies compiler plugins.
+            // The Kotlin plugin creates every variant compilation before it applies compiler
+            // plugins, so none is missing from this set.
             val variants = producingVariants(target).filterTo(LinkedHashSet()) { writesFacts(it) }
             if (AndroidFactsPublications.libraryVariant(null, publication.name, variants) == null) {
                 project.logger.info("Kotrail: the publication ${publication.name} of ${project.path} is named after no Android variant and there is no release variant; it carries no facts file.")
                 return@configureEach
             }
-            // Never empty: the publication's own name or `release` is among the variants.
             val variant = project.provider {
                 AndroidFactsPublications.libraryVariant(componentNameOf(publication), publication.name, variants)
             }
@@ -276,8 +268,6 @@ internal class FactsFiles(
         val classpath = project.configurations.findByName(compilation.compileDependencyConfigurationName)
             ?: return associated
         val platform = compilation.platformType.name
-        // Projects only, of this build or an included one: a published module describes no facts variant in its
-        // module metadata, so an external module is always read by classifier, below.
         val viaVariants = classpath.incoming.artifactView { view ->
             view.withVariantReselection()
             view.lenient(true)
@@ -289,10 +279,9 @@ internal class FactsFiles(
             configuration.isCanBeConsumed = false
             configuration.isCanBeResolved = true
             configuration.isTransitive = false
-            // The classpath's own attributes, so that a module with Gradle module metadata selects the variant it
-            // selected there (a multiplatform module redirects to its JVM or Android target); the dependency then
-            // names the facts artifact itself. The Kotlin and Android plugins have set them by the time a compilation
-            // gets here, and they are locked once resolution starts.
+            // With the classpath's attributes, a module with Gradle module metadata resolves to the
+            // variant the classpath selected (a multiplatform module redirects to its JVM or
+            // Android target), and the dependency names the facts artifact of that module.
             configuration.attributes.copyFrom(classpath.attributes)
             configuration.dependencies.addAllLater(
                 project.provider {
@@ -310,7 +299,6 @@ internal class FactsFiles(
     class FactsOptions : Transformer<List<SubpluginOption>, Set<FileSystemLocation>> {
         override fun transform(locations: Set<FileSystemLocation>): List<SubpluginOption> {
             val files = locations.map { it.asFile }.filter { it.isFile }.distinctBy { it.absolutePath }.sortedBy { it.absolutePath }
-            // `--info` shows which facts files a compilation read, for a consumer to check its wiring.
             Logging.getLogger(FactsFiles::class.java).info("Kotrail: facts files read: ${files.joinToString { it.path }.ifEmpty { "none" }}")
             return files.map { FilesSubpluginOption(FACTS_OPTION, listOf(it), FilesOptionKind.INTERNAL) } +
                 SubpluginOption(FACTS_HASH_OPTION, FactsHash.of(files))

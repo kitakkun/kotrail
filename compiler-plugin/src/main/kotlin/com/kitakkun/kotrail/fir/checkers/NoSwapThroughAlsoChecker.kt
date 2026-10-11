@@ -179,7 +179,7 @@ object NoSwapThroughAlsoChecker : FirFunctionCallChecker(MppCheckerKind.Common) 
 
         override fun visitVariableAssignment(variableAssignment: FirVariableAssignment) {
             if (found) return
-            // FIR assigns `x += 1` and `x++` through a reference to the original access.
+            // `x += 1` and `x++` assign through a reference to the original access.
             val lValue = when (val value = variableAssignment.lValue) {
                 is FirDesugaredAssignmentValueReferenceExpression -> value.expressionRef.value
                 else -> value
@@ -217,8 +217,8 @@ object NoSwapThroughAlsoChecker : FirFunctionCallChecker(MppCheckerKind.Common) 
         if (statements.any { it is FirDeclaration }) return emptyList()
         if (uses.readsValue || uses.returnsToLambda) return emptyList()
         val callSource = call.source ?: return emptyList()
-        // A fake source here is a safe call, whose block runs only for a non-null receiver; moved
-        // out, the statements would always run.
+        // A fake source here is a safe call's selector, whose block runs only for a non-null
+        // receiver; moved out, the statements would always run.
         if (callSource.kind is KtFakeSourceElementKind) return emptyList()
         val receiverText = writtenReceiver(call, callSource, receiver, lambda) ?: return emptyList()
         val lines = FixBuilder.textOf(lambda.source)?.let(::blockLines) ?: return emptyList()
@@ -238,7 +238,7 @@ object NoSwapThroughAlsoChecker : FirFunctionCallChecker(MppCheckerKind.Common) 
             parent is FirReturnExpression && parent.result === call && grandparent is FirBlock -> {
                 val returnSource = parent.source ?: return emptyList()
                 if (PREVIOUS_NAME.containsMatchIn(builder.text)) return emptyList()
-                // FIR wraps a lambda's last expression in this implicit return only when the
+                // FIR adds this implicit return to a lambda's last expression only when the
                 // lambda's return type is not Unit, that is, when its value is used.
                 if (returnSource.kind == KtFakeSourceElementKind.ImplicitReturn.FromLastStatement) {
                     if (elements.getOrNull(elements.size - 4) !is FirAnonymousFunction) return emptyList()
@@ -248,15 +248,12 @@ object NoSwapThroughAlsoChecker : FirFunctionCallChecker(MppCheckerKind.Common) 
                 }
                 if (returnSource.kind is KtFakeSourceElementKind) return emptyList()
                 val indent = lineIndent(builder, returnSource, callSource) ?: return emptyList()
-                // `return` or `return@label`, as written.
                 val keyword = FixBuilder.textOf(returnSource)?.take(callSource.startOffset - returnSource.startOffset)?.trim()
                     ?: return emptyList()
                 val replacement = "val $PREVIOUS = $receiverText${lines.under(indent)}\n$indent$keyword $PREVIOUS"
                 listOf(builder.replaceRange(returnSource.startOffset, callSource.endOffset, replacement))
             }
-            // Only a used value is reported, so the branch's value is used as well.
             parent is FirBlock && grandparent is FirWhenBranch && grandparent.result === parent && parent.statements.lastOrNull() === call -> {
-                // An unbraced branch has no block to take the new statements.
                 if (parent is FirSingleExpressionBlock || FixBuilder.textOf(parent.source)?.startsWith("{") != true) return emptyList()
                 if (PREVIOUS_NAME.containsMatchIn(builder.text)) return emptyList()
                 val indent = lineIndent(builder, callSource, callSource) ?: return emptyList()

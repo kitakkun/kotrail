@@ -74,7 +74,6 @@ object NoAsyncWorkInInitializerChecker : FirPropertyChecker(MppCheckerKind.Commo
     override fun check(declaration: FirProperty) {
         val config = context.session.kotrailConfig
         if (!config.isEnabled(KotrailRule.NO_ASYNC_WORK_IN_INITIALIZER)) return
-        // A local's initializer runs when the code around it runs, which its reader sees.
         if (declaration.isLocal) return
         val source = declaration.source ?: return
         if (source.kind is KtFakeSourceElementKind) return
@@ -87,7 +86,6 @@ object NoAsyncWorkInInitializerChecker : FirPropertyChecker(MppCheckerKind.Commo
         declaration.initializer?.let(roots::add)
         declaration.backingField?.initializer?.let(roots::add)
         val delegate = declaration.delegate?.let { (it as? FirWrappedDelegateExpression)?.expression ?: it }
-        // A lazy body runs on the first read rather than while the owner is built, and its message says so.
         val lazyBody = delegate?.lazyInitializer()
         if (delegate != null && lazyBody == null) roots += delegate
 
@@ -177,9 +175,7 @@ object NoAsyncWorkInInitializerChecker : FirPropertyChecker(MppCheckerKind.Commo
     ) : FirVisitorVoid() {
         override fun visitElement(element: FirElement) {
             when (element) {
-                // A lambda an inline function runs in place; any other runs when it is invoked, later.
                 is FirAnonymousFunction -> if (element.inlineStatus == InlineStatus.Inline) element.body?.accept(this)
-                // A local function, an accessor, an object or a local class: their code runs when called.
                 is FirFunction, is FirClass -> {}
                 else -> {
                     if (element is FirFunctionCall && element !in values) {

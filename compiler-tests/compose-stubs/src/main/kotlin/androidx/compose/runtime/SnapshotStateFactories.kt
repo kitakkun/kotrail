@@ -1,4 +1,3 @@
-// Stubs mirroring the factories of the snapshot collections in androidx.compose.runtime.
 package androidx.compose.runtime
 
 import androidx.compose.runtime.snapshots.SnapshotStateList

@@ -104,9 +104,6 @@ abstract class InferredFactService<S : FirBasedSymbol<*>, T>(session: FirSession
 
     private fun compute(symbol: S): T {
         override(symbol)?.let { return it }
-        // A declaration of this module that an incremental compilation did not compile again has no body here: what the
-        // last compilation of its file found in it is in the plugin metadata of its class file and in the module's own
-        // facts file, which [recorded] reads in that order, before the dependencies' facts files.
         if (!symbol.origin.fromSource) recorded(symbol)?.let { return it }
         if (!symbol.origin.fromSource || metadataForSource) declared(symbol)?.let { return it }
         knowledge(symbol)?.let { return it }

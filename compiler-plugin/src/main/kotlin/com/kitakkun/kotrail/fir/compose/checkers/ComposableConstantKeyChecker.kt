@@ -96,7 +96,8 @@ object ComposableConstantKeyChecker : FirFunctionCallChecker(MppCheckerKind.Comm
             if (!KEY_PARAMETER.matches(parameter.name.asString())) continue
             val elements = if (argument is FirVarargArgumentsExpression) argument.arguments else listOf(argument)
             for (element in elements) {
-                // A spread array hides its keys, and its written form starts before the expression's source.
+                // A spread hides its keys, and its written form starts before the expression's
+                // source.
                 if (element is FirSpreadArgumentExpression) {
                     fixable = false
                     continue
@@ -113,7 +114,6 @@ object ComposableConstantKeyChecker : FirFunctionCallChecker(MppCheckerKind.Comm
         if (redundant.none { it }) return
 
         val builder = FixBuilder.over(callSource)
-        // A named key (`key1 = x`) cannot be dropped without renaming the ones after it.
         if (builder == null || keys.any { builder.previousSignificantChar(it.source.startOffset) == '=' }) fixable = false
         for ((index, key) in keys.withIndex()) {
             if (!redundant[index]) continue
@@ -166,7 +166,6 @@ object ComposableConstantKeyChecker : FirFunctionCallChecker(MppCheckerKind.Comm
 
     /** Whether [expression], written as a key, keeps its value for as long as the composable lives. */
     private fun isConstant(session: FirSession, expression: FirExpression): Boolean = when (expression) {
-        // `true`, `false`: the idiom for "once", like `Unit`.
         is FirLiteralExpression -> expression.value !is Boolean
         is FirResolvedQualifier -> expression.resolvedToCompanionObject || expression.isObject(session)
         is FirPropertyAccessExpression -> when (val symbol = expression.calleeReference.toResolvedCallableSymbol()) {

@@ -99,9 +99,6 @@ class FactsFileComponent(session: FirSession, private val lookup: FactsFileLooku
             symbol.isPrecompiled(session) -> FactsFileLookup.Origin.PRECOMPILED
             else -> FactsFileLookup.Origin.LIBRARY
         }
-        // What the last compilation of the declaration's file found, in its class file: at least as fresh as the own
-        // facts file, which the same compilation wrote. Without the fact there (a hand-written contract the writer
-        // skips, or class files compiled without the metadata), the facts files answer.
         if (origin == FactsFileLookup.Origin.PRECOMPILED) pluginMetadata(symbol)?.get(name)?.let { return FactArguments.of(it) }
         return lookup.lookup(id, FactKeys.signature(symbol, session), name, origin)?.let { FactArguments.of(it) }
     }

@@ -67,8 +67,8 @@ internal class UnloadableRecords(
                 .optional()
         }
         val own = project.provider { listOf(SubpluginOption(DIRECTORY_OPTION, directory.get().asFile.path)) }
-        // Mapped from the directories, not listed now: which of them exist is known once the compile tasks that write
-        // them have run. The transformers are classes, which the configuration cache can store.
+        // BundledOptions and ConcatOptions are classes rather than lambdas so that the
+        // configuration cache can store them with the provider.
         return own.zip(bundled.elements.map(BundledOptions()), FactsFiles.ConcatOptions())
     }
 
@@ -112,8 +112,6 @@ internal class UnloadableRecords(
         return configuration.incoming.artifactView { view ->
             view.withVariantReselection()
             view.lenient(true)
-            // Projects only, of this build or an included one, but not this project: a published module carries no
-            // records, and a compilation does not bundle its own project's.
             view.componentFilter { it is ProjectComponentIdentifier && it.projectPath != ownPath }
             view.attributes { it.setRecordsAttributes(platform, compilationName) }
         }.files
@@ -129,9 +127,9 @@ internal class UnloadableRecords(
     class BundledOptions : Transformer<List<SubpluginOption>, Set<FileSystemLocation>> {
         override fun transform(locations: Set<FileSystemLocation>): List<SubpluginOption> {
             val directories = locations.map { it.asFile }.filter { it.isDirectory }.distinctBy { it.absolutePath }.sortedBy { it.absolutePath }
-            // `--info` shows which records a compilation read, for a consumer to check its wiring.
             Logging.getLogger(UnloadableRecords::class.java).info("Kotrail: unloadable records read: ${directories.joinToString { it.path }.ifEmpty { "none" }}")
-            // Files options keep the absolute paths out of the task's input fingerprint; the directories are an input of their own.
+            // Files options keep the absolute paths out of the compile task's input fingerprint;
+            // the directories are registered as an input of their own.
             return directories.map { FilesSubpluginOption(BUNDLED_OPTION, listOf(it), FilesOptionKind.INTERNAL) }
         }
     }

@@ -66,7 +66,8 @@ object PreferValChecker : FirPropertyChecker(MppCheckerKind.Common) {
         if (!delegated && (declaration.initializer == null || declaration.initializer?.source?.kind is KtFakeSourceElementKind)) return
         if (declaration.isLateInit || declaration.isConst) return
         if (declaration.isOverride || declaration.isExpect || declaration.isActual) return
-        // A delegated property's accessors are synthesized with a fake source; a written setter is the author's.
+        // A delegated property's accessors are synthesized with a fake source; a written setter is
+        // the author's.
         val setter = declaration.setter
         if (setter != null && setter !is FirDefaultPropertySetter && setter.source?.kind !is KtFakeSourceElementKind) return
         if (declaration.getter != null && declaration.getter?.source?.kind !is KtFakeSourceElementKind) return

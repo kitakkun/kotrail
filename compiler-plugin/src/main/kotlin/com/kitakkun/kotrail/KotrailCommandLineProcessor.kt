@@ -193,7 +193,8 @@ class KotrailCommandLineProcessor : CommandLineProcessor {
             name == factsOption.optionName -> value.split(',').map { it.trim() }.filter { it.isNotEmpty() }
                 .forEach { configuration.add(KotrailConfigurationKeys.FACTS, it) }
             name == ownFactsOption.optionName -> configuration.put(KotrailConfigurationKeys.OWN_FACTS, value)
-            // Only there to change the compiler arguments when a dependency's facts change.
+            // Ignored on purpose: a changed digest changes the compiler arguments, so the build
+            // tool does not skip the compilation.
             name == factsHashOption.optionName -> Unit
             KotrailConfig.optionPath(name) != null -> configuration.add(KotrailConfigurationKeys.OPTIONS, "$name=$value")
             else -> throw CliOptionProcessingException("Unknown option: $name")

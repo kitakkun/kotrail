@@ -157,7 +157,6 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
         }
         if (settings.maxScore <= 0) return
         if (total <= settings.maxScore) {
-            // Within the limit, one block can still carry enough on its own to be worth taking out.
             if (settings.hotspotMin <= 0) return
             val standalone = scorer.innermost(bodySource) { it.total() >= settings.hotspotMin } ?: return
             reportKotrail(standalone.source, KotrailDiagnostics.COMPOSABLE_HOTSPOT_STANDALONE, standalone.total().toString(), standalone.extraction())
@@ -285,8 +284,6 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
 
         override fun visitWhenExpression(whenExpression: FirWhenExpression) {
             whenExpression.subjectVariable?.accept(this)
-            // `when { hovered && selected -> Color.A; hovered -> Color.B; else -> Color.C }`: a lookup of
-            // constants is one thing to read, however many rows it has.
             val lookup = whenExpression.branches.size > 1 && whenExpression.branches.all { it.result.resultExpression().isConstantLike() }
             if (lookup) current.add(Kind.BRANCHES, 1)
             for (branch in whenExpression.branches) {
@@ -312,8 +309,6 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
         }
 
         override fun visitElvisExpression(elvisExpression: FirElvisExpression) {
-            // `?: Color.Unspecified`, `?: ""`, `?: colors.fallback`: a constant or a reference is a default,
-            // not a path the reader follows.
             if (!elvisExpression.rhs.isConstantLike()) current.add(Kind.BRANCHES, 1)
             visitElement(elvisExpression)
         }
@@ -334,7 +329,6 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
         }
 
         override fun visitBooleanOperatorExpression(booleanOperatorExpression: FirBooleanOperatorExpression) {
-            // `enabled = a && b` is a value; `if (a && b)` is a path.
             if (conditionDepth > 0) current.add(Kind.BRANCHES, 1)
             visitElement(booleanOperatorExpression)
         }
@@ -388,7 +382,6 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
                 val lambda = argument.unwrapArgument() as? FirAnonymousFunctionExpression
                 val parameter = if (lambda != null) mapping?.get(argument) ?: mapping?.get(lambda) else null
                 if (lambda != null && callee != null && parameter != null && isHandler(callee, parameter)) {
-                    // `onClick = { }`: points inside score as usual, the node lets the handler be named.
                     inChild("${parameter.name.asString()} { }", lambda.source, Block.HANDLER) { lambda.anonymousFunction.body?.accept(this) }
                 } else if (lambda != null && (composable || name in LOOP_CALLS)) {
                     val block = if (name == "remember" || name == "rememberSaveable") Block.REMEMBER else Block.COMPOSABLE_LAMBDA
@@ -406,15 +399,12 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
             if (NOT_HANDLER_CALLEES.any { if (it.endsWith("*")) name.startsWith(it.dropLast(1)) else name == it }) return false
             val type = parameter.returnTypeRef.coneType
             if (!type.isSomeFunctionType(session)) return false
-            // A lambda that produces a value is a builder, one that returns Boolean is a dispatch.
             val functionType = type.fullyExpandedType(session).lowerBoundIfFlexible() as? ConeClassLikeType ?: return false
             val returned = functionType.returnType(session).fullyExpandedType(session).lowerBoundIfFlexible()
             if (!returned.isUnit && !returned.isNothing) return false
             if (type.customAnnotations.any { it.toAnnotationClassId(session) == ComposeNames.COMPOSABLE }) return false
             if (type.isSuspendOrKSuspendFunctionType(session)) return false
-            // A receiver lambda is a builder (LazyColumn { items(...) }), not a callback.
             if (type.receiverType(session) != null) return false
-            // An inline function runs the lambda in place: it is part of the body, not an event.
             if (callee.isInline && !parameter.isNoinline && !parameter.isCrossinline) return false
             return true
         }
@@ -446,7 +436,7 @@ object ComposableComplexityChecker : NamedFunctionChecker(MppCheckerKind.Common)
         }
 
         override fun visitVariableAssignment(variableAssignment: FirVariableAssignment) {
-            // `count++` assigns through a reference to the desugared read of `count`.
+            // `x += 1` and `x++` assign through a reference to the original access.
             val lValue = variableAssignment.lValue
             val target = (if (lValue is FirDesugaredAssignmentValueReferenceExpression) lValue.expressionRef.value else lValue) as? FirPropertyAccessExpression
             val symbol = target?.calleeReference?.toResolvedCallableSymbol() as? FirPropertySymbol

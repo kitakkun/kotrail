@@ -83,7 +83,6 @@ internal object HelperDistanceChecker {
             if (helper.declaration.isOverride) return@mapNotNull null
             val member = members[key] ?: return@mapNotNull null
             val far = HelperDistance.farFromCaller(member, members, settings.maxCallerDistance, settings.maxHelperNoise) ?: return@mapNotNull null
-            // A class header or `init` block has no site; a property initializer is not a body a reader follows into a call.
             val caller = collected.sites[far.caller.key]?.takeIf { it.readsAsCode } ?: return@mapNotNull null
             if (helper.isTopLevelExtension() && caller.enclosing.isNotEmpty()) return@mapNotNull null
             FarSite(helper, member, far, caller)

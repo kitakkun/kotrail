@@ -201,7 +201,6 @@ object NoNullStateFromParameterChecker : FirPropertyChecker(MppCheckerKind.Commo
 
         private val parents = mutableListOf<FirElement>()
 
-        // By identity: the target of an assignment is not a read, while an equal-looking access elsewhere is.
         private val assignedTargets: MutableSet<FirExpression> = Collections.newSetFromMap(IdentityHashMap())
 
         override fun visitElement(element: FirElement) {
@@ -226,7 +225,7 @@ object NoNullStateFromParameterChecker : FirPropertyChecker(MppCheckerKind.Commo
         }
 
         private fun FirVariableAssignment.assigns(target: FirPropertySymbol): Boolean {
-            // `x += 1` assigns through a reference to the access it reads.
+            // `x += 1` and `x++` assign through a reference to the original access.
             val access = (lValue as? FirDesugaredAssignmentValueReferenceExpression)?.expressionRef?.value ?: lValue
             assignedTargets += lValue
             assignedTargets += access

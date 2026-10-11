@@ -427,7 +427,6 @@ object NoAmbiguousStringNameChecker {
                     HopKind.COMMAND_HEAD -> uses.filter { it.kind.name == EXECUTABLE }
                     HopKind.TEMPLATE_HEAD -> uses.map { it.underPath(table) }
                 }
-                // A branch around the hand-over is judged there; one whose condition reads the subject is about the value too.
                 carried.map { use ->
                     val further = use.branches.filter { it.whenExpression !in hop.enclosing && !it.whenExpression.reads(hop.subject) }
                     Reach(use, hop.order, hop.branches + further)
@@ -560,7 +559,7 @@ object NoAmbiguousStringNameChecker {
         private fun collectReference(access: FirQualifiedAccessExpression) {
             if (access is FirFunctionCall) return
             val symbol = access.calleeReference.toResolvedCallableSymbol()?.canonical() ?: return
-            // A simple name's reference carries a fake kind over the name itself; any other text aborts the rename.
+            // A simple name's callee reference carries a fake source over the name alone.
             val source = access.calleeReference.source ?: access.source ?: return
             references.getOrPut(symbol) { mutableListOf() } += source
         }

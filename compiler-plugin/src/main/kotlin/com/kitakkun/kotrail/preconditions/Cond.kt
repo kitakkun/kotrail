@@ -198,7 +198,7 @@ sealed class Cond {
         }
         is DurationOf -> when (val v = operand.evaluate(env)) {
             is IntV, is LongV -> DurationV(v.toLong().toDuration(unit.unit))
-            // A NaN amount throws instead of making a duration.
+            // Double.toDuration throws for NaN.
             is FloatV, is DoubleV -> v.toDouble().takeUnless { it.isNaN() }?.let { DurationV(it.toDuration(unit.unit)) }
             else -> null
         }

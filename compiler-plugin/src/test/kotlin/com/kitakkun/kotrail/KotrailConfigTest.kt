@@ -244,7 +244,6 @@ class KotrailConfigTest {
             extended.apis.takeLast(3),
         )
 
-        // A replaced table takes the default APIs of the kinds it leaves out with it.
         val urlsOnly = load("rules:\n  noAmbiguousStringName:\n    kinds:\n      url: [url, endpoint]").noAmbiguousStringName
         assertEquals(setOf("url"), urlsOnly.apis.map { it.kind }.toSet())
         assertTrue(urlsOnly.apis.isNotEmpty())

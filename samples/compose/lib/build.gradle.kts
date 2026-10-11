@@ -24,13 +24,10 @@ tasks.withType<KotlinCompile>().configureEach {
     compilerOptions.freeCompilerArgs.add("-Xrender-internal-diagnostic-names")
 }
 
-// Without the Gradle plugin the facts file is wired by hand: the library writes what Kotrail
-// infers about its composables to a file of its own, outside the class files, which
-// :samples:compose:app reads. The directory is an output of the compile task, which the Kotlin
-// plugin cleans before a full compilation and keeps for an incremental one; an incremental one
-// reads the same file back (ownFacts) for the files it does not compile again.
 tasks.named<KotlinCompile>("compileKotlin") {
     val factsDirectory = layout.buildDirectory.dir("kotrail/facts/jvm-main")
+    // The directory, not the file: before a non-incremental compilation the Kotlin plugin cleans
+    // every output of the compile task and recreates it as a directory.
     outputs.dir(factsDirectory).withPropertyName("kotrailFactsDirectory")
     compilerOptions.freeCompilerArgs.addAll(
         factsDirectory.map {

@@ -61,7 +61,6 @@ object NarrowModelParametersChecker : NamedFunctionChecker(MppCheckerKind.Common
         if (declaration.source?.kind is KtFakeSourceElementKind) return
         if (declaration.isOverride || declaration.isExpect) return
         val body = declaration.body ?: return
-        // Only worth a scan of the file once a parameter would be reported.
         val splitOfOneCaller by lazy(LazyThreadSafetyMode.NONE) {
             declaration.visibility == Visibilities.Private && callSitesInFile(declaration.symbol) == 1
         }

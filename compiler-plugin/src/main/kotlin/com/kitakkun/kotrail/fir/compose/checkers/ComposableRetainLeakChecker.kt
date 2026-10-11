@@ -150,7 +150,6 @@ object ComposableRetainLeakChecker : FirFunctionCallChecker(MppCheckerKind.Commo
         for (index in elements.indices.reversed()) {
             when (val element = elements[index]) {
                 is FirAnonymousFunction -> {
-                    // The call the lambda is an argument of encloses it.
                     val call = elements.subList(0, index).lastOrNull { it is FirFunctionCall } as? FirFunctionCall ?: continue
                     val parameter = call.resolvedArgumentMapping.orEmpty().entries
                         .firstOrNull { (argument, _) -> (argument.unwrapArgument() as? FirAnonymousFunctionExpression)?.anonymousFunction === element }
@@ -187,7 +186,6 @@ object ComposableRetainLeakChecker : FirFunctionCallChecker(MppCheckerKind.Commo
         if (!type.isSomeFunctionType(session)) return null
         val declared = (type.typeArguments.lastOrNull() as? ConeKotlinTypeProjection)?.type ?: return null
         val produced = (this as? FirAnonymousFunctionExpression)?.lastExpression()?.resolvedType ?: return declared
-        // Not more specific when the last expression is coerced to Unit.
         return if (AbstractTypeChecker.isSubtypeOf(session.typeContext, produced, declared)) produced else declared
     }
 
@@ -226,7 +224,6 @@ object ComposableRetainLeakChecker : FirFunctionCallChecker(MppCheckerKind.Commo
          * or both (`StateFlow<Holder> (Holder.view: android.view.View)`).
          */
         fun leakIn(type: ConeKotlinType): String? {
-            // Each value and key is a search of its own: a class one of them reached is not settled for the next.
             walking.clear()
             walked.clear()
             return leakIn(type, path = null, holder = null)
@@ -237,7 +234,6 @@ object ComposableRetainLeakChecker : FirFunctionCallChecker(MppCheckerKind.Commo
          * [holder] is the outermost library generic the walk entered before any property (`StateFlow<Holder>`).
          */
         private fun leakIn(type: ConeKotlinType, path: String?, holder: String?): String? {
-            // A platform type (`Context!`) holds what its lower bound does.
             val expanded = type.fullyExpandedType(session).lowerBoundIfFlexible()
             // What a lambda captures is not in its type.
             if (expanded.isSomeFunctionType(session)) return null
@@ -252,7 +248,6 @@ object ComposableRetainLeakChecker : FirFunctionCallChecker(MppCheckerKind.Commo
                     else -> "${type.lowerBoundIfFlexible().renderReadable()} ($reason)"
                 }
             }
-            // A project class: of this module, also when an incremental build loaded it from the classes directory.
             if (classSymbol.isOfThisModule(session)) return leakInMembers(classSymbol, expanded, holder)
             return leakInArguments(classSymbol, type, expanded, path, holder)
         }
@@ -294,7 +289,6 @@ object ComposableRetainLeakChecker : FirFunctionCallChecker(MppCheckerKind.Commo
         ): String? {
             if (expanded.typeArguments.isEmpty()) return null
             if (classSymbol.isNonRetaining()) return null
-            // A property already names where the value is held; without one, the outermost generic does.
             val via = holder ?: if (path == null) type.lowerBoundIfFlexible().renderReadable() else null
             for (argument in expanded.typeArguments) {
                 val argumentType = (argument as? ConeKotlinTypeProjection)?.type ?: continue
@@ -321,15 +315,15 @@ object ComposableRetainLeakChecker : FirFunctionCallChecker(MppCheckerKind.Commo
                 val className = classSymbol.classId.shortClassName.asString()
                 for (property in classSymbol.declarationSymbols.filterIsInstance<FirPropertySymbol>()) {
                     if (property.receiverParameterSymbol != null) continue
-                    // Only what an instance stores: a property computed by its getter holds nothing of its own.
                     if (!property.hasBackingField && !property.isDelegatedProperty) continue
                     val propertyType = substitutor.substituteOrSelf(property.resolvedReturnType)
                     leakIn(propertyType, path = "$className.${property.name.asString()}", holder)?.let { return it }
                 }
                 for (superType in classSymbol.resolvedSuperTypes) {
                     val substituted = substitutor.substituteOrSelf(superType)
-                    // An interface stores nothing, and its type arguments say what it handles (`Comparator<View>`);
-                    // a collection's are its elements still, as when it is implemented by delegation.
+                    // An interface stores nothing, and its type arguments say what it handles
+                    // (`Comparator<View>`); a collection interface's are still its elements, as
+                    // when it is implemented by delegation.
                     if (substituted.isInterface() && !substituted.holdsItsArguments()) continue
                     leakIn(substituted, path = null, holder)?.let { return it }
                 }

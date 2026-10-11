@@ -171,8 +171,8 @@ object ComposablePreviewCoverageChecker : FirFileChecker(MppCheckerKind.Common) 
             val untouched = ComposableManifest.ownRecords(config.composablesDir).filter { it.file !in compiled }
             untouched.flatMapTo(callees) { it.previewCallees }
             previewed = callees
-            // Of the own records, the top-level composables only: the symbol providers, which enumerate the files being
-            // compiled, see no class member.
+            // Of the own records, only the top-level composables: the symbol providers that
+            // enumerate the files being compiled see no class member.
             recorded = ComposableManifest.read(config.associatedComposablesDirs) + untouched.flatMap { record -> record.entries.filter { it.isTopLevel } }
             val reportedOn = anchor ?: files.firstOrNull()
             anchorName = reportedOn?.name

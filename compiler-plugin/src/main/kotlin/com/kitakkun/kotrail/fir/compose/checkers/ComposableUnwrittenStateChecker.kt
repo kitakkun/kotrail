@@ -69,7 +69,6 @@ object ComposableUnwrittenStateChecker : FirPropertyChecker(MppCheckerKind.Commo
         if (!declaration.isLocal) return
         val session = context.session
         val delegated = declaration.delegate != null
-        // A delegated local reads and writes its MutableState through the delegate; a plain `val` holds the MutableState itself.
         val stateType = if (delegated) declaration.delegate?.resolvedType else declaration.initializer?.takeIf { !declaration.isVar }?.resolvedType
         if (stateType == null || !stateType.isMutableState(session)) return
 
@@ -84,7 +83,6 @@ object ComposableUnwrittenStateChecker : FirPropertyChecker(MppCheckerKind.Commo
         when {
             usages.reads > 0 && usages.writes > 0 -> return
             usages.writes > 0 -> reportKotrail(source, KotrailDiagnostics.STATE_NEVER_READ, name)
-            // `var x by remember { mutableStateOf(v) }` nothing assigns: preferVal reports it and turns the keyword into `val`.
             delegated && declaration.isVar -> return
             else -> reportKotrail(source, KotrailDiagnostics.STATE_NEVER_WRITTEN, name)
         }
@@ -116,15 +114,16 @@ object ComposableUnwrittenStateChecker : FirPropertyChecker(MppCheckerKind.Commo
         }
 
         override fun visitProperty(property: FirProperty) {
-            // The local itself: its initializer or delegate cannot use it, and a delegated local's accessors refer to it by design.
+            // A delegated local's synthesized accessors refer to the local itself.
             if (property.symbol == target) return
-            // The `<unary>` temporary of `x++`: its initializer reads x, and the assignment is the use.
+            // The `<unary>` temporary of `x++`: its initializer reads x, and the assignment is the
+            // use.
             if (property.source?.kind is KtFakeSourceElementKind.DesugaredIncrementOrDecrement) return
             visitElement(property)
         }
 
+        // The `x` of `x += 1` and `x++`: the assignment counts it as a write.
         override fun visitDesugaredAssignmentValueReferenceExpression(desugaredAssignmentValueReferenceExpression: FirDesugaredAssignmentValueReferenceExpression) {
-            // The `x` of `x += 1` and `x++`: the assignment counts it as a write.
         }
 
         override fun visitVariableAssignment(variableAssignment: FirVariableAssignment) {

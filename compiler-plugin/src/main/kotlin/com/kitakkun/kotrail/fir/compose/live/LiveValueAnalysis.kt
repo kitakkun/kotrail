@@ -152,7 +152,6 @@ internal object LiveValueAnalysis {
      * ([isBareStateRead]) reads nothing stale: it takes the initial value.
      */
     fun staleReads(session: FirSession, call: RememberCall): List<LiveRead> {
-        // `remember { state.value }` takes the value once, on purpose: the initial one.
         if (call.keys.isEmpty() && isBareStateRead(session, call.calculation)) return emptyList()
         val keyReads = call.keys.flatMap { key -> liveReads(session, Uses.of(key, root = null)) }
         val covered = keyReads.filterNot { it.sizeOnly }.mapTo(HashSet()) { it.identity }
@@ -451,7 +450,6 @@ internal object LiveValueAnalysis {
         }
 
         override fun visitAnonymousFunction(anonymousFunction: FirAnonymousFunction) {
-            // A lambda that runs later (an onClick, lazy { }) reads the value when it runs: it is current then.
             if (anonymousFunction !== root && anonymousFunction !in inPlace) return
             anonymousFunction.valueParameters.forEach { declaredInside += it.symbol }
             anonymousFunction.acceptChildren(this)
@@ -465,13 +463,13 @@ internal object LiveValueAnalysis {
 
         override fun visitProperty(property: FirProperty) {
             declaredInside += property.symbol
-            // `val (first, second) = items` reads `items` element by element, through a variable declared here.
+            // `val (first, second) = items` reads `items` element by element, through the
+            // `<destruct>` variable FIR declares here.
             if (property.name == SpecialNames.DESTRUCT) property.initializer?.let { contents += it }
             property.acceptChildren(this)
         }
 
         override fun visitVariableAssignment(variableAssignment: FirVariableAssignment) {
-            // What is assigned to is not read.
             variableAssignment.rValue.accept(this)
         }
 
@@ -495,9 +493,7 @@ internal object LiveValueAnalysis {
         override fun visitFunctionCall(functionCall: FirFunctionCall) {
             val callee = functionCall.calleeReference.toResolvedCallableSymbol()
             val runtimeName = (callee as? FirNamedFunctionSymbol)?.callableId?.takeIf { it.packageName == RUNTIME }?.callableName?.asString()
-            // derivedStateOf { } and snapshotFlow { } observe what they read; a state factory is handed its initial content.
             if (runtimeName in OBSERVING || runtimeName in SEEDS) return
-            // The arguments of a constructor are its seeds, as in compose.rememberKeys: `remember { Holder(items) }` keeps the value itself.
             val seedsOnly = callee is FirConstructorSymbol
             functionCall.explicitReceiver?.let {
                 val receiver = it.receiverValue()
@@ -509,7 +505,6 @@ internal object LiveValueAnalysis {
             for (argument in functionCall.argumentList.arguments) {
                 val unwrapped = argument.unwrapArgument()
                 if (unwrapped is FirAnonymousFunctionExpression) {
-                    // A lambda an inline function runs in place is part of this code; any other runs later.
                     val parameter = mapping?.get(argument)?.symbol
                     if (callee is FirNamedFunctionSymbol && callee.isInline && parameter != null && !parameter.isCrossinline && !parameter.isNoinline) {
                         inPlace += unwrapped.anonymousFunction
@@ -518,8 +513,6 @@ internal object LiveValueAnalysis {
                     continue
                 }
                 if (seedsOnly) continue
-                // A value handed whole to a call is not read here: `createPager(items)` may only keep it, as a
-                // constructor does. A spread hands over the elements, which reads them.
                 if (unwrapped is FirVarargArgumentsExpression) {
                     unwrapped.arguments.filterIsInstance<FirSpreadArgumentExpression>().forEach { contents += it.expression }
                 }

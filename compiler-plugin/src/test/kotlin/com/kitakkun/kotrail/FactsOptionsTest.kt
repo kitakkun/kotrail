@@ -47,9 +47,7 @@ class FactsOptionsTest {
             ),
         )
         assertEquals("/build/kotrail/facts/jvm-main/lib.facts", config.ownFacts)
-        // The own file is not one of the dependencies' files: those stay as given.
         assertEquals(listOf("/a/one.facts"), config.facts)
-        // A path with a comma is one path: unlike facts, ownFacts names a single file.
         assertEquals("/odd,dir/lib.facts", KotrailConfig.from(configuration("ownFacts" to "/odd,dir/lib.facts")).ownFacts)
     }
 

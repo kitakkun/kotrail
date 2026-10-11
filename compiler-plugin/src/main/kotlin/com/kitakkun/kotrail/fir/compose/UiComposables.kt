@@ -124,8 +124,6 @@ private class UiCallFinder(
         val callee = functionCall.calleeReference.toResolvedNamedFunctionSymbol()
         if (callee != null && callee.isComposable(session) && callee.resolvedReturnType.isUnit) {
             val isRuntimeConstruct = callee.callableId?.packageName?.asString()?.let { pkg -> nonUiPackages.any { pkg == it } } == true
-            // A recursive composable is taken as emitting rather than looping: the service answers so for a symbol it is
-            // still analyzing.
             if (!isRuntimeConstruct && service.drawsUi(callee)) {
                 found = true
                 return

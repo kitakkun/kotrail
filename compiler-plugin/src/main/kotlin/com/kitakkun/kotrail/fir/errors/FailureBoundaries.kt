@@ -116,7 +116,6 @@ fun failureBoundary(definition: KotrailFailureBoundaries): FailureBoundary? {
             is FirReturnExpression, is FirVariableAssignment, is FirElvisExpression -> {}
             is FirProperty -> if (!element.isLocal) return null
             is FirSafeCallExpression -> if (element.selector !== child) return null
-            // `device.apply { ... }.also { ... }`: the inline call whose lambda held the try is the receiver of the next.
             is FirFunctionCall -> if (element.explicitReceiver?.unwrapSmartCast() !== child) return null
             is FirAnonymousFunction -> {
                 val argument = lambdaArgument(elements, index) ?: return null
@@ -162,7 +161,6 @@ private class LambdaArgument(val call: FirCall, val callIndex: Int, val paramete
         if (callee != null && callee.matches(functions)) {
             return FailureBoundary(callee.rootName(), launcher = call, downstream = emptyList(), enclosingTries = tries)
         }
-        // A converted lambda that returns a value hands its failure to whoever asked for the value.
         if (lambda.returnTypeRef.coneType.lowerBoundIfFlexible().isUnit) {
             convertedInterface(session)?.let { name ->
                 return FailureBoundary(name, launcher = null, downstream = emptyList(), enclosingTries = tries)

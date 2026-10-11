@@ -100,7 +100,6 @@ class NoOpService(session: FirSession) : InferredFactService<FirNamedFunctionSym
             if (branch.condition is FirElseIfTrueCondition) return false
             if (!branch.result.isBareReturnFrom(function)) return false
             val condition = converter.convert(branch.condition) ?: return false
-            // A condition that mentions no parameter says nothing about the call site.
             if (condition.parameters().isNotEmpty()) conditions += condition
         }
         return true

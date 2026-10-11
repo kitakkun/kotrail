@@ -45,7 +45,6 @@ object NoOpCallChecker : FirFunctionCallChecker(MppCheckerKind.Common) {
         if (!config.isEnabled(KotrailRule.NO_OP_CALL)) return
         val source = expression.source ?: return
         if (source.kind is KtFakeSourceElementKind) return
-        // A member reached through a subclass or a substituted type is the declaration that runs.
         val callee = expression.calleeReference.toResolvedNamedFunctionSymbol()?.unwrapFakeOverrides() ?: return
         val fact = session.noOpService.of(callee)
         if (fact.conditions.isEmpty()) return

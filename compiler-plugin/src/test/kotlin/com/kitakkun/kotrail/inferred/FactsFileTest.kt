@@ -145,7 +145,6 @@ class FactsFileTest {
                 ),
             ),
         )
-        // A directory holding a facts file, as the classes directories of earlier versions did, is not read.
         val classes = File(directory, "classes/META-INF/kotrail").apply { mkdirs() }
         File(classes, "old.facts").writeText(FactsFile.render("old", "1.0", listOf(entry("/C.kt", "lib/c"))))
         val index = FactsFileIndex { listOf(first, second, File(directory, "missing.facts"), File(directory, "classes")) }

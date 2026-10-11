@@ -137,7 +137,7 @@ object PreferFunctionReferenceChecker : FirAnonymousFunctionChecker(MppCheckerKi
         val fix = fixFor(declaration, source, suggestion.text)
         val edits = when (val import = suggestion.import) {
             null -> fix
-            // Without the import the reference does not resolve, so the fix goes only with it.
+            // Without its import the reference does not resolve, so the fix goes only with it.
             else -> importEdit(import)?.let { fix + it } ?: emptyList()
         }
         reportKotrail(source, KotrailDiagnostics.PREFER_FUNCTION_REFERENCE, suggestion.text, edits)
@@ -181,7 +181,6 @@ object PreferFunctionReferenceChecker : FirAnonymousFunctionChecker(MppCheckerKi
     private fun fixFor(declaration: FirAnonymousFunction, lambda: KtSourceElement, reference: String): List<FixEdit> {
         val inPlace = listOf(FixBuilder.replace(lambda, reference))
         val call = context.containingElements.lastOrNull { it is FirFunctionCall } as? FirFunctionCall ?: return inPlace
-        // Only a lambda passed to the call moves; one nested deeper in an argument stays where it is.
         val argument = call.arguments.firstOrNull {
             (it.unwrapArgument() as? FirAnonymousFunctionExpression)?.anonymousFunction === declaration
         } ?: return inPlace
@@ -191,8 +190,6 @@ object PreferFunctionReferenceChecker : FirAnonymousFunctionChecker(MppCheckerKi
         val builder = FixBuilder.over(callSource) ?: return inPlace
         // A labeled lambda (`step@{ f(it) }`) starts at its label, which neither source covers.
         val argumentStart = labelStart(builder, minOf(argumentSource.startOffset, lambda.startOffset))
-        // The end of what precedes the lambda: an opening parenthesis, a comma or the `=` of a named
-        // argument, a closing parenthesis, or the callee.
         val precedingEnd = builder.previousSignificantEnd(argumentStart)
         return when (builder.charAt(precedingEnd - 1)) {
             '(', ',', '=' -> listOf(builder.replaceRange(argumentStart, lambda.endOffset, reference))
@@ -224,7 +221,6 @@ object PreferFunctionReferenceChecker : FirAnonymousFunctionChecker(MppCheckerKi
     ): Suggestion? {
         // `{ block() }` on a function-typed value has no named callee to reference.
         if (call is FirImplicitInvokeCall) return null
-        // `{ -it }`, `{ a + b }`, `{ list[it] }`: the operator names no function and reads better than `Int::unaryMinus`.
         if (call.origin == FirFunctionCallOrigin.Operator) return null
         val callee = call.calleeReference.toResolvedFunctionSymbol() ?: return null
         if (callee.fqNameMatchesAny(session.kotrailConfig.preferFunctionReferences.ignoredFunctions)) return null
@@ -294,8 +290,9 @@ object PreferFunctionReferenceChecker : FirAnonymousFunctionChecker(MppCheckerKi
         val owner = receiver.resolvedType.toRegularClassSymbol(session)?.takeIf { it.typeParameterSymbols.isEmpty() }
             ?: return null
         val scope = owner.unsubstitutedScope(session, context.scopeSession, withForcedTypeCalculator = false, memberRequiredPhase = null)
-        // The receiver's scope and the packages are asked by hand, so each question is recorded for incremental
-        // compilation: a function of that name added or removed in another file compiles this file again.
+        // Asked by hand, the receiver's scope and the packages are recorded for incremental
+        // compilation: a function of that name added or removed in another file compiles this file
+        // again.
         val ownerFqName = owner.classId.asSingleFqName()
         val memberName = if (property is FirSyntheticPropertySymbol) {
             // A Java getter is only referenceable as a function: `File::getAbsolutePath`, not `File::absolutePath`.

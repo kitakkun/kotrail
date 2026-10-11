@@ -25,21 +25,14 @@ class KotrailComponentRegistrar : CompilerPluginRegistrar() {
         val config = KotrailConfig.from(configuration)
         if (!config.enabled) return
 
-        // The facts files of the dependencies, handed over by the build tool, read on first use; and the module's own,
-        // as the previous build left it, for the declarations an incremental compilation does not compile again. The
-        // writer below rewrites that file only after the FIR checkers have read it, and keeps the entries of the files
-        // it did not compile, which are the only ones read from it, so the order of the two does not change what is read.
         val factsFiles = FactsFileLookup(
             dependencies = FactsFileIndex { config.facts.map(::File) },
             own = FactsFileIndex { listOfNotNull(config.ownFacts).map(::File) },
         )
         FirExtensionRegistrarAdapter.registerExtension(KotrailFirExtensionRegistrar(config, factsFiles))
-        // Every inferred fact that is on (one of its rules is) is written for the modules that compile against this one,
-        // unless the module opted out (a published library whose consumers do not use Kotrail). A facts file an
-        // earlier compilation left at factsOut goes with it, so that nothing stale is published or read. Otherwise the
-        // writer is registered whatever rules are on: on the JVM it writes the facts file on every compilation, the
-        // header alone when there are no facts, so that the file the Gradle plugin publishes always exists.
         if (!config.inferredMetadata) {
+            // A facts file an earlier compilation left at factsOut would otherwise be published or
+            // read with stale facts.
             config.factsOut?.let { File(it).delete() }
             return
         }
@@ -53,8 +46,6 @@ class KotrailComponentRegistrar : CompilerPluginRegistrar() {
                     module = { configuration.get(CommonConfigurationKeys.MODULE_NAME) },
                     rootDir = config.rootDir,
                 ),
-                // The same facts in the class files' Kotlin metadata, for incremental compilation, unless the build
-                // keeps them out (a build that publishes the class files).
                 pluginMetadata = config.icMetadata,
                 surfaceDigests = surfaceDigests(config),
             ),

@@ -63,7 +63,6 @@ class FactsFilesTest {
         val variants = setOf("freeDebug", "freeRelease", "paidRelease")
         assertEquals("freeDebug", AndroidFactsPublications.targetVariant("androidFreeDebug", "android", variants))
         assertEquals("paidRelease", AndroidFactsPublications.targetVariant("androidPaidRelease", "android", variants))
-        // Grouped by flavor: one publication per flavor, with the build type as classifier.
         assertEquals("freeRelease", AndroidFactsPublications.targetVariant("androidFree", "android", variants))
         assertNull(AndroidFactsPublications.targetVariant("androidOther", "android", variants))
         assertEquals("release", AndroidFactsPublications.targetVariant("androidStaging", "android", setOf("debug", "release")))

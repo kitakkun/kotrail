@@ -31,7 +31,6 @@ class PublishingBuildTest {
         assertTrue(PublishingBuild.isPublishingName("upload1", listOf("upload?")))
         assertFalse(PublishingBuild.isPublishingName("upload12", listOf("upload?")))
         assertFalse(PublishingBuild.isPublishingName("uploadToArtifactoryLater", listOf("uploadToArtifactory")))
-        // Anything but * and ? is literal.
         assertFalse(PublishingBuild.isPublishingName("aXb", listOf("a.b")))
     }
 

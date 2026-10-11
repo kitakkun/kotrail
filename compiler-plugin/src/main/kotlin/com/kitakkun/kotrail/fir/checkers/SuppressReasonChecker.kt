@@ -68,9 +68,9 @@ object SuppressReasonChecker {
             if (!context.session.kotrailConfig.isEnabled(KotrailRule.SUPPRESS_REASON)) return
             val source = declaration.source ?: return
             val kind = source.kind
-            // A property made from a constructor parameter shares the parameter's annotations, and a
-            // default accessor holds the `@get:` / `@set:` annotations written on its property: on
-            // those, only the targeted annotations are their own.
+            // A property made from a constructor parameter shares the parameter's annotations, and
+            // a default accessor holds the `@get:` / `@set:` annotations written on its property:
+            // on those, only the targeted annotations are their own.
             val onlyTargeted = kind is KtFakeSourceElementKind.PropertyFromParameter || kind is KtFakeSourceElementKind.DefaultAccessor
             if (kind is KtFakeSourceElementKind && !onlyTargeted) return
             val text = ((declaration as? FirFile)?.source ?: context.containingFileSymbol?.source)?.text ?: return
@@ -96,9 +96,9 @@ object SuppressReasonChecker {
             if (expression.annotations.isEmpty()) return
             if (!context.session.kotrailConfig.isEnabled(KotrailRule.SUPPRESS_REASON)) return
             val text = context.containingFileSymbol?.source?.text ?: return
-            // An augmented assignment is desugared into an assignment around its operator call
-            // (`count += x`), inside a block when it has a receiver (`holder.total += x`), and each
-            // of them carries the annotations written on the statement: the outermost reports them.
+            // An augmented assignment desugars into an assignment around its operator call (`count
+            // += x`), inside a block when it has a receiver (`holder.total += x`), and each of them
+            // carries the annotations written on the statement: the outermost reports them.
             val enclosing = context.annotationContainers.filter { it !== expression }
             val own = expression.annotations.filter { annotation ->
                 val start = annotation.source?.startOffset
@@ -115,7 +115,8 @@ object SuppressReasonChecker {
         val checked = Checked(settings.annotations, SuppressedIds(settings.ids, settings.exemptIds))
         for (annotation in annotations) {
             val at = annotation.source ?: continue
-            // A `@get:` annotation reaches the accessor as a copy with a fake source that keeps the written offsets.
+            // A `@get:` annotation reaches the accessor as a copy with a fake source that keeps the
+            // written offsets.
             if (at.kind is KtFakeSourceElementKind && at.kind !is KtFakeSourceElementKind.FromUseSiteTarget) continue
             if (!checked.matches(annotation, context.session)) continue
             if (SuppressionReason.hasReason(text, at.startOffset, at.endOffset, checked::lineCarriesOne)) continue

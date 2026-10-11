@@ -64,7 +64,6 @@ object ComposableLiveValueRememberedChecker : FirFunctionCallChecker(MppCheckerK
         if (remember != null) {
             val stale = LiveValueAnalysis.staleReads(session, remember)
             if (stale.isEmpty()) return
-            // The message quotes the argument; a list of values is quoted value by value.
             reportKotrail(source, KotrailDiagnostics.LIVE_VALUE_REMEMBERED, stale.joinToString("', '") { it.name })
             return
         }
@@ -77,15 +76,12 @@ object ComposableLiveValueRememberedChecker : FirFunctionCallChecker(MppCheckerK
             val name = parameter.name.asString()
             if (name !in keyed) continue
             if (argument is FirVarargArgumentsExpression) continue
-            // Declared live: the remember inside the callee is reported, and that is where the fix belongs.
             if (LiveValueAnalysis.isLiveType(session, parameter.returnTypeRef.coneType)) continue
-            // The argument itself, or the branch of an if, a when or an elvis that hands the live value on: what the message names.
             val live = LiveValueAnalysis.liveValueOf(session, argument) ?: continue
             val argumentSource = argument.source ?: continue
             if (argumentSource.kind is KtFakeSourceElementKind) continue
             val text = LiveValueAnalysis.shortText(live) ?: continue
             val calleeName = callee.name.asString()
-            // Through wrappers the remember is further down, in the composable the fix belongs to.
             val holder = keyed[name]
             val subject = if (holder == null) "'$calleeName'" else "'$calleeName' hands it to '$holder', which"
             reportKotrail(argumentSource, KotrailDiagnostics.LIVE_VALUE_PASSED_TO_REMEMBERING_COMPOSABLE, text, subject, holder ?: calleeName)

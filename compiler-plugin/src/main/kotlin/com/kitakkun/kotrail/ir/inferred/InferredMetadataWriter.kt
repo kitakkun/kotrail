@@ -121,8 +121,6 @@ class InferredMetadataWriter(
 ) : IrGenerationExtension {
     override fun generate(moduleFragment: IrModuleFragment, pluginContext: IrPluginContext) {
         if (!pluginContext.afterK2) return
-        // On the JVM the file is written on every compilation, the header alone when no fact is on or found, so that
-        // a module without facts still has a file to publish.
         if (pluginContext.platform.isJvm()) {
             writeJvm(moduleFragment, pluginContext)
             return

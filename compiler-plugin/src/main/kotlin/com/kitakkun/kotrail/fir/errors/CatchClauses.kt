@@ -62,7 +62,6 @@ fun FirCatch.forwards(loggers: List<Glob>): Boolean {
         val expression = (this as? FirSmartCastExpression)?.originalExpression ?: this
         return expression is FirQualifiedAccessExpression && expression.calleeReference.toResolvedCallableSymbol() == target
     }
-    // How many arguments of the call are the parameter itself; none for a logger, which swallows it.
     fun FirFunctionCall.forwardedArguments(): Int {
         val callee = calleeReference.toResolvedCallableSymbol()?.callableId?.asSingleFqName()?.asString()
         if (callee != null && loggers.any { it.matches(callee) }) return 0
@@ -82,7 +81,6 @@ fun FirCatch.forwards(loggers: List<Glob>): Boolean {
         if (forwarded == 0) return false
         forwardedReads += forwarded
     }
-    // Every read of the parameter is one of the forwarded ones: nothing else looks inside it.
     var reads = 0
     block.accept(object : FirVisitorVoid() {
         override fun visitElement(element: FirElement) {

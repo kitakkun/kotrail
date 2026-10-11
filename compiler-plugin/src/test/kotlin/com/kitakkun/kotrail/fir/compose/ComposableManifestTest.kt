@@ -50,7 +50,6 @@ class ComposableManifestTest {
         ComposableManifest.write(records.path, gone.path, emptyList(), listOf("a.Row"))
         gone.delete()
 
-        // Another compilation's directory is only read: the stale record is skipped and stays.
         assertEquals(listOf("a.Frame"), ComposableManifest.read(listOf(records.path)).map { it.name })
         assertEquals(2, records.listFiles().orEmpty().size)
 

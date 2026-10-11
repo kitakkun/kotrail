@@ -276,7 +276,6 @@ object PreferExplicitBackingFieldChecker : FirPropertyChecker(MppCheckerKind.Com
     ) : FirVisitorVoid() {
         val reads: MutableList<FirExpression> = mutableListOf()
 
-        // By identity: a use clears that very access, not every access to the same property.
         val containedUses: MutableSet<FirExpression> = Collections.newSetFromMap(IdentityHashMap())
 
         override fun visitElement(element: FirElement) {
@@ -291,7 +290,7 @@ object PreferExplicitBackingFieldChecker : FirPropertyChecker(MppCheckerKind.Com
                 }
                 is FirSafeCallExpression -> containedUses += element.receiver.unwrapSmartcastExpression()
                 is FirVariableAssignment -> {
-                    // `x += 1` and `x++` assign through a reference to the access they read.
+                    // `x += 1` and `x++` assign through a reference to the original access.
                     val lValue = element.lValue
                     containedUses += (lValue as? FirDesugaredAssignmentValueReferenceExpression)?.expressionRef?.value ?: lValue
                 }

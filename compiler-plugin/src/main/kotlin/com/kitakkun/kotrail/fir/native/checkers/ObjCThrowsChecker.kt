@@ -58,7 +58,6 @@ object ObjCThrowsChecker : NamedFunctionChecker(MppCheckerKind.Common) {
         val source = declaration.source ?: return
         if (source.kind is KtFakeSourceElementKind) return
         if (session.symbolProvider.getClassLikeSymbolByClassId(ObjCNames.OBJC_OBJECT) == null) return
-        // A test source set is never exported to Swift or Objective-C.
         val path = context.containingFileSymbol?.sourceFile?.path
         if (path != null && isTestSourcePath(path)) return
         if (declaration.symbol.isTestFunction(session, session.kotrailConfig.test.annotations)) return

@@ -66,7 +66,8 @@ class ConsumerRulesTest {
     }
 }
 
-// Mirror the member names of KotlinMultiplatformAndroidLibraryExtension, KmpOptimization and ConsumerKeepRules.
+// These mirror the member names of AGP's KotlinMultiplatformAndroidLibraryExtension,
+// KmpOptimization and ConsumerKeepRules, which addConsumerKeepRules finds by reflection.
 class FakeKmpAndroid {
     val optimization = FakeOptimization()
 }

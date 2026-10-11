@@ -90,10 +90,8 @@ object ComposableRememberKeysChecker : FirFunctionCallChecker(MppCheckerKind.Com
         if (keyed != null) {
             val reportedLive = liveReadsReportedElsewhere(expression)
             val missing = keyed.missing.filter { EffectCaptureAnalysis.counts(keyed, it) && it.symbol !in reportedLive }.map { value ->
-                // A data value in a long-lived effect body takes either fix; the message lays out both.
                 when {
                     value.isFunctionTyped -> "${value.name} ($ADVICE_UPDATED_STATE)"
-                    // A snapshot collection keeps its identity while its contents change: a key on it would never restart anything.
                     value.readsSnapshotContents -> "${value.name} ($ADVICE_OBSERVE)"
                     !keyed.isEffect -> "${value.name} ($ADVICE_KEYS)"
                     else -> value.name
@@ -105,8 +103,6 @@ object ComposableRememberKeysChecker : FirFunctionCallChecker(MppCheckerKind.Com
         }
 
         val callee = expression.calleeReference.toResolvedNamedFunctionSymbol() ?: return
-        // A helper of this module is reported at its own effect; the call is where the fix belongs only for a helper compiled elsewhere.
-        // One that an incremental build did not compile again is still of this module: its effect was reported when it was.
         if (callee.isOfThisModule(session)) return
         if (callee.callableId.asSingleFqName().asString() in keyedFunctions) return
         if (!callee.isComposable(session)) return

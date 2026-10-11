@@ -317,6 +317,8 @@ class NativeAllocationService(session: FirSession) : InferredFactService<FirName
     fun isClosedByUse(allocation: FirFunctionCall, parents: List<FirElement>): Boolean {
         var current: FirElement = allocation
         for (parent in parents) {
+            // From the loop checker, parents starts with the allocation itself: FIR adds the
+            // checked element to a checker's containing elements.
             if (parent === current || parent.holdsArgument(current)) continue
             if (parent.checkedValue() === current) {
                 current = parent

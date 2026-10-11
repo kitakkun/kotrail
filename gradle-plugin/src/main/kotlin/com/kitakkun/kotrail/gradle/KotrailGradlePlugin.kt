@@ -93,10 +93,7 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
         wireFixRecords(kotlinCompilation)
         wireComposableRecords(kotlinCompilation)
         wireComplexityRecords(kotlinCompilation)
-        // The unloadable-code records this compilation writes, and those of the projects it bundles.
         val unloadableOptions = unloadableRecords.wire(kotlinCompilation)
-        // The facts file this compilation writes and those of its dependencies, and whether the facts also go into
-        // the class files' Kotlin metadata for incremental compilation (JVM and Android only).
         val factsOptions = factsFiles.wire(kotlinCompilation)?.zip(incrementalMetadataOption(compilationName), FactsFiles.ConcatOptions())
         val options = project.provider {
             val options = optionsFor(compilationName) +
@@ -130,7 +127,6 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
             val specs = specsFor(compilationName)
             val incremental = specs.lastOrNull { it.incrementalMetadata.isPresent }?.incrementalMetadata?.get() ?: true
             val inferred = specs.lastOrNull { it.inferredMetadata.isPresent }?.inferredMetadata?.get() ?: true
-            // Constant for a compilation that writes none, so that publishing does not compile it again for nothing.
             val on = incremental && inferred && !publishing.get()
             listOf(SubpluginOption(IC_METADATA_OPTION, on.toString()))
         }
@@ -335,15 +331,12 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
      * file that does not exist) depend on the task that writes it.
      */
     private fun addConsumerRules(target: Project) {
-        // A fixed location, not derived from the task: the Android DSL needs the file during
-        // configuration, and a task-output provider must not be read before the task has run.
         val outputDirectory = target.layout.buildDirectory.dir(CONSUMER_RULES_DIRECTORY)
         val task = target.tasks.register(CONSUMER_RULES_TASK, KotrailConsumerRulesTask::class.java) { task ->
             task.description = "Writes the shrinker rules this module's consumers need for the inferred-fact annotations"
             task.writeRules.set(extension.consumerRules)
             task.outputDirectory.set(outputDirectory)
         }
-        // The JVM resource directories take the task output: Gradle resolves it lazily and infers the dependency.
         val directory = task.flatMap { it.outputDirectory }
         target.pluginManager.withPlugin("org.jetbrains.kotlin.jvm") {
             target.pluginManager.withPlugin("java") {
@@ -354,15 +347,15 @@ class KotrailGradlePlugin : KotlinCompilerPluginSupportPlugin {
         target.pluginManager.withPlugin("org.jetbrains.kotlin.multiplatform") {
             val kotlin = target.extensions.getByName("kotlin") as KotlinTargetsContainer
             kotlin.targets.configureEach { kotlinTarget ->
-                // Only `jvm`: an `androidJvm` target's resources are not consumer rules (see above).
                 if (kotlinTarget.platformType != KotlinPlatformType.jvm) return@configureEach
                 kotlinTarget.compilations.configureEach { compilation ->
                     if (compilation.name == KotlinCompilation.MAIN_COMPILATION_NAME) compilation.defaultSourceSet.resources.srcDir(directory)
                 }
             }
         }
-        // A layout provider without a task behind it, safe to read in `finalizeDsl`; the explicit
-        // dependencies of `dependOnConsumerRules` make the task write the file before AGP reads it.
+        // The fixed location, not the task's output: `finalizeDsl` reads it during configuration,
+        // and Gradle does not allow reading a task's output before the task has run.
+        // `dependOnConsumerRules` stands in for the task dependency that `directory` carries.
         val rulesFile = outputDirectory.map { it.file(ConsumerRules.RESOURCE_PATH).asFile }
         target.pluginManager.withPlugin("com.android.library") {
             finalizeAndroidDsl(target, extension.consumerRules, CONSUMER_RULES_SKIPPED) { android ->

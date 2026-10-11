@@ -1,10 +1,9 @@
-// Stubs mirroring androidx.compose.runtime.retain, enough for the retainLeak rule's fixture.
-// Not inline or reified (unlike the real retain): the stubs are compiled for a newer JVM than the
-// test compiler targets, and inlining across that gap trips INLINE_FROM_HIGHER_PLATFORM.
 package androidx.compose.runtime.retain
 
 import androidx.compose.runtime.Composable
 
+// Not inline, unlike the real retain: these stubs target a newer JVM than the test compiler, and
+// inlining across that gap fails with INLINE_FROM_HIGHER_PLATFORM.
 @Composable
 fun <T> retain(calculation: () -> T): T = calculation()
 

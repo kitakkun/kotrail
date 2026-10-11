@@ -31,7 +31,6 @@ class FactsFileLookupTest {
     @Test
     fun `a precompiled declaration is read from the module's own file before the dependencies'`() {
         val own = factsFile("app.facts", entry("src/B.kt", "app/retry", "times >= 0"))
-        // A dependency that happens to describe the same key loses to the module's own file.
         val dependency = factsFile("lib.facts", entry("lib/src/Retry.kt", "app/retry", "times > 100"))
         val facts = lookup(listOf(dependency), own)
         assertEquals(listOf("times >= 0"), facts.conditionsOf("app/retry", Origin.PRECOMPILED))
@@ -43,7 +42,6 @@ class FactsFileLookupTest {
         val dependency = factsFile("lib.facts", entry("lib/src/Retry.kt", "app/retry", "times >= 0"))
         val facts = lookup(listOf(dependency), own)
         assertEquals(listOf("times >= 0"), facts.conditionsOf("app/retry", Origin.PRECOMPILED))
-        // The own file describes the declaration, but not with this fact: the dependencies' are still asked.
         assertNull(facts.lookup("app/launcher", "", InferredFactNames.PRECONDITIONS, Origin.PRECOMPILED))
         assertEquals(emptyMap<String, List<String>>(), facts.lookup("app/launcher", "", InferredFactNames.STARTS_ASYNC_WORK, Origin.PRECOMPILED))
     }
@@ -80,12 +78,10 @@ class FactsFileLookupTest {
         val before = lookup(emptyList(), ownFile)
         assertEquals(listOf("times >= 0"), before.conditionsOf("app/retry", Origin.PRECOMPILED))
 
-        // An incremental compilation of A.kt alone rewrites the file: A.kt's entries are replaced, B.kt's stay.
         FactsFile.update(ownFile, "app", "1.0", listOf(entry("src/A.kt", "app/again", "n > 1")), setOf("src/A.kt"), directory.path)
         val after = lookup(emptyList(), ownFile)
         assertEquals(before.conditionsOf("app/retry", Origin.PRECOMPILED), after.conditionsOf("app/retry", Origin.PRECOMPILED))
         assertEquals(listOf("n > 1"), after.conditionsOf("app/again", Origin.PRECOMPILED))
-        // The index read before the write keeps what it read.
         assertEquals(listOf("n > 0"), before.conditionsOf("app/again", Origin.PRECOMPILED))
     }
 }

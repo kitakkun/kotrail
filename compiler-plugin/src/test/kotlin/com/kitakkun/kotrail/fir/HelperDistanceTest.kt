@@ -91,7 +91,6 @@ class HelperDistanceTest {
 
     @Test
     fun `the caller's closure is transitive and its cycles end`() {
-        // load uses first, which uses itself and second, which leads back to load: both sit between load and parse.
         val members = arrayOf(
             placed("load", 1..10, setOf("first", "parse"), Kind.FUNCTION, owner = null, isPrivate = false),
             placed("first", 11..50, setOf("first", "second"), Kind.FUNCTION, owner = null, isPrivate = true),
@@ -134,7 +133,6 @@ class HelperDistanceTest {
 
     @Test
     fun `a run of helpers with one caller is measured from its member nearest the caller`() {
-        // Four icons past an unrelated function: the first is within the distance, the rest only one line apart each.
         val placedRun = arrayOf(
             placed("toolbar", 1..1, setOf("play", "pause", "stop", "skip"), Kind.FUNCTION, owner = null, isPrivate = false),
             placed("unrelated", 3..99, emptySet(), Kind.FUNCTION, owner = null, isPrivate = false),
@@ -146,7 +144,6 @@ class HelperDistanceTest {
         assertEquals(103, effectiveDistance("skip", "toolbar", *placedRun))
         for (icon in listOf("play", "pause", "stop", "skip")) assertNull(far(icon, *placedRun), icon)
 
-        // The same run one line further down: its first member is past the distance, and so is every other.
         val farRun = arrayOf(
             placed("toolbar", 1..1, setOf("play", "pause"), Kind.FUNCTION, owner = null, isPrivate = false),
             placed("unrelated", 3..100, emptySet(), Kind.FUNCTION, owner = null, isPrivate = false),
@@ -156,7 +153,6 @@ class HelperDistanceTest {
         assertEquals(101, far("play", *farRun)?.effectiveDistance)
         assertEquals(102, far("pause", *farRun)?.effectiveDistance)
 
-        // A declaration that is not one of the caller's helpers ends the run.
         val brokenRun = arrayOf(
             placed("toolbar", 1..1, setOf("play", "pause"), Kind.FUNCTION, owner = null, isPrivate = false),
             placed("unrelated", 3..99, emptySet(), Kind.FUNCTION, owner = null, isPrivate = false),
@@ -217,7 +213,6 @@ class HelperDistanceTest {
 
     @Test
     fun `the properties of the caller's class are vocabulary and lead nowhere`() {
-        // render reads title, whose initializer calls decorate: were title followed, decorate would be render's own.
         val members = arrayOf(
             placed("View", 1..1, emptySet(), Kind.CLASS, owner = null, isPrivate = false),
             placed("title", 2..2, setOf("decorate"), Kind.PROPERTY, owner = "View", isPrivate = false),
@@ -259,14 +254,12 @@ class HelperDistanceTest {
             placed("lookup", 91..95, emptySet(), Kind.FUNCTION, owner = "Registry", isPrivate = true),
         ).toTypedArray()
 
-        // With thresholds every one of them would pass, only the helpers are far.
         for (notHelper in listOf("DEFAULT_PORT", "lookup", "cache")) assertNull(farWithin(10, 50, notHelper, *members), notHelper)
 
         assertEquals(58, effectiveDistance("format", "start", *members))
         assertEquals(0.74, helperNoise("format", "start", *members))
         assertEquals("start", farWithin(10, 50, "format", *members)?.caller?.key)
 
-        // format (61..70) is start's own helper: neither noise nor distance.
         assertEquals(67, effectiveDistance("table", "start", *members))
         assertEquals(0.76, helperNoise("table", "start", *members))
         assertEquals("start", farWithin(10, 50, "table", *members)?.caller?.key)

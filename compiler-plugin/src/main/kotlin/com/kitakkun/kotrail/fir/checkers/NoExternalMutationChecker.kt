@@ -123,7 +123,6 @@ object NoExternalMutationChecker {
             val symbol = lValue.calleeReference.toResolvedCallableSymbol() as? FirPropertySymbol ?: return
             val session = context.session
 
-            // `owner.state.value = x`: the write is to `state`, whatever declares `value`.
             val holder = lValue.explicitReceiver?.unwrapSmartCast() as? FirPropertyAccessExpression
             if (holder != null && holder.resolvedType.isStateHolder(session, settings)) {
                 reportIfOutside(expression.source ?: lValue.source, holder, session, plainVar = false)
@@ -163,7 +162,6 @@ object NoExternalMutationChecker {
         if (source == null) return
         val property = access.calleeReference.toResolvedCallableSymbol() as? FirPropertySymbol ?: return
         val owner = ownerOf(property, session) ?: return
-        // An owner of this module: compiled from source, or loaded from the classes directory by an incremental build.
         if (plainVar && owner.origin != FirDeclarationOrigin.Source && !owner.isPrecompiled(session)) return
         if (plainVar && owner.isBag()) return
         if (owner.isDeclaredInWriterFile(session)) return

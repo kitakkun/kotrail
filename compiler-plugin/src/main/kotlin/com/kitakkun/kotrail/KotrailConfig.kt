@@ -1031,7 +1031,8 @@ data class KotrailConfig(
             "kotlin.native.ref.WeakReference",
             "kotlin.reflect.KClass",
             "java.lang.Class",
-            // kotlin.Comparator is a typealias of java.util.Comparator on the JVM, and a class of its own elsewhere.
+            // kotlin.Comparator is a type alias of java.util.Comparator on the JVM and an interface
+            // of its own on other platforms.
             "kotlin.Comparator",
             "java.util.Comparator",
             "kotlin.reflect.KProperty",
@@ -1043,7 +1044,8 @@ data class KotrailConfig(
             "*.assert*", "*.verify*", "*.expect*", "*.should*",
             "*.waitUntil*", "*.captureRoboImage*", "kotlinx.coroutines.withTimeout",
         )
-        // What Gradle plugins generate, and the Kotlin bridges of the Kotlin Gradle plugin's Swift export.
+        // The Kotlin Gradle plugin's Swift export writes its Kotlin bridges under
+        // build/SwiftExport.
         val DEFAULT_GENERATED_PATHS: List<String> = listOf("*/build/generated/*", "*/build/SwiftExport/*")
         val DEFAULT_GENERATED_ANNOTATIONS: List<String> = listOf(
             "javax.annotation.processing.Generated",

@@ -94,7 +94,6 @@ sealed class Value {
         }
         is ListV -> elements.joinToString(", ", "listOf(", ")") { it.render() }
         is DurationV -> renderDuration(value)
-        // No literal reads back to an array; Cond.render refuses a condition that holds one.
         is ArrayV -> "an array of $size"
         NullV -> "null"
     }
@@ -103,7 +102,8 @@ sealed class Value {
         if (duration == Duration.ZERO) return "Duration.ZERO"
         if (duration == Duration.INFINITE) return "Duration.INFINITE"
         if (duration == -Duration.INFINITE) return "-Duration.INFINITE"
-        // Past about 146 years a duration is held in milliseconds, which nanoseconds would overflow.
+        // Past about 146 years a Duration keeps only millisecond precision, and its nanoseconds can
+        // overflow a Long.
         val nanoseconds = duration.inWholeNanoseconds
         return if (nanoseconds.nanoseconds == duration) {
             LongV(nanoseconds).render() + ".nanoseconds"

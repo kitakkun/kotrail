@@ -115,7 +115,6 @@ object NarrowLocalScopeChecker : FirPropertyChecker(MppCheckerKind.Common) {
         val blockText = blockSource.text?.toString() ?: return
         if (firstUseSource.startOffset < source.endOffset) return
         val between = blockText.substring(source.endOffset - blockSource.startOffset, firstUseSource.startOffset - blockSource.startOffset)
-        // The first segment is the rest of the declaration's line, the last one the indentation before the first use.
         val lines = between.split('\n').drop(1).dropLast(1).count { isCodeLine(it) } + 1
         if (lines <= maxDistance) return
         val fix = moveBeforeFix(source, block, firstUseSource)

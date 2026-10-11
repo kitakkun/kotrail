@@ -174,11 +174,10 @@ class CondConverter(
                 if (argument is FirVarargArgumentsExpression) argument.arguments else listOf(argument)
             }
             val values = elements.map { convert(it)?.evaluate(emptyMap()) ?: return null }
-            // Lists compare their elements with equals, which for an array is identity.
+            // A list compares its elements with equals, which for an array is identity.
             if (values.any { it is Value.ArrayV }) return null
             return Cond.Const(Value.ListV(values))
         }
-        // arrayOf(1, 2) / byteArrayOf() / emptyArray(): an array of as many elements as are written.
         if (callableId in ARRAY_FACTORIES) {
             val elements = expression.arguments.flatMap { argument ->
                 if (argument is FirVarargArgumentsExpression) argument.arguments else listOf(argument)
@@ -219,7 +218,7 @@ class CondConverter(
         if (constructor.resolvedReturnTypeRef.coneType.classId !in PRIMITIVE_ARRAYS) return null
         val sizeArgument = expression.arguments.singleOrNull() ?: return null
         val size = convert(sizeArgument)?.evaluate(emptyMap()) as? Value.IntV ?: return null
-        // A negative size throws instead of making an array.
+        // A negative size throws at runtime instead of making an array.
         if (size.value < 0) return null
         return Cond.Const(Value.ArrayV(size.value))
     }

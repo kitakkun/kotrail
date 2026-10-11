@@ -128,7 +128,6 @@ object ComposableCallbackInModelChecker : NamedFunctionChecker(MppCheckerKind.Co
         }
 
         private fun callbackIn(classSymbol: FirRegularClassSymbol, type: ConeClassLikeType): String? {
-            // A project class: of this module, also when an incremental build loaded it from the classes directory.
             if (!classSymbol.isOfThisModule(session)) return null
             if (!ModelSurface.isModelKind(classSymbol)) return null
             if (classSymbol in walking || !walked.add(classSymbol to type.typeArguments.toList())) return null
@@ -139,12 +138,9 @@ object ComposableCallbackInModelChecker : NamedFunctionChecker(MppCheckerKind.Co
                     .toMap()
                 val substitutor = substitutorByMap(arguments, session)
                 val className = classSymbol.classId.shortClassName.asString()
-                // The surface the plugin metadata sums up for incremental compilation (see ModelSurface): what is read
-                // here must be part of it.
                 val compared = ModelSurface.comparedNames(classSymbol)
                 for (property in ModelSurface.properties(classSymbol)) {
                     if (property.receiverParameterSymbol != null) continue
-                    // A data class compares every property of its primary constructor, private ones included.
                     val isCompared = classSymbol.isData && (property.fromPrimaryConstructor || property.name in compared)
                     if (Visibilities.isPrivate(property.visibility) && !isCompared) continue
                     val propertyType = substitutor.substituteOrSelf(property.resolvedReturnType)
@@ -152,7 +148,6 @@ object ComposableCallbackInModelChecker : NamedFunctionChecker(MppCheckerKind.Co
                 }
                 for (superType in classSymbol.resolvedSuperTypes) {
                     val substituted = substitutor.substituteOrSelf(superType)
-                    // A class that implements a function type defines its own equality; it is not a captured lambda.
                     if (substituted.isSomeFunctionType(session)) continue
                     callbackIn(substituted, path = emptyList(), holder = null)?.let { return it }
                 }

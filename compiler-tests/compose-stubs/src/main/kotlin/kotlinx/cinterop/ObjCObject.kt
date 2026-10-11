@@ -1,6 +1,3 @@
-// Stubs mirroring the Kotlin/Native Objective-C interop, enough for the native rules to see the
-// same fully qualified names they see in an iOS compilation. Only the names, and which classes
-// carry ExternalObjCClass, matter to the plugin.
 package kotlinx.cinterop
 
 interface ObjCObject

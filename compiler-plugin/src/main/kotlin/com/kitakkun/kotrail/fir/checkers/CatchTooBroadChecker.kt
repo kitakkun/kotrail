@@ -80,7 +80,6 @@ object CatchTooBroadChecker : FirTryExpressionChecker(MppCheckerKind.Common) {
         if (!config.isEnabled(KotrailRule.CATCH_TOO_BROAD)) return
         val session = context.session
         val broad = config.catchTooBroad.types
-        // Where the try sits, looked up once and only for a clause that would otherwise be reported.
         val boundary by lazy(LazyThreadSafetyMode.NONE) { failureBoundary(config.failureBoundaries) }
         for ((index, catch) in expression.catches.withIndex()) {
             val parameter = catch.parameter
@@ -99,17 +98,13 @@ object CatchTooBroadChecker : FirTryExpressionChecker(MppCheckerKind.Common) {
             val cancellationHandled = expression.catches.take(index).any { earlier ->
                 earlier.caughtTypeNames(session).any { it in CANCELLATION_TYPES } && earlier.rethrows()
             }
-            // An empty clause around a single call to a function that records the failure before rethrowing it: the
-            // callee has already handed the failure on. In a coroutine, cancellation must have been let through first.
             if (catch.block.statements.isEmpty() && names.any { it in RecordsFailureService.RECORDED_TYPES } &&
                 expression.callsRecordingFunction(session) && (cancellationHandled || !context.isSuspendContext(session))
             ) continue
             val swallowed = catch.swallows(loggers)
             if (config.catchTooBroad.report == "swallowed" && !swallowed) continue
-            // At a failure boundary a broad catch is the right shape, as long as the failure is logged or handed on there.
             val root = boundary
             if (root != null && catch.readsParameter()) continue
-            // Cancellation reaches a clause only in a coroutine, and only when no clause before it has let it through.
             val included = if (cancellationHandled || !context.isSuspendContext(session)) "bugs included" else "bugs and cancellations included"
             val rest = when {
                 root != null ->

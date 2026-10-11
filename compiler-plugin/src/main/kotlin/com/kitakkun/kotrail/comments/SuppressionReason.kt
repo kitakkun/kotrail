@@ -38,7 +38,6 @@ object SuppressionReason {
         val last = lineIndexOf(lines, maxOf(annotationStart, annotationEnd - 1))
         for (index in first..last) if (hasComment(lines[index])) return true
 
-        // A file annotation is never a group member, and a file header set off by a blank line is not its reason.
         if (text.startsWith("@file:", annotationStart)) return first > 0 && isCommentLine(lines[first - 1])
 
         val level = indentOf(lines[first])
@@ -54,14 +53,12 @@ object SuppressionReason {
                     var above = current - 1
                     while (above >= 0 && lines[above].isBlank()) above--
                     if (above < 0) return false
-                    // A section comment above the group, or above a lone annotation, may sit a blank line or two away.
                     if (isCommentLine(lines[above]) && current - above <= MAX_BLANK_LINES_BEFORE_COMMENT) return true
                     if (!isSuppression(lines[above]) && !closesMember(lines[above], level)) return false
                     current = above
                 }
                 isSuppression(line) -> if (hasComment(line)) return true else current--
                 trimmed.startsWith("@") || indentOf(line) > level || closesMember(line, level) -> current--
-                // A declaration at the group's level with no annotation on its line: its annotations, if any, are on the line above.
                 current > 0 && lines[current - 1].trim().startsWith("@") -> current--
                 else -> return false
             }

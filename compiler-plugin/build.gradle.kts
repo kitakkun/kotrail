@@ -11,7 +11,6 @@ plugins {
 val kotlinCompilerVersion: String by rootProject.extra
 val kotlinCompatFamily: String by rootProject.extra
 
-// The Kotrail version is baked in for the header of the inferred-fact facts files the plugin writes.
 val generateVersionSource by tasks.registering {
     val outputDir = layout.buildDirectory.dir("generated/kotrail-version/kotlin")
     val kotrailVersion = project.version.toString()

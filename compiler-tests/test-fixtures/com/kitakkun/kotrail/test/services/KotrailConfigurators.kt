@@ -57,10 +57,9 @@ internal class KotrailExtensionRegistrarConfigurator(testServices: TestServices)
     override val directiveContainers: List<DirectivesContainer> = listOf(KotrailTestDirectives)
 
     override fun configureCompilerConfiguration(configuration: CompilerConfiguration, module: TestModule) {
-        // What the Gradle plugin does for a build: every module writes its facts file into a directory of its own,
-        // outside its class files, and reads the facts files of the modules it depends on. The dependencies are
-        // compiled first, so their files exist by the time the dependent's first lookup reads them.
         configuration.put(KotrailConfigurationKeys.FACTS_OUT, testServices.factsFileFor(module).path)
+        // The test framework compiles a module's dependencies before the module, so their facts
+        // files exist by the time it reads them.
         for (dependency in module.allDependencies) {
             configuration.add(KotrailConfigurationKeys.FACTS, testServices.factsFileFor(dependency.dependencyModule).path)
         }

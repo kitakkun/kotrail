@@ -98,7 +98,6 @@ object NameSaysTypeChecker {
             if (source.kind is KtFakeSourceElementKind) return
             if (declaration.isOverride || declaration.isActual) return
             if (declaration.isCatchParameter == true) return
-            // A constant is named for its role.
             if (declaration.isConst) return
             val settings = config.nameSaysType
             val member = !declaration.isLocal && declaration.dispatchReceiverType != null
@@ -360,7 +359,6 @@ internal object TypeWords {
     fun endsWithHeadNoun(name: String, expected: Expected, settings: KotrailNameSaysType): Boolean {
         if (name.trimStart('_').lowercase() in expected.ownNames) return true
         val words = withoutSuffixes(split(name), settings.nameSuffixes)
-        // The word before a trailing phrase (`users` in `usersById`), and the last word as written (`user` in `idToUser`).
         val lastWords = listOf(withoutPhrase(words, NAME_PHRASE_OPENERS), words)
             .mapNotNull { candidate -> candidate.lastOrNull { word -> word.any(Char::isLetter) }?.lowercase() }
         if (lastWords.isEmpty()) return true
@@ -597,7 +595,6 @@ internal object TypeWords {
         }
         val example = example(role, expected, typeShown)
         val kept = if (example.keptTo > example.keptFrom) original.substring(tokens[example.keptFrom].start, tokens[example.keptTo - 1].end) else ""
-        // The last role word, replaced by the type's words, keeps its digits after them (`reply1` for `r1`).
         val replacedDigits = if (example.keptTo < roleSize) digitsOf(role.last()) else ""
         return asIn(head, prefix, kept + spelledAdded(example.added, style, keptBefore = kept.isNotEmpty()) + replacedDigits + rest)
     }
@@ -739,10 +736,10 @@ internal object TypeWords {
         val target = classOf(written, session) ?: return null
         if (asksNothing(target, settings, session)) return null
         val targetId = target.lookupTag.classId
-        // A type alias is the name the reader sees: its head nouns count besides the expansion's, and the message shows it.
         val aliasId = aliasOf(written, target)
         if (aliasId != null && settings.valueTypes.matches(aliasId.asSingleFqName().asString())) return null
-        // A platform alias (`ArrayList` for `java.util.ArrayList`) only moves the class to another package.
+        // A platform alias (`ArrayList` for `java.util.ArrayList`) keeps the class's name and only
+        // moves it to another package.
         val ownAlias = aliasId?.takeIf { it.shortClassName != targetId.shortClassName }
         val aliasNouns = ownAlias?.let { segmentNouns(it, settings) }.orEmpty()
         val aliasShown = ownAlias?.let { shownWords(it.shortClassName.asString(), settings) }?.takeIf { it.isNotEmpty() }
@@ -772,7 +769,6 @@ internal object TypeWords {
         }
 
         val shown = aliasShown ?: shownWords(targetId.shortClassName.asString(), settings).takeIf { it.isNotEmpty() } ?: return null
-        // `Runnable`, `AutoCloseable`: what a value can do is not a word a name can end with.
         if (isAdjective(shown.last())) return null
         val ownHead = spelledOutHead(shown.last().lowercase())
         return Expected(

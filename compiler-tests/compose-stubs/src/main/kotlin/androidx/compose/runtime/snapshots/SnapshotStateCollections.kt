@@ -1,6 +1,3 @@
-// Stubs mirroring the snapshot collections of androidx.compose.runtime.snapshots: lists, maps
-// and sets whose contents change in place while the object keeps its identity. Backed by plain
-// collections, so that box tests can run code that builds them.
 package androidx.compose.runtime.snapshots
 
 import androidx.compose.runtime.Stable

@@ -128,7 +128,6 @@ object UnguardedBoundaryChecker : FirTryExpressionChecker(MppCheckerKind.Common)
         val first = catches.firstOrNull() ?: return
         val broad = config.catchTooBroad.types
         if (catches.any { it.isBroad(broad, session) }) return
-        // A try whose every clause rethrows cleans up or translates: it was not written to stop failures.
         if (catches.all { it.rethrows() }) return
         val boundary = failureBoundary(config.failureBoundaries) ?: return
         if (boundary.enclosingTries.any { enclosing -> enclosing.catches.any { it.isBroad(broad, session) } }) return
@@ -146,8 +145,8 @@ object UnguardedBoundaryChecker : FirTryExpressionChecker(MppCheckerKind.Common)
         } else {
             "Catch Exception as well and log or report it"
         }
-        // Nothing in the code above receives the failure, but it is not silent either: without a
-        // handler it reaches the thread's default handler, which logs it or, on Android, ends the process.
+        // Without a handler, the failure reaches the thread's default handler, which logs it or, on
+        // Android, ends the process.
         val rest = "from ${outside.described} ends '${boundary.description}' here, and only the default handler sees it. $remedy"
         reportKotrail(reportAt, KotrailDiagnostics.BOUNDARY_UNGUARDED, types, rest)
     }
@@ -242,7 +241,8 @@ object UnguardedBoundaryChecker : FirTryExpressionChecker(MppCheckerKind.Common)
         val calls = mutableListOf<ThrowingCall>()
         accept(object : FirVisitorVoid() {
             override fun visitElement(element: FirElement) {
-                // Checked here for every kind of call: the visitor routes an implicit invoke past visitFunctionCall.
+                // Checked here for every kind of call: FirVisitorVoid routes an implicit invoke
+                // past visitFunctionCall.
                 if (element is FirFunctionCall) element.throwingCall(session, depth, following)?.let(calls::add)
                 element.acceptChildren(this)
             }
