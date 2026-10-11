@@ -16,6 +16,7 @@ import org.jetbrains.kotlin.fir.declarations.FirProperty
 import org.jetbrains.kotlin.fir.declarations.InlineStatus
 import org.jetbrains.kotlin.fir.declarations.toAnnotationClassId
 import org.jetbrains.kotlin.fir.declarations.utils.isOverride
+import org.jetbrains.kotlin.fir.declarations.utils.isSuspend
 import org.jetbrains.kotlin.fir.expressions.FirAnonymousFunctionExpression
 import org.jetbrains.kotlin.fir.expressions.FirArgumentList
 import org.jetbrains.kotlin.fir.expressions.FirBlock
@@ -47,6 +48,7 @@ import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.isSomeFunctionType
+import org.jetbrains.kotlin.fir.types.isSuspendOrKSuspendFunctionType
 import org.jetbrains.kotlin.fir.types.isUnit
 import org.jetbrains.kotlin.fir.types.lowerBoundIfFlexible
 import org.jetbrains.kotlin.fir.types.resolvedType
@@ -86,17 +88,18 @@ class FailureBoundary(
  *   `LaunchedEffect`), or a lambda of a flow chain that is the receiver of one of them
  *   (`events.onEach { }.launchIn(scope)`);
  * - a lambda that returns `Unit`, converted to an interface declared outside this module
- *   (`view.setOnClickListener { }`, `Runnable { }`);
- * - the body of a function that overrides a member declared outside this module and returning
- *   `Unit` (`onClick`, `Runnable.run`), the members of `Any` aside: `toString` and its kin are
- *   called by the project's own code;
+ *   (`view.setOnClickListener { }`, `Runnable { }`), unless the interface's function is suspend;
+ * - the body of a function, not suspend, that overrides a member declared outside this module
+ *   and returning `Unit` (`onClick`, `Runnable.run`), the members of `Any` aside: `toString` and
+ *   its kin are called by the project's own code;
  * - the body of a function the project declares a boundary: annotated with one of
  *   [KotrailFailureBoundaries.annotations] (or a member of a class that is), or named by
  *   [KotrailFailureBoundaries.names].
  *
  * A library calls a `Unit` callback and forgets it, so nothing receives what escapes it. A member
  * that returns a value (`ClassLoader.loadClass`, a command handler's result) is called by code
- * that consumes the result, and that code receives the failure with it.
+ * that consumes the result, and that code receives the failure with it. So is a suspend function,
+ * whose failure goes to the coroutine that called it.
  *
  * `runCatching` is inline but catches everything, so a try inside it is never at a boundary.
  */
@@ -161,7 +164,8 @@ private class LambdaArgument(val call: FirCall, val callIndex: Int, val paramete
         if (callee != null && callee.matches(functions)) {
             return FailureBoundary(callee.rootName(), launcher = call, downstream = emptyList(), enclosingTries = tries)
         }
-        if (lambda.returnTypeRef.coneType.lowerBoundIfFlexible().isUnit) {
+        val isSuspendLambda = lambda.typeRef.coneType.isSuspendOrKSuspendFunctionType(session)
+        if (lambda.returnTypeRef.coneType.lowerBoundIfFlexible().isUnit && !isSuspendLambda) {
             convertedInterface(session)?.let { name ->
                 return FailureBoundary(name, launcher = null, downstream = emptyList(), enclosingTries = tries)
             }
@@ -245,11 +249,11 @@ private fun FirCallableSymbol<*>.rootName(): String =
 
 /**
  * Whether the function overrides a member declared outside this module that returns `Unit`, other
- * than one of `Any`'s. The return type is the member's as the class sees it, so `accept` of a
- * `Consumer<Event>` counts, while `call` of a `Callable<String>` does not.
+ * than one of `Any`'s, and is not suspend. The return type is the member's as the class sees it,
+ * so `accept` of a `Consumer<Event>` counts, while `call` of a `Callable<String>` does not.
  */
 private fun FirNamedFunction.overridesOutsideCallback(owner: FirClass?, session: FirSession, scopeSession: ScopeSession): Boolean {
-    if (owner == null || !isOverride) return false
+    if (owner == null || !isOverride || isSuspend) return false
     val overridden = symbol.overriddenFunctions(owner.symbol, session, scopeSession)
     return overridden.any { function ->
         val original = function.unwrapFakeOverrides()

@@ -77,10 +77,13 @@ root itself, and a `try` inside it is not at the top of one. A root body is:
    that returns its result, `Callable.call`): its caller consumes the result and receives the
    failure with it. The return type is the member's as the class sees it, so `accept` of a
    `Consumer<Event>` is a root. The members of `Any` are not roots either: `toString`, `equals`
-   and `hashCode` are called by the project's own code.
+   and `hashCode` are called by the project's own code. Nor is a suspend function, as an override
+   (`override suspend fun check()`) or as a lambda converted to an interface whose function is
+   suspend: its failure goes to the coroutine that called it, like a value it returns.
 3. The body of a function the project declares a boundary: annotated with one of `annotations`
    (globs over fully qualified names), a member of a class annotated with one, or named by
-   `names` (globs over fully qualified function names, `com.acme.Dispatcher.dispatch`).
+   `names` (globs over fully qualified function names, `com.acme.Dispatcher.dispatch`). A
+   function named this way is a root even when it is suspend.
 
 Not roots: `async` (the failure goes to whoever awaits it), `withContext`, `coroutineScope`,
 `supervisorScope` and `runBlocking` (they return it to their caller), `runCatching` (it catches
@@ -177,8 +180,8 @@ block calls nothing else; `writeAndRecord(StringBuilder(label))` around a projec
     unguardedBoundary:
       guardedScopes: [com.example.HostPlugin.pluginScope, "com.example.*.safeScope"]
   ```
-- The root is an override, or a converted lambda, that returns a value: not a root at all (see
-  [Failure boundaries](#failure-boundaries)).
+- The root is an override, or a converted lambda, that returns a value or is suspend: not a root
+  at all (see [Failure boundaries](#failure-boundaries)).
 - The root is a flow chain with a `.catch { }` operator downstream of the try's lambda:
   `events.map { try { ... } catch (e: IOException) { ... } }.catch { ... }.stateIn(...)`.
 - The try block calls only the project's own code that reaches no call out within three
@@ -207,7 +210,9 @@ rule asks for in a coroutine: rethrow `CancellationException` first.
 `unguardedBoundary.diag.txt` (own functions followed to a call out in `Inspector`); constructors
 of classes declared in another module in
 `unguardedBoundaryAcrossModules.kt` and `unguardedBoundaryAcrossModules.diag.txt`; the boundary
-definition from the other side in `compiler-tests/testData/diagnostics/catchTooBroadBoundaries.kt`.
+definition from the other side in `compiler-tests/testData/diagnostics/catchTooBroadBoundaries.kt`;
+suspend overrides and lambdas converted to a suspend interface in
+`unguardedBoundarySuspendRoots.kt`.
 
 ## Implementation notes
 
@@ -222,11 +227,13 @@ parameter whose type is an interface declared outside the module or to that inte
 constructor, or when its call is a link of a flow chain (each link the receiver of the next,
 each of a type from `kotlinx.coroutines.flow`) that ends in a call matching `functions`; the
 links in between are the downstream operators. A converted lambda counts only when its
-resolved return type is `Unit`. A function is a root when one of the functions it overrides
-(`overriddenFunctions`), unwrapped from fake overrides, is declared outside the module and is
-not a member of `Any`, and returns `Unit` as the class sees it (the overridden symbol's
-substituted return type), or when `annotations` or `names` name it. The walk also collects the
-tries whose try block it passes, for the enclosing broad catch. The calls out are a visitor over
+resolved return type is `Unit` and its function type is not a suspend one
+(`isSuspendOrKSuspendFunctionType`). A function that is not suspend is a root when one of the
+functions it overrides (`overriddenFunctions`), unwrapped from fake overrides, is declared
+outside the module and is not a member of `Any`, and returns `Unit` as the class sees it (the
+overridden symbol's substituted return type); any function is one when `annotations` or `names`
+name it. The walk also collects the tries whose try block it passes, for the enclosing broad
+catch. The calls out are a visitor over
 the try block that skips non-inline lambdas, local functions and classes, and SAM constructors;
 it looks at every `FirFunctionCall`, an implicit `invoke` included, in `visitElement`, since the
 visitor does not route `FirImplicitInvokeCall` through `visitFunctionCall`. An `invoke` whose

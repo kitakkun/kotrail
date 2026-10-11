@@ -103,9 +103,9 @@ declares a boundary through
 `unguardedBoundary.annotations` or `unguardedBoundary.names`. `async`, `withContext`,
 `coroutineScope`, `runBlocking` and a `flow { }` collected elsewhere are not roots, and
 `runCatching` ends the search. Neither is an override, or a converted lambda, that returns a
-value (`ClassLoader.loadClass`, a command handler that returns its result): its caller consumes
-the result and receives the failure with it, so a broad catch there that only logs is reported
-as anywhere else.
+value (`ClassLoader.loadClass`, a command handler that returns its result) or is suspend: its
+caller consumes the result and receives the failure with it, or the coroutine that called it
+does, so a broad catch there that only logs is reported as anywhere else.
 
 ```yaml
 rules:
