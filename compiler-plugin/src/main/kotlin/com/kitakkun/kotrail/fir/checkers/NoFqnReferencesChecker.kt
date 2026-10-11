@@ -5,6 +5,7 @@ package com.kitakkun.kotrail.fir.checkers
 import com.kitakkun.kotrail.compat.qualifierClassId
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
+import com.kitakkun.kotrail.fir.classNameIsTaken
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.recordNameProbe
 import com.kitakkun.kotrail.fir.reportKotrail
@@ -19,7 +20,6 @@ import org.jetbrains.kotlin.fir.analysis.checkers.expression.FirResolvedQualifie
 import org.jetbrains.kotlin.fir.analysis.checkers.type.FirTypeRefChecker
 import org.jetbrains.kotlin.fir.declarations.DirectDeclarationsAccess
 import org.jetbrains.kotlin.fir.declarations.FirCallableDeclaration
-import org.jetbrains.kotlin.fir.declarations.FirClassLikeDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirFile
 import org.jetbrains.kotlin.fir.expressions.FirQualifiedAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirResolvedQualifier
@@ -139,43 +139,6 @@ object NoFqnReferences {
     private fun isAllowed(packageFqName: FqName, allow: List<String>): Boolean {
         val name = packageFqName.asString()
         return allow.any { prefix -> name == prefix || name.startsWith("$prefix.") }
-    }
-
-    /**
-     * Whether the simple name of [target] already means something else in [file]. The packages of
-     * the star imports and the file's own package are asked by hand, so each question is recorded
-     * for incremental compilation: a class of that name added to or removed from one of them in
-     * another file compiles [file] again. The default imports are not recorded: they name the
-     * standard library's packages, which no source file of the module adds to.
-     */
-    private fun classNameIsTaken(target: ClassId, file: FirFile, session: FirSession): Boolean {
-        val name = target.shortClassName
-        for (import in file.imports) {
-            val fqName = import.importedFqName ?: continue
-            if (import.isAllUnder) {
-                val candidate = ClassId(fqName, name)
-                if (candidate == target) continue
-                session.recordNameProbe(name, fqName, import.source, file.source)
-                if (session.symbolProvider.getClassLikeSymbolByClassId(candidate) != null) return true
-            } else {
-                val bound = import.aliasName ?: fqName.shortName()
-                if (bound == name && fqName != target.asSingleFqName()) return true
-            }
-        }
-        if (file.declarations.any { it is FirClassLikeDeclaration && it.symbol.name == name && it.symbol.classId != target }) return true
-        val filePackage = file.packageDirective.packageFqName
-        val samePackage = ClassId(filePackage, name)
-        if (samePackage != target) session.recordNameProbe(name, filePackage, null, file.source)
-        if (samePackage != target && session.symbolProvider.getClassLikeSymbolByClassId(samePackage) != null) return true
-        for (path in session.defaultImportsProvider.getDefaultImports(includeLowPriorityImports = true)) {
-            if (path.isAllUnder) {
-                val candidate = ClassId(path.fqName, name)
-                if (candidate != target && session.symbolProvider.getClassLikeSymbolByClassId(candidate) != null) return true
-            } else if ((path.alias ?: path.fqName.shortName()) == name && path.fqName != target.asSingleFqName()) {
-                return true
-            }
-        }
-        return false
     }
 
     /**

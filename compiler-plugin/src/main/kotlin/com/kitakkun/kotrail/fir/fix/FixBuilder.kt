@@ -2,10 +2,12 @@ package com.kitakkun.kotrail.fir.fix
 
 import com.kitakkun.kotrail.fir.FixEdit
 import org.jetbrains.kotlin.KtSourceElement
+import org.jetbrains.kotlin.fir.declarations.FirFile
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.FirLiteralExpression
 import org.jetbrains.kotlin.fir.expressions.FirQualifiedAccessExpression
+import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.text
 
 /**
@@ -58,6 +60,20 @@ class FixBuilder private constructor(
 
     /** The last non-whitespace character before [offset], or `null` when the container has none there. */
     fun previousSignificantChar(offset: Int): Char? = charAt(previousSignificantEnd(offset) - 1)
+
+    /**
+     * The file offset where the line of [offset] ends (its newline, or the end of the
+     * container) when nothing but blanks and a line comment follow [offset] on it, else `null`.
+     */
+    private fun lineEndAfter(offset: Int): Int? {
+        var index = offset - base
+        while (index < text.length && (text[index] == ' ' || text[index] == '\t')) index++
+        if (text.startsWith("//", index)) index = text.indexOf('\n', index).takeIf { it >= 0 } ?: text.length
+        return if (index == text.length || text[index] == '\n') base + index else null
+    }
+
+    /** Whether [offset] is the start of a line. */
+    private fun startsLine(offset: Int): Boolean = offset == base || charAt(offset - 1) == '\n'
 
     /** Replaces the characters from [startOffset] (inclusive) to [endOffset] (exclusive). */
     fun replaceRange(startOffset: Int, endOffset: Int, replacement: String): FixEdit = FixEdit(startOffset, endOffset, replacement)
@@ -132,6 +148,34 @@ class FixBuilder private constructor(
         val moved = sources.map { textOf(it) ?: return emptyList() }
         val indent = indentAt(anchor.startOffset)
         return sources.map { deleteLines(it, trailingBlankLine = true) } + insertAfter(anchor, moved.joinToString("") { "\n\n$indent$it" })
+    }
+
+    /**
+     * Inserts `import [fqName]` on a line of its own into [file], the container of this builder:
+     * among the imports, before the first one that sorts after it by name, else after the last;
+     * with no imports, after the package directive and a blank line; with neither, at the start
+     * of the file. `null` when the place is not certain: file annotations come first, or the
+     * import or directive it would go next to shares its line with other code.
+     */
+    fun addImport(file: FirFile, fqName: FqName): FixEdit? {
+        val line = "import ${fqName.asString()}"
+        val imports = file.imports.mapNotNull { import ->
+            val name = import.importedFqName ?: return@mapNotNull null
+            val source = import.source ?: return@mapNotNull null
+            (if (import.isAllUnder) "${name.asString()}.*" else name.asString()) to source
+        }
+        if (imports.isNotEmpty()) {
+            val next = imports.firstOrNull { (name, _) -> name > fqName.asString() }?.second
+            if (next != null) return if (startsLine(next.startOffset)) insertBefore(next, "$line\n") else null
+            val end = lineEndAfter(imports.last().second.endOffset) ?: return null
+            return FixEdit(end, end, "\n$line")
+        }
+        if (!file.packageDirective.packageFqName.isRoot) {
+            val end = file.packageDirective.source?.let { lineEndAfter(it.endOffset) } ?: return null
+            return FixEdit(end, end, "\n\n$line")
+        }
+        if (file.annotations.isNotEmpty()) return null
+        return FixEdit(base, base, "$line\n\n")
     }
 
     companion object {

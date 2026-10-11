@@ -46,6 +46,16 @@ codebase is a typical drift; the reference form is shorter and cannot silently p
 work. A Java getter read as a synthetic property (`{ it.absolutePath }`) is referenced through
 the getter, `File::getAbsolutePath`, since a reference to the synthetic property does not compile.
 
+The class of a type-qualified reference is written the way the file can name it: a nested class
+with its outer classes (`Sheet.Line::text`), a class imported under an alias by the alias
+(`Span::beat` after `import lib.music.ChordSpan as Span`). A class the file has only met through
+inference has no name there yet, such as the element type in `spans.map { it.beat }` when
+`ChordSpan` lives in another package and nothing imports it. The reference is still asked for,
+and the fix adds `import lib.music.ChordSpan` with it: among the imports at its sorted place, after
+the package directive when there are none, at the start of the file when there is neither. When
+file annotations come first, or the neighboring import or directive shares its line with other
+code, the finding comes without a fix.
+
 ## When it fires
 
 A lambda whose body is a single call (or property read) that forwards the lambda's parameters
@@ -76,6 +86,9 @@ resolve to the same callee:
   getter method arrive side by side).
 - Arguments are reordered, transformed, or partially supplied, or the body has more than one
   statement.
+- The reference would name a class whose simple name already means something else in the file
+  (a class of that name declared, imported, or in the same package): only its package could tell
+  them apart.
 
 Note on allocation: a reference passed to a non-inline function allocates a function object
 exactly like a lambda would, so the rewrite is neutral for performance. Passed to an inline
@@ -83,7 +96,9 @@ function, both are inlined.
 
 ## Fixtures
 
-`compiler-tests/testData/diagnostics/preferFunctionReferences.kt`
+`compiler-tests/testData/diagnostics/preferFunctionReferences.kt`,
+`compiler-tests/testData/diagnostics/preferFunctionReferencesImports.kt` (with the fixes in
+`preferFunctionReferencesImports.fixes.txt`)
 
 ## Implementation notes
 
@@ -92,4 +107,9 @@ are detected through `declaredFunctions` of the owning class or
 `symbolProvider.getTopLevelFunctionSymbols`; `suspend` is compared between the lambda's
 resolved function type and the callee's status. A property reference is checked against the
 receiver's `unsubstitutedScope` and the top-level functions of its package for a function of the
-same name, and a `FirSyntheticPropertySymbol` is named by its `getterId`.
+same name, and a `FirSyntheticPropertySymbol` is named by its `getterId`. The name of the
+outermost class comes from `classNameInFile` (`fir/ClassNamesInFile.kt`, shared with
+noFqnReferences): an explicit import, with its alias if it has one, or the simple name when the
+file's package, a star import or a default import reaches the class and nothing shadows it. The
+import goes in through `FixBuilder.addImport`, and `kotrailFix` applies an import that several
+fixes of one file add only once.

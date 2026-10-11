@@ -1,13 +1,17 @@
+@file:OptIn(SymbolInternals::class)
+
 package com.kitakkun.kotrail.fir.checkers
 
 import com.kitakkun.kotrail.compat.qualifierClassId
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.ReferenceForm
+import com.kitakkun.kotrail.fir.ClassNameInFile
 import com.kitakkun.kotrail.fir.FixEdit
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.fix.FixBuilder
 import com.kitakkun.kotrail.fir.compose.ComposeNames
 import com.kitakkun.kotrail.fir.compose.isComposable
+import com.kitakkun.kotrail.fir.classNameInFile
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.recordNameProbe
 import com.kitakkun.kotrail.fir.reportKotrail
@@ -43,17 +47,20 @@ import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
 import org.jetbrains.kotlin.fir.resolve.toSymbol
 import org.jetbrains.kotlin.fir.scopes.getFunctions
 import org.jetbrains.kotlin.fir.scopes.unsubstitutedScope
+import org.jetbrains.kotlin.fir.symbols.SymbolInternals
 import org.jetbrains.kotlin.fir.symbols.impl.FirClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirPropertySymbol
+import org.jetbrains.kotlin.fir.symbols.impl.FirRegularClassSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirSyntheticPropertySymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirValueParameterSymbol
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.customAnnotations
 import org.jetbrains.kotlin.fir.types.isSuspendOrKSuspendFunctionType
 import org.jetbrains.kotlin.fir.types.resolvedType
+import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 
 /**
@@ -74,9 +81,19 @@ import org.jetbrains.kotlin.name.Name
  * receiver. A Java synthetic property (`file.absolutePath`) is referenced through its getter
  * (`File::getAbsolutePath`), the only form the language accepts. The forms a project wants are
  * selected with `preferFunctionReferences.forms`.
+ *
+ * A type-qualified reference names the class the way the file can write it: a nested class with
+ * its outer classes (`Sheet.Line::text`), an outermost class imported under an alias by the
+ * alias. A class the file only met through inference (`spans.map { it.beat }` over a type from
+ * another package) is not reachable by its simple name; the fix then imports it, and when that
+ * name already means something else in the file nothing is reported.
  */
 object PreferFunctionReferenceChecker : FirAnonymousFunctionChecker(MppCheckerKind.Common) {
-    private class Suggestion(val form: ReferenceForm, val text: String)
+    /** A reference to suggest, and the class the file has to import for it, if any. */
+    private class Suggestion(val form: ReferenceForm, val text: String, val import: FqName?)
+
+    /** How the file writes a class before `::`, and the class it has to import for that, if any. */
+    private class TypeName(val text: String, val import: FqName?)
 
     context(context: CheckerContext, reporter: DiagnosticReporter)
     override fun check(declaration: FirAnonymousFunction) {
@@ -106,7 +123,40 @@ object PreferFunctionReferenceChecker : FirAnonymousFunctionChecker(MppCheckerKi
             else -> null
         } ?: return
         if (suggestion.form !in config.preferFunctionReferences.forms) return
-        reportKotrail(source, KotrailDiagnostics.PREFER_FUNCTION_REFERENCE, suggestion.text, fixFor(declaration, source, suggestion.text))
+        val fix = fixFor(declaration, source, suggestion.text)
+        val edits = when (val import = suggestion.import) {
+            null -> fix
+            // Without the import the reference does not resolve, so the fix goes only with it.
+            else -> importEdit(import)?.let { fix + it } ?: emptyList()
+        }
+        reportKotrail(source, KotrailDiagnostics.PREFER_FUNCTION_REFERENCE, suggestion.text, edits)
+    }
+
+    context(context: CheckerContext)
+    private fun importEdit(fqName: FqName): FixEdit? {
+        val file = context.containingFileSymbol?.fir ?: return null
+        return FixBuilder.over(file.source)?.addImport(file, fqName)
+    }
+
+    /**
+     * How the file writes [owner] before `::`: a nested class by its outer classes, headed by the
+     * name the file has for the outermost one (see [classNameInFile]), which may need an import,
+     * and a local class by its own name. `null` when the outermost class's simple name means
+     * something else in the file, so that no reference to it can be written without qualifying
+     * it by package.
+     */
+    context(context: CheckerContext)
+    private fun typeNameOf(owner: FirRegularClassSymbol, session: FirSession): TypeName? {
+        val classId = owner.classId
+        if (classId.isLocal) return TypeName(owner.name.asString(), null)
+        val file = context.containingFileSymbol?.fir ?: return null
+        val outermost = classId.outermostClassId
+        val nested = classId.relativeClassName.pathSegments().drop(1).joinToString("") { ".${it.asString()}" }
+        return when (val name = classNameInFile(outermost, file, session)) {
+            is ClassNameInFile.Reachable -> TypeName(name.name.asString() + nested, null)
+            ClassNameInFile.Importable -> TypeName(outermost.shortClassName.asString() + nested, outermost.asSingleFqName())
+            ClassNameInFile.Taken -> null
+        }
     }
 
     /**
@@ -154,6 +204,7 @@ object PreferFunctionReferenceChecker : FirAnonymousFunctionChecker(MppCheckerKi
         return if (start < at) start else lambdaStart
     }
 
+    context(context: CheckerContext)
     private fun referenceForCall(
         call: FirFunctionCall,
         parameters: List<FirValueParameterSymbol>,
@@ -186,20 +237,21 @@ object PreferFunctionReferenceChecker : FirAnonymousFunctionChecker(MppCheckerKi
             receiverParameter != null -> {
                 if (parameters.firstOrNull() != receiverParameter) return null
                 if (!forwardsInOrder(arguments, parameters.drop(1))) return null
-                val typeName = receiver.resolvedType.toRegularClassSymbol(session)?.takeIf { it.typeParameterSymbols.isEmpty() }
+                val owner = receiver.resolvedType.toRegularClassSymbol(session)?.takeIf { it.typeParameterSymbols.isEmpty() }
                     ?: return null
-                Suggestion(ReferenceForm.TYPE_QUALIFIED, "${typeName.name.asString()}::$name")
+                val typeName = typeNameOf(owner, session) ?: return null
+                Suggestion(ReferenceForm.TYPE_QUALIFIED, "${typeName.text}::$name", typeName.import)
             }
             receiver == null -> {
                 if (!forwardsInOrder(arguments, parameters)) return null
                 // An extension function called on an implicit receiver cannot be referenced as `::f`.
                 if (callee.receiverParameterSymbol != null) return null
-                Suggestion(ReferenceForm.TOP_LEVEL, "::$name")
+                Suggestion(ReferenceForm.TOP_LEVEL, "::$name", null)
             }
             else -> {
                 if (!forwardsInOrder(arguments, parameters)) return null
                 val prefix = stableReceiverText(receiver) ?: return null
-                Suggestion(ReferenceForm.BOUND, "$prefix::$name")
+                Suggestion(ReferenceForm.BOUND, "$prefix::$name", null)
             }
         }
     }
@@ -240,7 +292,8 @@ object PreferFunctionReferenceChecker : FirAnonymousFunctionChecker(MppCheckerKi
             if (packages.any { session.symbolProvider.getTopLevelFunctionSymbols(it, property.name).isNotEmpty() }) return null
             property.name
         }
-        return Suggestion(ReferenceForm.TYPE_QUALIFIED, "${owner.name.asString()}::${memberName.asString()}")
+        val typeName = typeNameOf(owner, session) ?: return null
+        return Suggestion(ReferenceForm.TYPE_QUALIFIED, "${typeName.text}::${memberName.asString()}", typeName.import)
     }
 
     private fun forwardsInOrder(arguments: List<FirExpression>, parameters: List<FirValueParameterSymbol>): Boolean =

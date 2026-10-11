@@ -30,6 +30,9 @@ internal fun Fix.isOfRules(selected: Set<String>): Boolean = rule != null && (ru
  * fixes are considered in the order recorded, so on a conflict the earlier record wins and the
  * later one is left for the next compilation, which sees the text after this round.
  *
+ * An insertion identical to one already taken, the same text at the same offset, is dropped and
+ * its fix still taken: two references in one file that each add the same import need it once.
+ *
  * The edits come back sorted so that applying them in order never shifts an offset a later edit
  * needs: by start descending, then end descending, then reverse record order, which for
  * insertions at one offset (two declarations moved to the top of one branch) keeps the source
@@ -47,6 +50,7 @@ internal fun selectEdits(fixes: List<Fix>): FixSelection {
             continue
         }
         for (edit in fix.edits) {
+            if (edit.isInsertion && accepted.any { (_, taken) -> taken.isInsertion && taken.start == edit.start && taken.replacement == edit.replacement }) continue
             accepted += IndexedValue(index++, edit)
             fixOf[edit] = fix
         }

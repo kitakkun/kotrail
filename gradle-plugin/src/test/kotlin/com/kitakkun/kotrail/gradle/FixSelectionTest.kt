@@ -55,6 +55,16 @@ class FixSelectionTest {
     }
 
     @Test
+    fun `an insertion two fixes share is applied once, and both fixes are`() {
+        val text = "package p\n\nval a = x\nval b = y\n"
+        val first = Fix(null, listOf(Edit(19, 20, "X.a"), Edit(10, 10, "\nimport q.X")))
+        val second = Fix(null, listOf(Edit(29, 30, "X.b"), Edit(10, 10, "\nimport q.X")))
+        val (result, skipped) = apply(text, listOf(first, second))
+        assertEquals("package p\n\nimport q.X\nval a = X.a\nval b = X.b\n", result)
+        assertEquals(0, skipped)
+    }
+
+    @Test
     fun `a rule is selected by its full key or by the part after the last dot`() {
         val dotted = Fix("compose.rememberKeys", emptyList())
         assertTrue(dotted.isOfRules(setOf("compose.rememberKeys")))
