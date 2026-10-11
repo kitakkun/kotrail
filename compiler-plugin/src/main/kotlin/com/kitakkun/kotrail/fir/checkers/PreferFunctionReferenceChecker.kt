@@ -303,10 +303,15 @@ object PreferFunctionReferenceChecker : FirAnonymousFunctionChecker(MppCheckerKi
     private fun FirExpression.asLambdaParameter(): FirValueParameterSymbol? =
         (this as? FirPropertyAccessExpression)?.calleeReference?.toResolvedValueParameterSymbol()
 
-    /** `this`, an object or companion, or a plain `val` / parameter; anything else could be re-evaluated differently. */
+    /**
+     * `this`, an object or companion, or a plain `val` / parameter; anything else could be
+     * re-evaluated differently. An object or companion is written as the call spells it
+     * (`Outer.Obj`, `lib.music.Tempo`), which already resolves in this file; a qualifier that
+     * names a package alone has no value to bind.
+     */
     private fun stableReceiverText(receiver: FirExpression): String? = when (receiver) {
         is FirThisReceiverExpression -> "this"
-        is FirResolvedQualifier -> receiver.qualifierClassId?.shortClassName?.asString()
+        is FirResolvedQualifier -> receiver.qualifierClassId?.let { FixBuilder.textOf(receiver.source)?.filterNot(Char::isWhitespace) }
         is FirPropertyAccessExpression -> {
             if (receiver.explicitReceiver != null) return null
             when (val variable = receiver.calleeReference.toResolvedVariableSymbol()) {

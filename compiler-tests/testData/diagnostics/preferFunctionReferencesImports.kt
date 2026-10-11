@@ -2,7 +2,7 @@
 // DUMP_KOTRAIL_FIXES
 // A type-qualified reference names the receiver's class the way the file can write it: by the alias it is
 // imported under, headed by its outermost class when it is nested, and with an import when the file met
-// the type only through inference.
+// the type only through inference. A bound reference on an object writes the object as the call does.
 
 // FILE: Music.kt
 package lib.music
@@ -18,6 +18,22 @@ class Sheet(val lines: List<Line>) {
 }
 
 class Note(val pitch: Int)
+
+object Metronome {
+    object Click {
+        fun at(beat: Int): Int = beat
+    }
+}
+
+class Meter {
+    companion object {
+        fun of(beat: Int): Int = beat
+    }
+}
+
+object Tempo {
+    fun scale(beat: Int): Int = beat
+}
 
 // FILE: Other.kt
 package lib.other
@@ -83,6 +99,21 @@ fun rootBeats(bar: lib.music.Bar): List<Int> = bar.spans.map <!KOTRAIL_PREFER_FU
 // Reported without a fix: the import cannot go before the file annotation.
 fun annotatedBeats(bar: lib.music.Bar): List<Int> = bar.spans.map <!KOTRAIL_PREFER_FUNCTION_REFERENCE!>{ it.beat }<!>
 
+// FILE: Bound.kt
+package app.bound
+
+import lib.music.Meter
+import lib.music.Metronome
+
+// Reported: the object is written as the call writes it, a nested one with its outer object, a companion by
+// its class, and one written with its package with the package.
+fun clicks(beats: List<Int>): List<Int> = beats.map <!KOTRAIL_PREFER_FUNCTION_REFERENCE!>{ Metronome.Click.at(it) }<!>
+fun meters(beats: List<Int>): List<Int> = beats.map <!KOTRAIL_PREFER_FUNCTION_REFERENCE!>{ Meter.of(it) }<!>
+fun scaled(beats: List<Int>): List<Int> = beats.map <!KOTRAIL_PREFER_FUNCTION_REFERENCE!>{ lib.music.Tempo.scale(it) }<!>
+
+// The references those fixes write resolve in this file.
+val written: List<(Int) -> Int> = listOf(Metronome.Click::at, Meter::of, lib.music.Tempo::scale)
+
 // FILE: Local.kt
 package app.local
 
@@ -92,5 +123,6 @@ fun locals(): List<Int> {
     return listOf(Slot(1)).map { it.index }
 }
 
-/* GENERATED_FIR_TAGS: annotationUseSiteTargetFile, classDeclaration, functionDeclaration, integerLiteral, lambdaLiteral,
-localClass, nestedClass, primaryConstructor, propertyDeclaration, stringLiteral */
+/* GENERATED_FIR_TAGS: annotationUseSiteTargetFile, callableReference, classDeclaration, companionObject,
+functionDeclaration, integerLiteral, lambdaLiteral, localClass, nestedClass, objectDeclaration, primaryConstructor,
+propertyDeclaration, stringLiteral */

@@ -1,14 +1,18 @@
 Module: main
   Aliased.kt
-    KOTRAIL_PREFER_FUNCTION_REFERENCE: 47:52-47:64 "(Span::beat)"
-    KOTRAIL_PREFER_FUNCTION_REFERENCE: 48:56-48:68 "(Score.Line::text)"
+    KOTRAIL_PREFER_FUNCTION_REFERENCE: 63:52-63:64 "(Span::beat)"
+    KOTRAIL_PREFER_FUNCTION_REFERENCE: 64:56-64:68 "(Score.Line::text)"
   Bare.kt
-    KOTRAIL_PREFER_FUNCTION_REFERENCE: 74:57-74:69 "(ChordSpan::beat)"; 71:17 "\n\nimport lib.music.ChordSpan"
+    KOTRAIL_PREFER_FUNCTION_REFERENCE: 90:57-90:69 "(ChordSpan::beat)"; 87:17 "\n\nimport lib.music.ChordSpan"
+  Bound.kt
+    KOTRAIL_PREFER_FUNCTION_REFERENCE: 110:52-110:79 "(Metronome.Click::at)"
+    KOTRAIL_PREFER_FUNCTION_REFERENCE: 111:52-111:69 "(Meter::of)"
+    KOTRAIL_PREFER_FUNCTION_REFERENCE: 112:52-112:82 "(lib.music.Tempo::scale)"
   Imported.kt
-    KOTRAIL_PREFER_FUNCTION_REFERENCE: 34:47-34:59 "(ChordSpan::beat)"; 31:1 "import lib.music.ChordSpan\n"
-    KOTRAIL_PREFER_FUNCTION_REFERENCE: 35:49-35:65 "(ChordSpan::length)"; 31:1 "import lib.music.ChordSpan\n"
-    KOTRAIL_PREFER_FUNCTION_REFERENCE: 38:56-38:68 "(Sheet.Line::text)"
+    KOTRAIL_PREFER_FUNCTION_REFERENCE: 50:47-50:59 "(ChordSpan::beat)"; 47:1 "import lib.music.ChordSpan\n"
+    KOTRAIL_PREFER_FUNCTION_REFERENCE: 51:49-51:65 "(ChordSpan::length)"; 47:1 "import lib.music.ChordSpan\n"
+    KOTRAIL_PREFER_FUNCTION_REFERENCE: 54:56-54:68 "(Sheet.Line::text)"
   Root.kt
-    KOTRAIL_PREFER_FUNCTION_REFERENCE: 78:61-78:73 "(ChordSpan::beat)"; 1:1 "import lib.music.ChordSpan\n\n"
+    KOTRAIL_PREFER_FUNCTION_REFERENCE: 94:61-94:73 "(ChordSpan::beat)"; 1:1 "import lib.music.ChordSpan\n\n"
   Starred.kt
-    KOTRAIL_PREFER_FUNCTION_REFERENCE: 56:47-56:59 "(ChordSpan::beat)"
+    KOTRAIL_PREFER_FUNCTION_REFERENCE: 72:47-72:59 "(ChordSpan::beat)"

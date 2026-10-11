@@ -56,6 +56,10 @@ the package directive when there are none, at the start of the file when there i
 file annotations come first, or the neighboring import or directive shares its line with other
 code, the finding comes without a fix.
 
+The object or companion of a bound reference is written as the call spells it, which already
+resolves in the file: `Metronome.Click.at(it)` becomes `Metronome.Click::at`, `Meter.of(it)` on a
+companion becomes `Meter::of`, and `lib.music.Tempo.scale(it)` keeps its package.
+
 ## When it fires
 
 A lambda whose body is a single call (or property read) that forwards the lambda's parameters
