@@ -3,6 +3,7 @@ package com.kitakkun.kotrail.fir.checkers
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.fix.FixBuilder
+import com.kitakkun.kotrail.fir.fqNameMatchesAny
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.reportKotrail
 import org.jetbrains.kotlin.KtFakeSourceElementKind
@@ -41,8 +42,10 @@ import org.jetbrains.kotlin.fir.types.renderReadable
  * The threshold is `namedArgumentsForRepeatedTypes.minArguments`. Types are compared as declared on the
  * callee's parameters, exactly (`Int` and `Int?` are different groups). Lambda arguments never
  * count. The rule stays quiet where naming is impossible or pointless: Java callees, operator
- * and infix calls, `invoke` calls, calls with a vararg parameter, and callees with fewer
- * parameters than the threshold.
+ * and infix calls, `invoke` calls, calls with a vararg parameter, callees with fewer parameters
+ * than the threshold, and callees whose fully qualified name matches
+ * `namedArgumentsForRepeatedTypes.ignoredFunctions`: by default `maxOf` and `minOf`, whose
+ * arguments can come in any order.
  */
 object NamedArgumentsChecker : FirFunctionCallChecker(MppCheckerKind.Common) {
     context(context: CheckerContext, reporter: DiagnosticReporter)
@@ -60,6 +63,7 @@ object NamedArgumentsChecker : FirFunctionCallChecker(MppCheckerKind.Common) {
         if (callee.isOperator || callee.isInfix) return
         if (callee.valueParameterSymbols.size < threshold) return
         if (callee.valueParameterSymbols.any { it.isVararg }) return
+        if (callee.fqNameMatchesAny(config.namedArguments.ignoredFunctions)) return
 
         val positional = positionalArguments(expression) ?: return
         val largestGroup = positional

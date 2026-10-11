@@ -2,7 +2,7 @@
 
 **Diagnostic:** `KOTRAIL_NAMED_ARGUMENTS_REQUIRED` (error, on the whole call)
 **Key:** `rules.namedArgumentsForRepeatedTypes` (on by default)
-**Setting:** `minArguments` (default `3`)
+**Settings:** `minArguments` (default `3`), `ignoredFunctions` (default `[kotlin.comparisons.maxOf, kotlin.comparisons.minOf]`)
 **Fix:** automatic (`kotrailFix` names every positional argument of the call)
 
 ## What it rejects
@@ -42,6 +42,7 @@ reported per call, describing the largest offending group.
   the threshold.
 - Lambda arguments (trailing or not) never count.
 - The callee has a `vararg` parameter (its elements are legitimately positional).
+- The callee is listed in `ignoredFunctions` (see below); by default `maxOf` and `minOf`.
 - Parameters named `key1`, `key2`, ... do not count: the keys of `remember`, `LaunchedEffect` and
   their kin are an unordered set, and `key1 = state, key2 = tab` says nothing a reader wants.
 - The callee is a Java method or constructor: Kotlin cannot name its arguments.
@@ -50,10 +51,33 @@ reported per call, describing the largest offending group.
 - `minArguments` set to `1` or lower disables the rule.
 - Calls with fake sources (desugared constructs such as safe calls) and unresolved calls.
 
+## Functions whose arguments can come in any order
+
+`maxOf(peak, abs(left[i]), abs(right[i]))` returns the same value in every order of its
+arguments, so no order can be wrong, and `maxOf(a = peak, b = abs(left[i]), c = abs(right[i]))`
+names nothing a reader wants. `ignoredFunctions` lists such functions as globs over the callee's
+fully qualified name: a top-level function by its package (`kotlin.comparisons.maxOf`), a member
+by its class (`com.acme.Vec.Companion.of`), a constructor as `<class>.<init>`. Every overload of
+a matching name is left alone. The default holds `kotlin.comparisons.maxOf` and
+`kotlin.comparisons.minOf`, the only functions of the standard library with three or more
+parameters of one type whose order cannot matter. Setting the key replaces the list, so a
+project that adds its own keeps the defaults by listing them too:
+
+```yaml
+rules:
+  namedArgumentsForRepeatedTypes:
+    ignoredFunctions: [kotlin.comparisons.maxOf, kotlin.comparisons.minOf, com.acme.geometry.average]
+```
+
+A function such as `lerp(a, b, t)` does not belong on the list: swapping `b` and `t` compiles and
+returns another value.
+
 ## Fixtures
 
 - `compiler-tests/testData/diagnostics/namedArguments.kt` (default threshold `3`)
 - `compiler-tests/testData/diagnostics/config/namedArgumentsThreshold.kt` (threshold `2`)
+- `compiler-tests/testData/diagnostics/config/namedArgumentsIgnoredFunctions.kt` (a project's own `ignoredFunctions`)
+- `compiler-tests/testData/diagnostics/config/namedArgumentsIgnoredNone.kt` (an empty `ignoredFunctions`, set in `namedArgumentsIgnoredNone.yaml`)
 
 ## Implementation notes
 

@@ -317,11 +317,12 @@ class KotrailGradlePluginFunctionalTest {
         writeBuild("kotrail {\n    configFile = file(\"kotrail.yaml\")\n}")
         val base = "internal val base: Double = 1.0\n"
         writeFile("src/main/kotlin/Probe.kt", base)
+        writeFile("src/main/kotlin/Lerp.kt", LERP_SOURCE)
 
         val baseline = runBuild("compileKotlin")
         assertEquals(TaskOutcome.SUCCESS, baseline.task(":compileKotlin")?.outcome, baseline.output)
 
-        writeFile("src/main/kotlin/Probe.kt", base + "\ninternal val probe: Double = maxOf(1.0, 2.0, 3.0)\n")
+        writeFile("src/main/kotlin/Probe.kt", base + "\ninternal val probe: Double = lerp(1.0, 2.0, 0.5)\n")
         val failed = runBuild("compileKotlin", expectFailure = true)
         assertEquals(TaskOutcome.FAILED, failed.task(":compileKotlin")?.outcome, failed.output)
         assertTrue(failed.output.contains("KOTRAIL_NAMED_ARGUMENTS_REQUIRED"), failed.output)
@@ -332,7 +333,7 @@ class KotrailGradlePluginFunctionalTest {
         val fixed = runBuild("kotrailFix")
         assertEquals(TaskOutcome.SUCCESS, fixed.task(":kotrailFix")?.outcome, fixed.output)
         val text = File(projectDir, "src/main/kotlin/Probe.kt").readText()
-        assertTrue(text.contains("internal val probe: Double = maxOf(a = 1.0, b = 2.0, c = 3.0)"), text)
+        assertTrue(text.contains("internal val probe: Double = lerp(a = 1.0, b = 2.0, t = 0.5)"), text)
     }
 
     @Test
@@ -341,7 +342,8 @@ class KotrailGradlePluginFunctionalTest {
         File(projectDir, "settings.gradle.kts").appendText("\nbuildCache {\n    local {\n        directory = File(rootDir, \"build-cache\")\n    }\n}\n")
         writeFile("kotrail.yaml", "severity: warning\n")
         writeBuild("kotrail {\n    configFile = file(\"kotrail.yaml\")\n}")
-        writeFile("src/main/kotlin/Probe.kt", "internal val probe: Double = maxOf(1.0, 2.0, 3.0)\n")
+        writeFile("src/main/kotlin/Lerp.kt", LERP_SOURCE)
+        writeFile("src/main/kotlin/Probe.kt", "internal val probe: Double = lerp(1.0, 2.0, 0.5)\n")
 
         val compiled = runBuild("compileKotlin", "--build-cache")
         assertEquals(TaskOutcome.SUCCESS, compiled.task(":compileKotlin")?.outcome, compiled.output)
@@ -356,7 +358,7 @@ class KotrailGradlePluginFunctionalTest {
         val fixed = runBuild("kotrailFix")
         assertEquals(TaskOutcome.SUCCESS, fixed.task(":kotrailFix")?.outcome, fixed.output)
         val text = File(projectDir, "src/main/kotlin/Probe.kt").readText()
-        assertTrue(text.contains("internal val probe: Double = maxOf(a = 1.0, b = 2.0, c = 3.0)"), text)
+        assertTrue(text.contains("internal val probe: Double = lerp(a = 1.0, b = 2.0, t = 0.5)"), text)
     }
 
     @Test
@@ -2094,6 +2096,9 @@ class KotrailGradlePluginFunctionalTest {
         const val COROUTINES_VERSION = "1.11.0"
 
         const val RETRY_SOURCE = "fun retry(times: Int): Int {\n    require(times >= 0)\n    return times\n}\n"
+
+        // Three parameters of one type whose order matters, so that a positional call to it needs names.
+        const val LERP_SOURCE = "internal fun lerp(a: Double, b: Double, t: Double): Double = a + (b - a) * t\n"
 
         // A violation of a rule that behaves the same on every supported Kotlin version, so that
         // these tests are about the Gradle wiring rather than about a language feature.

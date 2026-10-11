@@ -358,6 +358,8 @@ data class KotrailLiteralLoop(
 data class KotrailNamedArguments(
     /** When at least this many positional arguments share a type, they must be named. */
     val minSameTypeArguments: Int,
+    /** Globs over fully qualified functions whose calls are left alone, every overload of a matching name. */
+    val ignoredFunctions: List<Glob>,
 )
 
 /** How a test function must be named. */
@@ -763,6 +765,9 @@ data class KotrailConfig(
         const val DEFAULT_MAX_SAFE_CALLS = 0
         const val DEFAULT_KDOC_MAX_LINES = 0
         const val DEFAULT_MIN_SAME_TYPE_ARGUMENTS = 3
+
+        /** Functions whose arguments can come in any order, so that naming them says nothing: `maxOf(a = peak, b = left, c = right)`. */
+        val DEFAULT_NAMED_ARGUMENTS_IGNORED_FUNCTIONS: List<String> = listOf("kotlin.comparisons.maxOf", "kotlin.comparisons.minOf")
         const val DEFAULT_FUNCTION_MAX_LINES = 50
         const val DEFAULT_FILE_MAX_LINES = 500
         const val DEFAULT_COMPLEXITY_MAX_SCORE = 15
@@ -1462,7 +1467,10 @@ data class KotrailConfig(
                     entries = list(KotrailRule.FORBIDDEN_CALL, "functions").orEmpty().map { KotrailForbiddenCallEntry(it, plainForbiddenName(it)) } +
                         entries(KotrailRule.FORBIDDEN_CALL, "calls") { node -> callPredicate(node) }.map { (name, predicate) -> KotrailForbiddenCallEntry(name, predicate) },
                 ),
-                namedArguments = KotrailNamedArguments(minSameTypeArguments = int(KotrailRule.NAMED_ARGUMENTS_FOR_REPEATED_TYPES, "minArguments") ?: DEFAULT_MIN_SAME_TYPE_ARGUMENTS),
+                namedArguments = KotrailNamedArguments(
+                    minSameTypeArguments = int(KotrailRule.NAMED_ARGUMENTS_FOR_REPEATED_TYPES, "minArguments") ?: DEFAULT_MIN_SAME_TYPE_ARGUMENTS,
+                    ignoredFunctions = (list(KotrailRule.NAMED_ARGUMENTS_FOR_REPEATED_TYPES, "ignoredFunctions") ?: DEFAULT_NAMED_ARGUMENTS_IGNORED_FUNCTIONS).map(::Glob),
+                ),
                 serialization = KotrailSerialization(requiredFor = list(KotrailRule.MUST_BE_SERIALIZABLE, "requiredFor") ?: DEFAULT_SERIALIZATION_REQUIRED_FOR),
                 nativeAllocation = KotrailNativeAllocation(
                     types = list(KotrailRule.NATIVE_ALLOCATION_IN_LOOP, "types") ?: DEFAULT_NATIVE_TYPES,

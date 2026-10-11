@@ -82,6 +82,8 @@ object ConfigSchema {
         ),
         KotrailRule.NAMED_ARGUMENTS_FOR_REPEATED_TYPES to listOf(
             Setting("minArguments", Kind.INT, "How many positional arguments of one type require names.", default = "3"),
+            Setting("ignoredFunctions", Kind.LIST, "Globs over the callee's fully qualified name (kotlin.comparisons.maxOf, a member as com.acme.Vec.Companion.of) whose calls are left alone, every overload of a matching name: functions whose arguments can come in any order. Replaces the default list.",
+                default = "kotlin.comparisons.maxOf, kotlin.comparisons.minOf"),
         ),
         KotrailRule.MUST_BE_SERIALIZABLE to listOf(
             Setting("requiredFor", Kind.LIST, "Callables whose type arguments must be serializable; replaces the default list.",

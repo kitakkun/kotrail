@@ -23,6 +23,7 @@ fun mixed(a: Int, b: Int, c: Int?) {}
 fun <T> triple(a: T, b: T, c: T) {}
 fun withLambda(a: Int, b: Int, block: () -> Unit) = block()
 fun sum(vararg values: Int): Int = values.sum()
+fun lerp(a: Double, b: Double, t: Double): Double = a + (b - a) * t
 
 class Grid {
     operator fun get(x: Int, y: Int, z: Int): Int = x + y + z
@@ -48,6 +49,17 @@ fun named() {
     move(1, 2, z = 3)
     pair(1, 2)
     labeled(1, 2, "label", "hint")
+}
+
+// Reported: the order of `lerp`'s arguments matters, so naming them helps.
+fun interpolated() {
+    <!KOTRAIL_NAMED_ARGUMENTS_REQUIRED!>lerp(0.0, 1.0, 0.5)<!>
+}
+
+// Not reported: the order of `maxOf`'s and `minOf`'s arguments cannot matter, and `a =` would say nothing.
+fun commutative(peak: Double, left: Double, low: Int, right: Int) {
+    maxOf(1.0, peak, left)
+    minOf(low, right, 0)
 }
 
 // Not reported: `Int` and `Int?` are different types; lambdas never count.

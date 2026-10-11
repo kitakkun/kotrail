@@ -105,6 +105,7 @@ own; a rule not listed has none.
 | `forbiddenCall` | `functions` | `[]` | Fully qualified callables that must not be called. |
 | | `calls` | `{}` | Named call predicates; matching calls are reported under the entry's name. See [Forbidden call](rules/forbidden-call.md). |
 | `namedArgumentsForRepeatedTypes` | `minArguments` | `3` | How many positional arguments of one type require names. |
+| | `ignoredFunctions` | `[kotlin.comparisons.maxOf, kotlin.comparisons.minOf]` | Globs over the callee's fully qualified name (`kotlin.comparisons.maxOf`, a member as `com.acme.Vec.Companion.of`) whose calls are left alone, every overload of a matching name: functions whose arguments can come in any order. Replaces the default list. |
 | `mustBeSerializable` | `requiredFor` | `[androidx.compose.runtime.saveable.rememberSerializable]` | Callables whose type arguments must be serializable. Replaces the default list. |
 | `namedCondition` | `minOperators` | `2` | Fewest `&&` / `\|\|` operators a condition needs before a second copy of its text elsewhere in the module is reported. |
 | | `maxOperators` | `3` | Operators at which a lone inline condition in an `if`, `when` or `while` is reported; an `&&` whose left side is a null comparison does not count. `0` for unlimited. |
