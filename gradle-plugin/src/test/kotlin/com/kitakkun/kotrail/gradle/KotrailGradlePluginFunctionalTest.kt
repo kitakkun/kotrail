@@ -301,6 +301,43 @@ class KotrailGradlePluginFunctionalTest {
     }
 
     @Test
+    fun `a narrativeOrder fix moves a helper with the functions only it calls, so one round leaves nothing to report`() {
+        writeSettings()
+        writeFile("kotrail.yaml", "severity: warning\nrules:\n  narrativeOrder:\n    maxCallerDistance: 10\n    maxHelperNoise: 50\n")
+        writeBuild(
+            """
+            kotrail {
+                configFile = file("kotrail.yaml")
+            }
+            """.trimIndent(),
+        )
+        writeFile("src/main/kotlin/Updater.kt", HELPER_CHAIN_CASES)
+
+        val compiled = runBuild("compileKotlin")
+        assertEquals(TaskOutcome.SUCCESS, compiled.task(":compileKotlin")?.outcome, compiled.output)
+        assertEquals(2, Regex("KOTRAIL_HELPER_FAR_FROM_CALLER").findAll(compiled.output).count(), compiled.output)
+        assertEquals(1, Regex("KOTRAIL_HELPER_BEFORE_FIRST_USE").findAll(compiled.output).count(), compiled.output)
+
+        val fixed = runBuild("kotrailFix", "--rules", "narrativeOrder")
+        assertEquals(TaskOutcome.SUCCESS, fixed.task(":kotrailFix")?.outcome, fixed.output)
+        assertFalse(fixed.output.contains("left for the next round"), fixed.output)
+        val text = File(projectDir, "src/main/kotlin/Updater.kt").readText()
+
+        val recompiled = runBuild("compileKotlin")
+        assertEquals(TaskOutcome.SUCCESS, recompiled.task(":compileKotlin")?.outcome, recompiled.output)
+        assertFalse(recompiled.output.contains("KOTRAIL_HELPER_"), recompiled.output)
+        assertTrue(
+            text.contains(
+                "fun update(): String = checkNewerRelease()\n\n" +
+                    "private fun checkNewerRelease(): String = if (isRateLimited()) \"later\" else fetchVerifyAndInstall()\n\n" +
+                    "private fun fetchVerifyAndInstall(): String = downloadJar() + \" installed\"\n\n" +
+                    "private fun downloadJar(): String = \"jar\"\n\nprivate fun isRateLimited(): Boolean = false\n\n",
+            ),
+            text,
+        )
+    }
+
+    @Test
     fun `kotrailFix applies the fixes of an incremental compilation that failed on them`() {
         writeSettings()
         writeFile("kotrail.yaml", "severity: warning\nrules:\n  namedArgumentsForRepeatedTypes: error\n")
@@ -2106,6 +2143,60 @@ class KotrailGradlePluginFunctionalTest {
             private fun inboxIcon(): String = "inbox"
 
             private fun profileIcon(): String = "profile"
+        """.trimIndent()
+
+        val HELPER_CHAIN_CASES = """
+            fun update(): String = checkNewerRelease()
+
+            fun install(): String = installPlugin()
+
+            fun render(value: Int): String {
+                val doubled = value * 2
+                val tripled = value * 3
+                val quadrupled = value * 4
+                return "${'$'}doubled ${'$'}tripled ${'$'}quadrupled"
+            }
+
+            fun export(value: Int): String {
+                val first = value + 1
+                val second = value + 2
+                val third = value + 3
+                return "${'$'}first ${'$'}second ${'$'}third"
+            }
+
+            private fun checkNewerRelease(): String = if (isRateLimited()) "later" else fetchVerifyAndInstall()
+
+            private fun fetchVerifyAndInstall(): String = downloadJar() + " installed"
+
+            private fun downloadJar(): String = "jar"
+
+            private fun isRateLimited(): Boolean = false
+
+            fun describe(value: Int): String {
+                val low = value - 1
+                val high = value + 1
+                return "${'$'}low..${'$'}high"
+            }
+
+            fun summarize(value: Int): String {
+                val half = value / 2
+                val twice = value * 2
+                return "${'$'}half ${'$'}twice"
+            }
+
+            private fun installPlugin(): String = verifySignature() + copyFiles()
+
+            private fun verifySignature(): String = readCertificate()
+
+            private fun readCertificate(): String = "certificate"
+
+            private fun copyFiles(): String = "copied"
+
+            private fun parseHeader(bytes: ByteArray): Int = readMagic(bytes)
+
+            private fun readMagic(bytes: ByteArray): Int = bytes.size
+
+            fun load(bytes: ByteArray): Int = parseHeader(bytes)
         """.trimIndent()
 
         val FIXABLE_CASES = """

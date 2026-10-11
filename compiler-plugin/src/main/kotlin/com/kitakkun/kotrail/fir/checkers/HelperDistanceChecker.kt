@@ -54,7 +54,8 @@ import org.jetbrains.kotlin.text
  * initializer reads another property of the file keeps its place, since moving it would change
  * the order in which the two are initialized. A far run of helpers with the same caller, written
  * one after another, is reported once, on its first member, and its fix moves the whole run as
- * a block.
+ * a block. Either fix takes along the private functions that only the moved helpers call, when
+ * the move would leave them far from their caller or above it ([HelperDistance.movedTogether]).
  *
  * A top-level helper function whose only caller is a member of a class is reported instead as
  * `KOTRAIL_HELPER_OUTSIDE_CALLER_CLASS`, without a fix: the order check keeps it after the
@@ -74,11 +75,31 @@ import org.jetbrains.kotlin.text
  * returns, if any: both exempt the helper.
  */
 internal object HelperDistanceChecker {
+    /** The model of [file] with the sites of its members, or `null` when the file's text is not at hand. */
+    fun collect(file: FirFile, uses: DeclarationUses): Collector? = file.source?.text?.toString()?.let { Collector(uses, it) }
+
+    /**
+     * The sources a fix moves when it moves the declarations [keys] next to [anchor], right after
+     * it or, with [before], right before it: theirs, then those of the functions that move along
+     * ([HelperDistance.movedTogether]). `null` when one of [keys] is not in [collected], as a
+     * member of a local class is not.
+     */
+    fun movedSources(
+        collected: Collector,
+        keys: List<Any>,
+        anchor: KtSourceElement,
+        before: Boolean,
+        maxCallerDistance: Int,
+        maxHelperNoise: Int,
+    ): List<KtSourceElement>? {
+        val moved = keys.map { collected.byKey[it] ?: return null }
+        val group = HelperDistance.movedTogether(moved, collected.linesOf(anchor), before, collected.byKey, maxCallerDistance, maxHelperNoise)
+        return group.map { collected.sites[it.key]?.declaration?.source ?: return null }
+    }
+
     context(context: CheckerContext, reporter: DiagnosticReporter)
-    fun check(file: FirFile, uses: DeclarationUses, settings: KotrailNarrativeOrder) {
-        val text = file.source?.text?.toString() ?: return
-        val collected = Collector(uses, LineIndex(text))
-        val members = collected.members.associateBy { it.key }
+    fun check(file: FirFile, collected: Collector, settings: KotrailNarrativeOrder) {
+        val members = collected.byKey
         val found = collected.sites.mapNotNull { (key, helper) ->
             if (helper.declaration.isOverride) return@mapNotNull null
             val member = members[key] ?: return@mapNotNull null
@@ -87,16 +108,18 @@ internal object HelperDistanceChecker {
             if (helper.isTopLevelExtension() && caller.enclosing.isNotEmpty()) return@mapNotNull null
             FarSite(helper, member, far, caller)
         }
-        for (run in runsOf(found, members)) reportRun(file, run, members)
+        for (run in runsOf(found, members)) reportRun(file, run, collected, settings)
     }
 
     /**
      * Reports [run], far helpers of one caller written one after another, once, on its first
      * member: `'homeIcon'`, or `the run of 'homeIcon' and the 3 helpers after it`, at the
-     * distance of the member nearest the caller. The fix moves the whole run, in its order.
+     * distance of the member nearest the caller. The fix moves the whole run, in its order, and
+     * the functions that move along with it.
      */
     context(context: CheckerContext, reporter: DiagnosticReporter)
-    private fun reportRun(file: FirFile, run: List<FarSite>, members: Map<Any, HelperDistance.Member<Any>>) {
+    private fun reportRun(file: FirFile, run: List<FarSite>, collected: Collector, settings: KotrailNarrativeOrder) {
+        val members = collected.byKey
         val first = run.first()
         val helper = first.site
         val caller = first.caller
@@ -117,10 +140,13 @@ internal object HelperDistanceChecker {
             return
         }
         val container = helper.enclosing.lastOrNull()?.source ?: file.source
+        fun moved(): List<KtSourceElement> =
+            movedSources(collected, run.map { it.member.key }, callerSource, first.far.above, settings.maxCallerDistance, settings.maxHelperNoise)
+                ?: helperSources
         val fix = when {
             run.any { !it.site.isSiblingOf(caller) || !it.member.canMove(members) } -> emptyList()
-            first.far.above -> FixBuilder.over(container)?.moveDeclarationsBefore(helperSources, callerSource) ?: emptyList()
-            else -> FixBuilder.over(container)?.moveDeclarationsAfter(helperSources, callerSource) ?: emptyList()
+            first.far.above -> FixBuilder.over(container)?.moveDeclarationsBefore(moved(), callerSource) ?: emptyList()
+            else -> FixBuilder.over(container)?.moveDeclarationsAfter(moved(), callerSource) ?: emptyList()
         }
         val distance = run.minOf { it.far.distance }
         report(site, helperSources.first(), KotrailDiagnostics.HELPER_FAR_FROM_CALLER, helpers, callerName, distance.toString(), fix)
@@ -180,11 +206,12 @@ internal object HelperDistanceChecker {
      * that enclose it (outermost first), and whether its body is code a reader follows into a
      * call, a function body or a property accessor, rather than an initializer.
      */
-    private class Site(val declaration: FirCallableDeclaration, val enclosing: List<FirRegularClass>, val readsAsCode: Boolean)
+    class Site(val declaration: FirCallableDeclaration, val enclosing: List<FirRegularClass>, val readsAsCode: Boolean)
 
     /** The members of the file's model, built from the containers that are not local, and their sites. */
-    private class Collector(private val uses: DeclarationUses, private val lines: LineIndex) {
-        val members = mutableListOf<HelperDistance.Member<Any>>()
+    class Collector(private val uses: DeclarationUses, text: String) {
+        private val lines = LineIndex(text)
+        private val members = mutableListOf<HelperDistance.Member<Any>>()
         val sites = LinkedHashMap<Any, Site>()
 
         private val containers = uses.containers.filter { !it.isLocal }
@@ -207,6 +234,11 @@ internal object HelperDistanceChecker {
                 }
             }
         }
+
+        val byKey: Map<Any, HelperDistance.Member<Any>> = members.associateBy { it.key }
+
+        /** The lines [source] spans in the file, 1-based. */
+        fun linesOf(source: KtSourceElement): IntRange = lines.of(source)
 
         private fun addFunction(function: FirNamedFunction, enclosing: List<FirRegularClass>) {
             val source = function.source?.takeIf { it.isReal() } ?: return

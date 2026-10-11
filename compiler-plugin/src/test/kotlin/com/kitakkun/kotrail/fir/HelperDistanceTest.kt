@@ -264,4 +264,67 @@ class HelperDistanceTest {
         assertEquals(0.76, helperNoise("table", "start", *members))
         assertEquals("start", farWithin(10, 50, "table", *members)?.caller?.key)
     }
+
+    private fun movedTogether(
+        moved: String,
+        anchor: IntRange,
+        before: Boolean,
+        maxCallerDistance: Int,
+        vararg members: HelperDistance.Member<String>,
+    ): List<String> {
+        val byKey = members.associateBy { it.key }
+        return HelperDistance.movedTogether(listOf(byKey.getValue(moved)), anchor, before, byKey, maxCallerDistance, 50).map { it.key }
+    }
+
+    private val releaseLayout = arrayOf(
+        placed("update", 1..1, setOf("check"), Kind.FUNCTION, owner = null, isPrivate = false),
+        placed("render", 2..20, emptySet(), Kind.FUNCTION, owner = null, isPrivate = false),
+        placed("check", 21..22, setOf("fetch", "isRateLimited", "describe"), Kind.FUNCTION, owner = null, isPrivate = true),
+        placed("fetch", 23..23, setOf("download"), Kind.FUNCTION, owner = null, isPrivate = true),
+        placed("download", 24..24, emptySet(), Kind.FUNCTION, owner = null, isPrivate = true),
+        placed("isRateLimited", 25..25, emptySet(), Kind.FUNCTION, owner = null, isPrivate = true),
+        placed("describe", 26..26, emptySet(), Kind.FUNCTION, owner = null, isPrivate = true),
+        placed("audit", 27..27, setOf("describe"), Kind.FUNCTION, owner = null, isPrivate = false),
+    )
+
+    @Test
+    fun `a moved helper takes along, in call order, the functions only it reaches that the move leaves far`() {
+        assertEquals(listOf("check", "fetch", "download", "isRateLimited"), movedTogether("check", 1..1, false, 10, *releaseLayout))
+    }
+
+    @Test
+    fun `with the distance check off, only a function the move leaves above its caller goes along`() {
+        assertEquals(listOf("check"), movedTogether("check", 1..1, false, 0, *releaseLayout))
+        val members = arrayOf(
+            placed("parse", 1..1, setOf("magic", "sum"), Kind.FUNCTION, owner = null, isPrivate = true),
+            placed("magic", 2..2, emptySet(), Kind.FUNCTION, owner = null, isPrivate = true),
+            placed("load", 3..3, setOf("parse"), Kind.FUNCTION, owner = null, isPrivate = false),
+            placed("verify", 4..4, setOf("sum"), Kind.FUNCTION, owner = null, isPrivate = false),
+            placed("sum", 5..5, emptySet(), Kind.FUNCTION, owner = null, isPrivate = true),
+        )
+        assertEquals(listOf("parse", "magic"), movedTogether("parse", 3..3, false, 0, *members))
+    }
+
+    @Test
+    fun `a function the move leaves right below its caller stays, and so do the functions only it calls`() {
+        val members = arrayOf(
+            placed("update", 1..1, setOf("check"), Kind.FUNCTION, owner = null, isPrivate = false),
+            placed("retry", 2..3, setOf("backoff"), Kind.FUNCTION, owner = null, isPrivate = true),
+            placed("backoff", 4..4, emptySet(), Kind.FUNCTION, owner = null, isPrivate = true),
+            placed("render", 5..30, emptySet(), Kind.FUNCTION, owner = null, isPrivate = false),
+            placed("check", 31..31, setOf("retry"), Kind.FUNCTION, owner = null, isPrivate = true),
+        )
+        assertEquals(listOf("check"), movedTogether("check", 1..1, false, 10, *members))
+    }
+
+    @Test
+    fun `a property moved down to its caller takes along the function only it calls`() {
+        val members = arrayOf(
+            placed("registry", 1..1, setOf("build"), Kind.PROPERTY, owner = null, isPrivate = true),
+            placed("build", 2..2, emptySet(), Kind.FUNCTION, owner = null, isPrivate = true),
+            placed("render", 3..30, emptySet(), Kind.FUNCTION, owner = null, isPrivate = false),
+            placed("register", 31..31, setOf("registry"), Kind.FUNCTION, owner = null, isPrivate = false),
+        )
+        assertEquals(listOf("registry", "build"), movedTogether("registry", 31..31, true, 10, *members))
+    }
 }

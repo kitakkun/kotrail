@@ -14,6 +14,9 @@ import kotlin.math.roundToInt
  * past. The properties of the caller's own class and of its companion object are not in the
  * closure: a reader takes a field or a constant as vocabulary, the way they take a parameter,
  * rather than as a place they go to.
+ *
+ * The same model tells what a fix that moves a helper next to its caller takes along
+ * ([movedTogether]), so that the move leaves nothing for either check to report.
  */
 object HelperDistance {
     enum class Kind { FUNCTION, PROPERTY, CLASS }
@@ -189,4 +192,90 @@ object HelperDistance {
     /** The declarations of the file that reference [target] directly, without [target] itself. */
     private fun <K> callersOf(target: Member<K>, members: Map<K, Member<K>>): List<Member<K>> =
         members.values.filter { it.key != target.key && target.key in it.references }
+
+    /**
+     * The declarations a fix moves when it moves [moved] right after the lines [anchor], or right
+     * before them when [before]: [moved] in its order, then the private functions of the same
+     * container that only the group calls, transitively, and that the move would leave out of
+     * place ([isOutOfPlace]) in the layout it leaves ([afterMove]). Each one out of place joins
+     * the group and the layout is taken again, so that the functions only it calls can follow
+     * it; one that stays keeps those where they are. The functions that join come after
+     * [moved], each after one of its callers ([inCallOrder]).
+     */
+    fun <K> movedTogether(
+        moved: List<Member<K>>,
+        anchor: IntRange,
+        before: Boolean,
+        members: Map<K, Member<K>>,
+        maxCallerDistance: Int,
+        maxHelperNoise: Int,
+    ): List<Member<K>> {
+        val owner = moved.first().owner
+        var group = moved
+        while (true) {
+            val keys = group.mapTo(HashSet()) { it.key }
+            val layout = afterMove(group, anchor, before, members)
+            val outOfPlace = members.values.filter { candidate ->
+                candidate.key !in keys && candidate.kind == Kind.FUNCTION && candidate.isPrivate && candidate.owner == owner &&
+                    callersOf(candidate, members).let { callers -> callers.isNotEmpty() && callers.all { it.key in keys } } &&
+                    isOutOfPlace(layout.getValue(candidate.key), layout, maxCallerDistance, maxHelperNoise)
+            }
+            if (outOfPlace.isEmpty()) return group
+            group = inCallOrder(moved, group + outOfPlace, members)
+        }
+    }
+
+    /**
+     * Whether the function [target] is out of place in [layout]: above the first declaration that
+     * calls it, short of mutual recursion with that one, as the order check reports, or far from
+     * its only caller ([farFromCaller]) while [maxCallerDistance] is not 0, which switches the
+     * distance check off.
+     */
+    private fun <K> isOutOfPlace(target: Member<K>, layout: Map<K, Member<K>>, maxCallerDistance: Int, maxHelperNoise: Int): Boolean {
+        val firstCaller = callersOf(target, layout).minByOrNull { it.start } ?: return false
+        if (firstCaller.start > target.start && firstCaller.key !in target.references) return true
+        return maxCallerDistance > 0 && farFromCaller(target, layout, maxCallerDistance, maxHelperNoise) != null
+    }
+
+    /**
+     * [group] with [moved] first, then the others one at a time: the first in source order with a
+     * caller already placed, or, in a cycle, the first in source order.
+     */
+    private fun <K> inCallOrder(moved: List<Member<K>>, group: List<Member<K>>, members: Map<K, Member<K>>): List<Member<K>> {
+        val placed = moved.mapTo(HashSet()) { it.key }
+        val ordered = moved.toMutableList()
+        val rest = group.filter { it.key !in placed }.sortedBy { it.start }.toMutableList()
+        while (rest.isNotEmpty()) {
+            val next = rest.firstOrNull { member -> callersOf(member, members).any { it.key in placed } } ?: rest.first()
+            ordered += next
+            placed += next.key
+            rest -= next
+        }
+        return ordered
+    }
+
+    /**
+     * [members] as they sit once [block] is cut from its place and inserted, in its order, right
+     * after the lines [anchor], or right before them when [before], blank lines aside: every other
+     * line moves up by the moved lines that were above it, and down by those inserted above it.
+     */
+    private fun <K> afterMove(block: List<Member<K>>, anchor: IntRange, before: Boolean, members: Map<K, Member<K>>): Map<K, Member<K>> {
+        val cut = block.flatMapTo(HashSet()) { it.lines }
+        val insertedAfter = if (before) anchor.first - 1 else anchor.last
+        fun shifted(line: Int): Int = line - cut.count { it < line } + if (line > insertedAfter) cut.size else 0
+        val relocated = HashMap<K, List<IntRange>>()
+        var next = insertedAfter - cut.count { it <= insertedAfter } + 1
+        for (member in block) {
+            val by = next - member.start
+            relocated[member.key] = member.ranges.map { (it.first + by)..(it.last + by) }
+            next += member.lines.size
+        }
+        return members.mapValues { (key, member) ->
+            Member(
+                key, relocated[key] ?: member.ranges.map { shifted(it.first)..shifted(it.last) }, member.references, member.kind,
+                member.owner, member.companionOf, member.isObject, member.isPrivate, member.isConstant,
+                member.builds?.let { shifted(it.first)..shifted(it.last) },
+            )
+        }
+    }
 }

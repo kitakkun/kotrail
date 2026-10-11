@@ -8,8 +8,9 @@ run), `KOTRAIL_HELPER_OUTSIDE_CALLER_CLASS` (error, on the function name)
 `maxHelperNoise` (default `60` percent)
 **Fix:** automatic for the order (`kotrailFix` moves the function to just after its first
 caller) and for the distance when the helper and its caller share a container (it moves the
-helper, or the whole run, to just after its caller, or a property above it to just before);
-none for a helper outside its caller's class
+helper, or the whole run, to just after its caller, or a property above it to just before),
+either with the private functions only the moved ones call that the move would leave out of
+place; none for a helper outside its caller's class
 
 ## The story
 
@@ -267,6 +268,14 @@ both, so only the tail is reported.
   the order in which the two are initialized, and so does a run with such a member: the
   diagnostic comes without a fix. So does any other pair that is not siblings.
 - **Outside the caller's class:** no fix (see above).
+- **What goes along:** a fix of either check also moves the private functions of the same
+  container that only the moved declarations call, transitively, when the move would otherwise
+  leave them out of place: above their first caller, or far from their only caller (where the
+  distance check runs). They follow the moved declarations, each after one of its callers and
+  otherwise in source order. A function that something else calls too stays where it is, and so
+  does one that the move leaves in place, with the functions only it calls. Without this, a
+  helper moved next to its caller would leave its own helpers far behind, each a finding for the
+  next round.
 
 `kotrailFix --rules narrativeOrder` applies the fixes of this rule alone.
 
@@ -285,7 +294,10 @@ both, so only the tail is reported.
   extension left alone.
 - `compiler-tests/testData/diagnostics/narrativeOrderSuppressed.kt`: suppressions by the base name
   at a moved severity.
-- The `kotrailFix` functional test of the Gradle plugin: the block move of a far run.
+- `compiler-tests/testData/diagnostics/narrativeOrderFixes.kt`, with the fixes it records in
+  `narrativeOrderFixes.fixes.txt`: the functions each fix takes along, and those it leaves.
+- The `kotrailFix` functional tests of the Gradle plugin: the block move of a far run, and a
+  round of fixes after which a compilation reports nothing of this rule.
 
 ## Implementation notes
 
@@ -313,6 +325,15 @@ caller) when every member and the caller are siblings. A run of top-level functi
 is a class member is reported as outside the caller's class instead, and a top-level extension
 function with such a caller (one with a receiver parameter) is dropped before the runs are
 grouped.
+
+Both fixes find what goes along with `HelperDistance.movedTogether`, over the distance check's
+model, which the order check builds as well once it has a finding to fix; members of local
+classes are not in the model, and an order fix there moves the function alone. It lays the file
+out as the move would leave it, the moved declarations cut and inserted next to the anchor (blank
+lines aside), and adds every private function of the same container whose callers are all in the
+group and that the order check or the distance check would report in that layout. It repeats
+with the larger group until nothing is added, and puts each function added after a caller
+already placed, the first in source order that has one.
 
 As a file checker, the rule reads a `@Suppress` on the reported helper and on the declarations
 around it from the declarations themselves, since the file's context holds only the file's own:

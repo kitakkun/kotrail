@@ -2,6 +2,7 @@ package com.kitakkun.kotrail.fir.checkers
 
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.fir.FixEdit
+import com.kitakkun.kotrail.fir.HelperDistance
 import com.kitakkun.kotrail.fir.KotrailDiagnostics
 import com.kitakkun.kotrail.fir.fix.FixBuilder
 import com.kitakkun.kotrail.fir.kotrailConfig
@@ -21,6 +22,7 @@ import org.jetbrains.kotlin.fir.declarations.FirDeclaration
 import org.jetbrains.kotlin.fir.declarations.FirFile
 import org.jetbrains.kotlin.fir.declarations.FirNamedFunction
 import org.jetbrains.kotlin.fir.declarations.utils.visibility
+import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 
 /**
  * Keeps a file readable from the top down, the story first and the details after: a private
@@ -39,7 +41,9 @@ import org.jetbrains.kotlin.fir.declarations.utils.visibility
  * decidable, and the function must come after the earliest declaration (function, property
  * initializer, `init` block) that calls or references it. A function that nothing in the
  * container uses, or that is in mutual recursion with its first caller, is left alone. The fix
- * moves the whole declaration to just after its first caller.
+ * moves the whole declaration to just after its first caller, with the private functions that
+ * only it calls when the move would leave them above their caller or far from it
+ * ([HelperDistance.movedTogether]).
  *
  * The distance check ([HelperDistanceChecker]) reports a helper that, in the right order, still
  * sits far from its only caller; `maxCallerDistance: 0` switches it off, and test source sets
@@ -55,13 +59,29 @@ object NarrativeOrderChecker : FirFileChecker(MppCheckerKind.Common) {
         val path = declaration.sourceFile?.path
         if (path != null && config.generated.matchesPath(path)) return
         val uses = DeclarationUses.of(declaration)
-        for (container in uses.containers) checkOrder(container, uses)
         val settings = config.narrativeOrder
-        if (settings.maxCallerDistance > 0 && path != null && !isTestSourcePath(path)) HelperDistanceChecker.check(declaration, uses, settings)
+        val measured = settings.maxCallerDistance > 0 && path != null && !isTestSourcePath(path)
+        val collected by lazy { HelperDistanceChecker.collect(declaration, uses) }
+        val maxCallerDistance = if (measured) settings.maxCallerDistance else 0
+        for (container in uses.containers) {
+            checkOrder(container, uses) { helper, user ->
+                collected?.let { HelperDistanceChecker.movedSources(it, listOf(helper), user, before = false, maxCallerDistance, settings.maxHelperNoise) }
+            }
+        }
+        if (measured) collected?.let { HelperDistanceChecker.check(declaration, it, settings) }
     }
 
+    /**
+     * Reports, in [container], each private function above the first declaration that uses it.
+     * [movedWith] gives the sources its fix moves after that user, given the function and the
+     * user, or `null` for the function alone.
+     */
     context(context: CheckerContext, reporter: DiagnosticReporter)
-    private fun checkOrder(container: DeclarationUses.Container, uses: DeclarationUses) {
+    private fun checkOrder(
+        container: DeclarationUses.Container,
+        uses: DeclarationUses,
+        movedWith: (FirNamedFunctionSymbol, KtSourceElement) -> List<KtSourceElement>?,
+    ) {
         val ordered = container.declarations
             .filter { it.source != null && it.source?.kind !is KtFakeSourceElementKind }
             .sortedBy { it.source!!.startOffset }
@@ -77,15 +97,20 @@ object NarrativeOrderChecker : FirFileChecker(MppCheckerKind.Common) {
             val diagnostic = KotrailDiagnostics.HELPER_BEFORE_FIRST_USE
             if (isSuppressedOn(site, diagnostic.baseName, diagnostic.rule)) continue
             val userName = (firstUser as? FirNamedFunction)?.name?.asString() ?: "the declaration below"
+            val moved = movedWith(helper.symbol, userSource) ?: listOf(helperSource)
             reportingAt(site) {
-                reportKotrail(helperSource, diagnostic, helper.name.asString(), userName, moveAfterFix(helperSource, userSource, container.source))
+                reportKotrail(helperSource, diagnostic, helper.name.asString(), userName, moveAfterFix(moved, userSource, container.source))
             }
         }
     }
 
-    /** Deletes the helper (its lines, and one blank line after it) and inserts it after the user, separated by a blank line and indented alike. */
-    private fun moveAfterFix(helper: KtSourceElement, user: KtSourceElement, container: KtSourceElement?): List<FixEdit> =
-        FixBuilder.over(container)?.moveAfter(helper, user) ?: emptyList()
+    /**
+     * Deletes the [moved] declarations, the helper first (the lines of each, and one blank line
+     * after it), and inserts them in that order after the user, each separated by a blank line and
+     * indented alike.
+     */
+    private fun moveAfterFix(moved: List<KtSourceElement>, user: KtSourceElement, container: KtSourceElement?): List<FixEdit> =
+        FixBuilder.over(container)?.moveDeclarationsAfter(moved, user) ?: emptyList()
 }
 
 /**
