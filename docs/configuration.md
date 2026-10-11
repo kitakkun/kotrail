@@ -99,6 +99,7 @@ own; a rule not listed has none.
 | `narrowModelParameters` | `maxUnusedProperties` | `3` | How many properties of a data-class parameter may stay unread. |
 | | `scope` | `composables` | `composables` or `all`. |
 | `preferFunctionReferences` | `forms` | `[topLevel, bound, typeQualified]` | Which reference shapes the rule asks for; drop `typeQualified` to keep `{ it.readText() }`. |
+| | `ignoredFunctions` | `[]` | Globs over the fully qualified name of the function or property a lambda forwards to (`com.acme.Repository.save`, `com.acme.transform*`) whose lambdas are left alone, every overload of a matching name; a Java getter read as a property is matched by the getter's name (`java.io.File.getAbsolutePath`). |
 | `commentLength` | `maxLines` | `5` | Longest allowed block comment or run of consecutive `//` lines; `0` for unlimited. |
 | | `maxKDocLines` | `0` | Longest allowed KDoc; `0` for unlimited. |
 | `noFqnReferences` | `allow` | `[]` | Package prefixes whose members may be referenced fully qualified. |

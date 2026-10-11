@@ -67,6 +67,7 @@ object ConfigSchema {
         ),
         KotrailRule.PREFER_FUNCTION_REFERENCES to listOf(
             Setting("forms", Kind.LIST, "Which reference shapes the rule asks for: topLevel, bound, typeQualified.", default = "topLevel, bound, typeQualified"),
+            Setting("ignoredFunctions", Kind.LIST, "Globs over the fully qualified name of the function or property a lambda forwards to (com.acme.Repository.save, com.acme.transform*) whose lambdas are left alone, every overload of a matching name; a Java getter read as a property is matched by the getter's name (java.io.File.getAbsolutePath)."),
         ),
         KotrailRule.COMMENT_LENGTH to listOf(
             Setting("maxLines", Kind.INT, "Longest allowed block comment or run of consecutive // lines; 0 for unlimited.", default = "5"),

@@ -12,6 +12,7 @@ import com.kitakkun.kotrail.fir.fix.FixBuilder
 import com.kitakkun.kotrail.fir.compose.ComposeNames
 import com.kitakkun.kotrail.fir.compose.isComposable
 import com.kitakkun.kotrail.fir.classNameInFile
+import com.kitakkun.kotrail.fir.fqNameMatchesAny
 import com.kitakkun.kotrail.fir.kotrailConfig
 import com.kitakkun.kotrail.fir.recordNameProbe
 import com.kitakkun.kotrail.fir.reportKotrail
@@ -30,6 +31,7 @@ import org.jetbrains.kotlin.fir.dispatchReceiverClassLookupTagOrNull
 import org.jetbrains.kotlin.fir.expressions.FirAnonymousFunctionExpression
 import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
+import org.jetbrains.kotlin.fir.expressions.FirFunctionCallOrigin
 import org.jetbrains.kotlin.fir.expressions.FirImplicitInvokeCall
 import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirResolvedQualifier
@@ -42,6 +44,7 @@ import org.jetbrains.kotlin.fir.references.toResolvedFunctionSymbol
 import org.jetbrains.kotlin.fir.references.toResolvedPropertySymbol
 import org.jetbrains.kotlin.fir.references.toResolvedValueParameterSymbol
 import org.jetbrains.kotlin.fir.references.toResolvedVariableSymbol
+import org.jetbrains.kotlin.fir.resolve.lookupSuperTypes
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.resolve.toRegularClassSymbol
 import org.jetbrains.kotlin.fir.resolve.toSymbol
@@ -81,6 +84,14 @@ import org.jetbrains.kotlin.name.Name
  * receiver. A Java synthetic property (`file.absolutePath`) is referenced through its getter
  * (`File::getAbsolutePath`), the only form the language accepts. The forms a project wants are
  * selected with `preferFunctionReferences.forms`.
+ *
+ * Some lambdas read better than the reference and are left alone: a call written with operator
+ * syntax (`{ -it }`, `{ a + b }`, `{ it in set }`, `{ list[it] }`), which names no function and
+ * would become `Int::unaryMinus`; a constructor call; a call to a top-level function named like
+ * the class it returns or a supertype of that class (`{ MutableInteractionSource() }`,
+ * `{ Job(it) }` for a `CompletableJob`), which reads as one; and a callee whose fully qualified
+ * name matches `preferFunctionReferences.ignoredFunctions`, a Java synthetic property by its
+ * getter's name (`java.io.File.getAbsolutePath`).
  *
  * A type-qualified reference names the class the way the file can write it: a nested class with
  * its outer classes (`Sheet.Line::text`), an outermost class imported under an alias by the
@@ -213,7 +224,10 @@ object PreferFunctionReferenceChecker : FirAnonymousFunctionChecker(MppCheckerKi
     ): Suggestion? {
         // `{ block() }` on a function-typed value has no named callee to reference.
         if (call is FirImplicitInvokeCall) return null
+        // `{ -it }`, `{ a + b }`, `{ list[it] }`: the operator names no function and reads better than `Int::unaryMinus`.
+        if (call.origin == FirFunctionCallOrigin.Operator) return null
         val callee = call.calleeReference.toResolvedFunctionSymbol() ?: return null
+        if (callee.fqNameMatchesAny(session.kotrailConfig.preferFunctionReferences.ignoredFunctions)) return null
         if (callee.typeParameterSymbols.isNotEmpty()) return null
         if (callee.valueParameterSymbols.any { it.isVararg }) return null
         if (callee.isSuspend != lambdaSuspends) return null
@@ -221,6 +235,7 @@ object PreferFunctionReferenceChecker : FirAnonymousFunctionChecker(MppCheckerKi
         // A member that is also an extension cannot be referenced: the language prohibits it.
         if (callee.dispatchReceiverType != null && callee.receiverParameterSymbol != null) return null
         if (hasOverloads(callee, session)) return null
+        if (isNamedLikeItsType(callee, session)) return null
         val arguments = call.arguments.map { it.unwrapArgument().unwrapSmartCast() }
         if (arguments.size != callee.valueParameterSymbols.size) return null
 
@@ -270,6 +285,12 @@ object PreferFunctionReferenceChecker : FirAnonymousFunctionChecker(MppCheckerKi
         if (parameters.size != 1 || parameters.single() != receiverParameter) return null
         val property = access.calleeReference.toResolvedPropertySymbol() ?: return null
         if (property.isLocal) return null
+        val ignoredFunctions = session.kotrailConfig.preferFunctionReferences.ignoredFunctions
+        val ignored = when (property) {
+            is FirSyntheticPropertySymbol -> ignoredFunctions.any { it.matches(property.getterId.asSingleFqName().asString()) }
+            else -> property.fqNameMatchesAny(ignoredFunctions)
+        }
+        if (ignored) return null
         val owner = receiver.resolvedType.toRegularClassSymbol(session)?.takeIf { it.typeParameterSymbols.isEmpty() }
             ?: return null
         val scope = owner.unsubstitutedScope(session, context.scopeSession, withForcedTypeCalculator = false, memberRequiredPhase = null)
@@ -338,6 +359,21 @@ object PreferFunctionReferenceChecker : FirAnonymousFunctionChecker(MppCheckerKi
             }
             else -> true
         }
+    }
+
+    /**
+     * Whether [callee] is a top-level function named like the class it is declared to return, or
+     * like a supertype of that class, nullability aside: `MutableInteractionSource()`,
+     * `CoroutineScope(context)`, `Job(parent)`, which returns a `CompletableJob`. Such a call reads
+     * as a constructor call.
+     */
+    private fun isNamedLikeItsType(callee: FirFunctionSymbol<*>, session: FirSession): Boolean {
+        if (callee !is FirNamedFunctionSymbol) return false
+        if (callee.dispatchReceiverType != null || callee.receiverParameterSymbol != null) return false
+        val returned = callee.resolvedReturnType.toRegularClassSymbol(session) ?: return false
+        if (returned.name == callee.name) return true
+        return lookupSuperTypes(returned, lookupInterfaces = true, deep = true, useSiteSession = session)
+            .any { it.lookupTag.name == callee.name }
     }
 
     private fun FirExpression.unwrapSmartCast(): FirExpression =

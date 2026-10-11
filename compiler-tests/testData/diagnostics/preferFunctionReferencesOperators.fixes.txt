@@ -1,0 +1,6 @@
+Module: main
+  preferFunctionReferencesOperators.kt
+    KOTRAIL_PREFER_FUNCTION_REFERENCE: 48:13-48:33 "(Vec::unaryMinus)"
+    KOTRAIL_PREFER_FUNCTION_REFERENCE: 49:16-49:38 "(Vec::plus)"
+    KOTRAIL_PREFER_FUNCTION_REFERENCE: 50:13-50:29 "(vec::get)"
+    KOTRAIL_PREFER_FUNCTION_REFERENCE: 53:18-53:39 ", Int::shl)"

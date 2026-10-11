@@ -144,6 +144,8 @@ enum class ReferenceForm(val key: String) {
 data class KotrailPreferFunctionReferences(
     /** Only lambdas that can become one of these reference forms are reported. */
     val forms: Set<ReferenceForm>,
+    /** Globs over fully qualified functions and properties a lambda may forward to without being reported; a Java getter by its own name. */
+    val ignoredFunctions: List<Glob>,
 )
 
 /** Tunables for the null-chain-length rule. From `rules.nullChainLength`; `0` switches a count off. */
@@ -1423,6 +1425,7 @@ data class KotrailConfig(
                         if (parsed.isEmpty()) fail(KotrailRule.PREFER_FUNCTION_REFERENCES, "forms", "must list at least one form")
                         parsed
                     } ?: DEFAULT_REFERENCE_FORMS,
+                    ignoredFunctions = list(KotrailRule.PREFER_FUNCTION_REFERENCES, "ignoredFunctions").orEmpty().map(::Glob),
                 ),
                 nullChain = KotrailNullChain(
                     maxElvis = int(KotrailRule.NULL_CHAIN_LENGTH, "maxElvis") ?: DEFAULT_MAX_ELVIS,

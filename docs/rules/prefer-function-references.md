@@ -2,7 +2,7 @@
 
 **Diagnostic:** `KOTRAIL_PREFER_FUNCTION_REFERENCE` (error, on the lambda)
 **Key:** `rules.preferFunctionReferences` (on by default)
-**Setting:** `forms` (default `topLevel,bound,typeQualified`)
+**Settings:** `forms` (default `topLevel,bound,typeQualified`), `ignoredFunctions` (default `[]`)
 **Fix:** automatic (`kotrailFix` replaces the lambda with the reference, moving a trailing lambda into the parentheses)
 
 ## Choosing which forms to ask for
@@ -21,6 +21,21 @@ independently. Teams that find `File::readText`-style references harder to read 
 rules:
   preferFunctionReferences:
     forms: [topLevel, bound]
+```
+
+## Leaving functions alone
+
+`ignoredFunctions` lists functions and properties whose lambdas stay as they are, as globs over
+the fully qualified name of what the lambda forwards to: `com.acme.transform`, a member as
+`com.acme.Repository.save`, `com.acme.Repository.save*` for a family of names. Every overload of a
+matching name is left alone. A Java getter read as a property (`{ it.absolutePath }`) is matched by
+the getter's name, `java.io.File.getAbsolutePath`, the name the reference would use. The default is
+empty.
+
+```yaml
+rules:
+  preferFunctionReferences:
+    ignoredFunctions: [com.acme.ui.Strings.format, java.io.File.getAbsolutePath]
 ```
 
 ## What it rejects
@@ -81,7 +96,20 @@ resolve to the same callee:
 - The lambda has a receiver type (`T.() -> R`).
 - The body calls a function-typed value (`{ block() }`): there is no named callee.
 - The receiver is a fresh expression (`{ Repository().save(it) }`) or a `var`.
-- The callee is a constructor (constructor overload sets are not inspected yet).
+- The body is written with operator syntax: `{ -it }`, `{ !it }`, `{ a + b }`, `{ a..b }`,
+  `{ it in set }`, `{ list[it] }`, `{ counter += it }`. The lambda names no function, and
+  `slideInVertically { -it }` reads better than `slideInVertically(Int::unaryMinus)`. The same
+  function called by name (`{ it.unaryMinus() }`), and an infix function written by name
+  (`{ a, b -> a shl b }`), are still reported. A comparison (`{ a, b -> a < b }`), an equality,
+  `!in` and an indexed assignment (`{ k, v -> table[k] = v }`) are never one forwarding call to
+  begin with.
+- The callee is a constructor (constructor overload sets are not inspected yet), or a top-level
+  function named like the class it is declared to return, or like a supertype of that class,
+  nullability aside: `remember { MutableInteractionSource() }`, `{ CoroutineScope(it) }`, and
+  `{ Job(it) }`, whose `Job(parent)` returns a `CompletableJob`. Such a call reads as a constructor
+  call, so it is left alone like `remember { SnackbarHostState() }`. A function named like a class
+  that returns something else is still reported.
+- The callee's fully qualified name matches `ignoredFunctions`.
 - The callee cannot be referenced at all: a member extension (`private fun Item.redacted()`
   declared inside a class); a property where a suspend function type is expected
   (`flow.map { it.keys }`), since a property reference is never `suspend`; or a property that
@@ -102,11 +130,19 @@ function, both are inlined.
 
 `compiler-tests/testData/diagnostics/preferFunctionReferences.kt`,
 `compiler-tests/testData/diagnostics/preferFunctionReferencesImports.kt` (with the fixes in
-`preferFunctionReferencesImports.fixes.txt`)
+`preferFunctionReferencesImports.fixes.txt`),
+`compiler-tests/testData/diagnostics/preferFunctionReferencesOperators.kt` and
+`compiler-tests/testData/diagnostics/preferFunctionReferencesFactories.kt` (each with its
+`.fixes.txt`), `compiler-tests/testData/diagnostics/config/functionReferenceIgnoredFunctions.kt`
 
 ## Implementation notes
 
-`fir/checkers/PreferFunctionReferenceChecker.kt`, a `FirAnonymousFunctionChecker`. Overloads
+`fir/checkers/PreferFunctionReferenceChecker.kt`, a `FirAnonymousFunctionChecker`. Operator
+syntax is told by the call's `FirFunctionCallOrigin.Operator`, which the raw FIR builder gives to
+prefix and binary operators, `in`, indexing and augmented assignments; a comparison is a
+`FirComparisonExpression`, an equality a `FirEqualityOperatorCall`, `!in` a `not()` of the
+`contains` call, and an indexed assignment a block that ends in an implicit `Unit`. A factory
+function is told by the class of its `resolvedReturnType` and that class's `lookupSuperTypes`. Overloads
 are detected through `declaredFunctions` of the owning class or
 `symbolProvider.getTopLevelFunctionSymbols`; `suspend` is compared between the lambda's
 resolved function type and the callee's status. A property reference is checked against the

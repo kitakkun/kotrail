@@ -1,0 +1,4 @@
+Module: main
+  preferFunctionReferencesFactories.kt
+    KOTRAIL_PREFER_FUNCTION_REFERENCE: 37:13-37:43 "(::createInteractionSource)"
+    KOTRAIL_PREFER_FUNCTION_REFERENCE: 40:14-40:28 "(::Label)"
