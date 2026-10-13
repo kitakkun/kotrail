@@ -497,6 +497,95 @@ class KotrailGradlePluginFunctionalTest {
     }
 
     @Test
+    fun `kotrailFix passes a trailing lambda's reference to the parameter the lambda bound to`() {
+        writeSettings()
+        writeFile("kotrail.yaml", "severity: warning\n")
+        writeBuild(
+            """
+            kotrail {
+                configFile = file("kotrail.yaml")
+            }
+            """.trimIndent(),
+        )
+        writeFile(
+            "src/main/kotlin/Slots.kt",
+            """
+            import java.io.File
+
+            class Mutex
+
+            fun <T> Mutex.withLock(owner: Any? = null, action: () -> T): T = action()
+
+            class Locator
+
+            infix fun Locator.onLocating(block: () -> Unit) = block()
+
+            class Tracker {
+                fun onInstalling() {}
+            }
+
+            fun String.shout(): String = uppercase()
+
+            fun shutDown() {}
+
+            fun configure(name: String = "", retries: Int = 0, onDone: () -> Unit) = onDone()
+
+            fun both(first: () -> Unit, flag: Boolean = false, second: () -> Unit) {
+                if (flag) first() else second()
+            }
+
+            fun labels(names: List<String>): List<String> = listOf(
+                names.joinToString(", ") { it.uppercase() },
+                names.joinToString(", ") { it.shout() },
+            )
+
+            fun fileNames(files: List<File>): String = files.joinToString { it.name }
+
+            fun stop(mutex: Mutex) = mutex.withLock { shutDown() }
+
+            fun install(locator: Locator, tracker: Tracker) {
+                locator onLocating { tracker.onInstalling() }
+            }
+
+            fun setUp() {
+                configure(name = "app") { shutDown() }
+                configure(
+                    "app",
+                    3,
+                ) { shutDown() }
+                both({ shutDown() }) { shutDown() }
+            }
+            """.trimIndent(),
+        )
+
+        val compiled = runBuild("compileKotlin")
+        assertEquals(TaskOutcome.SUCCESS, compiled.task(":compileKotlin")?.outcome, compiled.output)
+        assertTrue(compiled.output.contains("KOTRAIL_PREFER_FUNCTION_REFERENCE"), compiled.output)
+
+        val fixed = runBuild("kotrailFix", "--rules", "preferFunctionReferences")
+        assertEquals(TaskOutcome.SUCCESS, fixed.task(":kotrailFix")?.outcome, fixed.output)
+        val text = File(projectDir, "src/main/kotlin/Slots.kt").readText()
+        for (expected in listOf(
+            // String.uppercase has an overload taking a Locale, so this lambda is not reported and
+            // stays as it is.
+            "names.joinToString(\", \") { it.uppercase() }",
+            "names.joinToString(\", \", transform = String::shout)",
+            "files.joinToString(transform = File::getName)",
+            "mutex.withLock(action = ::shutDown)",
+            "locator onLocating tracker::onInstalling",
+            "configure(name = \"app\", onDone = ::shutDown)",
+            "configure(\n        \"app\",\n        3,\n        ::shutDown,\n    )",
+            "both(::shutDown, second = ::shutDown)",
+        )) {
+            assertTrue(text.contains(expected), "expected `$expected` in:\n$text")
+        }
+
+        val recompiled = runBuild("compileKotlin")
+        assertEquals(TaskOutcome.SUCCESS, recompiled.task(":compileKotlin")?.outcome, recompiled.output)
+        assertFalse(recompiled.output.contains("KOTRAIL_PREFER_FUNCTION_REFERENCE"), recompiled.output)
+    }
+
+    @Test
     fun `a preview compilation checks the coverage of the main it is associated with`() {
         writeSettings()
         writeFile("kotrail.yaml", "severity: warning\nrules:\n  compose.previewRequired: off\n")

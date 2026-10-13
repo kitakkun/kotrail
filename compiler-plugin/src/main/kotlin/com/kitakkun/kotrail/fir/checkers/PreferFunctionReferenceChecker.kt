@@ -3,6 +3,7 @@
 package com.kitakkun.kotrail.fir.checkers
 
 import com.kitakkun.kotrail.compat.qualifierClassId
+import com.kitakkun.kotrail.compat.unwrapFunctionConversion
 import com.kitakkun.kotrail.KotrailRule
 import com.kitakkun.kotrail.ReferenceForm
 import com.kitakkun.kotrail.fir.ClassNameInFile
@@ -33,12 +34,15 @@ import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.FirFunctionCallOrigin
 import org.jetbrains.kotlin.fir.expressions.FirImplicitInvokeCall
+import org.jetbrains.kotlin.fir.expressions.FirNamedArgumentExpression
 import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
 import org.jetbrains.kotlin.fir.expressions.FirResolvedQualifier
 import org.jetbrains.kotlin.fir.expressions.FirReturnExpression
 import org.jetbrains.kotlin.fir.expressions.FirSmartCastExpression
 import org.jetbrains.kotlin.fir.expressions.FirThisReceiverExpression
 import org.jetbrains.kotlin.fir.expressions.arguments
+import org.jetbrains.kotlin.fir.expressions.impl.FirResolvedArgumentList
+import org.jetbrains.kotlin.fir.expressions.resolvedArgumentMapping
 import org.jetbrains.kotlin.fir.expressions.unwrapArgument
 import org.jetbrains.kotlin.fir.references.toResolvedFunctionSymbol
 import org.jetbrains.kotlin.fir.references.toResolvedPropertySymbol
@@ -98,6 +102,14 @@ import org.jetbrains.kotlin.name.Name
  * alias. A class the file only met through inference (`spans.map { it.beat }` over a type from
  * another package) is not reachable by its simple name; the fix then imports it, and when that
  * name already means something else in the file nothing is reported.
+ *
+ * The fix puts the reference where the lambda was. For a trailing lambda it goes into the
+ * parentheses, as the argument of the parameter the lambda bound to: by position when the
+ * arguments before it fill the parameters before that one, in order, none named and none a vararg
+ * (`zip(b, ::g)`); else by name (`joinToString(", ", transform = User::name)`,
+ * `withLock(action = ::shutDown)`), and with no fix when the callee's parameter names cannot be
+ * written either. The lambda of an infix call (`locator onLocating tracker::onInstalling`) and one
+ * inside the parentheses are replaced in place.
  */
 object PreferFunctionReferenceChecker : FirAnonymousFunctionChecker(MppCheckerKind.Common) {
     /** A reference to suggest, and the class the file has to import for it, if any. */
@@ -138,7 +150,7 @@ object PreferFunctionReferenceChecker : FirAnonymousFunctionChecker(MppCheckerKi
         val edits = when (val import = suggestion.import) {
             null -> fix
             // Without its import the reference does not resolve, so the fix goes only with it.
-            else -> importEdit(import)?.let { fix + it } ?: emptyList()
+            else -> importEdit(import)?.takeIf { fix.isNotEmpty() }?.let { fix + it } ?: emptyList()
         }
         reportKotrail(source, KotrailDiagnostics.PREFER_FUNCTION_REFERENCE, suggestion.text, edits)
     }
@@ -171,46 +183,75 @@ object PreferFunctionReferenceChecker : FirAnonymousFunctionChecker(MppCheckerKi
     }
 
     /**
-     * The edit that puts the reference where the lambda was. A trailing lambda moves into the
-     * parentheses: `map { f(it) }` becomes `map(::f)`, `zip(b) { a, c -> g(a, c) }` becomes
-     * `zip(b, ::g)`. A lambda already inside parentheses, named or not, or one that is not an
-     * argument of the enclosing call at all (`val f: (Int) -> Int = { g(it) }` in a trailing
-     * lambda, `remember { { g() } }`), is replaced in place.
+     * The edits that put the reference where the lambda was, its label (`step@{ f(it) }`) included.
+     * A trailing lambda moves into the parentheses, written as [argumentFor] says: `map { f(it) }`
+     * becomes `map(::f)`, `zip(b) { a, c -> g(a, c) }` becomes `zip(b, ::g)`, and
+     * `joinToString(", ") { it.name }` becomes `joinToString(", ", transform = User::name)`. After a
+     * trailing comma it goes last, on a line of its own when the comma ends its line. Any other
+     * lambda is replaced in place: one inside the parentheses, named or not, the operand of an infix
+     * call (`locator onLocating tracker::onInstalling`), or one that is not an argument of the
+     * enclosing call at all (`val f: (Int) -> Int = { g(it) }` in a trailing lambda,
+     * `remember { { g() } }`). None when a trailing lambda's argument cannot be written for certain,
+     * or when something other than whitespace comes between the lambda and the parentheses or the
+     * callee before it.
      */
     context(context: CheckerContext)
     private fun fixFor(declaration: FirAnonymousFunction, lambda: KtSourceElement, reference: String): List<FixEdit> {
-        val inPlace = listOf(FixBuilder.replace(lambda, reference))
+        val start = declaration.label?.source?.takeIf { it.kind !is KtFakeSourceElementKind } ?: lambda
+        val inPlace = listOf(FixBuilder.replaceSpan(start, lambda, reference))
         val call = context.containingElements.lastOrNull { it is FirFunctionCall } as? FirFunctionCall ?: return inPlace
-        val argument = call.arguments.firstOrNull {
-            (it.unwrapArgument() as? FirAnonymousFunctionExpression)?.anonymousFunction === declaration
-        } ?: return inPlace
-        val callSource = call.source ?: return inPlace
-        val argumentSource = argument.source ?: lambda
-        if (argumentSource.startOffset < callSource.startOffset || lambda.endOffset > callSource.endOffset) return inPlace
-        val builder = FixBuilder.over(callSource) ?: return inPlace
-        // A labeled lambda (`step@{ f(it) }`) starts at its label, which neither source covers.
-        val argumentStart = labelStart(builder, minOf(argumentSource.startOffset, lambda.startOffset))
-        val precedingEnd = builder.previousSignificantEnd(argumentStart)
-        return when (builder.charAt(precedingEnd - 1)) {
-            '(', ',', '=' -> listOf(builder.replaceRange(argumentStart, lambda.endOffset, reference))
-            ')' -> {
-                val closing = precedingEnd - 1
-                if (builder.previousSignificantChar(closing) == '(') listOf(builder.replaceRange(closing, lambda.endOffset, "$reference)"))
-                else listOf(builder.replaceRange(closing, lambda.endOffset, ", $reference)"))
+        val argument = call.arguments.firstOrNull { it.asLambda()?.anonymousFunction === declaration } ?: return inPlace
+        if (argument.asLambda()?.isTrailingLambda != true) return inPlace
+        val written = argumentFor(call, argument, reference) ?: return emptyList()
+        val callSource = call.source ?: return emptyList()
+        if (start.startOffset < callSource.startOffset || lambda.endOffset > callSource.endOffset) return emptyList()
+        val builder = FixBuilder.over(callSource) ?: return emptyList()
+        val precedingEnd = builder.previousSignificantEnd(start.startOffset)
+        val preceding = builder.charAt(precedingEnd - 1) ?: return emptyList()
+        if (preceding != ')') {
+            // The callee's name ends in a letter, a digit, an underscore, a backtick, or the `>` of
+            // explicit type arguments (`foo<T> { ... }`).
+            if (!preceding.isLetterOrDigit() && preceding !in "_`>") return emptyList()
+            return listOf(builder.replaceRange(precedingEnd, lambda.endOffset, "($written)"))
+        }
+        val closing = precedingEnd - 1
+        val lastEnd = builder.previousSignificantEnd(closing)
+        return when (builder.charAt(lastEnd - 1)) {
+            '(' -> listOf(builder.replaceRange(closing, lambda.endOffset, "$written)"))
+            ',' -> {
+                val indent = builder.lineIndentAt(lastEnd)?.takeIf { (lastEnd until closing).any { builder.charAt(it) == '\n' } }
+                val separator = indent?.let { "\n$it" } ?: " "
+                listOf(builder.replaceRange(lastEnd, lastEnd, "$separator$written,"), builder.replaceRange(closing + 1, lambda.endOffset, ""))
             }
-            // A trailing lambda after the callee: the parentheses take its place, whitespace included.
-            else -> listOf(builder.replaceRange(precedingEnd, lambda.endOffset, "($reference)"))
+            else -> listOf(builder.replaceRange(closing, lambda.endOffset, ", $written)"))
         }
     }
 
-    /** The start of the `label@` before the lambda at [lambdaStart], or [lambdaStart] when it has none. */
-    private fun labelStart(builder: FixBuilder, lambdaStart: Int): Int {
-        val at = builder.previousSignificantEnd(lambdaStart) - 1
-        if (builder.charAt(at) != '@') return lambdaStart
-        var start = at
-        while (builder.charAt(start - 1)?.let { it.isLetterOrDigit() || it == '_' } == true) start--
-        return if (start < at) start else lambdaStart
+    /**
+     * How the trailing lambda [argument] of [call] is written inside the parentheses, [reference] in
+     * its place. By position when that binds it to the same parameter: no argument is named, none
+     * goes to a vararg, which would take the reference in as well, and the other arguments fill the
+     * parameters before the lambda's one by one, in order. Else by the parameter's name, when the
+     * callee's parameter names can be used, which those of a Java method or of a function-typed
+     * value cannot. `null` when neither is certain.
+     */
+    private fun argumentFor(call: FirFunctionCall, argument: FirExpression, reference: String): String? {
+        val mapping = call.resolvedArgumentMapping ?: return null
+        val parameter = mapping[argument]?.symbol ?: return null
+        val callee = call.calleeReference.toResolvedFunctionSymbol() ?: return null
+        val filled = mapping.filterKeys { it !== argument }.values.map { it.symbol }
+        val original = (call.argumentList as? FirResolvedArgumentList)?.originalArgumentList?.arguments.orEmpty()
+        val named = original.any { it is FirNamedArgumentExpression }
+        return when {
+            !named && filled.none { it.isVararg } && callee.valueParameterSymbols.take(filled.size + 1) == filled + parameter -> reference
+            callee.resolvedStatus.hasStableParameterNames -> "${parameter.name.asString()} = $reference"
+            else -> null
+        }
     }
+
+    /** The lambda this argument passes, as written or converted to a `fun interface` or another function type. */
+    private fun FirExpression.asLambda(): FirAnonymousFunctionExpression? =
+        unwrapArgument().unwrapFunctionConversion() as? FirAnonymousFunctionExpression
 
     context(context: CheckerContext)
     private fun referenceForCall(
