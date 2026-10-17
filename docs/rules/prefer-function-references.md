@@ -3,7 +3,7 @@
 **Diagnostic:** `KOTRAIL_PREFER_FUNCTION_REFERENCE` (error, on the lambda)
 **Key:** `rules.preferFunctionReferences` (on by default)
 **Settings:** `forms` (default `topLevel,bound,typeQualified`), `ignoredFunctions` (default `[]`)
-**Fix:** automatic (`kotrailFix` replaces the lambda with the reference, moving a trailing lambda into the parentheses)
+**Fix:** automatic (`kotrailFix` replaces the lambda with the reference, moving a trailing lambda into the parentheses, by name when its position would bind another parameter; see [The fix](#the-fix))
 
 ## Choosing which forms to ask for
 
@@ -75,6 +75,33 @@ The object or companion of a bound reference is written as the call spells it, w
 resolves in the file: `Metronome.Click.at(it)` becomes `Metronome.Click::at`, `Meter.of(it)` on a
 companion becomes `Meter::of`, and `lib.music.Tempo.scale(it)` keeps its package.
 
+## The fix
+
+`kotrailFix` puts the reference where the lambda was. A trailing lambda moves into the
+parentheses, as the argument of the parameter the lambda bound to:
+
+- By position when that keeps the parameter: no argument of the call is named, none goes to a
+  `vararg` parameter (which would take the reference in as well), and the arguments fill the
+  parameters before the lambda's one by one, in order. `users.map { it.name }` becomes
+  `users.map(User::name)`, and `ints.zip(ints) { a, b -> pair(a, b) }` becomes
+  `ints.zip(ints, ::pair)`.
+- By name otherwise. `names.joinToString(", ") { it.shout() }` becomes
+  `names.joinToString(", ", transform = String::shout)`, since `prefix` and the other defaulted
+  parameters come before `transform`, and `mutex.withLock { shutDown() }` becomes
+  `mutex.withLock(action = ::shutDown)`, since `owner: Any?` comes first. A call with a named
+  argument (`configure(name = "a") { shutDown() }`) or a `vararg` before the lambda
+  (`launchAll(1, 2) { shutDown() }`) gets the name as well.
+- Without a fix when neither is certain: the position would bind another parameter, and the
+  callee's parameter names cannot be written, as those of a Java method or a function-typed value
+  cannot. The finding is still reported.
+
+After a trailing comma the reference goes last, on a line of its own when the comma ends its
+line, and the comma stays. A lambda that is not trailing is replaced in place, with its label
+(`step@{ it.name }`) if it has one: a lambda already inside the parentheses, named or not, and the
+operand of an infix call, so that `locator onLocating { tracker.onInstalling() }` becomes
+`locator onLocating tracker::onInstalling`. A trailing lambda with something other than
+whitespace before it, such as a comment, gets no fix.
+
 ## When it fires
 
 A lambda whose body is a single call (or property read) that forwards the lambda's parameters
@@ -132,8 +159,9 @@ function, both are inlined.
 `compiler-tests/testData/diagnostics/preferFunctionReferencesImports.kt` and
 `compiler-tests/testData/diagnostics/preferFunctionReferencesLibraryImports.kt` (each with its
 `.fixes.txt`),
-`compiler-tests/testData/diagnostics/preferFunctionReferencesOperators.kt` and
-`compiler-tests/testData/diagnostics/preferFunctionReferencesFactories.kt` (each with its
+`compiler-tests/testData/diagnostics/preferFunctionReferencesOperators.kt`,
+`compiler-tests/testData/diagnostics/preferFunctionReferencesFactories.kt` and
+`compiler-tests/testData/diagnostics/preferFunctionReferencesTrailingSlot.kt` (each with its
 `.fixes.txt`), `compiler-tests/testData/diagnostics/config/functionReferenceIgnoredFunctions.kt`
 
 ## Implementation notes
@@ -154,3 +182,13 @@ noFqnReferences): an explicit import, with its alias if it has one, or the simpl
 file's package, a star import or a default import reaches the class and nothing shadows it. The
 import goes in through `FixBuilder.addImport`, and `kotrailFix` applies an import that several
 fixes of one file add only once.
+
+The fix tells a trailing lambda by `FirAnonymousFunctionExpression.isTrailingLambda`, and an
+infix call's operand by its not being one. The enclosing call's `resolvedArgumentMapping` gives
+the parameter the lambda binds to and those the other arguments fill, the
+`FirNamedArgumentExpression`s left in the resolved argument list's `originalArgumentList` give the
+named arguments, and the callee's `hasStableParameterNames` says whether a name can be written. A
+lambda passed to a `fun interface` parameter arrives wrapped in its conversion, a
+`FirFunctionTypeConversionExpression` (a `FirSamConversionExpression` on Kotlin 2.3), which
+`unwrapFunctionConversion` in the compat layer takes off. The label comes from the lambda's
+`FirLabel`, whose source is the label as written.

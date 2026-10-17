@@ -49,6 +49,18 @@ class FixBuilder private constructor(
     fun indentAt(offset: Int): String = text.substring(indentStart(offset) - base, offset - base)
 
     /**
+     * The indentation of the line [offset] is on, whatever precedes [offset] on it, or `null` when
+     * that line starts before the container, whose text then does not show it.
+     */
+    fun lineIndentAt(offset: Int): String? {
+        val lineStart = text.lastIndexOf('\n', offset - base - 1) + 1
+        if (lineStart == 0) return null
+        var end = lineStart
+        while (end < text.length && text[end] != '\n' && text[end].isWhitespace()) end++
+        return text.substring(lineStart, end)
+    }
+
+    /**
      * The file offset right after the last non-whitespace character before [offset]: [offset]
      * itself when no whitespace precedes it, the container's start when only whitespace does.
      */
@@ -191,6 +203,10 @@ class FixBuilder private constructor(
 
         /** Replaces the whole of [source]. */
         fun replace(source: KtSourceElement, replacement: String): FixEdit = FixEdit(source.startOffset, source.endOffset, replacement)
+
+        /** Replaces everything from the start of [first] to the end of [last]. */
+        fun replaceSpan(first: KtSourceElement, last: KtSourceElement, replacement: String): FixEdit =
+            FixEdit(first.startOffset, last.endOffset, replacement)
 
         /** Deletes the whole of [source], and nothing around it. */
         fun delete(source: KtSourceElement): FixEdit = FixEdit(source.startOffset, source.endOffset, "")

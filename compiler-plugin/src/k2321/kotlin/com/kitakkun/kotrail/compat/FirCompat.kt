@@ -1,7 +1,9 @@
 package com.kitakkun.kotrail.compat
 
 import org.jetbrains.kotlin.KtFakeSourceElementKind
+import org.jetbrains.kotlin.fir.expressions.FirExpression
 import org.jetbrains.kotlin.fir.expressions.FirResolvedQualifier
+import org.jetbrains.kotlin.fir.expressions.FirSamConversionExpression
 import org.jetbrains.kotlin.name.ClassId
 
 /**
@@ -23,3 +25,12 @@ val FirResolvedQualifier.qualifierClassId: ClassId?
  * `Custom(marker)` subclasses rather than an object.
  */
 val PLUGIN_GENERATED_SOURCE_KIND: KtFakeSourceElementKind = KtFakeSourceElementKind.PluginGenerated
+
+/**
+ * The expression a call argument converts to the parameter's function type, such as a lambda
+ * passed to a `fun interface` parameter, or the expression itself when nothing converts it.
+ *
+ * Since 2.4.0: a SAM conversion, like a conversion to another kind of function type, is a
+ * `FirFunctionTypeConversionExpression` rather than a `FirSamConversionExpression`.
+ */
+fun FirExpression.unwrapFunctionConversion(): FirExpression = (this as? FirSamConversionExpression)?.expression ?: this
