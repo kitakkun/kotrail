@@ -1,0 +1,19 @@
+/unguardedBoundaryNestedTries.kt:(1114,1128): error: [Kotrail] This catch at a boundary handles only 'IOException': any other failure from 'File.mkdirs' ends 'write' here, and only the default handler sees it. Catch Exception as well and log or report it. (KOTRAIL_BOUNDARY_UNGUARDED)
+
+/unguardedBoundaryNestedTries.kt:(2135,2149): error: [Kotrail] This catch at a boundary handles only 'IOException': any other failure from 'FileOutputStream.write' ends 'writeThroughUse' here, and only the default handler sees it. Catch Exception as well and log or report it. (KOTRAIL_BOUNDARY_UNGUARDED)
+
+/unguardedBoundaryNestedTries.kt:(2422,2456): error: [Kotrail] This catch at a boundary handles only 'AtomicMoveNotSupportedException': any other failure from 'Files.move' ends 'writeInCatch' here, and only the default handler sees it. Catch Exception as well and log or report it. (KOTRAIL_BOUNDARY_UNGUARDED)
+
+/unguardedBoundaryNestedTries.kt:(2598,2612): error: [Kotrail] This catch at a boundary handles only 'IOException': any other failure from 'Files.move' ends 'writeInCatch' here, and only the default handler sees it. Catch Exception as well and log or report it. (KOTRAIL_BOUNDARY_UNGUARDED)
+
+/unguardedBoundaryNestedTries.kt:(2854,2874): error: [Kotrail] This catch at a boundary handles only 'SecurityException': any other failure from 'File.mkdirs' ends 'writeInFinally' here, and only the default handler sees it. Catch Exception as well and log or report it. (KOTRAIL_BOUNDARY_UNGUARDED)
+
+/unguardedBoundaryNestedTries.kt:(3005,3019): error: [Kotrail] This catch at a boundary handles only 'IOException': any other failure from 'Files.delete' ends 'writeInFinally' here, and only the default handler sees it. Catch Exception as well and log or report it. (KOTRAIL_BOUNDARY_UNGUARDED)
+
+/unguardedBoundaryNestedTries.kt:(3335,3349): error: [Kotrail] This catch at a boundary handles only 'IOException': any other failure from 'Files.move' ends 'writeWithCleanup' here, and only the default handler sees it. Catch Exception as well and log or report it. (KOTRAIL_BOUNDARY_UNGUARDED)
+
+/unguardedBoundaryNestedTries.kt:(3700,3734): error: [Kotrail] This catch at a boundary handles only 'AtomicMoveNotSupportedException': any other failure from 'Files.move' ends 'writeTranslated' here, and only the default handler sees it. Catch Exception as well and log or report it. (KOTRAIL_BOUNDARY_UNGUARDED)
+
+/unguardedBoundaryNestedTries.kt:(4204,4218): error: [Kotrail] This catch at a boundary handles only 'IOException': any other failure from 'Files.move' ends 'thread' here, and only the default handler sees it. Catch Exception as well and log or report it. (KOTRAIL_BOUNDARY_UNGUARDED)
+
+/unguardedBoundaryNestedTries.kt:(4298,4318): error: [Kotrail] This catch at a boundary handles only 'SecurityException': any other failure from 'File.mkdirs' ends 'writeLater' here, and only the default handler sees it. Catch Exception as well and log or report it. (KOTRAIL_BOUNDARY_UNGUARDED)
