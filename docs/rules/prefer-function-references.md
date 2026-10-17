@@ -111,7 +111,9 @@ resolve to the same callee:
   that returns something else is still reported.
 - The callee's fully qualified name matches `ignoredFunctions`.
 - The callee cannot be referenced at all: a member extension (`private fun Item.redacted()`
-  declared inside a class); a property where a suspend function type is expected
+  declared inside a class); a function or property with context parameters
+  (`context(logger: Logger) fun record(item: Item)`), which the compiler rejects with
+  `CALLABLE_REFERENCE_TO_CONTEXTUAL_DECLARATION`; a property where a suspend function type is expected
   (`flow.map { it.keys }`), since a property reference is never `suspend`; or a property that
   shares its name with a function on the receiver or in its package, which is ambiguous
   (`NSObject::accessibilityViewIsModal` on Kotlin/Native, where an Objective-C property and its
@@ -134,7 +136,8 @@ function, both are inlined.
 `.fixes.txt`),
 `compiler-tests/testData/diagnostics/preferFunctionReferencesOperators.kt` and
 `compiler-tests/testData/diagnostics/preferFunctionReferencesFactories.kt` (each with its
-`.fixes.txt`), `compiler-tests/testData/diagnostics/config/functionReferenceIgnoredFunctions.kt`
+`.fixes.txt`), `compiler-tests/testData/diagnostics/preferFunctionReferencesContextParameters.kt`,
+`compiler-tests/testData/diagnostics/config/functionReferenceIgnoredFunctions.kt`
 
 ## Implementation notes
 
