@@ -79,11 +79,11 @@ import org.jetbrains.kotlin.name.Name
  * forwarded in order without extras or omissions, the callee has no varargs, type parameters,
  * or same-named overloads, the receiver (if any) is `this`, a `val`, an object, or the first
  * lambda parameter, and neither side is `@Composable` or mismatched on `suspend`. A callee
- * that cannot be referenced at all is skipped: a member extension, a property where a suspend
- * function is expected, or a property that shares its name with a function on the same
- * receiver. A Java synthetic property (`file.absolutePath`) is referenced through its getter
- * (`File::getAbsolutePath`), the only form the language accepts. The forms a project wants are
- * selected with `preferFunctionReferences.forms`.
+ * that cannot be referenced at all is skipped: a member extension, a function or property with
+ * context parameters, a property where a suspend function is expected, or a property that shares
+ * its name with a function on the same receiver. A Java synthetic property (`file.absolutePath`)
+ * is referenced through its getter (`File::getAbsolutePath`), the only form the language accepts.
+ * The forms a project wants are selected with `preferFunctionReferences.forms`.
  *
  * Some lambdas read better than the reference and are left alone: a call written with operator
  * syntax (`{ -it }`, `{ a + b }`, `{ it in set }`, `{ list[it] }`), which names no function and
@@ -230,6 +230,8 @@ object PreferFunctionReferenceChecker : FirAnonymousFunctionChecker(MppCheckerKi
         if (callee.isComposable(session)) return null
         // A member that is also an extension cannot be referenced: the language prohibits it.
         if (callee.dispatchReceiverType != null && callee.receiverParameterSymbol != null) return null
+        // The language rejects a reference to a declaration with context parameters.
+        if (callee.contextParameterSymbols.isNotEmpty()) return null
         if (hasOverloads(callee, session)) return null
         if (isNamedLikeItsType(callee, session)) return null
         val arguments = call.arguments.map { it.unwrapArgument().unwrapSmartCast() }
@@ -281,6 +283,7 @@ object PreferFunctionReferenceChecker : FirAnonymousFunctionChecker(MppCheckerKi
         if (parameters.size != 1 || parameters.single() != receiverParameter) return null
         val property = access.calleeReference.toResolvedPropertySymbol() ?: return null
         if (property.isLocal) return null
+        if (property.contextParameterSymbols.isNotEmpty()) return null
         val ignoredFunctions = session.kotrailConfig.preferFunctionReferences.ignoredFunctions
         val ignored = when (property) {
             is FirSyntheticPropertySymbol -> ignoredFunctions.any { it.matches(property.getterId.asSingleFqName().asString()) }
