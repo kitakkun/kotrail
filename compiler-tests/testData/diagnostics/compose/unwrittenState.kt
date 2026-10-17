@@ -88,6 +88,36 @@ fun rememberCounter(): MutableState<Int> {
     return count
 }
 
+// Not reported: a state that came in as a parameter is written by its owner.
+@Composable
+fun DelegatedParameter(armed: MutableState<Boolean>) {
+    val isArmed by armed
+    Text("armed = $isArmed")
+}
+
+// Not reported: the same through .value.
+@Composable
+fun ParameterValue(armed: MutableState<Boolean>) {
+    val state = armed
+    Text("armed = ${state.value}")
+}
+
+// Not reported: remembering a state made elsewhere does not make it this function's own.
+@Composable
+fun RememberedParameter(armed: MutableState<Boolean>) {
+    val isArmed by remember { armed }
+    Text("armed = $isArmed")
+}
+
+class Trigger(private val armed: MutableState<Boolean>) {
+    // Not reported: a state held by the class, made by whoever constructed it.
+    @Composable
+    fun Content() {
+        val isArmed by armed
+        Text("armed = $isArmed")
+    }
+}
+
 // Not reported: a remembered plain value, not a state.
 @Composable
 fun PlainRemember() {
