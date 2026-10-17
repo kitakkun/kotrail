@@ -79,7 +79,10 @@ The rule summarizes what each function lets out: a function allocates when its b
 of the listed types or calls a factory, or calls a function that allocates, and the object is
 neither the receiver of `use { }` nor a local the body closes with `close()` or `use { }`, the
 not-null checks above passed through in both cases (`val image = checkNotNull(snapshot())`
-followed by `image.use { }` closes it). A call in a loop to such a function is reported at the
+followed by `image.use { }` closes it). The value of an inline call that hands back what its
+lambda ends with (`synchronized`, `withLock`, `run`, `let`, `with`, `use`) is that last
+expression, so `val image = synchronized(lock) { Image.makeFromBitmap(bitmap) }` followed by
+`image.use { }` closes the image too. A call in a loop to such a function is reported at the
 call, with the path to the allocation (`decode > newBitmap`), unless the result is itself the
 receiver of `use { }`. In this module the summary comes from
 the body; for callers in other modules it is written as a `nativeAllocation` fact
@@ -96,7 +99,8 @@ Not covered: producers that never stop.
 ## Fixtures
 
 `compiler-tests/testData/diagnostics/nativeAllocationInLoop.kt`,
-`compiler-tests/testData/diagnostics/nativeAllocationAcrossModules.kt`
+`compiler-tests/testData/diagnostics/nativeAllocationAcrossModules.kt`,
+`compiler-tests/testData/diagnostics/nativeAllocationThroughLambdaResult.kt`
 
 ## Implementation notes
 

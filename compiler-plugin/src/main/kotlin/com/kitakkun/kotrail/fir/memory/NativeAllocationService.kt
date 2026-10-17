@@ -40,10 +40,13 @@ import org.jetbrains.kotlin.fir.symbols.impl.FirConstructorSymbol
 import org.jetbrains.kotlin.fir.symbols.impl.FirNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.types.ConeKotlinType
 import org.jetbrains.kotlin.fir.types.ConeStarProjection
+import org.jetbrains.kotlin.fir.types.ConeTypeParameterType
+import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.constructClassLikeType
 import org.jetbrains.kotlin.fir.types.isNullableNothing
 import org.jetbrains.kotlin.fir.types.renderReadable
 import org.jetbrains.kotlin.fir.types.resolvedType
+import org.jetbrains.kotlin.fir.types.type
 import org.jetbrains.kotlin.fir.types.typeContext
 import org.jetbrains.kotlin.fir.visitors.FirVisitorVoid
 import org.jetbrains.kotlin.name.ClassId
@@ -218,11 +221,20 @@ class NativeAllocationService(session: FirSession) : InferredFactService<FirName
          */
         private fun fateOf(allocation: FirFunctionCall): String {
             var current: FirElement = allocation
-            for (parent in ancestors.asReversed()) {
+            val parents = ancestors.asReversed()
+            var index = 0
+            while (index < parents.size) {
+                val parent = parents[index++]
+                val owner = lambdaResultOwner(current, parents, index - 1)
+                if (owner != null) {
+                    current = parents[owner]
+                    index = owner + 1
+                    continue
+                }
                 when {
                     parent.holdsArgument(current) -> continue
                     parent.checkedValue() === current -> current = parent
-                    parent is FirReturnExpression && parent.result.unwrapped() === current -> return "returns"
+                    parent is FirReturnExpression && parent.target.labeledElement !is FirAnonymousFunction && parent.result.unwrapped() === current -> return "returns"
                     parent is FirVariableAssignment && parent.rValue.unwrapped() === current ->
                         return if ((parent.lValue as? FirPropertyAccessExpression)?.calleeReference?.toResolvedCallableSymbol()?.let { it is FirPropertySymbol && !it.isLocal } == true) "keeps" else "lets go of"
                     parent is FirSafeCallExpression && parent.receiver.unwrapped() === current -> {
@@ -263,7 +275,8 @@ class NativeAllocationService(session: FirSession) : InferredFactService<FirName
         /**
          * `Bitmap().apply { }.also { }` is the `Bitmap()` call; so is `factory()?.let { }`, and
          * `factory() ?: error("...")`, `factory()!!` and `checkNotNull(factory())`, which only
-         * narrow the nullable result.
+         * narrow the nullable result; so is `synchronized(lock) { Bitmap() }`, whose value is what
+         * its lambda ends with.
          */
         private fun unwrapScopeChain(expression: FirExpression): FirExpression {
             var current = expression.unwrapped()
@@ -271,24 +284,15 @@ class NativeAllocationService(session: FirSession) : InferredFactService<FirName
                 current = when (current) {
                     is FirCheckNotNullCall -> current.checkedValue() ?: return current
                     is FirFunctionCall -> when (current.fqName()) {
-                        in SCOPE_FUNCTIONS -> current.explicitReceiver?.unwrapped() ?: return current
-                        // `bitmap.use { it.encodeToData() }`: the value is what the lambda ends with.
-                        in RESULT_OF_LAMBDA -> current.lambdaResult() ?: return current
+                        in SCOPE_FUNCTIONS -> current.explicitReceiver?.unwrapped() ?: current.lambdaResult() ?: return current
                         in NOT_NULL_CHECKS -> current.checkedValue() ?: return current
-                        else -> return current
+                        else -> current.lambdaResult() ?: return current
                     }
                     is FirSafeCallExpression -> if ((current.selector as? FirFunctionCall)?.fqName() in SCOPE_FUNCTIONS) current.receiver.unwrapped() else return current
                     is FirElvisExpression -> current.lhs.unwrapped()
                     else -> return current
                 }
             }
-        }
-
-        /** The last expression of the lambda a call takes, when it is the call's result. */
-        private fun FirFunctionCall.lambdaResult(): FirExpression? {
-            val lambda = argumentList.arguments.lastOrNull()?.unwrapArgument() as? FirAnonymousFunctionExpression ?: return null
-            val last = lambda.anonymousFunction.body?.statements?.lastOrNull() ?: return null
-            return ((last as? FirReturnExpression)?.result ?: last as? FirExpression)?.unwrapped()
         }
     }
 
@@ -303,6 +307,36 @@ class NativeAllocationService(session: FirSession) : InferredFactService<FirName
         else -> null
     }
 
+    /**
+     * The last expression of the lambda whose value is this call's value: the lambda of an inline
+     * function that returns what the lambda returns, as `synchronized`, `withLock`, `run`, `let`,
+     * `with` and `use` do.
+     */
+    private fun FirFunctionCall.lambdaResult(): FirExpression? {
+        val callee = calleeReference.toResolvedNamedFunctionSymbol() ?: return null
+        if (!callee.isInline) return null
+        val returned = callee.resolvedReturnType as? ConeTypeParameterType ?: return null
+        val mapping = resolvedArgumentMapping ?: return null
+        val lambda = argumentList.arguments.firstNotNullOfOrNull { argument ->
+            val expression = argument.unwrapArgument() as? FirAnonymousFunctionExpression ?: return@firstNotNullOfOrNull null
+            val parameter = mapping[expression] ?: mapping[argument] ?: return@firstNotNullOfOrNull null
+            val lambdaReturns = parameter.returnTypeRef.coneType.typeArguments.lastOrNull()?.type as? ConeTypeParameterType
+            expression.anonymousFunction.takeIf { lambdaReturns?.lookupTag == returned.lookupTag }
+        } ?: return null
+        val last = lambda.body?.statements?.lastOrNull() ?: return null
+        return ((last as? FirReturnExpression)?.result ?: last as? FirExpression)?.unwrapped()
+    }
+
+    /**
+     * The index of the call among [parents] (innermost first, searched from [from]) whose value is
+     * [expression] as the last expression of its lambda, or null. Only the lambda's body, the
+     * lambda and the argument list stand between the two, none of them a call.
+     */
+    private fun lambdaResultOwner(expression: FirElement, parents: List<FirElement>, from: Int): Int? {
+        val index = (from until parents.size).firstOrNull { parents[it] is FirFunctionCall } ?: return null
+        return index.takeIf { (parents[index] as FirFunctionCall).lambdaResult() === expression }
+    }
+
     /** Whether this is the argument list holding [argument], which stands between a call and its argument among the parents. */
     private fun FirElement.holdsArgument(argument: FirElement): Boolean =
         this is FirArgumentList && arguments.any { it.unwrapArgument().unwrapped() === argument }
@@ -311,15 +345,24 @@ class NativeAllocationService(session: FirSession) : InferredFactService<FirName
      * Whether [allocation] is the receiver of `use { }` among [parents] (innermost first): directly,
      * through scope functions (`Bitmap().apply { }.use { }`), through `!!`, `checkNotNull` or
      * `requireNotNull` (`checkNotNull(encodeToData()).use { }`), or through a safe call on a
-     * nullable factory result (`encodeToData()?.use(Data::bytes)`). Shared with the loop checker,
-     * which walks the checker context's containing elements the same way.
+     * nullable factory result (`encodeToData()?.use(Data::bytes)`), or as the value of a lambda
+     * that is its call's value (`synchronized(lock) { Bitmap() }.use { }`). Shared with the loop
+     * checker, which walks the checker context's containing elements the same way.
      */
     fun isClosedByUse(allocation: FirFunctionCall, parents: List<FirElement>): Boolean {
         var current: FirElement = allocation
-        for (parent in parents) {
+        var index = 0
+        while (index < parents.size) {
+            val parent = parents[index++]
             // From the loop checker, parents starts with the allocation itself: FIR adds the
             // checked element to a checker's containing elements.
             if (parent === current || parent.holdsArgument(current)) continue
+            val owner = lambdaResultOwner(current, parents, index - 1)
+            if (owner != null) {
+                current = parents[owner]
+                index = owner + 1
+                continue
+            }
             if (parent.checkedValue() === current) {
                 current = parent
                 continue
@@ -350,8 +393,6 @@ class NativeAllocationService(session: FirSession) : InferredFactService<FirName
         private val PATH = Name.identifier("path")
         val USE = setOf("kotlin.use", "kotlin.io.use", "kotlin.AutoCloseable.use")
 
-        /** Calls whose value is their lambda's last expression: what a `use`, `let` or `run` hands back. */
-        private val RESULT_OF_LAMBDA = USE + setOf("kotlin.let", "kotlin.run", "kotlin.with")
         val SCOPE_FUNCTIONS = setOf("kotlin.apply", "kotlin.also", "kotlin.let", "kotlin.run", "kotlin.takeIf", "kotlin.takeUnless")
 
         /** Calls that hand back their argument unchanged once it is known not to be null, as `!!` does. */
