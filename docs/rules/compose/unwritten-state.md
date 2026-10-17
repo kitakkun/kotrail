@@ -44,6 +44,8 @@ one end of it.
 - The function is `@Composable`, and the local is declared in its body (nested lambdas included).
 - The local's delegate (`by remember { ... }`, `by rememberSaveable { ... }`) or initializer
   (`= remember { ... }`) has a type that is a subtype of `androidx.compose.runtime.MutableState`.
+- The local creates that state: its delegate or initializer is a `mutable*StateOf(...)` call, or
+  a `remember*` call whose lambda ends in one.
 - `KOTRAIL_STATE_NEVER_WRITTEN`: a plain `val` whose `.value` is never assigned, or a delegated
   `val`, which cannot be assigned at all. Reads do not matter: a state nothing writes never
   changes, read or not.
@@ -59,6 +61,8 @@ one end of it.
 - A plain `val` used as anything but `.value`: passed to another composable (state hoisting),
   returned, used as an effect key, delegated further. Code this function cannot see may read or
   write it there.
+- The state was not created here: a parameter (`val isArmed by armed`), a property, or any other
+  call that hands over an existing `MutableState`, `remember { armed }` included. Its owner writes it.
 - The local's type is a read-only `State`: `derivedStateOf`, `collectAsState`, `produceState`,
   `rememberUpdatedState`. Nothing is expected to write those.
 - A remembered plain value (`remember { "x" }`), a property of a class, and any local of a
@@ -81,7 +85,9 @@ covers state Compose cannot observe at all.
 
 `fir/compose/checkers/ComposableUnwrittenStateChecker.kt`, a property checker on local
 properties. The `MutableState` test is a subtype check of the delegate's or initializer's
-resolved type against `MutableState<*>`, as the complexity rule tests for `State`. Usages are
+resolved type against `MutableState<*>`, as the complexity rule tests for `State`. That
+expression must then be a call whose name is `mutable*StateOf`, or a `remember*` call whose last
+lambda argument ends in such a call. Usages are
 collected over the enclosing named function's body with a `FirVisitorVoid` that counts the
 state's reads and writes (`x` and `x = ...` for a delegated local, `s.value` and
 `s.value = ...` for a plain one; `x++` and `x += 1` count as writes through their desugared

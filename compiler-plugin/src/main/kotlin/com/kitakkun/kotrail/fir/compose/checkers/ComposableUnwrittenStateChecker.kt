@@ -15,10 +15,16 @@ import org.jetbrains.kotlin.fir.analysis.checkers.MppCheckerKind
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
 import org.jetbrains.kotlin.fir.analysis.checkers.declaration.FirPropertyChecker
 import org.jetbrains.kotlin.fir.declarations.FirProperty
+import org.jetbrains.kotlin.fir.expressions.FirAnonymousFunctionExpression
 import org.jetbrains.kotlin.fir.expressions.FirDesugaredAssignmentValueReferenceExpression
+import org.jetbrains.kotlin.fir.expressions.FirExpression
+import org.jetbrains.kotlin.fir.expressions.FirFunctionCall
 import org.jetbrains.kotlin.fir.expressions.FirPropertyAccessExpression
+import org.jetbrains.kotlin.fir.expressions.FirReturnExpression
 import org.jetbrains.kotlin.fir.expressions.FirVariableAssignment
+import org.jetbrains.kotlin.fir.expressions.unwrapArgument
 import org.jetbrains.kotlin.fir.references.toResolvedCallableSymbol
+import org.jetbrains.kotlin.fir.references.toResolvedNamedFunctionSymbol
 import org.jetbrains.kotlin.fir.resolve.fullyExpandedType
 import org.jetbrains.kotlin.fir.resolve.providers.symbolProvider
 import org.jetbrains.kotlin.fir.symbols.SymbolInternals
@@ -53,7 +59,10 @@ import org.jetbrains.kotlin.types.AbstractTypeChecker
  * the same with nothing to observe. A `MutableState` nothing reads still invalidates the scope
  * on every write, so the composable recomposes for a value it never shows. Only a state whose
  * every use the function can see is judged: one passed to another function, returned, or used
- * as anything but `.value` may be read or written there, and is left alone. A delegated `var` nothing assigns is a plain never-reassigned var, which
+ * as anything but `.value` may be read or written there, and is left alone. Only a state the
+ * local creates is judged too: one that comes from a parameter, a property or any other call
+ * belongs to an owner that may write it, so `val isArmed by armed` over a parameter `armed` is
+ * not reported. A delegated `var` nothing assigns is a plain never-reassigned var, which
  * `preferVal` reports with its `val` fix; a delegated `val` cannot be assigned at all, so its
  * `MutableState` is reported here as never written.
  */
@@ -69,8 +78,8 @@ object ComposableUnwrittenStateChecker : FirPropertyChecker(MppCheckerKind.Commo
         if (!declaration.isLocal) return
         val session = context.session
         val delegated = declaration.delegate != null
-        val stateType = if (delegated) declaration.delegate?.resolvedType else declaration.initializer?.takeIf { !declaration.isVar }?.resolvedType
-        if (stateType == null || !stateType.isMutableState(session)) return
+        val state = if (delegated) declaration.delegate else declaration.initializer?.takeIf { !declaration.isVar }
+        if (state == null || !state.resolvedType.isMutableState(session) || !state.createsState()) return
 
         val enclosing = context.containingDeclarations.lastOrNull { it is FirNamedFunctionSymbol } as? FirNamedFunctionSymbol ?: return
         if (!enclosing.isComposable(session)) return
@@ -93,6 +102,18 @@ object ComposableUnwrittenStateChecker : FirPropertyChecker(MppCheckerKind.Commo
         val symbol = session.symbolProvider.getClassLikeSymbolByClassId(MUTABLE_STATE) ?: return false
         val superType = MUTABLE_STATE.constructClassLikeType(Array(symbol.typeParameterSymbols.size) { ConeStarProjection }, isMarkedNullable = true)
         return !expanded.isNullableNothing && AbstractTypeChecker.isSubtypeOf(session.typeContext, expanded, superType)
+    }
+
+    /** Whether this makes a new state: a `mutable*StateOf` call, or a `remember*` whose lambda returns one. */
+    private fun FirExpression.createsState(): Boolean {
+        val call = this as? FirFunctionCall ?: return false
+        val name = call.calleeReference.toResolvedNamedFunctionSymbol()?.name?.asString() ?: return false
+        if (name.startsWith("mutable") && name.endsWith("StateOf")) return true
+        if (!name.startsWith("remember")) return false
+        val lambda = call.argumentList.arguments.lastOrNull()?.unwrapArgument() as? FirAnonymousFunctionExpression ?: return false
+        val last = lambda.anonymousFunction.body?.statements?.lastOrNull()
+        val result = (last as? FirReturnExpression)?.result ?: last as? FirExpression
+        return result != null && result.createsState()
     }
 
     /**
