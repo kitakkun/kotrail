@@ -105,10 +105,11 @@ import org.jetbrains.kotlin.util.OperatorNameConventions
  * constructor). Nor do the members the compiler generates for a data class, `copy` and
  * `componentN` among them, which only read or copy those values.
  * Quiet: a try whose every clause rethrows (cleanup, translation), a try nested in the try block
- * of a try with a broad clause at the same root, a launcher whose receiver or arguments carry a
- * `CoroutineExceptionHandler` (`scope.launch(handler)`, `launch(Dispatchers.IO + handler)`) or
- * name a scope listed in `guardedScopes`, and a flow chain with a `.catch { }` downstream of the
- * try's lambda.
+ * of a try at the same root with a broad clause or a clause that does not rethrow (what escapes
+ * the inner try reaches that try, which is judged for its whole block instead), a launcher whose
+ * receiver or arguments carry a `CoroutineExceptionHandler` (`scope.launch(handler)`,
+ * `launch(Dispatchers.IO + handler)`) or name a scope listed in `guardedScopes`, and a flow chain
+ * with a `.catch { }` downstream of the try's lambda.
  */
 object UnguardedBoundaryChecker : FirTryExpressionChecker(MppCheckerKind.Common) {
     private val EXCEPTION_HANDLER = ClassId.topLevel(FqName("kotlinx.coroutines.CoroutineExceptionHandler"))
@@ -133,7 +134,7 @@ object UnguardedBoundaryChecker : FirTryExpressionChecker(MppCheckerKind.Common)
         if (catches.any { it.isBroad(broad, session) }) return
         if (catches.all { it.rethrows() }) return
         val boundary = failureBoundary(config.failureBoundaries) ?: return
-        if (boundary.enclosingTries.any { enclosing -> enclosing.catches.any { it.isBroad(broad, session) } }) return
+        if (boundary.enclosingTries.any { enclosing -> enclosing.catches.any { it.isBroad(broad, session) || !it.rethrows() } }) return
         if (boundary.downstream.any { it.calleeReference.toResolvedCallableSymbol()?.fqName() == FLOW_CATCH }) return
         val launcher = boundary.launcher
         if (launcher != null && launcher.carriesExceptionHandler(session)) return

@@ -169,7 +169,27 @@ block calls nothing else; `writeAndRecord(StringBuilder(label))` around a projec
 - A clause names a broad type: the boundary is guarded (Catch too broad then asks it to read
   the exception).
 - Every clause rethrows: the `try` cleans up or translates and was not written to stop failures.
-- The `try` sits in the try block of another `try` with a broad clause, at the same root.
+- The `try` sits in the try block of another `try` at the same root that has a broad clause or
+  a clause that does not rethrow, directly or through the lambda of an inline call (`use`,
+  `run`). What escapes the inner `try` reaches the outer one, so the outer one is judged, for
+  every call in its try block, the inner `try` included:
+
+  ```kotlin
+  try {
+      file.parentFile.mkdirs()
+      try {
+          Files.move(temporary, target, ATOMIC_MOVE)
+      } catch (e: AtomicMoveNotSupportedException) {     // not reported
+          Files.move(temporary, target, REPLACE_EXISTING)
+      }
+  } catch (e: IOException) {                             // reported, naming 'File.mkdirs'
+      log.warn("write failed", e)
+  }
+  ```
+
+  A `try` in a catch or finally block of another is not covered by that one's clauses and is
+  judged on its own, and so is a `try` in the try block of one with no clause or whose every
+  clause rethrows, or in a lambda that runs later, such as a `thread { }` in the try block.
 - The root is a launcher whose receiver or arguments, outside lambdas, carry a
   `CoroutineExceptionHandler`: `scope.launch(handler) { }`,
   `launch(Dispatchers.IO + handler) { }`, `CoroutineScope(SupervisorJob() + handler).launch { }`.
@@ -220,7 +240,8 @@ of classes declared in another module, and the members generated for a data clas
 `unguardedBoundaryAcrossModules.kt` and `unguardedBoundaryAcrossModules.diag.txt`; the boundary
 definition from the other side in `compiler-tests/testData/diagnostics/catchTooBroadBoundaries.kt`;
 suspend overrides and lambdas converted to a suspend interface in
-`unguardedBoundarySuspendRoots.kt`.
+`unguardedBoundarySuspendRoots.kt`; tries nested in other tries in
+`unguardedBoundaryNestedTries.kt` and `unguardedBoundaryNestedTries.diag.txt`.
 
 ## Implementation notes
 
@@ -240,8 +261,8 @@ resolved return type is `Unit` and its function type is not a suspend one
 functions it overrides (`overriddenFunctions`), unwrapped from fake overrides, is declared
 outside the module and is not a member of `Any`, and returns `Unit` as the class sees it (the
 overridden symbol's substituted return type); any function is one when `annotations` or `names`
-name it. The walk also collects the tries whose try block it passes, for the enclosing broad
-catch. The calls out are a visitor over
+name it. The walk also collects the tries whose try block it passes: one with a broad clause or a
+clause that does not rethrow takes over the judgment. The calls out are a visitor over
 the try block that skips non-inline lambdas, local functions and classes, and SAM constructors;
 it looks at every `FirFunctionCall`, an implicit `invoke` included, in `visitElement`, since the
 visitor does not route `FirImplicitInvokeCall` through `visitFunctionCall`. An `invoke` whose
