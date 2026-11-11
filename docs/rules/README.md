@@ -65,7 +65,7 @@ What a declaration exposes, and how.
 | No null state from parameter | on | `KOTRAIL_NULL_STORED_FROM_PARAMETER` | [no-null-state-from-parameter.md](no-null-state-from-parameter.md) |
 | JvmSynthetic for internal | off: only a JVM library with Java consumers needs it | `KOTRAIL_INTERNAL_VISIBLE_TO_JAVA`, `KOTRAIL_INTERNAL_CLASS_VISIBLE_TO_JAVA` | [jvm-synthetic-for-internal.md](jvm-synthetic-for-internal.md) |
 
-## Errors and concurrency (12)
+## Errors and concurrency (13)
 
 Failures that get hidden, waits that guess, and work that starts where nobody looks.
 
@@ -83,6 +83,7 @@ Failures that get hidden, waits that guess, and work that starts where nobody lo
 | Preconditions | on | `KOTRAIL_PRECONDITION_VIOLATED` | [preconditions.md](preconditions.md) |
 | No-op call | on | `KOTRAIL_CALL_DOES_NOTHING` | [no-op-call.md](no-op-call.md) |
 | No unimplemented code | on | `KOTRAIL_UNIMPLEMENTED_CODE` | [no-unimplemented.md](no-unimplemented.md) |
+| Idempotent | on | `KOTRAIL_NOT_IDEMPOTENT`, `KOTRAIL_CALLEE_NOT_KNOWN_IDEMPOTENT` | [idempotent.md](idempotent.md) |
 
 ## Memory and lifetime (4)
 

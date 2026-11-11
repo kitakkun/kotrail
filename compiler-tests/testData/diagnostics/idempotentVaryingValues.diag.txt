@@ -1,0 +1,17 @@
+/idempotentVaryingValues.kt:23:9: error: [Kotrail] 'lastRefresh = System.currentTimeMillis()' is not idempotent: calling 'stores' twice would store a different value in 'lastRefresh'. Remove @Idempotent, or take the value as a parameter. (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotentVaryingValues.kt:24:9: error: [Kotrail] 'lastRefresh = System.nanoTime() / 1000' is not idempotent: calling 'stores' twice would store a different value in 'lastRefresh'. Remove @Idempotent, or take the value as a parameter. (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotentVaryingValues.kt:25:9: error: [Kotrail] 'startedAt = Clock.System.now()' is not idempotent: calling 'stores' twice would store a different value in 'startedAt'. Remove @Idempotent, or take the value as a parameter. (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotentVaryingValues.kt:26:9: error: [Kotrail] 'id = UUID.randomUUID().toString()' is not idempotent: calling 'stores' twice would store a different value in 'id'. Remove @Idempotent, or take the value as a parameter. (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotentVaryingValues.kt:27:9: error: [Kotrail] 'id = Uuid.random().toString()' is not idempotent: calling 'stores' twice would store a different value in 'id'. Remove @Idempotent, or take the value as a parameter. (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotentVaryingValues.kt:28:9: error: [Kotrail] 'seed = Random.nextInt()' is not idempotent: calling 'stores' twice would store a different value in 'seed'. Remove @Idempotent, or take the value as a parameter. (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotentVaryingValues.kt:30:9: error: [Kotrail] 'id = token' is not idempotent: calling 'stores' twice would store a different value in 'id'. Remove @Idempotent, or take the value as a parameter. (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotentVaryingValues.kt:31:9: error: [Kotrail] 'ids[key] = token' is not idempotent: calling 'stores' twice would store a different value. Remove @Idempotent, or take the value as a parameter. (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotentVaryingValues.kt:32:9: error: [Kotrail] 'ids.put' is not idempotent: calling 'stores' twice would store a different value. Remove @Idempotent, or take the value as a parameter. (KOTRAIL_NOT_IDEMPOTENT)

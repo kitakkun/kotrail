@@ -67,6 +67,7 @@ enum class KotrailRule(
     PREFER_DURATION("preferDuration", Severity.ERROR),
     NO_AMBIGUOUS_STRING_NAME("noAmbiguousStringName", Severity.ERROR),
     UNRETAINED("unretained", Severity.ERROR),
+    IDEMPOTENT("idempotent", Severity.ERROR),
     REQUIRED_SUPERTYPE("requiredSupertype", Severity.ERROR),
     DEPENDENCY_RULES("dependencyRules", Severity.ERROR),
     DELAY_FOR_COMPLETION("delayForCompletion", Severity.ERROR),

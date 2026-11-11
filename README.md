@@ -37,7 +37,7 @@ The compiler is the one gate every line of code has to pass. Kotrail puts your c
 
 ## Rules
 
-84 rules ship today, grouped by what they protect. Full pages, with every condition and
+85 rules ship today, grouped by what they protect. Full pages, with every condition and
 fixture, live under [`docs/rules/`](docs/rules/README.md); the index there lists each rule with
 its diagnostic and whether it is on by default.
 
@@ -63,7 +63,7 @@ its diagnostic and whether it is on by default.
   [Prefer value class](docs/rules/prefer-value-class.md) over a one-field data class, and no mutable collection or data class
   in a public API; [No null state from parameter](docs/rules/no-null-state-from-parameter.md) for a constructor's
   `ffmpegPath: String?` kept as a property that every use answers with `?: return` or `!!`.
-- **Errors and concurrency** (12): [Must close](docs/rules/must-close.md) for a reader or stream created and never closed;
+- **Errors and concurrency** (13): [Must close](docs/rules/must-close.md) for a reader or stream created and never closed;
   [No external mutation](docs/rules/no-external-mutation.md) for `scene.capturing.value = true` from outside `Scene`;
   [Catch too broad](docs/rules/catch-too-broad.md) and [No swallowed cancellation](docs/rules/no-swallowed-cancellation.md) for
   the `catch (e: Exception)` reflex in the middle of the logic, [Unguarded boundary](docs/rules/unguarded-boundary.md) for a
@@ -73,7 +73,8 @@ its diagnostic and whether it is on by default.
   [No async work in initializer](docs/rules/no-async-work-in-initializer.md) for a consumer loop started inside a
   `Channel(...).also { }` while the object is being built,
   [Preconditions](docs/rules/preconditions.md) for arguments that violate the callee's own `require`, checked across modules;
-  [No-op call](docs/rules/no-op-call.md) for arguments that make the callee return at once, `delay(0)` written to yield included.
+  [No-op call](docs/rules/no-op-call.md) for arguments that make the callee return at once, `delay(0)` written to yield included;
+  [Idempotent](docs/rules/idempotent.md) for a `count++` or a `list.add` inside a function declared safe to call twice.
 - **Memory and lifetime** (4): [Native allocation in loop](docs/rules/native-allocation-in-loop.md) for a Skia `Bitmap` created per frame,
   [Weak-only reference](docs/rules/weak-only-reference.md) for a listener collected at once, [Unretained](docs/rules/unretained.md) for a parameter stored
   against its contract.
