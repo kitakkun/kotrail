@@ -31,7 +31,7 @@ mavenPublishing {
     configure(KotlinMultiplatform(javadocJar = JavadocJar.Empty(), sourcesJar = true))
     pom {
         name.set("Kotrail annotations")
-        description.set("Annotations recognized by the Kotrail compiler plugin: window insets contracts, composition local roots, serializability, lifetime contracts, and the metadata it writes.")
+        description.set("Annotations recognized by the Kotrail compiler plugin: window insets contracts, composition local roots, serializability, lifetime and idempotency contracts, and the metadata it writes.")
     }
 }
 

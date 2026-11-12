@@ -558,6 +558,18 @@ data class KotrailUnretained(
     val weakTypes: List<String>,
 )
 
+/** Tunables of the idempotent rule. From `rules.idempotent`. */
+data class KotrailIdempotent(
+    /** Fully qualified annotations that mark a function or a setter as idempotent. */
+    val annotations: List<String>,
+    /** Globs over fully qualified functions a call to which is idempotent, whatever the built-in table says. */
+    val allow: List<Glob>,
+    /** Globs over fully qualified functions a call to which is not idempotent, on top of the built-in table. */
+    val deny: List<Glob>,
+    /** Whether a call to a function that is neither `@Idempotent` nor known to be idempotent is reported too. */
+    val strict: Boolean,
+)
+
 /** Tunables of the delay-for-completion rule. From `rules.delayForCompletion`. */
 data class KotrailAsyncWork(
     /** Fully qualified functions that wait a fixed time: `delay`, `Thread.sleep`. */
@@ -692,6 +704,7 @@ data class KotrailConfig(
     val catchTooBroad: KotrailCatchTooBroad,
     val failureBoundaries: KotrailFailureBoundaries,
     val unretained: KotrailUnretained,
+    val idempotent: KotrailIdempotent,
     val requiredSupertypes: List<KotrailSupertypePolicy>,
     val asyncWork: KotrailAsyncWork,
     val noAsyncWorkInInitializer: KotrailNoAsyncWorkInInitializer,
@@ -1013,6 +1026,7 @@ data class KotrailConfig(
             "java.util.Timer.schedule",
         )
         val DEFAULT_UNRETAINED_ANNOTATIONS: List<String> = listOf("com.kitakkun.kotrail.lifetime.Unretained")
+        val DEFAULT_IDEMPOTENT_ANNOTATIONS: List<String> = listOf("com.kitakkun.kotrail.idempotency.Idempotent")
         val DEFAULT_REMEMBER_KEYS_FUNCTIONS: List<String> = listOf(
             "androidx.compose.runtime.remember",
             "androidx.compose.runtime.saveable.rememberSaveable",
@@ -1528,6 +1542,12 @@ data class KotrailConfig(
                 unretained = KotrailUnretained(
                     annotations = list(KotrailRule.UNRETAINED, "annotations") ?: DEFAULT_UNRETAINED_ANNOTATIONS,
                     weakTypes = list(KotrailRule.UNRETAINED, "weakTypes") ?: DEFAULT_WEAK_TYPES,
+                ),
+                idempotent = KotrailIdempotent(
+                    annotations = list(KotrailRule.IDEMPOTENT, "annotations") ?: DEFAULT_IDEMPOTENT_ANNOTATIONS,
+                    allow = list(KotrailRule.IDEMPOTENT, "allow").orEmpty().map(::Glob),
+                    deny = list(KotrailRule.IDEMPOTENT, "deny").orEmpty().map(::Glob),
+                    strict = boolean(ruleNode(KotrailRule.IDEMPOTENT), "strict") ?: false,
                 ),
                 asyncWork = KotrailAsyncWork(
                     delays = list(KotrailRule.DELAY_FOR_COMPLETION, "delays") ?: DEFAULT_DELAYS,

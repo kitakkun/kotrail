@@ -1,0 +1,31 @@
+/idempotent.kt:22:9: error: [Kotrail] 'count++' is not idempotent: calling 'readModifyWrite' twice would update 'count' twice. Remove @Idempotent, or assign a value that does not depend on the previous one. (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotent.kt:23:9: error: [Kotrail] '--count' is not idempotent: calling 'readModifyWrite' twice would update 'count' twice. Remove @Idempotent, or assign a value that does not depend on the previous one. (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotent.kt:24:9: error: [Kotrail] 'total += delta' is not idempotent: calling 'readModifyWrite' twice would update 'total' twice. Remove @Idempotent, or assign a value that does not depend on the previous one. (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotent.kt:25:9: error: [Kotrail] 'total = total * 2' is not idempotent: calling 'readModifyWrite' twice would update 'total' twice. Remove @Idempotent, or assign a value that does not depend on the previous one. (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotent.kt:26:9: error: [Kotrail] 'count = 1 + count' is not idempotent: calling 'readModifyWrite' twice would update 'count' twice. Remove @Idempotent, or assign a value that does not depend on the previous one. (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotent.kt:27:9: error: [Kotrail] 'label = "$label!"' is not idempotent: calling 'readModifyWrite' twice would update 'label' twice. Remove @Idempotent, or assign a value that does not depend on the previous one. (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotent.kt:28:9: error: [Kotrail] 'label += "!"' is not idempotent: calling 'readModifyWrite' twice would update 'label' twice. Remove @Idempotent, or assign a value that does not depend on the previous one. (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotent.kt:29:9: error: [Kotrail] 'visible = !visible' is not idempotent: calling 'readModifyWrite' twice would update 'visible' twice. Remove @Idempotent, or assign a value that does not depend on the previous one. (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotent.kt:30:9: error: [Kotrail] 'names = names + "x"' is not idempotent: calling 'readModifyWrite' twice would update 'names' twice. Remove @Idempotent, or assign a value that does not depend on the previous one. (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotent.kt:31:9: error: [Kotrail] 'this.count = this.count - delta' is not idempotent: calling 'readModifyWrite' twice would update 'count' twice. Remove @Idempotent, or assign a value that does not depend on the previous one. (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotent.kt:32:9: error: [Kotrail] 'point.x++' is not idempotent: calling 'readModifyWrite' twice would update 'x' twice. Remove @Idempotent, or assign a value that does not depend on the previous one. (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotent.kt:33:9: error: [Kotrail] 'scores[0] += 1' is not idempotent: calling 'readModifyWrite' twice would update 'scores' twice. Remove @Idempotent, or assign a value that does not depend on the previous one. (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotent.kt:34:9: error: [Kotrail] 'scores[0] = scores[0] + delta' is not idempotent: calling 'readModifyWrite' twice would update 'scores' twice. Remove @Idempotent, or assign a value that does not depend on the previous one. (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotent.kt:68:13: error: [Kotrail] 'field += value' is not idempotent: calling 'sum' twice would update 'field' twice. Remove @Idempotent, or assign a value that does not depend on the previous one. (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotent.kt:81:5: error: [Kotrail] 'calls++' is not idempotent: calling 'topLevel' twice would update 'calls' twice. Remove @Idempotent, or assign a value that does not depend on the previous one. (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotent.kt:91:9: error: [Kotrail] 'captured++' is not idempotent: calling 'local' twice would update 'captured' twice. Remove @Idempotent, or assign a value that does not depend on the previous one. (KOTRAIL_NOT_IDEMPOTENT)

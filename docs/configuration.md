@@ -159,6 +159,10 @@ own; a rule not listed has none.
 | | `guardedScopes` | `[]` | Globs over fully qualified properties and functions (`com.acme.HostPlugin.pluginScope`, `com.acme.*.safeScope`) whose value is a `CoroutineScope` with a `CoroutineExceptionHandler` installed elsewhere. A launcher whose receiver or scope argument reads one, directly or through a local `val`, is not reported. |
 | `unretained` | `annotations` | `[com.kitakkun.kotrail.lifetime.Unretained]` | Annotations that mark a parameter as not to be retained. Replaces the default list. |
 | | `weakTypes` | `[java.lang.ref.WeakReference, ...]` | Weak reference types through which such a parameter may be kept. Replaces the default list. |
+| `idempotent` | `annotations` | `[com.kitakkun.kotrail.idempotency.Idempotent]` | Annotations that mark a function or a property setter as idempotent. Replaces the default list. |
+| | `allow` | `[]` | Globs over fully qualified functions whose call is idempotent; they win over the built-in table and `deny`, and count as known under `strict`. |
+| | `deny` | `[]` | Globs over fully qualified functions whose call is not idempotent, on top of the built-in table (`List.add`, `StringBuilder.append`, `send`, `emit`, `launch`, atomic increments). |
+| | `strict` | `false` | Whether a call to a function that is neither annotated nor known to be idempotent (the standard library, collections, `allow`) is reported too. |
 | `requiredSupertype` | `policies` | `{}` | Named policies, `where -> supertype` or a mapping with `where` and `supertype`; matching classes must extend or implement it. |
 | `dependencyRules` | `policies` | `{}` | Named policies, each a mapping with `from` (a package glob), `deny` (package globs) and optionally `allow`. |
 | `delayForCompletion` | `delays` | `[kotlinx.coroutines.delay, java.lang.Thread.sleep, android.os.SystemClock.sleep]` | Functions that wait a fixed time. Replaces the default list. |

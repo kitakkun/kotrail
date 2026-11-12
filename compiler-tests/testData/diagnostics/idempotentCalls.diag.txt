@@ -1,0 +1,35 @@
+/idempotentCalls.kt:28:9: error: [Kotrail] 'history.add' is not idempotent: calling 'repeats' twice would add twice. Remove @Idempotent, or make the write idempotent (use a Set, or set(index, …) instead of add). (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotentCalls.kt:29:9: error: [Kotrail] 'history.add' is not idempotent: calling 'repeats' twice would add twice. Remove @Idempotent, or make the write idempotent (use a Set, or set(index, …) instead of add). (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotentCalls.kt:30:9: error: [Kotrail] 'history.addAll' is not idempotent: calling 'repeats' twice would add twice. Remove @Idempotent, or make the write idempotent (use a Set, or set(index, …) instead of add). (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotentCalls.kt:31:9: error: [Kotrail] 'history += item' is not idempotent: calling 'repeats' twice would add twice. Remove @Idempotent, or make the write idempotent (use a Set, or set(index, …) instead of add). (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotentCalls.kt:32:9: error: [Kotrail] 'history.removeAt' is not idempotent: calling 'repeats' twice would remove another element. Remove @Idempotent, or make the write idempotent (use a Set, or set(index, …) instead of add). (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotentCalls.kt:33:9: error: [Kotrail] 'pending.add' is not idempotent: calling 'repeats' twice would add twice. Remove @Idempotent, or make the write idempotent (use a Set, or set(index, …) instead of add). (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotentCalls.kt:34:9: error: [Kotrail] 'out.add' is not idempotent: calling 'repeats' twice would add twice. Remove @Idempotent, or make the write idempotent (use a Set, or set(index, …) instead of add). (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotentCalls.kt:35:9: error: [Kotrail] 'log.append' is not idempotent: calling 'repeats' twice would append twice. Remove @Idempotent, or make the write idempotent (build the text in a local and assign it). (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotentCalls.kt:36:9: error: [Kotrail] 'events.send' is not idempotent: calling 'repeats' twice would send twice. Remove @Idempotent, or make the write idempotent (publish the state through a MutableStateFlow, which drops an equal value). (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotentCalls.kt:37:9: error: [Kotrail] 'events.trySend' is not idempotent: calling 'repeats' twice would send twice. Remove @Idempotent, or make the write idempotent (publish the state through a MutableStateFlow, which drops an equal value). (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotentCalls.kt:38:9: error: [Kotrail] 'shared.emit' is not idempotent: calling 'repeats' twice would emit twice. Remove @Idempotent, or make the write idempotent (publish the state through a MutableStateFlow, which drops an equal value). (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotentCalls.kt:39:9: error: [Kotrail] 'shared.tryEmit' is not idempotent: calling 'repeats' twice would emit twice. Remove @Idempotent, or make the write idempotent (publish the state through a MutableStateFlow, which drops an equal value). (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotentCalls.kt:40:9: error: [Kotrail] 'scope.launch' is not idempotent: calling 'repeats' twice would start the work twice. Remove @Idempotent, or keep the Job and start the work only when none is active. (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotentCalls.kt:41:9: error: [Kotrail] 'scope.async' is not idempotent: calling 'repeats' twice would start the work twice. Remove @Idempotent, or keep the Job and start the work only when none is active. (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotentCalls.kt:42:9: error: [Kotrail] 'hits.incrementAndGet' is not idempotent: calling 'repeats' twice would apply it twice. Remove @Idempotent, or make the write idempotent (store the target value with set). (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotentCalls.kt:43:9: error: [Kotrail] 'hits.getAndAdd' is not idempotent: calling 'repeats' twice would apply it twice. Remove @Idempotent, or make the write idempotent (store the target value with set). (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotentCalls.kt:45:9: error: [Kotrail] 'alias.add' is not idempotent: calling 'repeats' twice would add twice. Remove @Idempotent, or make the write idempotent (use a Set, or set(index, …) instead of add). (KOTRAIL_NOT_IDEMPOTENT)
+
+/idempotentCalls.kt:47:36: error: [Kotrail] 'history.add' is not idempotent: calling 'repeats' twice would add twice. Remove @Idempotent, or make the write idempotent (use a Set, or set(index, …) instead of add). (KOTRAIL_NOT_IDEMPOTENT)

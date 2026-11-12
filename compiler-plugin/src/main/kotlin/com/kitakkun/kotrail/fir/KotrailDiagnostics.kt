@@ -223,6 +223,12 @@ object KotrailDiagnostics : KtDiagnosticsContainer() {
     /** Arguments: the parameter, how it escapes; reported on the expression through which an unretained parameter is retained. */
     val UNRETAINED_PARAMETER_RETAINED = tunable2<KtElement, String, String>("UNRETAINED_PARAMETER_RETAINED", KotrailRule.UNRETAINED, WHOLE)
 
+    /** Arguments: the operation, the function, what a second call would do and how to fix it; reported on the operation inside an idempotent function. */
+    val NOT_IDEMPOTENT = tunable3<KtElement, String, String, String>("NOT_IDEMPOTENT", KotrailRule.IDEMPOTENT, WHOLE)
+
+    /** Arguments: the callee, the function; reported on a call that strict mode cannot vouch for. */
+    val CALLEE_NOT_KNOWN_IDEMPOTENT = tunable2<KtElement, String, String>("CALLEE_NOT_KNOWN_IDEMPOTENT", KotrailRule.IDEMPOTENT, WHOLE)
+
     /** Arguments: the class, the required supertype with the policy; reported on a class name. */
     val SUPERTYPE_REQUIRED = tunable2<KtClassOrObject, String, String>("SUPERTYPE_REQUIRED", KotrailRule.REQUIRED_SUPERTYPE, NAME)
 
@@ -894,6 +900,15 @@ object KotrailDiagnosticRenderers : BaseDiagnosticRendererFactory() {
         map.put2(
             KotrailDiagnostics.UNRETAINED_PARAMETER_RETAINED,
             "[Kotrail] ''{0}'' is declared unretained, but {1}. Keep it only through a weak reference, or drop the annotation.",
+        )
+        map.put3(
+            KotrailDiagnostics.NOT_IDEMPOTENT,
+            "[Kotrail] ''{0}'' is not idempotent: calling ''{1}'' twice would {2}.",
+        )
+        map.put2(
+            KotrailDiagnostics.CALLEE_NOT_KNOWN_IDEMPOTENT,
+            "[Kotrail] ''{0}'' is not known to be idempotent, and strict mode asks it of every call in ''{1}''. " +
+                "Mark it @Idempotent, or list it under idempotent.allow.",
         )
         map.put2(
             KotrailDiagnostics.SUPERTYPE_REQUIRED,
